@@ -141,6 +141,7 @@ const App: React.FC = () => {
   }, []);
 
   const startGame = () => {
+    soundService.playUIClick();
     try {
       localStorage.setItem('number_tutorial_done', 'true');
     } catch (e) { console.warn("LocalStorage blocked", e); }
@@ -176,6 +177,7 @@ const App: React.FC = () => {
     } catch (e) { tutorialDone = 'true'; }
 
     if (tutorialDone !== 'true') {
+      soundService.playUIClick();
       setTutorialStep(0);
       setActiveModal('tutorial');
     } else {
@@ -198,9 +200,9 @@ const App: React.FC = () => {
   };
 
   const nextTutorialStep = () => {
+    soundService.playTick();
     if (tutorialStep < TUTORIAL_STEPS.length - 1) {
       setTutorialStep(prev => prev + 1);
-      soundService.playTick();
     } else {
       startGame();
     }
@@ -239,12 +241,15 @@ const App: React.FC = () => {
         estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
       }));
       setTimeout(() => {
-        setGameState(prev => ({
-          ...prev,
-          streak: 0,
-          level: prev.level + 1,
-          status: 'level-complete'
-        }));
+        setGameState(prev => {
+           if (prev.status === 'idle') return prev; // Avoid level jump if home pressed
+           return {
+            ...prev,
+            streak: 0,
+            level: prev.level + 1,
+            status: 'level-complete'
+          }
+        });
         setIsVictoryAnimating(false);
         setTriggerParticles(false);
       }, 1200);
@@ -273,6 +278,7 @@ const App: React.FC = () => {
   };
 
   const nextLevel = () => {
+    soundService.playUIClick();
     setGameState(prev => ({
       ...prev,
       status: 'playing',
@@ -407,11 +413,11 @@ const App: React.FC = () => {
             </button>
             
             <div className="grid grid-cols-2 gap-4 w-full">
-              <button onPointerDown={(e) => { e.stopPropagation(); setTutorialStep(0); setActiveModal('tutorial'); }} className="flex items-center justify-center gap-2 bg-slate-800/80 py-4 rounded-xl border border-white/10 active:scale-95 transition-all">
+              <button onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }} className="flex items-center justify-center gap-2 bg-slate-800/80 py-4 rounded-xl border border-white/10 active:scale-95 transition-all">
                 <HelpCircle className="w-5 h-5 text-cyan-400" />
                 <span className="font-orbitron text-[10px] font-black uppercase tracking-widest text-slate-300">Tutorial</span>
               </button>
-              <button onPointerDown={(e) => { e.stopPropagation(); setActiveModal('leaderboard'); }} className="flex items-center justify-center gap-2 bg-slate-800/80 py-4 rounded-xl border border-white/10 active:scale-95 transition-all">
+              <button onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal('leaderboard'); }} className="flex items-center justify-center gap-2 bg-slate-800/80 py-4 rounded-xl border border-white/10 active:scale-95 transition-all">
                 <BarChart3 className="w-5 h-5 text-amber-400" />
                 <span className="font-orbitron text-[10px] font-black uppercase tracking-widest text-slate-300">Classifica</span>
               </button>
@@ -511,7 +517,7 @@ const App: React.FC = () => {
       )}
 
       {activeModal === 'tutorial' && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => setActiveModal(null)}>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
           <div className="glass-panel w-full max-w-md p-8 rounded-[2rem] modal-content flex flex-col" onPointerDown={e => e.stopPropagation()}>
             <div className="flex flex-col items-center text-center py-4">
               <div className="mb-8">{TUTORIAL_STEPS[tutorialStep].icon}</div>
@@ -526,7 +532,7 @@ const App: React.FC = () => {
       )}
       
       {activeModal === 'leaderboard' && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => setActiveModal(null)}>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
           <div className="glass-panel w-full max-w-md p-8 rounded-[2rem] modal-content flex flex-col" onPointerDown={e => e.stopPropagation()}>
             <h2 className="text-2xl font-black font-orbitron text-white mb-6 uppercase flex items-center gap-3"><Award className="text-amber-400" /> RANKING</h2>
             <div className="space-y-3 overflow-y-auto max-h-[50vh] pr-2 custom-scroll">
@@ -540,7 +546,7 @@ const App: React.FC = () => {
                 </div>
               ))}
             </div>
-            <button onPointerDown={() => setActiveModal(null)} className="mt-8 w-full bg-slate-800 text-white py-4 rounded-xl font-orbitron font-black text-xs uppercase active:scale-95 transition-all">CHIUDI</button>
+            <button onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }} className="mt-8 w-full bg-slate-800 text-white py-4 rounded-xl font-orbitron font-black text-xs uppercase active:scale-95 transition-all">CHIUDI</button>
           </div>
         </div>
       )}
