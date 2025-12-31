@@ -151,12 +151,9 @@ const App: React.FC = () => {
       e.stopPropagation();
     }
     
-    if (gameState.status === 'playing') {
-      if (!confirm("Vuoi davvero abbandonare la sfida corrente?")) return;
-    }
-    
+    // Eliminato window.confirm come richiesto
     soundService.playReset();
-    showToast("Tornando alla Home...");
+    showToast("Sincronizzazione Terminata");
     setGameState(prev => ({ ...prev, status: 'idle' }));
     setSelectedPath([]);
     setIsDragging(false);
@@ -327,14 +324,17 @@ const App: React.FC = () => {
     >
       <ParticleEffect trigger={triggerParticles} />
 
-      {/* Futuristic Toast Notification */}
-      <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[2000] transition-all duration-500 pointer-events-none
-        ${toast.visible ? 'translate-y-0 opacity-100' : '-translate-y-12 opacity-0'}`}>
-        <div className="glass-panel px-6 py-3 rounded-2xl border border-cyan-500/50 shadow-[0_0_20px_rgba(34,211,238,0.3)] flex items-center gap-4">
-          <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-            <Home className="w-4 h-4 text-cyan-400 animate-pulse" />
+      {/* Futuristic Toast Notification - Migliorato */}
+      <div className={`fixed top-12 left-1/2 -translate-x-1/2 z-[3000] transition-all duration-500 pointer-events-none
+        ${toast.visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-16 opacity-0 scale-95'}`}>
+        <div className="glass-panel px-8 py-4 rounded-[1.5rem] border border-cyan-400/60 shadow-[0_0_40px_rgba(34,211,238,0.4)] flex items-center gap-5 backdrop-blur-2xl">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-indigo-600 flex items-center justify-center shadow-lg">
+            <Home className="w-5 h-5 text-white animate-pulse" />
           </div>
-          <span className="font-orbitron text-xs font-bold text-white tracking-widest uppercase">{toast.message}</span>
+          <div className="flex flex-col">
+            <span className="font-orbitron text-[10px] font-black text-cyan-400 uppercase tracking-[0.2em] mb-0.5">Sistema</span>
+            <span className="font-orbitron text-sm font-black text-white tracking-widest uppercase">{toast.message}</span>
+          </div>
         </div>
       </div>
 
@@ -348,10 +348,8 @@ const App: React.FC = () => {
       {/* HOME PAGE */}
       {gameState.status === 'idle' && (
         <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-10 animate-screen-in">
-          
           <div className="relative mb-14 animate-float">
             <div className="absolute inset-0 bg-cyan-400/20 blur-3xl rounded-full scale-150 animate-pulse"></div>
-            
             <div className="relative w-40 h-40 sm:w-48 sm:h-48 hexagon-clip flex items-center justify-center overflow-hidden shadow-[0_0_120px_rgba(34,211,238,0.25)] bg-transparent">
               <div className="energy-ring"></div>
               <div className="absolute inset-[4px] bg-[#020617]/40 backdrop-blur-3xl hexagon-clip flex items-center justify-center">
