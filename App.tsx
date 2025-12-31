@@ -60,7 +60,17 @@ const App: React.FC = () => {
   const [scoreAnimKey, setScoreAnimKey] = useState(0);
   const [isVictoryAnimating, setIsVictoryAnimating] = useState(false);
   const [triggerParticles, setTriggerParticles] = useState(false);
+  const [toast, setToast] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
   const timerRef = useRef<number | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
+
+  const showToast = (message: string) => {
+    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
+    setToast({ message, visible: true });
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+    }, 2500);
+  };
 
   const generateGrid = useCallback(() => {
     const newGrid: HexCellData[] = [];
@@ -125,7 +135,7 @@ const App: React.FC = () => {
     let tutorialDone = 'false';
     try {
       tutorialDone = localStorage.getItem('number_tutorial_done') || 'false';
-    } catch (e) { tutorialDone = 'true'; } // Se bloccato, assumiamo fatto per evitare loop
+    } catch (e) { tutorialDone = 'true'; }
 
     if (tutorialDone !== 'true') {
       setTutorialStep(0);
@@ -142,10 +152,11 @@ const App: React.FC = () => {
     }
     
     if (gameState.status === 'playing') {
-      if (!confirm("Vuoi davvero abbandonare la sfida?")) return;
+      if (!confirm("Vuoi davvero abbandonare la sfida corrente?")) return;
     }
     
     soundService.playReset();
+    showToast("Tornando alla Home...");
     setGameState(prev => ({ ...prev, status: 'idle' }));
     setSelectedPath([]);
     setIsDragging(false);
@@ -316,6 +327,17 @@ const App: React.FC = () => {
     >
       <ParticleEffect trigger={triggerParticles} />
 
+      {/* Futuristic Toast Notification */}
+      <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[2000] transition-all duration-500 pointer-events-none
+        ${toast.visible ? 'translate-y-0 opacity-100' : '-translate-y-12 opacity-0'}`}>
+        <div className="glass-panel px-6 py-3 rounded-2xl border border-cyan-500/50 shadow-[0_0_20px_rgba(34,211,238,0.3)] flex items-center gap-4">
+          <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+            <Home className="w-4 h-4 text-cyan-400 animate-pulse" />
+          </div>
+          <span className="font-orbitron text-xs font-bold text-white tracking-widest uppercase">{toast.message}</span>
+        </div>
+      </div>
+
       {/* Background Decor */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] bg-cyan-600/10 rounded-full blur-[120px]"></div>
@@ -385,7 +407,8 @@ const App: React.FC = () => {
           <header className="w-full flex justify-between items-center mb-6">
             <button 
               onPointerDown={goToHome}
-              className="group flex items-center gap-2 px-4 py-2 bg-white/10 rounded-2xl border border-white/10 shadow-lg relative z-[999] active:scale-90 transition-all"
+              className="group flex items-center gap-2 px-4 py-2 bg-white/10 rounded-2xl border border-white/10 shadow-lg relative z-[999] active:scale-90 transition-all cursor-pointer"
+              title="Torna alla Home"
             >
               <Home className="w-5 h-5 text-cyan-400" />
               <span className="hidden sm:inline font-orbitron text-[10px] font-black uppercase text-slate-300">Home</span>
@@ -424,7 +447,7 @@ const App: React.FC = () => {
                  </div>
               </div>
             )}
-            {/* Modal stati di gioco omessi per brevità, mantenuti come in precedenza */}
+            
             {gameState.status === 'game-over' && (
                <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in">
                   <h2 className="text-4xl font-black font-orbitron mb-4 text-red-500">FINE</h2>
@@ -432,14 +455,21 @@ const App: React.FC = () => {
                      <span className="text-[10px] text-slate-500 uppercase font-black">QI Stimato</span>
                      <div className="text-7xl font-black font-orbitron text-white">{Math.round(gameState.estimatedIQ)}</div>
                   </div>
+                  <div className="bg-white/5 p-4 rounded-2xl mb-8 text-xs italic text-slate-300">
+                    "{insight}"
+                  </div>
                   <button onPointerDown={(e) => { e.stopPropagation(); startGame(); }} className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm mb-4 active:scale-95 transition-all">RIPROVA</button>
                   <button onPointerDown={goToHome} className="text-[10px] text-slate-500 font-black uppercase tracking-widest hover:text-white transition-colors">Torna alla Home</button>
                </div>
             )}
+            
             {gameState.status === 'level-complete' && (
                <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in">
                   <Trophy className="w-16 h-16 text-cyan-400 mx-auto mb-6" />
                   <h2 className="text-2xl font-black font-orbitron mb-4">LIVELLO {gameState.level - 1} OK</h2>
+                  <div className="bg-white/5 p-4 rounded-2xl mb-8 text-xs italic text-slate-300">
+                    "{insight}"
+                  </div>
                   <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }} className="w-full bg-cyan-400 text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm active:scale-95 transition-all">PROSSIMO LIVELLO</button>
                </div>
             )}
@@ -466,10 +496,13 @@ const App: React.FC = () => {
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => setActiveModal(null)}>
           <div className="glass-panel w-full max-w-md p-8 rounded-[2rem] modal-content flex flex-col" onPointerDown={e => e.stopPropagation()}>
             <h2 className="text-2xl font-black font-orbitron text-white mb-6 uppercase flex items-center gap-3"><Award className="text-amber-400" /> RANKING</h2>
-            <div className="space-y-3 overflow-y-auto max-h-[50vh] pr-2">
+            <div className="space-y-3 overflow-y-auto max-h-[50vh] pr-2 custom-scroll">
               {MOCK_LEADERBOARD.map((p, idx) => (
                 <div key={idx} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <span className="text-sm font-bold text-white">{idx + 1}. {p.name}</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white">{idx + 1}. {p.name}</span>
+                    <span className="text-[8px] text-slate-500 uppercase">{p.country}</span>
+                  </div>
                   <span className="font-orbitron font-bold text-cyan-400 text-xs">IQ {p.iq}</span>
                 </div>
               ))}
@@ -479,7 +512,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.5</footer>
+      <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.6</footer>
     </div>
   );
 };
