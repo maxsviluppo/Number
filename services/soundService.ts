@@ -2,8 +2,10 @@
 class SoundService {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
+  public isMuted: boolean = false;
 
   private init() {
+    if (this.isMuted) return;
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)({
         latencyHint: 'interactive'
@@ -17,13 +19,17 @@ class SoundService {
     }
   }
 
-  /**
-   * FM Synthesis helper
-   * @param carrierFreq Frequenza portante (tono principale)
-   * @param modFreq Frequenza modulante (colore del suono)
-   * @param modIndex Indice di modulazione (brillantezza)
-   */
+  setMuted(muted: boolean) {
+    this.isMuted = muted;
+    if (muted && this.ctx && this.ctx.state === 'running') {
+      this.ctx.suspend();
+    } else if (!muted && this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
   private playFMSound(carrierFreq: number, modFreq: number, modIndex: number, duration: number, volume: number, type: OscillatorType = 'sine') {
+    if (this.isMuted) return;
     this.init();
     if (!this.ctx || !this.masterGain) return;
 
@@ -55,26 +61,22 @@ class SoundService {
     modulator.stop(this.ctx.currentTime + duration);
   }
 
-  // Suono quando si tocca il primo numero
   playSelect() {
     this.playFMSound(880, 440, 200, 0.15, 0.15, 'triangle');
   }
 
-  // Suono per ogni collegamento successivo
   playTick() {
-    // Un click secco ad alta frequenza
     this.playFMSound(1760, 220, 100, 0.05, 0.1);
   }
 
-  // Click generico per i pulsanti della UI
   playUIClick() {
     this.playFMSound(440, 880, 50, 0.08, 0.12, 'square');
   }
 
   playSuccess() {
+    if (this.isMuted) return;
     this.init();
-    const now = this.ctx!.currentTime;
-    const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+    const freqs = [523.25, 659.25, 783.99, 1046.50];
     freqs.forEach((f, i) => {
       setTimeout(() => {
         this.playFMSound(f, f * 1.5, 300, 0.6, 0.1, 'sine');
@@ -83,16 +85,13 @@ class SoundService {
   }
 
   playError() {
-    this.init();
-    // Suono di "errore" profondo e leggermente distorto
     this.playFMSound(110, 55, 500, 0.4, 0.2, 'sawtooth');
-    this.playFMSound(104, 52, 500, 0.4, 0.15, 'sawtooth');
   }
 
   playReset() {
+    if (this.isMuted) return;
     this.init();
     if (!this.ctx || !this.masterGain) return;
-    // Slide discendente
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     osc.frequency.setValueAtTime(660, this.ctx.currentTime);

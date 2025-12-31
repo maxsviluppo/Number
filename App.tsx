@@ -6,7 +6,7 @@ import HexCell from './components/HexCell';
 import ParticleEffect from './components/ParticleEffect';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
-import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X } from 'lucide-react';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX } from 'lucide-react';
 
 const TUTORIAL_STEPS = [
   {
@@ -62,8 +62,20 @@ const App: React.FC = () => {
   const [isVictoryAnimating, setIsVictoryAnimating] = useState(false);
   const [triggerParticles, setTriggerParticles] = useState(false);
   const [toast, setToast] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
+  const [isMuted, setIsMuted] = useState(false);
   const timerRef = useRef<number | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
+
+  const toggleMute = (e?: React.PointerEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    soundService.setMuted(newMuted);
+    if (!newMuted) soundService.playUIClick();
+  };
 
   const showToast = (message: string) => {
     if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
@@ -242,7 +254,7 @@ const App: React.FC = () => {
       }));
       setTimeout(() => {
         setGameState(prev => {
-           if (prev.status === 'idle') return prev; // Avoid level jump if home pressed
+           if (prev.status === 'idle') return prev;
            return {
             ...prev,
             streak: 0,
@@ -422,6 +434,21 @@ const App: React.FC = () => {
                 <span className="font-orbitron text-[10px] font-black uppercase tracking-widest text-slate-300">Classifica</span>
               </button>
             </div>
+
+            {/* Home Audio Toggle */}
+            <button 
+              onPointerDown={toggleMute}
+              className={`mt-4 flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all duration-300 backdrop-blur-md
+                ${isMuted 
+                  ? 'bg-slate-900/40 border-slate-700 text-slate-500' 
+                  : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
+                }`}
+            >
+              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5 animate-pulse" />}
+              <span className="font-orbitron text-[10px] font-black uppercase tracking-[0.2em]">
+                Audio {isMuted ? 'OFF' : 'ON'}
+              </span>
+            </button>
           </div>
         </div>
       )}
@@ -430,14 +457,25 @@ const App: React.FC = () => {
       {gameState.status !== 'idle' && (
         <div className="w-full h-full flex flex-col items-center z-10 p-4 max-w-4xl animate-screen-in">
           <header className="w-full flex justify-between items-center mb-6">
-            <button 
-              onPointerDown={goToHome}
-              className="group flex items-center gap-2 px-4 py-2 bg-white/10 rounded-2xl border border-white/10 shadow-lg relative z-[999] active:scale-90 transition-all cursor-pointer"
-              title="Torna alla Home"
-            >
-              <Home className="w-5 h-5 text-cyan-400" />
-              <span className="hidden sm:inline font-orbitron text-[10px] font-black uppercase text-slate-300">Home</span>
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onPointerDown={goToHome}
+                className="group flex items-center gap-2 px-4 py-2 bg-white/10 rounded-2xl border border-white/10 shadow-lg relative z-[999] active:scale-90 transition-all cursor-pointer"
+                title="Torna alla Home"
+              >
+                <Home className="w-5 h-5 text-cyan-400" />
+                <span className="hidden sm:inline font-orbitron text-[10px] font-black uppercase text-slate-300">Home</span>
+              </button>
+              
+              {/* In-game Audio Toggle */}
+              <button 
+                onPointerDown={toggleMute}
+                className={`px-4 py-2 rounded-2xl border transition-all duration-300 flex items-center justify-center
+                  ${isMuted ? 'bg-slate-900/60 border-slate-700 text-slate-500' : 'bg-white/10 border-white/10 text-cyan-400'}`}
+              >
+                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </button>
+            </div>
             
             <div className="flex gap-3 items-center">
               <div className="glass-panel px-4 py-2 rounded-xl flex items-center gap-3">
