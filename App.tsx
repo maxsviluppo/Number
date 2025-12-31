@@ -53,6 +53,7 @@ const App: React.FC = () => {
   const [grid, setGrid] = useState<HexCellData[]>([]);
   const [selectedPath, setSelectedPath] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
   const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | null>(null);
   const [tutorialStep, setTutorialStep] = useState(0);
@@ -70,6 +71,42 @@ const App: React.FC = () => {
     toastTimeoutRef.current = window.setTimeout(() => {
       setToast(prev => ({ ...prev, visible: false }));
     }, 2500);
+  };
+
+  const calculateResultFromPath = (pathIds: string[]): number | null => {
+    if (pathIds.length < 1) return null;
+    
+    const expression: string[] = pathIds.map(id => {
+      const cell = grid.find(c => c.id === id);
+      return cell ? cell.value : '';
+    });
+
+    try {
+      let result = 0;
+      let currentOp = '+';
+      let hasStarted = false;
+
+      for (let i = 0; i < expression.length; i++) {
+        const part = expression[i];
+        if (OPERATORS.includes(part)) {
+          currentOp = part;
+        } else {
+          const num = parseInt(part);
+          if (!hasStarted) {
+            result = num;
+            hasStarted = true;
+          } else {
+            if (currentOp === '+') result += num;
+            else if (currentOp === '-') result -= num;
+            else if (currentOp === '×') result *= num;
+            else if (currentOp === '÷') result = num !== 0 ? Math.floor(result / num) : result;
+          }
+        }
+      }
+      return result;
+    } catch (e) {
+      return null;
+    }
   };
 
   const generateGrid = useCallback(() => {
@@ -111,6 +148,7 @@ const App: React.FC = () => {
     setActiveModal(null);
     setIsVictoryAnimating(false);
     setTriggerParticles(false);
+    setPreviewResult(null);
     setGameState({
       score: 0,
       totalScore: 0,
@@ -151,12 +189,12 @@ const App: React.FC = () => {
       e.stopPropagation();
     }
     
-    // Eliminato window.confirm come richiesto
     soundService.playReset();
     showToast("Sincronizzazione Terminata");
     setGameState(prev => ({ ...prev, status: 'idle' }));
     setSelectedPath([]);
     setIsDragging(false);
+    setPreviewResult(null);
   };
 
   const nextTutorialStep = () => {
@@ -172,37 +210,17 @@ const App: React.FC = () => {
     if (pathIds.length < 3) {
       if (pathIds.length > 0) soundService.playReset();
       setSelectedPath([]);
+      setPreviewResult(null);
       return;
     }
 
-    const expression: string[] = pathIds.map(id => {
-      const cell = grid.find(c => c.id === id);
-      return cell ? cell.value : '';
-    });
-
-    try {
-      let result = 0;
-      let currentOp = '+';
-      for (let i = 0; i < expression.length; i++) {
-        const part = expression[i];
-        if (part === '+') currentOp = '+';
-        else if (part === '-') currentOp = '-';
-        else if (part === '×') currentOp = '×';
-        else if (part === '÷') currentOp = '÷';
-        else {
-          const num = parseInt(part);
-          if (currentOp === '+') result += num;
-          else if (currentOp === '-') result -= num;
-          else if (currentOp === '×') result *= num;
-          else if (currentOp === '÷') result = num !== 0 ? Math.floor(result / num) : result;
-        }
-      }
-      if (result === gameState.targetResult) {
-        handleSuccess();
-      } else {
-        handleError();
-      }
-    } catch (e) { handleError(); }
+    const result = calculateResultFromPath(pathIds);
+    if (result === gameState.targetResult) {
+      handleSuccess();
+    } else {
+      handleError();
+    }
+    setPreviewResult(null);
   };
 
   const handleSuccess = () => {
@@ -294,6 +312,7 @@ const App: React.FC = () => {
       soundService.playSelect();
       setIsDragging(true);
       setSelectedPath([id]);
+      setPreviewResult(parseInt(cell.value));
     }
   };
 
@@ -305,7 +324,9 @@ const App: React.FC = () => {
     const currentCell = grid.find(c => c.id === id);
     if (lastCell && currentCell && lastCell.type !== currentCell.type) {
       soundService.playTick();
-      setSelectedPath(prev => [...prev, id]);
+      const newPath = [...selectedPath, id];
+      setSelectedPath(newPath);
+      setPreviewResult(calculateResultFromPath(newPath));
     }
   };
 
@@ -324,7 +345,7 @@ const App: React.FC = () => {
     >
       <ParticleEffect trigger={triggerParticles} />
 
-      {/* Futuristic Toast Notification - Migliorato */}
+      {/* Futuristic Toast Notification */}
       <div className={`fixed top-12 left-1/2 -translate-x-1/2 z-[3000] transition-all duration-500 pointer-events-none
         ${toast.visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-16 opacity-0 scale-95'}`}>
         <div className="glass-panel px-8 py-4 rounded-[1.5rem] border border-cyan-400/60 shadow-[0_0_40px_rgba(34,211,238,0.4)] flex items-center gap-5 backdrop-blur-2xl">
@@ -426,16 +447,30 @@ const App: React.FC = () => {
 
           <main className="relative flex-grow w-full flex flex-col items-center justify-center">
             {gameState.status === 'playing' && (
-              <div className="w-full flex flex-col items-center h-full">
+              <div className="w-full flex flex-col items-center h-full relative">
                  <div className="mb-6 flex flex-col items-center">
                     <span className="text-slate-500 text-[9px] font-black uppercase mb-1">Target</span>
                     <div key={targetAnimKey} className="text-7xl font-black font-orbitron text-white drop-shadow-2xl">{gameState.targetResult}</div>
-                    <div className="flex gap-1.5 mt-4">
+                    
+                    {/* Floating Preview Result */}
+                    <div className={`absolute top-24 z-[100] transition-all duration-300 
+                      ${isDragging && selectedPath.length > 0 ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-90 pointer-events-none'}`}>
+                      <div className={`glass-panel px-6 py-2 rounded-full border-2 transition-colors duration-300
+                        ${previewResult === gameState.targetResult ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.5)] bg-cyan-950/40' : 'border-white/20'}`}>
+                        <span className="text-[10px] text-slate-400 uppercase font-black mr-2">In corso:</span>
+                        <span className={`text-2xl font-orbitron font-black ${previewResult === gameState.targetResult ? 'text-cyan-400' : 'text-white'}`}>
+                          {previewResult !== null ? previewResult : '...'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-1.5 mt-10">
                       {[...Array(MAX_STREAK)].map((_, i) => (
                         <div key={i} className={`w-8 h-1.5 rounded-full ${i < gameState.streak ? 'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'bg-slate-800'}`} />
                       ))}
                     </div>
                  </div>
+                 
                  <div className="relative flex-grow w-full flex items-center justify-center overflow-visible">
                    <div className="relative w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))] mx-auto">
                      {grid.map(cell => (
