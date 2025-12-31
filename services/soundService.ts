@@ -3,35 +3,55 @@ class SoundService {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   public isMuted: boolean = false;
+  private initialized: boolean = false;
 
-  private init() {
-    if (this.isMuted) return;
-    if (!this.ctx) {
-      this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)({
-        latencyHint: 'interactive'
-      });
-      this.masterGain = this.ctx.createGain();
-      this.masterGain.connect(this.ctx.destination);
-      this.masterGain.gain.setValueAtTime(0.4, this.ctx.currentTime);
-    }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+  /**
+   * Tenta di inizializzare l'AudioContext. 
+   * Deve essere chiamato all'interno di un evento scatenato dall'utente.
+   */
+  public async init() {
+    if (this.initialized && this.ctx?.state === 'running') return;
+
+    try {
+      if (!this.ctx) {
+        this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)({
+          latencyHint: 'interactive'
+        });
+        
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.connect(this.ctx.destination);
+        // Imposta il volume iniziale basato sullo stato di mute
+        this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.4, this.ctx.currentTime);
+      }
+
+      if (this.ctx.state === 'suspended') {
+        await this.ctx.resume();
+      }
+      
+      this.initialized = true;
+      console.log("Audio Engine Ready - State:", this.ctx.state);
+    } catch (e) {
+      console.error("Audio initialization failed:", e);
     }
   }
 
   setMuted(muted: boolean) {
     this.isMuted = muted;
-    if (muted && this.ctx && this.ctx.state === 'running') {
-      this.ctx.suspend();
-    } else if (!muted && this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
+    if (!this.ctx || !this.masterGain) return;
+
+    // Usiamo una transizione fluida del gain invece di suspend()
+    // per evitare instabilità del clock e click udibili.
+    const targetGain = muted ? 0 : 0.4;
+    this.masterGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.05);
   }
 
   private playFMSound(carrierFreq: number, modFreq: number, modIndex: number, duration: number, volume: number, type: OscillatorType = 'sine') {
-    if (this.isMuted) return;
-    this.init();
-    if (!this.ctx || !this.masterGain) return;
+    // Se silenziato non creiamo nemmeno gli oscillatori per risparmiare risorse
+    if (this.isMuted || !this.initialized || !this.ctx || !this.masterGain) return;
+
+    const now = this.ctx.currentTime;
+    // Offset di sicurezza per evitare glitch su alcuni browser
+    const startTime = now + 0.005;
 
     const carrier = this.ctx.createOscillator();
     const modulator = this.ctx.createOscillator();
@@ -41,24 +61,24 @@ class SoundService {
     carrier.type = type;
     modulator.type = 'sine';
 
-    carrier.frequency.setValueAtTime(carrierFreq, this.ctx.currentTime);
-    modulator.frequency.setValueAtTime(modFreq, this.ctx.currentTime);
-    modGain.gain.setValueAtTime(modIndex, this.ctx.currentTime);
+    carrier.frequency.setValueAtTime(carrierFreq, startTime);
+    modulator.frequency.setValueAtTime(modFreq, startTime);
+    modGain.gain.setValueAtTime(modIndex, startTime);
 
-    env.gain.setValueAtTime(0, this.ctx.currentTime);
-    env.gain.linearRampToValueAtTime(volume, this.ctx.currentTime + 0.005);
-    env.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+    env.gain.setValueAtTime(0, startTime);
+    env.gain.linearRampToValueAtTime(volume, startTime + 0.01);
+    env.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
     modulator.connect(modGain);
     modGain.connect(carrier.frequency);
     carrier.connect(env);
     env.connect(this.masterGain);
 
-    carrier.start();
-    modulator.start();
+    carrier.start(startTime);
+    modulator.start(startTime);
     
-    carrier.stop(this.ctx.currentTime + duration);
-    modulator.stop(this.ctx.currentTime + duration);
+    carrier.stop(startTime + duration);
+    modulator.stop(startTime + duration);
   }
 
   playSelect() {
@@ -74,13 +94,10 @@ class SoundService {
   }
 
   playSuccess() {
-    if (this.isMuted) return;
-    this.init();
+    if (this.isMuted || !this.initialized) return;
     const freqs = [523.25, 659.25, 783.99, 1046.50];
     freqs.forEach((f, i) => {
-      setTimeout(() => {
-        this.playFMSound(f, f * 1.5, 300, 0.6, 0.1, 'sine');
-      }, i * 100);
+      setTimeout(() => this.playFMSound(f, f * 1.5, 300, 0.6, 0.1, 'sine'), i * 100);
     });
   }
 
@@ -89,19 +106,20 @@ class SoundService {
   }
 
   playReset() {
-    if (this.isMuted) return;
-    this.init();
-    if (!this.ctx || !this.masterGain) return;
+    if (this.isMuted || !this.initialized || !this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
-    osc.frequency.setValueAtTime(660, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(220, this.ctx.currentTime + 0.2);
-    g.gain.setValueAtTime(0.1, this.ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.2);
+    
+    osc.frequency.setValueAtTime(660, now);
+    osc.frequency.exponentialRampToValueAtTime(220, now + 0.2);
+    g.gain.setValueAtTime(0.1, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+    
     osc.connect(g);
     g.connect(this.masterGain);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.2);
+    osc.start(now);
+    osc.stop(now + 0.2);
   }
 }
 

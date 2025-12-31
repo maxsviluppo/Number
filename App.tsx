@@ -66,11 +66,19 @@ const App: React.FC = () => {
   const timerRef = useRef<number | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
 
-  const toggleMute = (e?: React.PointerEvent) => {
+  // Trigger universale per sbloccare l'audio sui browser moderni
+  const handleUserInteraction = useCallback(async () => {
+    await soundService.init();
+  }, []);
+
+  const toggleMute = async (e?: React.PointerEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
+    // Sblocca l'audio se non è ancora stato fatto
+    await handleUserInteraction();
+    
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     soundService.setMuted(newMuted);
@@ -130,11 +138,13 @@ const App: React.FC = () => {
           id: `${r}-${c}`,
           row: r,
           col: c,
-          type: isOperator ? 'operator' : 'number',
+          type: 'number' as any, // TypeScript workaround
           value: isOperator 
             ? OPERATORS[Math.floor(Math.random() * OPERATORS.length)]
             : Math.floor(Math.random() * 10).toString(),
         });
+        // Correcting the type after push to avoid TS issues if any
+        newGrid[newGrid.length - 1].type = isOperator ? 'operator' : 'number';
       }
     }
     setGrid(newGrid);
@@ -152,7 +162,8 @@ const App: React.FC = () => {
     setTargetAnimKey(k => k + 1);
   }, []);
 
-  const startGame = () => {
+  const startGame = async () => {
+    await handleUserInteraction();
     soundService.playUIClick();
     try {
       localStorage.setItem('number_tutorial_done', 'true');
@@ -177,12 +188,14 @@ const App: React.FC = () => {
     generateGrid();
   };
 
-  const handleStartGameClick = (e?: React.PointerEvent) => {
+  const handleStartGameClick = async (e?: React.PointerEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
     
+    await handleUserInteraction();
+
     let tutorialDone = 'false';
     try {
       tutorialDone = localStorage.getItem('number_tutorial_done') || 'false';
@@ -323,8 +336,10 @@ const App: React.FC = () => {
     }
   }, [gameState.status]);
 
-  const onStartInteraction = (id: string) => {
+  const onStartInteraction = async (id: string) => {
     if (gameState.status !== 'playing' || isVictoryAnimating) return;
+    await handleUserInteraction(); // Unlock audio on first cell touch
+    
     const cell = grid.find(c => c.id === id);
     if (cell && cell.type === 'number') {
       soundService.playSelect();
@@ -358,6 +373,7 @@ const App: React.FC = () => {
   return (
     <div 
       className="min-h-screen bg-[#020617] text-slate-100 flex flex-col items-center justify-center select-none relative overflow-hidden"
+      onPointerDown={handleUserInteraction} // Unlock audio globally on first touch
       onMouseUp={handleGlobalEnd}
       onTouchEnd={handleGlobalEnd}
     >
@@ -425,11 +441,11 @@ const App: React.FC = () => {
             </button>
             
             <div className="grid grid-cols-2 gap-4 w-full">
-              <button onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }} className="flex items-center justify-center gap-2 bg-slate-800/80 py-4 rounded-xl border border-white/10 active:scale-95 transition-all">
+              <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }} className="flex items-center justify-center gap-2 bg-slate-800/80 py-4 rounded-xl border border-white/10 active:scale-95 transition-all">
                 <HelpCircle className="w-5 h-5 text-cyan-400" />
                 <span className="font-orbitron text-[10px] font-black uppercase tracking-widest text-slate-300">Tutorial</span>
               </button>
-              <button onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal('leaderboard'); }} className="flex items-center justify-center gap-2 bg-slate-800/80 py-4 rounded-xl border border-white/10 active:scale-95 transition-all">
+              <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }} className="flex items-center justify-center gap-2 bg-slate-800/80 py-4 rounded-xl border border-white/10 active:scale-95 transition-all">
                 <BarChart3 className="w-5 h-5 text-amber-400" />
                 <span className="font-orbitron text-[10px] font-black uppercase tracking-widest text-slate-300">Classifica</span>
               </button>
