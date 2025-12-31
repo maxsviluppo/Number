@@ -6,7 +6,7 @@ import HexCell from './components/HexCell';
 import ParticleEffect from './components/ParticleEffect';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
-import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, Info, X, HelpCircle, Star, Sparkles, LogOut, ArrowLeft, Home } from 'lucide-react';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, ArrowLeft, X } from 'lucide-react';
 
 const TUTORIAL_STEPS = [
   {
@@ -54,7 +54,7 @@ const App: React.FC = () => {
   const [selectedPath, setSelectedPath] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [insight, setInsight] = useState<string>("");
-  const [activeModal, setActiveModal] = useState<'info' | 'leaderboard' | 'tutorial' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | null>(null);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [targetAnimKey, setTargetAnimKey] = useState(0);
   const [scoreAnimKey, setScoreAnimKey] = useState(0);
@@ -123,7 +123,7 @@ const App: React.FC = () => {
     generateGrid();
   };
 
-  const goToHome = (e?: React.MouseEvent | React.TouchEvent) => {
+  const goToHome = (e?: React.PointerEvent | React.MouseEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -132,8 +132,11 @@ const App: React.FC = () => {
     if (gameState.status === 'playing') {
       if (!confirm("Vuoi davvero abbandonare la sfida corrente?")) return;
     }
+    
     soundService.playReset();
     setGameState(prev => ({ ...prev, status: 'idle' }));
+    setSelectedPath([]);
+    setIsDragging(false);
   };
 
   const nextTutorialStep = () => {
@@ -330,21 +333,15 @@ const App: React.FC = () => {
           <div className="relative mb-14 animate-float">
             <div className="absolute inset-0 bg-cyan-400/20 blur-3xl rounded-full scale-150 animate-pulse"></div>
             
-            {/* Ultra-Modern Glowing Hexagon Logo - Truly Transparent with Glowing Borders */}
-            <div className="relative w-40 h-40 sm:w-48 sm:h-48 hexagon-clip flex items-center justify-center overflow-hidden shadow-[0_0_120px_rgba(34,211,238,0.2)] bg-transparent">
-              {/* Rotating Energy Ring */}
-              <div className="logo-ring"></div>
-              
-              <div className="absolute inset-[3px] bg-transparent hexagon-clip flex items-center justify-center">
-                {/* Glow Overlay */}
+            {/* Logo Energy Effect Hexagon */}
+            <div className="relative w-40 h-40 sm:w-48 sm:h-48 hexagon-clip flex items-center justify-center overflow-hidden shadow-[0_0_120px_rgba(34,211,238,0.25)] bg-transparent">
+              <div className="energy-ring"></div>
+              <div className="absolute inset-[4px] bg-[#020617]/40 backdrop-blur-3xl hexagon-clip flex items-center justify-center">
                 <div className="logo-inner-glow"></div>
-                {/* Visual Border */}
-                <div className="energy-border"></div>
-                
-                <Brain className="w-20 h-20 sm:w-24 sm:h-24 text-cyan-400 drop-shadow-[0_0_30px_rgba(34,211,238,0.9)]" />
+                <div className="logo-outline"></div>
+                <Brain className="w-20 h-20 sm:w-24 sm:h-24 text-cyan-400 drop-shadow-[0_0_30px_rgba(34,211,238,0.95)]" />
               </div>
-              
-              <div className="absolute bottom-6 right-6 bg-indigo-600 rounded-full p-2 border border-white/20 shadow-[0_0_25px_rgba(79,70,229,0.8)] animate-pulse">
+              <div className="absolute bottom-6 right-6 bg-indigo-600 rounded-full p-2 border border-white/20 shadow-[0_0_30px_rgba(79,70,229,0.8)] animate-pulse">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
             </div>
@@ -398,8 +395,6 @@ const App: React.FC = () => {
               onClick={handleStartGameClick}
               className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[length:200%_auto] bg-[linear-gradient(135deg,#06b6d4_0%,#6366f1_50%,#a855f7_100%)] text-white py-5 rounded-2xl font-orbitron font-black text-xl hover:bg-[position:right_center] transition-all duration-500 shadow-[0_0_30px_rgba(34,211,238,0.3)] hover:shadow-[0_0_50px_rgba(34,211,238,0.6)] active:scale-95 z-20 border border-white/20"
             >
-              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/25 to-transparent group-hover:animate-[shimmer_1.2s_infinite]"></div>
               <Play className="w-6 h-6 fill-current drop-shadow-lg" />
               <span className="drop-shadow-md">INIZIA SFIDA</span>
             </button>
@@ -424,10 +419,8 @@ const App: React.FC = () => {
           <header className="w-full flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
               <button 
-                onClick={goToHome}
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                className="group flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/15 rounded-2xl transition-all active:scale-90 border border-white/5 shadow-lg relative z-[200]"
+                onPointerDown={goToHome}
+                className="group flex items-center justify-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-2xl transition-all active:scale-90 border border-white/10 shadow-lg relative z-[999] cursor-pointer"
                 title="Torna alla Home"
               >
                 <Home className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" />
@@ -514,7 +507,7 @@ const App: React.FC = () => {
                 <button onClick={startGame} className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm mb-4 active:scale-95 animate-screen-in" style={{animationDelay: '0.2s'}}>
                   RIPROVA
                 </button>
-                <button onClick={goToHome} className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] hover:text-white transition-colors animate-screen-in" style={{animationDelay: '0.4s'}}>
+                <button onClick={() => goToHome()} className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] hover:text-white transition-colors animate-screen-in" style={{animationDelay: '0.4s'}}>
                   Torna alla Home
                 </button>
               </div>
@@ -524,18 +517,14 @@ const App: React.FC = () => {
           {gameState.status === 'playing' && !isVictoryAnimating && (
             <div className="flex gap-4 mt-6">
               <button 
-                onClick={() => { setTutorialStep(0); setActiveModal('tutorial'); }}
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                className="glass-panel p-4 rounded-xl hover:bg-white/10 transition-colors"
+                onPointerDown={(e) => { e.stopPropagation(); setTutorialStep(0); setActiveModal('tutorial'); }}
+                className="glass-panel p-4 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <HelpCircle className="w-5 h-5 text-slate-400" />
               </button>
               <button 
-                onClick={() => setActiveModal('leaderboard')}
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                className="glass-panel p-4 rounded-xl hover:bg-white/10 transition-colors"
+                onPointerDown={(e) => { e.stopPropagation(); setActiveModal('leaderboard'); }}
+                className="glass-panel p-4 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <BarChart3 className="w-5 h-5 text-slate-400" />
               </button>
@@ -545,8 +534,8 @@ const App: React.FC = () => {
       )}
 
       {activeModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay" onClick={() => activeModal !== 'tutorial' && setActiveModal(null)}>
-          <div className="glass-panel w-full max-w-md p-8 rounded-[2rem] border-white/10 modal-content relative allow-scroll max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay" onPointerDown={() => activeModal !== 'tutorial' && setActiveModal(null)}>
+          <div className="glass-panel w-full max-w-md p-8 rounded-[2rem] border-white/10 modal-content relative allow-scroll max-h-[85vh] flex flex-col" onPointerDown={e => e.stopPropagation()}>
             {activeModal !== 'tutorial' && (
               <button onClick={() => setActiveModal(null)} className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors">
                 <X className="w-5 h-5 text-slate-500 hover:text-white" />
@@ -580,17 +569,6 @@ const App: React.FC = () => {
                 </button>
               </div>
             )}
-
-            {activeModal === 'info' && (
-              <div className="custom-scroll overflow-y-auto pr-2">
-                <h2 className="text-2xl font-black font-orbitron text-white mb-6 flex items-center gap-3"><Info className="w-6 h-6 text-cyan-400" /> GUIDA</h2>
-                <div className="space-y-6 text-slate-300 text-sm leading-relaxed">
-                  <p>Trascina il dito per collegare gli esagoni. Devi alternare un <strong>Numero</strong> e un <strong>Operatore</strong>.</p>
-                  <p>Raggiungi il target per guadagnare punti. Ogni successo consecutivo (fino a 5) raddoppia i punti: 5, 10, 20, 40, 80.</p>
-                  <p>Il tempo risparmiato viene aggiunto al livello successivo!</p>
-                </div>
-              </div>
-            )} 
             
             {activeModal === 'leaderboard' && (
               <div className="flex flex-col h-full overflow-hidden">
@@ -612,7 +590,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.3</footer>
+      <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.4</footer>
     </div>
   );
 };
