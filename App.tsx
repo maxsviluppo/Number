@@ -66,7 +66,6 @@ const App: React.FC = () => {
   const timerRef = useRef<number | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
 
-  // Trigger universale per sbloccare l'audio sui browser moderni
   const handleUserInteraction = useCallback(async () => {
     await soundService.init();
   }, []);
@@ -76,7 +75,6 @@ const App: React.FC = () => {
       e.preventDefault();
       e.stopPropagation();
     }
-    // Sblocca l'audio se non è ancora stato fatto
     await handleUserInteraction();
     
     const newMuted = !isMuted;
@@ -138,12 +136,11 @@ const App: React.FC = () => {
           id: `${r}-${c}`,
           row: r,
           col: c,
-          type: 'number' as any, // TypeScript workaround
+          type: 'number',
           value: isOperator 
             ? OPERATORS[Math.floor(Math.random() * OPERATORS.length)]
             : Math.floor(Math.random() * 10).toString(),
         });
-        // Correcting the type after push to avoid TS issues if any
         newGrid[newGrid.length - 1].type = isOperator ? 'operator' : 'number';
       }
     }
@@ -193,9 +190,7 @@ const App: React.FC = () => {
       e.preventDefault();
       e.stopPropagation();
     }
-    
     await handleUserInteraction();
-
     let tutorialDone = 'false';
     try {
       tutorialDone = localStorage.getItem('number_tutorial_done') || 'false';
@@ -215,7 +210,6 @@ const App: React.FC = () => {
       e.preventDefault();
       e.stopPropagation();
     }
-    
     soundService.playReset();
     showToast("Sincronizzazione Terminata");
     setGameState(prev => ({ ...prev, status: 'idle' }));
@@ -224,7 +218,8 @@ const App: React.FC = () => {
     setPreviewResult(null);
   };
 
-  const nextTutorialStep = () => {
+  const nextTutorialStep = async () => {
+    await handleUserInteraction();
     soundService.playTick();
     if (tutorialStep < TUTORIAL_STEPS.length - 1) {
       setTutorialStep(prev => prev + 1);
@@ -338,7 +333,7 @@ const App: React.FC = () => {
 
   const onStartInteraction = async (id: string) => {
     if (gameState.status !== 'playing' || isVictoryAnimating) return;
-    await handleUserInteraction(); // Unlock audio on first cell touch
+    await handleUserInteraction(); 
     
     const cell = grid.find(c => c.id === id);
     if (cell && cell.type === 'number') {
@@ -349,17 +344,48 @@ const App: React.FC = () => {
     }
   };
 
+  const isAdjacent = (cell1: HexCellData, cell2: HexCellData): boolean => {
+    const dr = Math.abs(cell1.row - cell2.row);
+    const dc = cell2.col - cell1.col;
+
+    // Stessa riga
+    if (dr === 0) return Math.abs(dc) === 1;
+
+    // Righe adiacenti
+    if (dr === 1) {
+      // Per il sistema offset a righe pari, i vicini dipendono dalla parità della riga corrente
+      if (cell1.row % 2 === 0) {
+        // Riga PARI: può connettere alla stessa colonna (c) o a quella precedente (c-1)
+        return dc === 0 || dc === -1;
+      } else {
+        // Riga DISPARI: può connettere alla stessa colonna (c) o a quella successiva (c+1)
+        return dc === 0 || dc === 1;
+      }
+    }
+    return false;
+  };
+
   const onMoveInteraction = (id: string) => {
     if (!isDragging || gameState.status !== 'playing' || isVictoryAnimating) return;
     if (selectedPath.includes(id)) return;
+    
     const lastId = selectedPath[selectedPath.length - 1];
     const lastCell = grid.find(c => c.id === lastId);
     const currentCell = grid.find(c => c.id === id);
-    if (lastCell && currentCell && lastCell.type !== currentCell.type) {
-      soundService.playTick();
-      const newPath = [...selectedPath, id];
-      setSelectedPath(newPath);
-      setPreviewResult(calculateResultFromPath(newPath));
+    
+    if (lastCell && currentCell) {
+      // Regola 1: Alternanza Tipi (Numero -> Operatore o viceversa)
+      const typeCheck = lastCell.type !== currentCell.type;
+      
+      // Regola 2: Adiacenza Fisica (Deve essere un vicino diretto nell'esagono)
+      const adjacencyCheck = isAdjacent(lastCell, currentCell);
+      
+      if (typeCheck && adjacencyCheck) {
+        soundService.playTick();
+        const newPath = [...selectedPath, id];
+        setSelectedPath(newPath);
+        setPreviewResult(calculateResultFromPath(newPath));
+      }
     }
   };
 
@@ -373,13 +399,12 @@ const App: React.FC = () => {
   return (
     <div 
       className="min-h-screen bg-[#020617] text-slate-100 flex flex-col items-center justify-center select-none relative overflow-hidden"
-      onPointerDown={handleUserInteraction} // Unlock audio globally on first touch
+      onPointerDown={handleUserInteraction}
       onMouseUp={handleGlobalEnd}
       onTouchEnd={handleGlobalEnd}
     >
       <ParticleEffect trigger={triggerParticles} />
 
-      {/* Futuristic Toast Notification */}
       <div className={`fixed top-12 left-1/2 -translate-x-1/2 z-[3000] transition-all duration-500 pointer-events-none
         ${toast.visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-16 opacity-0 scale-95'}`}>
         <div className="glass-panel px-8 py-4 rounded-[1.5rem] border border-cyan-400/60 shadow-[0_0_40px_rgba(34,211,238,0.4)] flex items-center gap-5 backdrop-blur-2xl">
@@ -393,14 +418,12 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Background Decor */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] bg-cyan-600/10 rounded-full blur-[120px]"></div>
         <div className="absolute -bottom-[10%] -right-[10%] w-[60%] h-[60%] bg-indigo-600/10 rounded-full blur-[120px]"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0)_0%,rgba(2,6,23,1)_100%)]"></div>
       </div>
 
-      {/* HOME PAGE */}
       {gameState.status === 'idle' && (
         <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-10 animate-screen-in">
           <div className="relative mb-14 animate-float">
@@ -451,7 +474,6 @@ const App: React.FC = () => {
               </button>
             </div>
 
-            {/* Home Audio Toggle */}
             <button 
               onPointerDown={toggleMute}
               className={`mt-4 flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all duration-300 backdrop-blur-md
@@ -469,7 +491,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* GAME UI */}
       {gameState.status !== 'idle' && (
         <div className="w-full h-full flex flex-col items-center z-10 p-4 max-w-4xl animate-screen-in">
           <header className="w-full flex justify-between items-center mb-6">
@@ -483,7 +504,6 @@ const App: React.FC = () => {
                 <span className="hidden sm:inline font-orbitron text-[10px] font-black uppercase text-slate-300">Home</span>
               </button>
               
-              {/* In-game Audio Toggle */}
               <button 
                 onPointerDown={toggleMute}
                 className={`px-4 py-2 rounded-2xl border transition-all duration-300 flex items-center justify-center
@@ -512,7 +532,6 @@ const App: React.FC = () => {
                     <span className="text-slate-500 text-[9px] font-black uppercase mb-1">Target</span>
                     <div key={targetAnimKey} className="text-7xl font-black font-orbitron text-white drop-shadow-2xl">{gameState.targetResult}</div>
                     
-                    {/* Floating Preview Result */}
                     <div className={`absolute top-24 z-[100] transition-all duration-300 
                       ${isDragging && selectedPath.length > 0 ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-90 pointer-events-none'}`}>
                       <div className={`glass-panel px-6 py-2 rounded-full border-2 transition-colors duration-300

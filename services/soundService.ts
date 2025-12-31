@@ -6,8 +6,8 @@ class SoundService {
   private initialized: boolean = false;
 
   /**
-   * Tenta di inizializzare l'AudioContext. 
-   * Deve essere chiamato all'interno di un evento scatenato dall'utente.
+   * Inizializza l'AudioContext e sblocca l'hardware con un buffer silente.
+   * Cruciale per iOS e Safari.
    */
   public async init() {
     if (this.initialized && this.ctx?.state === 'running') return;
@@ -20,18 +20,24 @@ class SoundService {
         
         this.masterGain = this.ctx.createGain();
         this.masterGain.connect(this.ctx.destination);
-        // Imposta il volume iniziale basato sullo stato di mute
         this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.4, this.ctx.currentTime);
       }
 
-      if (this.ctx.state === 'suspended') {
+      if (this.ctx.state !== 'running') {
         await this.ctx.resume();
       }
+
+      // "Kickstart": Riproduce un buffer vuoto per forzare l'attivazione dell'hardware
+      const buffer = this.ctx.createBuffer(1, 1, 22050);
+      const source = this.ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.ctx.destination);
+      source.start(0);
       
       this.initialized = true;
-      console.log("Audio Engine Ready - State:", this.ctx.state);
+      console.log("Audio Engine Energized:", this.ctx.state);
     } catch (e) {
-      console.error("Audio initialization failed:", e);
+      console.warn("Audio Context struggle:", e);
     }
   }
 
@@ -39,19 +45,24 @@ class SoundService {
     this.isMuted = muted;
     if (!this.ctx || !this.masterGain) return;
 
-    // Usiamo una transizione fluida del gain invece di suspend()
-    // per evitare instabilità del clock e click udibili.
     const targetGain = muted ? 0 : 0.4;
-    this.masterGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.05);
+    // Transizione ultra-veloce per evitare click ma mantenere reattività
+    this.masterGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.02);
   }
 
-  private playFMSound(carrierFreq: number, modFreq: number, modIndex: number, duration: number, volume: number, type: OscillatorType = 'sine') {
-    // Se silenziato non creiamo nemmeno gli oscillatori per risparmiare risorse
-    if (this.isMuted || !this.initialized || !this.ctx || !this.masterGain) return;
+  private async playFMSound(carrierFreq: number, modFreq: number, modIndex: number, duration: number, volume: number, type: OscillatorType = 'sine') {
+    if (this.isMuted) return;
+    
+    // Check critico: Se l'audio si è sospeso (es. tab cambiata), riprendilo prima di suonare
+    if (this.ctx && this.ctx.state === 'suspended') {
+      await this.ctx.resume();
+    }
+
+    if (!this.initialized || !this.ctx || !this.masterGain) return;
 
     const now = this.ctx.currentTime;
-    // Offset di sicurezza per evitare glitch su alcuni browser
-    const startTime = now + 0.005;
+    // Offset leggermente maggiore per garantire che lo scheduling non fallisca
+    const startTime = now + 0.01;
 
     const carrier = this.ctx.createOscillator();
     const modulator = this.ctx.createOscillator();
@@ -66,7 +77,7 @@ class SoundService {
     modGain.gain.setValueAtTime(modIndex, startTime);
 
     env.gain.setValueAtTime(0, startTime);
-    env.gain.linearRampToValueAtTime(volume, startTime + 0.01);
+    env.gain.linearRampToValueAtTime(volume, startTime + 0.005);
     env.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
     modulator.connect(modGain);
@@ -86,40 +97,40 @@ class SoundService {
   }
 
   playTick() {
-    this.playFMSound(1760, 220, 100, 0.05, 0.1);
+    this.playFMSound(1760, 220, 100, 0.05, 0.12);
   }
 
   playUIClick() {
-    this.playFMSound(440, 880, 50, 0.08, 0.12, 'square');
+    this.playFMSound(440, 880, 50, 0.08, 0.15, 'square');
   }
 
   playSuccess() {
-    if (this.isMuted || !this.initialized) return;
+    if (this.isMuted) return;
     const freqs = [523.25, 659.25, 783.99, 1046.50];
     freqs.forEach((f, i) => {
-      setTimeout(() => this.playFMSound(f, f * 1.5, 300, 0.6, 0.1, 'sine'), i * 100);
+      setTimeout(() => this.playFMSound(f, f * 1.5, 300, 0.6, 0.1, 'sine'), i * 80);
     });
   }
 
   playError() {
-    this.playFMSound(110, 55, 500, 0.4, 0.2, 'sawtooth');
+    this.playFMSound(110, 55, 500, 0.4, 0.25, 'sawtooth');
   }
 
   playReset() {
-    if (this.isMuted || !this.initialized || !this.ctx || !this.masterGain) return;
+    if (this.isMuted || !this.ctx || !this.masterGain) return;
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     
     osc.frequency.setValueAtTime(660, now);
-    osc.frequency.exponentialRampToValueAtTime(220, now + 0.2);
+    osc.frequency.exponentialRampToValueAtTime(220, now + 0.15);
     g.gain.setValueAtTime(0.1, now);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
     
     osc.connect(g);
     g.connect(this.masterGain);
     osc.start(now);
-    osc.stop(now + 0.2);
+    osc.stop(now + 0.15);
   }
 }
 

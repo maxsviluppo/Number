@@ -19,11 +19,16 @@
     </script>
     <style>
       :root {
-        --hex-scale: 1.1;
+        --hex-scale: 1.0;
+      }
+      @media (max-width: 1024px) {
+        :root {
+          --hex-scale: 0.95;
+        }
       }
       @media (max-width: 768px) {
         :root {
-          --hex-scale: 0.9;
+          --hex-scale: 0.85;
         }
       }
       @media (max-width: 480px) {
@@ -33,7 +38,7 @@
       }
       @media (max-width: 380px) {
         :root {
-          --hex-scale: 0.65;
+          --hex-scale: 0.68;
         }
       }
       body {
