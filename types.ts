@@ -20,6 +20,9 @@ export interface GameState {
   estimatedIQ: number;
   lastLevelPerfect: boolean;
   basePoints: number;
+
+  // targetQueue: number[]; // Deprecated in favor of levelTargets
+  levelTargets: { value: number; completed: boolean }[];
 }
 
 export interface PlayerRank {

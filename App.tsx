@@ -36,6 +36,7 @@ const TUTORIAL_STEPS = [
   }
 ];
 
+
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
@@ -48,6 +49,7 @@ const App: React.FC = () => {
     estimatedIQ: 100,
     lastLevelPerfect: true,
     basePoints: BASE_POINTS_START,
+    levelTargets: [],
   });
 
   const [grid, setGrid] = useState<HexCellData[]>([]);
@@ -63,6 +65,8 @@ const App: React.FC = () => {
   const [triggerParticles, setTriggerParticles] = useState(false);
   const [toast, setToast] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
   const [isMuted, setIsMuted] = useState(false);
+  const theme = 'orange'; // Fixed theme
+  const [levelBuffer, setLevelBuffer] = useState<{ grid: HexCellData[], targets: number[] }[]>([]);
   const timerRef = useRef<number | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
 
@@ -76,7 +80,7 @@ const App: React.FC = () => {
       e.stopPropagation();
     }
     await handleUserInteraction();
-    
+
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     soundService.setMuted(newMuted);
@@ -93,7 +97,7 @@ const App: React.FC = () => {
 
   const calculateResultFromPath = (pathIds: string[]): number | null => {
     if (pathIds.length < 1) return null;
-    
+
     const expression: string[] = pathIds.map(id => {
       const cell = grid.find(c => c.id === id);
       return cell ? cell.value : '';
@@ -127,7 +131,7 @@ const App: React.FC = () => {
     }
   };
 
-  const generateGrid = useCallback(() => {
+  const createLevelData = useCallback(() => {
     const newGrid: HexCellData[] = [];
     for (let r = 0; r < GRID_ROWS; r++) {
       for (let c = 0; c < GRID_COLS; c++) {
@@ -137,27 +141,59 @@ const App: React.FC = () => {
           row: r,
           col: c,
           type: 'number',
-          value: isOperator 
+          value: isOperator
             ? OPERATORS[Math.floor(Math.random() * OPERATORS.length)]
             : Math.floor(Math.random() * 10).toString(),
         });
         newGrid[newGrid.length - 1].type = isOperator ? 'operator' : 'number';
       }
     }
-    setGrid(newGrid);
 
-    const n1 = Math.floor(Math.random() * 15) + 1;
-    const n2 = Math.floor(Math.random() * 10) + 1;
-    const op = OPERATORS[Math.floor(Math.random() * 3)]; 
-    let res = 0;
-    if (op === '+') res = n1 + n2;
-    if (op === '-') res = Math.max(1, n1 - n2);
-    if (op === '×') res = n1 * n2;
-    if (op === '÷') res = n1; 
-    
-    setGameState(prev => ({ ...prev, targetResult: res || 10 }));
-    setTargetAnimKey(k => k + 1);
+    const targets: number[] = [];
+    while (targets.length < 5) {
+      const n1 = Math.floor(Math.random() * 15) + 1;
+      const n2 = Math.floor(Math.random() * 10) + 1;
+      const op = OPERATORS[Math.floor(Math.random() * 3)];
+      let res = 0;
+      if (op === '+') res = n1 + n2;
+      if (op === '-') res = Math.max(1, n1 - n2);
+      if (op === '×') res = n1 * n2;
+      if (op === '÷') res = n1;
+      if (res > 0 && !targets.includes(res)) {
+        targets.push(res);
+      }
+    }
+
+    return { grid: newGrid, targets };
   }, []);
+
+  const generateGrid = useCallback(() => {
+    let nextLevelData;
+    let newBuffer = [...levelBuffer];
+
+    if (newBuffer.length === 0) {
+      // Initialize buffer if empty
+      nextLevelData = createLevelData();
+      for (let i = 0; i < 5; i++) {
+        newBuffer.push(createLevelData());
+      }
+    } else {
+      // Shift buffer
+      nextLevelData = newBuffer.shift()!;
+      // Replenish buffer
+      newBuffer.push(createLevelData());
+    }
+
+    setGrid(nextLevelData.grid);
+    setLevelBuffer(newBuffer);
+
+    setGameState(prev => ({
+      ...prev,
+      targetResult: 0, // Legacy support, unused
+      levelTargets: nextLevelData.targets.map(t => ({ value: t, completed: false }))
+    }));
+    setTargetAnimKey(k => k + 1);
+  }, [levelBuffer, createLevelData]);
 
   const startGame = async () => {
     await handleUserInteraction();
@@ -165,7 +201,7 @@ const App: React.FC = () => {
     try {
       localStorage.setItem('number_tutorial_done', 'true');
     } catch (e) { console.warn("LocalStorage blocked", e); }
-    
+
     setActiveModal(null);
     setIsVictoryAnimating(false);
     setTriggerParticles(false);
@@ -181,8 +217,12 @@ const App: React.FC = () => {
       estimatedIQ: 100,
       lastLevelPerfect: true,
       basePoints: BASE_POINTS_START,
+      levelTargets: [],
     });
-    generateGrid();
+    // Reset buffer on start to ensure fresh sequence
+    setLevelBuffer([]);
+    // generateGrid will handle initialization because buffer is empty
+    setTimeout(() => generateGrid(), 0);
   };
 
   const handleStartGameClick = async (e?: React.PointerEvent) => {
@@ -237,35 +277,44 @@ const App: React.FC = () => {
     }
 
     const result = calculateResultFromPath(pathIds);
-    if (result === gameState.targetResult) {
-      handleSuccess();
+    // Check if result matches any uncompleted target
+    const matchedTarget = gameState.levelTargets.find(t => t.value === result && !t.completed);
+
+    if (matchedTarget) {
+      handleSuccess(result!);
     } else {
       handleError();
     }
     setPreviewResult(null);
   };
 
-  const handleSuccess = () => {
+  const handleSuccess = (matchedValue: number) => {
     soundService.playSuccess();
     const nextStreak = gameState.streak + 1;
     const currentPoints = gameState.basePoints * Math.pow(2, Math.min(nextStreak - 1, MAX_STREAK - 1));
     setScoreAnimKey(k => k + 1);
-    
-    if (nextStreak === MAX_STREAK) {
+
+    // Update targets state
+    const newTargets = gameState.levelTargets.map(t =>
+      t.value === matchedValue ? { ...t, completed: true } : t
+    );
+    const allDone = newTargets.every(t => t.completed);
+
+    if (allDone) {
       setIsVictoryAnimating(true);
       setTriggerParticles(true);
       setGameState(prev => ({
         ...prev,
         totalScore: prev.totalScore + currentPoints,
-        streak: nextStreak,
+        streak: 0,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
+        levelTargets: newTargets
       }));
       setTimeout(() => {
         setGameState(prev => {
-           if (prev.status === 'idle') return prev;
-           return {
+          if (prev.status === 'idle') return prev;
+          return {
             ...prev,
-            streak: 0,
             level: prev.level + 1,
             status: 'level-complete'
           }
@@ -274,13 +323,16 @@ const App: React.FC = () => {
         setTriggerParticles(false);
       }, 1200);
     } else {
+      // Level Continues
       setGameState(prev => ({
         ...prev,
         totalScore: prev.totalScore + currentPoints,
         streak: nextStreak,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 0.5),
+        levelTargets: newTargets
       }));
-      generateGrid();
+      // Regenerate ONLY grid, keep targets
+      setGrid(createLevelData().grid);
     }
     setSelectedPath([]);
   };
@@ -333,8 +385,8 @@ const App: React.FC = () => {
 
   const onStartInteraction = async (id: string) => {
     if (gameState.status !== 'playing' || isVictoryAnimating) return;
-    await handleUserInteraction(); 
-    
+    await handleUserInteraction();
+
     const cell = grid.find(c => c.id === id);
     if (cell && cell.type === 'number') {
       soundService.playSelect();
@@ -345,6 +397,13 @@ const App: React.FC = () => {
   };
 
   const isAdjacent = (cell1: HexCellData, cell2: HexCellData): boolean => {
+    if (theme === 'orange') {
+      const dr = Math.abs(cell1.row - cell2.row);
+      const dc = Math.abs(cell1.col - cell2.col);
+      // Rectilinear adjacency: Up/Down OR Left/Right
+      return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
+    }
+
     const dr = Math.abs(cell1.row - cell2.row);
     const dc = cell2.col - cell1.col;
 
@@ -353,12 +412,10 @@ const App: React.FC = () => {
 
     // Righe adiacenti
     if (dr === 1) {
-      // Per il sistema offset a righe pari, i vicini dipendono dalla parità della riga corrente
+      // Per il sistema offset a righe pari
       if (cell1.row % 2 === 0) {
-        // Riga PARI: può connettere alla stessa colonna (c) o a quella precedente (c-1)
         return dc === 0 || dc === -1;
       } else {
-        // Riga DISPARI: può connettere alla stessa colonna (c) o a quella successiva (c+1)
         return dc === 0 || dc === 1;
       }
     }
@@ -368,18 +425,18 @@ const App: React.FC = () => {
   const onMoveInteraction = (id: string) => {
     if (!isDragging || gameState.status !== 'playing' || isVictoryAnimating) return;
     if (selectedPath.includes(id)) return;
-    
+
     const lastId = selectedPath[selectedPath.length - 1];
     const lastCell = grid.find(c => c.id === lastId);
     const currentCell = grid.find(c => c.id === id);
-    
+
     if (lastCell && currentCell) {
       // Regola 1: Alternanza Tipi (Numero -> Operatore o viceversa)
       const typeCheck = lastCell.type !== currentCell.type;
-      
+
       // Regola 2: Adiacenza Fisica (Deve essere un vicino diretto nell'esagono)
       const adjacencyCheck = isAdjacent(lastCell, currentCell);
-      
+
       if (typeCheck && adjacencyCheck) {
         soundService.playTick();
         const newPath = [...selectedPath, id];
@@ -397,13 +454,23 @@ const App: React.FC = () => {
   };
 
   return (
-    <div 
-      className="min-h-screen bg-[#020617] text-slate-100 flex flex-col items-center justify-center select-none relative overflow-hidden"
+    <div
+      className="min-h-screen bg-gradient-to-t from-[#004488] to-[#0088dd] text-slate-100 flex flex-col items-center justify-center select-none relative overflow-hidden"
       onPointerDown={handleUserInteraction}
       onMouseUp={handleGlobalEnd}
       onTouchEnd={handleGlobalEnd}
     >
+
+
       <ParticleEffect trigger={triggerParticles} />
+
+      {/* Abstract Curves Background */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-[0.08]">
+        <path d="M-100 200 Q 200 0 500 300 T 1000 100" stroke="white" strokeWidth="60" fill="none" />
+        <path d="M-100 500 Q 300 300 600 600 T 1200 400" stroke="white" strokeWidth="40" fill="none" />
+        <path d="M-100 800 Q 400 600 800 900 T 1300 700" stroke="white" strokeWidth="80" fill="none" />
+        <path d="M800 -100 Q 600 300 900 600" stroke="white" strokeWidth="30" fill="none" />
+      </svg>
 
       <div className={`fixed top-12 left-1/2 -translate-x-1/2 z-[3000] transition-all duration-500 pointer-events-none
         ${toast.visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-16 opacity-0 scale-95'}`}>
@@ -418,109 +485,146 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] bg-cyan-600/10 rounded-full blur-[120px]"></div>
-        <div className="absolute -bottom-[10%] -right-[10%] w-[60%] h-[60%] bg-indigo-600/10 rounded-full blur-[120px]"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0)_0%,rgba(2,6,23,1)_100%)]"></div>
-      </div>
+
 
       {gameState.status === 'idle' && (
         <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-10 animate-screen-in">
-          <div className="relative mb-14 animate-float">
-            <div className="absolute inset-0 bg-cyan-400/20 blur-3xl rounded-full scale-150 animate-pulse"></div>
-            <div className="relative w-40 h-40 sm:w-48 sm:h-48 hexagon-clip flex items-center justify-center overflow-hidden shadow-[0_0_120px_rgba(34,211,238,0.25)] bg-transparent">
-              <div className="energy-ring"></div>
-              <div className="absolute inset-[4px] bg-[#020617]/40 backdrop-blur-3xl hexagon-clip flex items-center justify-center">
-                <div className="logo-inner-glow"></div>
-                <div className="logo-outline"></div>
-                <Brain className="w-20 h-20 sm:w-24 sm:h-24 text-cyan-400 drop-shadow-[0_0_30px_rgba(34,211,238,0.95)]" />
-              </div>
-              <div className="absolute bottom-6 right-6 bg-indigo-600 rounded-full p-2 border border-white/20 shadow-[0_0_30px_rgba(79,70,229,0.8)] animate-pulse">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
+          <div className="mb-6 flex flex-col items-center">
+            {/* Logo: Custom Shape Image with White Border & Brain */}
+            <div className="relative w-36 h-36 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500">
+
+              {/* 1. White Border Layer (Background) */}
+              <img
+                src="/oct.png"
+                alt="Logo Border"
+                className="absolute inset-0 w-full h-full object-contain"
+                style={{ filter: 'brightness(0) invert(1)' }}
+              />
+
+              {/* 2. Orange Body Layer (Foreground - Scaled Down) */}
+              <img
+                src="/oct.png"
+                alt="Logo Body"
+                className="absolute inset-0 w-full h-full object-contain scale-[0.85]"
+                style={{
+                  filter: 'invert(56%) sepia(63%) saturate(3990%) hue-rotate(0deg) brightness(103%) contrast(106%)'
+                }}
+              />
+
+              {/* 3. Brain Icon - Centered */}
+              <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
             </div>
-          </div>
-          
-          <div className="mb-6">
-            <h1 className="text-5xl sm:text-7xl font-black font-orbitron tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-100 to-slate-500 lowercase">
+
+            <h1 className="text-6xl sm:text-8xl font-black font-orbitron tracking-tighter text-[#FF8800] lowercase" style={{ WebkitTextStroke: '3px white' }}>
               number
             </h1>
-            <div className="mt-1 text-cyan-400 font-orbitron tracking-[0.4em] text-xs sm:text-sm font-black uppercase drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-              IQ Challenge
-            </div>
           </div>
 
-          <p className="max-w-md text-slate-400 text-sm sm:text-base mb-10 leading-relaxed font-medium">
-            Sincronizza i tuoi neuroni. Risolvi puzzle aritmetici complessi in una corsa contro il tempo.
-          </p>
+          <div className="max-w-md bg-white/10 border-2 border-white/20 backdrop-blur-md px-8 py-4 rounded-2xl mb-10 shadow-[0_8px_0_rgba(0,0,0,0.1)] transform rotate-1 hover:rotate-0 transition-transform duration-300">
+            <p className="text-white text-sm sm:text-base font-bold leading-relaxed drop-shadow-sm">
+              Sincronizza i tuoi neuroni. <br />
+              Risolvi puzzle aritmetici in una corsa contro il tempo.
+            </p>
+          </div>
 
-          <div className="flex flex-col gap-5 items-center w-full max-w-sm relative z-20">
-            <button 
+          <div className="flex flex-col gap-4 items-center w-full max-w-sm relative z-20">
+            <button
               onPointerDown={handleStartGameClick}
-              className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[linear-gradient(135deg,#06b6d4_0%,#6366f1_100%)] text-white py-5 rounded-2xl font-orbitron font-black text-xl shadow-[0_0_30px_rgba(34,211,238,0.3)] hover:shadow-[0_0_50px_rgba(34,211,238,0.6)] active:scale-95 transition-all border border-white/20"
+              className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[#FF8800] text-white py-5 rounded-2xl font-orbitron font-black text-xl border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_4px_0_rgba(0,0,0,0.2)] hover:scale-105 transition-all duration-300"
             >
-              <Play className="w-6 h-6 fill-current" />
-              <span>INIZIA SFIDA</span>
+              <Play className="w-8 h-8 fill-current" />
+              <span className="tracking-widest">GIOCA</span>
             </button>
-            
+
             <div className="grid grid-cols-2 gap-4 w-full">
-              <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }} className="flex items-center justify-center gap-2 bg-slate-800/80 py-4 rounded-xl border border-white/10 active:scale-95 transition-all">
-                <HelpCircle className="w-5 h-5 text-cyan-400" />
-                <span className="font-orbitron text-[10px] font-black uppercase tracking-widest text-slate-300">Tutorial</span>
+              <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
+                className="flex items-center justify-center gap-2 bg-white text-[#FF8800] py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300">
+                <HelpCircle className="w-6 h-6" />
+                <span className="font-orbitron text-xs font-black uppercase tracking-widest">Tutorial</span>
               </button>
-              <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }} className="flex items-center justify-center gap-2 bg-slate-800/80 py-4 rounded-xl border border-white/10 active:scale-95 transition-all">
-                <BarChart3 className="w-5 h-5 text-amber-400" />
-                <span className="font-orbitron text-[10px] font-black uppercase tracking-widest text-slate-300">Classifica</span>
+              <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
+                className="flex items-center justify-center gap-2 bg-white text-[#FF8800] py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300">
+                <BarChart3 className="w-6 h-6" />
+                <span className="font-orbitron text-xs font-black uppercase tracking-widest">Classifica</span>
               </button>
             </div>
 
-            <button 
+            <button
               onPointerDown={toggleMute}
-              className={`mt-4 flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all duration-300 backdrop-blur-md
-                ${isMuted 
-                  ? 'bg-slate-900/40 border-slate-700 text-slate-500' 
-                  : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
+              className={`mt-2 flex items-center gap-3 px-6 py-3 rounded-2xl border-[3px] border-white transition-all duration-300 shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105
+                ${isMuted
+                  ? 'bg-slate-300 text-slate-500'
+                  : 'bg-white text-[#FF8800]'
                 }`}
             >
-              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5 animate-pulse" />}
-              <span className="font-orbitron text-[10px] font-black uppercase tracking-[0.2em]">
+              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              <span className="font-orbitron text-xs font-black uppercase tracking-[0.2em]">
                 Audio {isMuted ? 'OFF' : 'ON'}
               </span>
             </button>
+
+
           </div>
         </div>
       )}
 
       {gameState.status !== 'idle' && (
         <div className="w-full h-full flex flex-col items-center z-10 p-4 max-w-4xl animate-screen-in">
-          <header className="w-full flex justify-between items-center mb-6">
-            <div className="flex gap-2">
-              <button 
-                onPointerDown={goToHome}
-                className="group flex items-center gap-2 px-4 py-2 bg-white/10 rounded-2xl border border-white/10 shadow-lg relative z-[999] active:scale-90 transition-all cursor-pointer"
-                title="Torna alla Home"
-              >
-                <Home className="w-5 h-5 text-cyan-400" />
-                <span className="hidden sm:inline font-orbitron text-[10px] font-black uppercase text-slate-300">Home</span>
-              </button>
-              
-              <button 
-                onPointerDown={toggleMute}
-                className={`px-4 py-2 rounded-2xl border transition-all duration-300 flex items-center justify-center
-                  ${isMuted ? 'bg-slate-900/60 border-slate-700 text-slate-500' : 'bg-white/10 border-white/10 text-cyan-400'}`}
-              >
-                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </button>
-            </div>
-            
-            <div className="flex gap-3 items-center">
-              <div className="glass-panel px-4 py-2 rounded-xl flex items-center gap-3">
-                <span className={`text-2xl font-orbitron font-black ${gameState.timeLeft < 10 ? 'text-red-500 animate-pulse' : 'text-white'}`}>{gameState.timeLeft}</span>
-                <Timer className="w-5 h-5 text-cyan-400" />
+          <header className="w-full max-w-2xl mx-auto mb-14 relative z-50">
+            <div className="
+              relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.15)]
+              bg-[#FF8800]
+              transition-all duration-300
+            ">
+              {/* Left Group: Buttons */}
+              <div className="flex items-center gap-3">
+                <button
+                  onPointerDown={goToHome}
+                  className="w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white text-[#FF8800]"
+                  title="Home"
+                >
+                  <Home className="w-6 h-6" />
+                </button>
+                <button
+                  onPointerDown={toggleMute}
+                  className="w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white text-[#FF8800]"
+                >
+                  {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+                </button>
               </div>
-              <div key={scoreAnimKey} className="glass-panel px-4 py-2 rounded-xl flex flex-col items-center">
-                <span className="text-[8px] text-slate-500 uppercase font-black">Score</span>
-                <span className="text-lg font-orbitron font-black text-amber-400">{gameState.totalScore}</span>
+
+              {/* Center: Floating Timer (Half-In/Half-Out) */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-20">
+                <div className="relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl">
+                  <svg className="absolute inset-0 w-full h-full -rotate-90 scale-90">
+                    <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
+                    <circle
+                      cx="50%" cy="50%" r="45%"
+                      stroke={gameState.timeLeft < 10 ? '#ef4444' : '#FF8800'}
+                      strokeWidth="8"
+                      fill="none"
+                      strokeDasharray="283"
+                      strokeDashoffset={283 - (283 * gameState.timeLeft / INITIAL_TIME)}
+                      strokeLinecap="round"
+                      className="transition-all duration-1000"
+                    />
+                  </svg>
+                  <span className="text-3xl font-black font-orbitron text-white">
+                    {gameState.timeLeft}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Group: Stats */}
+              <div className="flex items-center gap-3 pl-20 sm:pl-0">
+                <div className="px-4 py-1.5 rounded-2xl border-[3px] border-white flex flex-col items-center justify-center min-w-[80px] shadow-md bg-white text-[#FF8800]">
+                  <span className="text-[9px] font-black uppercase leading-none opacity-80">PTS</span>
+                  <span className="text-xl font-black font-orbitron leading-none">{gameState.totalScore}</span>
+                </div>
+                <div className="px-4 py-1.5 rounded-2xl border-[3px] border-white flex flex-col items-center justify-center min-w-[70px] shadow-md bg-white text-[#FF8800]">
+                  <span className="text-[9px] font-black uppercase leading-none opacity-80">LV</span>
+                  <span className="text-xl font-black font-orbitron leading-none">{gameState.level}</span>
+                </div>
               </div>
             </div>
           </header>
@@ -528,104 +632,123 @@ const App: React.FC = () => {
           <main className="relative flex-grow w-full flex flex-col items-center justify-center">
             {gameState.status === 'playing' && (
               <div className="w-full flex flex-col items-center h-full relative">
-                 <div className="mb-6 flex flex-col items-center">
-                    <span className="text-slate-500 text-[9px] font-black uppercase mb-1">Target</span>
-                    <div key={targetAnimKey} className="text-7xl font-black font-orbitron text-white drop-shadow-2xl">{gameState.targetResult}</div>
-                    
-                    <div className={`absolute top-24 z-[100] transition-all duration-300 
-                      ${isDragging && selectedPath.length > 0 ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-90 pointer-events-none'}`}>
-                      <div className={`glass-panel px-6 py-2 rounded-full border-2 transition-colors duration-300
-                        ${previewResult === gameState.targetResult ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.5)] bg-cyan-950/40' : 'border-white/20'}`}>
-                        <span className="text-[10px] text-slate-400 uppercase font-black mr-2">In corso:</span>
-                        <span className={`text-2xl font-orbitron font-black ${previewResult === gameState.targetResult ? 'text-cyan-400' : 'text-white'}`}>
-                          {previewResult !== null ? previewResult : '...'}
-                        </span>
-                      </div>
+                {/* Info Row: Current Calculation Badge (Left) */}
+                <div className="w-full max-w-2xl px-4 flex justify-start items-center min-h-[50px] mb-2">
+                  <div className={`transition-all duration-300 transform origin-left
+                        ${isDragging && selectedPath.length > 0 ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-90 -translate-x-4 pointer-events-none'}`}>
+                    <div className={`px-5 py-2 rounded-xl border-[3px] flex items-center gap-3 shadow-md transition-colors duration-200
+                          ${(previewResult !== null && gameState.levelTargets.some(t => t.value === previewResult && !t.completed))
+                        ? 'bg-[#FF8800] border-white text-white scale-105'
+                        : 'bg-white border-[#FF8800] text-[#FF8800]'}`}>
+                      <span className="text-[10px] font-black uppercase tracking-wider opacity-80">Totale:</span>
+                      <span className="text-2xl font-black font-orbitron leading-none">
+                        {previewResult !== null ? previewResult : '...'}
+                      </span>
                     </div>
+                  </div>
+                </div>
 
-                    <div className="flex gap-1.5 mt-10">
-                      {[...Array(MAX_STREAK)].map((_, i) => (
-                        <div key={i} className={`w-8 h-1.5 rounded-full ${i < gameState.streak ? 'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'bg-slate-800'}`} />
-                      ))}
-                    </div>
-                 </div>
-                 
-                 <div className="relative flex-grow w-full flex items-center justify-center overflow-visible">
-                   <div className="relative w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))] mx-auto">
-                     {grid.map(cell => (
-                       <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} />
-                     ))}
-                   </div>
-                 </div>
+                <div className="flex flex-col items-center gap-4">
+                  {/* Level Targets List */}
+                  <div className="flex gap-2 items-center flex-wrap justify-center max-w-[300px]">
+                    {gameState.levelTargets.map((t, i) => (
+                      <div key={i} className={`
+                                flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300
+                                ${t.completed
+                          ? 'bg-[#FF8800] border-2 border-white scale-110 shadow-[0_0_15px_rgba(255,136,0,0.6)]'
+                          : 'bg-[#0055AA] border-2 border-white/30 opacity-80'}
+                                font-orbitron font-bold text-white text-md shadow-md
+                             `}>
+                        {t.value}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="relative flex-grow w-full flex items-center justify-center overflow-visible">
+                  <div className={`relative mx-auto transition-all duration-300
+                    ${theme === 'orange'
+                      ? 'w-[calc(272px*var(--hex-scale))] h-[calc(376px*var(--hex-scale))]'
+                      : 'w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))]'
+                    }`}>
+                    {grid.map(cell => (
+                      <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} />
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
-            
+
             {gameState.status === 'game-over' && (
-               <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in">
-                  <h2 className="text-4xl font-black font-orbitron mb-4 text-red-500">FINE</h2>
-                  <div className="mb-8">
-                     <span className="text-[10px] text-slate-500 uppercase font-black">QI Stimato</span>
-                     <div className="text-7xl font-black font-orbitron text-white">{Math.round(gameState.estimatedIQ)}</div>
-                  </div>
-                  <div className="bg-white/5 p-4 rounded-2xl mb-8 text-xs italic text-slate-300">
-                    "{insight}"
-                  </div>
-                  <button onPointerDown={(e) => { e.stopPropagation(); startGame(); }} className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm mb-4 active:scale-95 transition-all">RIPROVA</button>
-                  <button onPointerDown={goToHome} className="text-[10px] text-slate-500 font-black uppercase tracking-widest hover:text-white transition-colors">Torna alla Home</button>
-               </div>
+              <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in">
+                <h2 className="text-4xl font-black font-orbitron mb-4 text-red-500">FINE</h2>
+                <div className="mb-8">
+                  <span className="text-[10px] text-slate-500 uppercase font-black">QI Stimato</span>
+                  <div className="text-7xl font-black font-orbitron text-white">{Math.round(gameState.estimatedIQ)}</div>
+                </div>
+                <div className="bg-white/5 p-4 rounded-2xl mb-8 text-xs italic text-slate-300">
+                  "{insight}"
+                </div>
+                <button onPointerDown={(e) => { e.stopPropagation(); startGame(); }} className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm mb-4 active:scale-95 transition-all">RIPROVA</button>
+                <button onPointerDown={goToHome} className="text-[10px] text-slate-500 font-black uppercase tracking-widest hover:text-white transition-colors">Torna alla Home</button>
+              </div>
             )}
-            
+
             {gameState.status === 'level-complete' && (
-               <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in">
-                  <Trophy className="w-16 h-16 text-cyan-400 mx-auto mb-6" />
-                  <h2 className="text-2xl font-black font-orbitron mb-4">LIVELLO {gameState.level - 1} OK</h2>
-                  <div className="bg-white/5 p-4 rounded-2xl mb-8 text-xs italic text-slate-300">
-                    "{insight}"
-                  </div>
-                  <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }} className="w-full bg-cyan-400 text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm active:scale-95 transition-all">PROSSIMO LIVELLO</button>
-               </div>
+              <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in">
+                <Trophy className="w-16 h-16 text-cyan-400 mx-auto mb-6" />
+                <h2 className="text-2xl font-black font-orbitron mb-4">LIVELLO {gameState.level - 1} OK</h2>
+                <div className="bg-white/5 p-4 rounded-2xl mb-8 text-xs italic text-slate-300">
+                  "{insight}"
+                </div>
+                <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }} className="w-full bg-cyan-400 text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm active:scale-95 transition-all">PROSSIMO LIVELLO</button>
+              </div>
             )}
           </main>
-        </div>
+        </div >
       )}
 
-      {activeModal === 'tutorial' && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-          <div className="glass-panel w-full max-w-md p-8 rounded-[2rem] modal-content flex flex-col" onPointerDown={e => e.stopPropagation()}>
-            <div className="flex flex-col items-center text-center py-4">
-              <div className="mb-8">{TUTORIAL_STEPS[tutorialStep].icon}</div>
-              <h2 className="text-2xl font-black font-orbitron text-white mb-4 uppercase">{TUTORIAL_STEPS[tutorialStep].title}</h2>
-              <p className="text-slate-300 text-sm leading-relaxed mb-10">{TUTORIAL_STEPS[tutorialStep].description}</p>
-              <button onPointerDown={(e) => { e.stopPropagation(); nextTutorialStep(); }} className="w-full bg-cyan-500 text-white py-5 rounded-2xl font-orbitron font-black text-sm uppercase active:scale-95 transition-all">
-                {tutorialStep === TUTORIAL_STEPS.length - 1 ? 'GIOCA ORA' : 'AVANTI'}
-              </button>
+      {
+        activeModal === 'tutorial' && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
+            <div className="glass-panel w-full max-w-md p-8 rounded-[2rem] modal-content flex flex-col" onPointerDown={e => e.stopPropagation()}>
+              <div className="flex flex-col items-center text-center py-4">
+                <div className="mb-8">{TUTORIAL_STEPS[tutorialStep].icon}</div>
+                <h2 className="text-2xl font-black font-orbitron text-white mb-4 uppercase">{TUTORIAL_STEPS[tutorialStep].title}</h2>
+                <p className="text-slate-300 text-sm leading-relaxed mb-10">{TUTORIAL_STEPS[tutorialStep].description}</p>
+                <button onPointerDown={(e) => { e.stopPropagation(); nextTutorialStep(); }} className="w-full bg-cyan-500 text-white py-5 rounded-2xl font-orbitron font-black text-sm uppercase active:scale-95 transition-all">
+                  {tutorialStep === TUTORIAL_STEPS.length - 1 ? 'GIOCA ORA' : 'AVANTI'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      
-      {activeModal === 'leaderboard' && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-          <div className="glass-panel w-full max-w-md p-8 rounded-[2rem] modal-content flex flex-col" onPointerDown={e => e.stopPropagation()}>
-            <h2 className="text-2xl font-black font-orbitron text-white mb-6 uppercase flex items-center gap-3"><Award className="text-amber-400" /> RANKING</h2>
-            <div className="space-y-3 overflow-y-auto max-h-[50vh] pr-2 custom-scroll">
-              {MOCK_LEADERBOARD.map((p, idx) => (
-                <div key={idx} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-white">{idx + 1}. {p.name}</span>
-                    <span className="text-[8px] text-slate-500 uppercase">{p.country}</span>
+        )
+      }
+
+      {
+        activeModal === 'leaderboard' && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
+            <div className="glass-panel w-full max-w-md p-8 rounded-[2rem] modal-content flex flex-col" onPointerDown={e => e.stopPropagation()}>
+              <h2 className="text-2xl font-black font-orbitron text-white mb-6 uppercase flex items-center gap-3"><Award className="text-amber-400" /> RANKING</h2>
+              <div className="space-y-3 overflow-y-auto max-h-[50vh] pr-2 custom-scroll">
+                {MOCK_LEADERBOARD.map((p, idx) => (
+                  <div key={idx} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-white">{idx + 1}. {p.name}</span>
+                      <span className="text-[8px] text-slate-500 uppercase">{p.country}</span>
+                    </div>
+                    <span className="font-orbitron font-bold text-cyan-400 text-xs">IQ {p.iq}</span>
                   </div>
-                  <span className="font-orbitron font-bold text-cyan-400 text-xs">IQ {p.iq}</span>
-                </div>
-              ))}
+                ))}
+              </div>
+              <button onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }} className="mt-8 w-full bg-slate-800 text-white py-4 rounded-xl font-orbitron font-black text-xs uppercase active:scale-95 transition-all">CHIUDI</button>
             </div>
-            <button onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }} className="mt-8 w-full bg-slate-800 text-white py-4 rounded-xl font-orbitron font-black text-xs uppercase active:scale-95 transition-all">CHIUDI</button>
           </div>
-        </div>
-      )}
+        )
+      }
 
       <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.6</footer>
-    </div>
+    </div >
   );
 };
 
