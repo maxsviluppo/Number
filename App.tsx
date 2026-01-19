@@ -455,7 +455,7 @@ const App: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-t from-[#004488] to-[#0088dd] text-slate-100 flex flex-col items-center justify-center select-none relative overflow-hidden"
+      className="h-[100dvh] w-full bg-gradient-to-t from-[#004488] to-[#0088dd] text-slate-100 flex flex-col items-center justify-center select-none relative overflow-hidden"
       onPointerDown={handleUserInteraction}
       onMouseUp={handleGlobalEnd}
       onTouchEnd={handleGlobalEnd}

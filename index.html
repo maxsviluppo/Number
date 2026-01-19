@@ -44,6 +44,19 @@
       }
     }
 
+    /* Altezza limitata (es. Android con barre browser o vecchi iPhone) */
+    @media (max-height: 800px) {
+      :root {
+        --hex-scale: 0.95;
+      }
+    }
+
+    @media (max-height: 700px) {
+      :root {
+        --hex-scale: 0.85;
+      }
+    }
+
     @media (max-width: 380px) {
       :root {
         --hex-scale: 0.85;
