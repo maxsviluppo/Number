@@ -617,13 +617,13 @@ const App: React.FC = () => {
 
               {/* Right Group: Stats */}
               <div className="flex items-center gap-3 pl-20 sm:pl-0">
-                <div className="px-4 py-1.5 rounded-2xl border-[3px] border-white flex flex-col items-center justify-center min-w-[80px] shadow-md bg-white text-[#FF8800]">
-                  <span className="text-[9px] font-black uppercase leading-none opacity-80">PTS</span>
-                  <span className="text-xl font-black font-orbitron leading-none">{gameState.totalScore}</span>
+                <div className="w-14 h-14 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
+                  <span className="text-[8px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
+                  <span className="text-sm font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
                 </div>
-                <div className="px-4 py-1.5 rounded-2xl border-[3px] border-white flex flex-col items-center justify-center min-w-[70px] shadow-md bg-white text-[#FF8800]">
-                  <span className="text-[9px] font-black uppercase leading-none opacity-80">LV</span>
-                  <span className="text-xl font-black font-orbitron leading-none">{gameState.level}</span>
+                <div className="w-14 h-14 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
+                  <span className="text-[8px] font-black uppercase leading-none opacity-80 mb-0.5">LV</span>
+                  <span className="text-lg font-black font-orbitron leading-none">{gameState.level}</span>
                 </div>
               </div>
             </div>
@@ -648,7 +648,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center gap-4">
+                <div className="flex flex-col items-center gap-4 mb-10">
                   {/* Level Targets List */}
                   <div className="flex gap-2 items-center flex-wrap justify-center max-w-[300px]">
                     {gameState.levelTargets.map((t, i) => (
