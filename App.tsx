@@ -12,27 +12,27 @@ const TUTORIAL_STEPS = [
   {
     title: "BENVENUTO",
     description: "In 'number', il tuo obiettivo è collegare numeri e operatori sulla griglia esagonale per raggiungere il risultato Target visualizzato in alto.",
-    icon: <Brain className="w-12 h-12 text-cyan-400" />
+    icon: <Brain className="w-12 h-12 text-[#FF8800]" />
   },
   {
     title: "REGOLE DI CONNESSIONE",
     description: "Trascina il dito partendo da un Numero. Devi sempre alternare: Numero → Operatore → Numero. Non puoi collegare due numeri o due operatori direttamente.",
-    icon: <RefreshCw className="w-12 h-12 text-indigo-400" />
+    icon: <RefreshCw className="w-12 h-12 text-[#FF8800]" />
   },
   {
     title: "IL POTERE DELLA STREAK",
     description: "Ogni successo consecutivo raddoppia i punti (5, 10, 20, 40, 80). Completa 5 successi per superare il livello. Un errore resetta la streak a 5 punti!",
-    icon: <Zap className="w-12 h-12 text-amber-400" />
+    icon: <Zap className="w-12 h-12 text-[#FF8800]" />
   },
   {
     title: "TEMPO E CARRY-OVER",
     description: "Hai 60 secondi base. La vera sfida? Il tempo che risparmi in un livello viene aggiunto interamente a quello successivo. La velocità è la tua arma migliore.",
-    icon: <Timer className="w-12 h-12 text-rose-400" />
+    icon: <Timer className="w-12 h-12 text-[#FF8800]" />
   },
   {
     title: "QI RANKING",
     description: "La nostra AI valuterà la tua velocità e precisione per stimare il tuo Quoziente Intellettivo. Scala la classifica globale e dimostra di essere una delle menti più brillanti.",
-    icon: <Award className="w-12 h-12 text-emerald-400" />
+    icon: <Award className="w-12 h-12 text-[#FF8800]" />
   }
 ];
 
@@ -491,25 +491,31 @@ const App: React.FC = () => {
         <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-10 animate-screen-in">
           <div className="mb-6 flex flex-col items-center">
             {/* Logo: Custom Shape Image with White Border & Brain */}
+            {/* Logo: Pure Color CSS Mask Implementation */}
             <div className="relative w-36 h-36 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500">
+              {/* 1. White Border Layer (Masked Div) */}
+              <div className="absolute inset-0 bg-white" style={{
+                maskImage: 'url(/oct.png)',
+                WebkitMaskImage: 'url(/oct.png)',
+                maskSize: 'contain',
+                WebkitMaskSize: 'contain',
+                maskPosition: 'center',
+                WebkitMaskPosition: 'center',
+                maskRepeat: 'no-repeat',
+                WebkitMaskRepeat: 'no-repeat',
+              }}></div>
 
-              {/* 1. White Border Layer (Background) */}
-              <img
-                src="/oct.png"
-                alt="Logo Border"
-                className="absolute inset-0 w-full h-full object-contain"
-                style={{ filter: 'brightness(0) invert(1)' }}
-              />
-
-              {/* 2. Orange Body Layer (Foreground - Scaled Down) */}
-              <img
-                src="/oct.png"
-                alt="Logo Body"
-                className="absolute inset-0 w-full h-full object-contain scale-[0.85]"
-                style={{
-                  filter: 'invert(56%) sepia(63%) saturate(3990%) hue-rotate(0deg) brightness(103%) contrast(106%)'
-                }}
-              />
+              {/* 2. Orange Body Layer (Masked Div - Scaled Down) */}
+              <div className="absolute inset-0 bg-[#FF8800] scale-[0.85]" style={{
+                maskImage: 'url(/oct.png)',
+                WebkitMaskImage: 'url(/oct.png)',
+                maskSize: 'contain',
+                WebkitMaskSize: 'contain',
+                maskPosition: 'center',
+                WebkitMaskPosition: 'center',
+                maskRepeat: 'no-repeat',
+                WebkitMaskRepeat: 'no-repeat',
+              }}></div>
 
               {/* 3. Brain Icon - Centered */}
               <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
@@ -617,13 +623,13 @@ const App: React.FC = () => {
 
               {/* Right Group: Stats */}
               <div className="flex items-center gap-3 pl-20 sm:pl-0">
-                <div className="w-14 h-14 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
-                  <span className="text-[8px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
-                  <span className="text-sm font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
+                <div className="w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
+                  <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
+                  <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
                 </div>
-                <div className="w-14 h-14 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
-                  <span className="text-[8px] font-black uppercase leading-none opacity-80 mb-0.5">LV</span>
-                  <span className="text-lg font-black font-orbitron leading-none">{gameState.level}</span>
+                <div className="w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
+                  <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">LV</span>
+                  <span className="text-sm font-black font-orbitron leading-none">{gameState.level}</span>
                 </div>
               </div>
             </div>
@@ -648,7 +654,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center gap-4 mb-10">
+                <div className="flex flex-col items-center gap-4 mb-2">
                   {/* Level Targets List */}
                   <div className="flex gap-2 items-center flex-wrap justify-center max-w-[300px]">
                     {gameState.levelTargets.map((t, i) => (
@@ -711,12 +717,12 @@ const App: React.FC = () => {
       {
         activeModal === 'tutorial' && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-            <div className="glass-panel w-full max-w-md p-8 rounded-[2rem] modal-content flex flex-col" onPointerDown={e => e.stopPropagation()}>
+            <div className="bg-white border-[4px] border-[#FF8800] w-full max-w-md p-8 rounded-[2rem] shadow-[0_0_50px_rgba(255,136,0,0.3)] flex flex-col" onPointerDown={e => e.stopPropagation()}>
               <div className="flex flex-col items-center text-center py-4">
-                <div className="mb-8">{TUTORIAL_STEPS[tutorialStep].icon}</div>
-                <h2 className="text-2xl font-black font-orbitron text-white mb-4 uppercase">{TUTORIAL_STEPS[tutorialStep].title}</h2>
-                <p className="text-slate-300 text-sm leading-relaxed mb-10">{TUTORIAL_STEPS[tutorialStep].description}</p>
-                <button onPointerDown={(e) => { e.stopPropagation(); nextTutorialStep(); }} className="w-full bg-cyan-500 text-white py-5 rounded-2xl font-orbitron font-black text-sm uppercase active:scale-95 transition-all">
+                <div className="mb-6 scale-125 drop-shadow-sm">{TUTORIAL_STEPS[tutorialStep].icon}</div>
+                <h2 className="text-2xl font-black font-orbitron text-[#FF8800] mb-4 uppercase tracking-widest">{TUTORIAL_STEPS[tutorialStep].title}</h2>
+                <p className="text-slate-600 font-bold text-sm leading-relaxed mb-10 border-t-2 border-slate-100 pt-4 w-full">{TUTORIAL_STEPS[tutorialStep].description}</p>
+                <button onPointerDown={(e) => { e.stopPropagation(); nextTutorialStep(); }} className="w-full bg-[#FF8800] text-white border-[3px] border-white py-5 rounded-2xl font-orbitron font-black text-sm uppercase shadow-lg active:scale-95 transition-all outline-none ring-0">
                   {tutorialStep === TUTORIAL_STEPS.length - 1 ? 'GIOCA ORA' : 'AVANTI'}
                 </button>
               </div>
