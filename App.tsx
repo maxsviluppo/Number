@@ -576,7 +576,7 @@ const App: React.FC = () => {
 
       {gameState.status !== 'idle' && (
         <div className="w-full h-full flex flex-col items-center z-10 p-4 max-w-4xl animate-screen-in">
-          <header className="w-full max-w-2xl mx-auto mb-14 relative z-50">
+          <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
             <div className="
               relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.15)]
               bg-[#FF8800]
