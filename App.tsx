@@ -639,7 +639,7 @@ const App: React.FC = () => {
             {gameState.status === 'playing' && (
               <div className="w-full flex flex-col items-center h-full relative">
                 {/* Info Row: Current Calculation Badge (Left) */}
-                <div className="w-full max-w-2xl px-4 flex justify-start items-center min-h-[50px] mb-2">
+                <div className="w-full max-w-2xl px-4 flex justify-start items-center min-h-[50px] mb-2 mt-6">
                   <div className={`transition-all duration-300 transform origin-left
                         ${isDragging && selectedPath.length > 0 ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-90 -translate-x-4 pointer-events-none'}`}>
                     <div className={`px-5 py-2 rounded-xl border-[3px] flex items-center gap-3 shadow-md transition-colors duration-200
@@ -654,7 +654,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center gap-4 mb-2">
+                <div className="flex flex-col items-center gap-2 mb-5">
                   {/* Level Targets List */}
                   <div className="flex gap-2 items-center flex-wrap justify-center max-w-[300px]">
                     {gameState.levelTargets.map((t, i) => (
