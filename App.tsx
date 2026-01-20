@@ -237,7 +237,13 @@ const App: React.FC = () => {
             col: c,
             type: isOperator ? 'operator' : 'number',
             value: isOperator
-              ? OPERATORS[Math.floor(Math.random() * OPERATORS.length)]
+              ? (() => {
+                const rand = Math.random();
+                if (rand < 0.35) return '+';
+                if (rand < 0.70) return '-'; // 0.35 + 0.35
+                if (rand < 0.90) return '×'; // 0.70 + 0.20
+                return '÷';                   // Restante 10%
+              })()
               : Math.floor(Math.random() * 10).toString(),
           });
         }
