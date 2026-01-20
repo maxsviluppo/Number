@@ -141,9 +141,122 @@ const App: React.FC = () => {
     return { min: 20 + (level * 2), max: 50 + (level * 5) };
   };
 
+  // Helper: Calculate result from a cell path (for solver)
+  const calculateResultFromCells = (cells: HexCellData[]): number | null => {
+    if (cells.length < 1) return null;
+    try {
+      let result = 0;
+      let currentOp = '+';
+      let hasStarted = false;
+
+      for (let i = 0; i < cells.length; i++) {
+        const part = cells[i].value;
+        if (OPERATORS.includes(part)) {
+          currentOp = part;
+        } else {
+          const num = parseInt(part);
+          if (!hasStarted) {
+            result = num;
+            hasStarted = true;
+          } else {
+            if (currentOp === '+') result += num;
+            else if (currentOp === '-') result -= num;
+            else if (currentOp === '×') result *= num;
+            else if (currentOp === '÷') result = num !== 0 ? Math.floor(result / num) : result;
+          }
+        }
+      }
+      return result;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Helper: Check adjacency (rectilinear for orange theme)
+  const areCellsAdjacent = (cell1: HexCellData, cell2: HexCellData): boolean => {
+    const dr = Math.abs(cell1.row - cell2.row);
+    const dc = Math.abs(cell1.col - cell2.col);
+    return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
+  };
+
+  // SOLVER: Find all valid paths and their results
+  const findAllSolutions = (gridCells: HexCellData[]): Set<number> => {
+    const solutions = new Set<number>();
+    const maxPathLength = 7; // N-Op-N-Op-N-Op-N = 7 cells max
+
+    const explorePath = (currentPath: HexCellData[], visited: Set<string>) => {
+      const lastCell = currentPath[currentPath.length - 1];
+
+      // Calculate if path is valid (at least 3 cells: N-Op-N)
+      if (currentPath.length >= 3 && currentPath.length % 2 === 1) {
+        const result = calculateResultFromCells(currentPath);
+        if (result !== null && result > 0) {
+          solutions.add(result);
+        }
+      }
+
+      if (currentPath.length >= maxPathLength) return;
+
+      // Try all adjacent cells
+      for (const nextCell of gridCells) {
+        if (visited.has(nextCell.id)) continue;
+        if (lastCell.type === nextCell.type) continue;
+        if (!areCellsAdjacent(lastCell, nextCell)) continue;
+
+        const newVisited = new Set(visited);
+        newVisited.add(nextCell.id);
+        explorePath([...currentPath, nextCell], newVisited);
+      }
+    };
+
+    // Start from every number cell
+    const numberCells = gridCells.filter(c => c.type === 'number');
+    for (const startCell of numberCells) {
+      explorePath([startCell], new Set([startCell.id]));
+    }
+
+    return solutions;
+  };
+
   const createLevelData = useCallback((level: number) => {
     const { min, max } = getDifficultyRange(level);
+    let attempts = 0;
+    const maxAttempts = 15;
 
+    while (attempts < maxAttempts) {
+      attempts++;
+
+      // Generate random grid
+      const newGrid: HexCellData[] = [];
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          const isOperator = (r + c) % 2 !== 0;
+          newGrid.push({
+            id: `${r}-${c}`,
+            row: r,
+            col: c,
+            type: isOperator ? 'operator' : 'number',
+            value: isOperator
+              ? OPERATORS[Math.floor(Math.random() * OPERATORS.length)]
+              : Math.floor(Math.random() * 10).toString(),
+          });
+        }
+      }
+
+      // Find all possible solutions
+      const allSolutions = findAllSolutions(newGrid);
+      const validSolutions = Array.from(allSolutions).filter(n => n >= min && n <= max);
+
+      // Need at least 5 unique solutions
+      if (validSolutions.length >= 5) {
+        const shuffled = validSolutions.sort(() => Math.random() - 0.5);
+        const targets = shuffled.slice(0, 5);
+        return { grid: newGrid, targets };
+      }
+    }
+
+    // Fallback: use last grid with any solutions
+    console.warn(`Level ${level}: Using fallback grid`);
     const newGrid: HexCellData[] = [];
     for (let r = 0; r < GRID_ROWS; r++) {
       for (let c = 0; c < GRID_COLS; c++) {
@@ -152,36 +265,19 @@ const App: React.FC = () => {
           id: `${r}-${c}`,
           row: r,
           col: c,
-          type: 'number',
+          type: isOperator ? 'operator' : 'number',
           value: isOperator
             ? OPERATORS[Math.floor(Math.random() * OPERATORS.length)]
             : Math.floor(Math.random() * 10).toString(),
         });
-        newGrid[newGrid.length - 1].type = isOperator ? 'operator' : 'number';
       }
     }
-
-    const targets: number[] = [];
-    let attempts = 0;
-    while (targets.length < 5 && attempts < 100) {
-      attempts++;
-      // Calculate realistic random targets based on level constraints
-      // Ideally we should verify if they are solvable in the grid, strictly speaking, 
-      // but for infinite procedural generation we use a probability range.
-      // We generate a result first, then user finds it.
-
-      const targetVal = Math.floor(Math.random() * (max - min + 1)) + min;
-
-      if (!targets.includes(targetVal)) {
-        targets.push(targetVal);
-      }
+    const allSolutions = findAllSolutions(newGrid);
+    const anySolutions = Array.from(allSolutions).slice(0, 5);
+    while (anySolutions.length < 5) {
+      anySolutions.push(Math.floor(Math.random() * 20) + 1);
     }
-    // Fallback if loop creates too few targets (rare)
-    while (targets.length < 5) {
-      targets.push(Math.floor(Math.random() * 20) + 1);
-    }
-
-    return { grid: newGrid, targets };
+    return { grid: newGrid, targets: anySolutions };
   }, []);
 
   const generateGrid = useCallback((forceStartLevel?: number) => {
@@ -362,7 +458,8 @@ const App: React.FC = () => {
         setIsVictoryAnimating(false);
         setTriggerParticles(false);
       }, 1200);
-      // Level Continues
+    } else {
+      // Level Continues (NOT all targets completed yet)
       setGameState(prev => ({
         ...prev,
         totalScore: prev.totalScore + currentPoints,
