@@ -1,50 +1,40 @@
-# Number Game - Logica di Gioco Avanzata "Elite IQ Challenge"
+# Number Game - Logica di Gioco (Elite Rules)
 
-Questo documento descrive le meccaniche di gioco, il sistema di punteggio e la visione competitiva per il progetto "Number".
+## 1. Sistema di Punteggio (Progressivo per Livello)
 
-## 1. Sistema di Punteggio (Exponential Streak)
+Il punteggio scala esponenzialmente in base al **Livello** attuale e alla **Streak** di risposte corrette.
 
-La progressione del punteggio premia la continuità e la precisione all'interno di ogni livello.
+*   **Logica Base**: Il punteggio di partenza per il primo target raddoppia ad ogni livello.
+    *   **Livello 1**: 1, 2, 4, 8, 16 punti.
+    *   **Livello 2**: 2, 4, 8, 16, 32 punti.
+    *   **Livello 3**: 4, 8, 16, 32, 64 punti.
+    *   ...e così via.
+*   **Errore**: Resetta la streak al valore base del livello corrente.
 
-*   **Obiettivo Livello**: Risolvere **5 Target** matematici sequenziali.
-*   **Progressione Punteggio**:
-    *   1° Target: **5 punti**
-    *   2° Target: **10 punti**
-    *   3° Target: **20 punti**
-    *   4° Target: **40 punti**
-    *   5° Target: **80 punti** (Culmine della streak)
-*   **Totale per Livello Perfetto**: 155 punti.
-*   **Errore**: Interrompe la streak. Il punteggio per il target successivo viene resettato valore base (5 punti).
+## 2. Gestione della Griglia (Grid Persistence)
 
-## 2. Meccanica "Tempo Carry-Over" (Accumulo Strategico)
+*   **Staticità**: I numeri e gli operatori sulla griglia **NON cambiano** quando si trova una combinazione corretta.
+*   **Refresh**: La griglia viene rigenerata **solo ed esclusivamente** al superamento del livello (dopo aver trovato tutti i 5 target).
+*   **Sfida**: Il giocatore deve trovare tutte le soluzioni possibili con le risorse limitate visibili a schermo fin dall'inizio del livello.
 
-Il tempo non è solo una scadenza, ma una risorsa accumulabile che premia la velocità di pensiero.
+## 3. Gestione del Tempo (Carry-Over & Bonus)
 
-*   **Tempo Base**: Ogni livello concede **60 secondi**.
-*   **Carry-Over**: Il tempo NON consumato in un livello viene **trasferito integrailmente** al livello successivo.
-    *   *Esempio*: Completamento Liv. 1 in 40s (avanzano 20s). Il Liv. 2 inizia con 60s + 20s = **80 secondi**.
-*   **Strategia**: Permette ai giocatori esperti di costruire una "banca del tempo" per affrontare i livelli avanzati, dove la complessità dei calcoli aumenta.
+*   **Tempo Base**: 60 secondi assegnati all'inizio.
+*   **Carry-Over (Accumulo)**: Se termini un livello in anticipo, il tempo residuo si **SOMMA** ai 60 secondi del livello successivo.
+    *   *Esempio*: Livello terminato in 40s (restano 20s). Nuovo Livello: 60s + 20s = 80s disponibili.
+*   **Dynamic Bonus (Livello 5+)**:
+    *   A partire dal superamento del 5° livello, ogni combinazione corretta trovata aggiunge **+2 secondi** immediati al timer.
 
-## 3. Bonus "Perfezione" Inter-Livello (Meccanica Futura)
+## 4. Difficoltà Progressiva (Infinite Scaling)
 
-Premia l'eccellenza assoluta nel superare un livello senza alcun errore.
+Il gioco utilizza un sistema a "scaglioni" per generare target sempre più complessi:
 
-*   **Condizione**: Completare tutti i 5 target del livello attuale senza commettere errori (Streak ininterrotta).
-*   **Ricompensa**: Il livello successivo inizia con un **Punteggio Base Potenziato**.
-    *   Base Standard: 5 punti.
-    *   **Base Potenziata**: **6 punti**.
-*   **Nuova Scala (con Bonus)**: 6 → 12 → 24 → 48 → 96 punti.
-*   **Effetto**: Un vantaggio esponenziale sul punteggio totale che distingue i veri maestri dai semplici esperti.
-*   *Nota*: Se si commette un errore durante un livello "potenziato", il reset riporta alla base standard (5 punti).
+*   **Livelli 1-2**: Range Target facile [1 - 20] (Riscaldamento).
+*   **Livelli 3-5**: Range Target medio [8 - 30].
+*   **Livelli 6-10**: Range Target avanzato [20 - 50].
+*   **Livelli 10+**: Range Target "Genius" (aumenta progressivamente senza limiti).
 
-## 4. Ranking Globale & Misuratore QI
-
-La competizione si sposta dal semplice "punteggio" al prestigio e alla dimostrazione di intelligenza superiore.
-
-*   **Criterio Principale**: Punteggio Totale accumulato.
-*   **Tie-Breaker (Spareggio)**: A parità di punteggio, si posiziona più in alto il giocatore con il **Maggior Tempo Rimanente/Accumulato**.
-*   **QI Challenge**: Il gioco calcolerà e visualizzerà un "QI Stimato" basato sulle performance (velocità, streak perfette, complessità raggiunta), offrendo un badge di merito oltre alla posizione numerica.
-*   **Filosofia**: Livelli procedurali "infiniti" e difficoltà crescente mettono alla prova la concentrazione umana, creando una selezione naturale dei migliori player globali.
+L'algoritmo garantisce che il gioco rimanga infinito ma sempre sfidante.
 
 ---
-*Documento creato il 19/01/2026. Da implementare su richiesta.*
+*Ultimo aggiornamento: 20/01/2026*

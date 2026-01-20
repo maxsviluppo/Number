@@ -131,7 +131,19 @@ const App: React.FC = () => {
     }
   };
 
-  const createLevelData = useCallback(() => {
+  // LEVELS & DIFFICULTY SCALING
+  const getDifficultyRange = (level: number) => {
+    // Progressive Difficulty logic
+    if (level <= 2) return { min: 1, max: 20 };
+    if (level <= 5) return { min: 8, max: 30 };
+    if (level <= 10) return { min: 20, max: 50 };
+    // Infinite scaling for levels > 10
+    return { min: 20 + (level * 2), max: 50 + (level * 5) };
+  };
+
+  const createLevelData = useCallback((level: number) => {
+    const { min, max } = getDifficultyRange(level);
+
     const newGrid: HexCellData[] = [];
     for (let r = 0; r < GRID_ROWS; r++) {
       for (let c = 0; c < GRID_COLS; c++) {
@@ -150,38 +162,51 @@ const App: React.FC = () => {
     }
 
     const targets: number[] = [];
-    while (targets.length < 5) {
-      const n1 = Math.floor(Math.random() * 15) + 1;
-      const n2 = Math.floor(Math.random() * 10) + 1;
-      const op = OPERATORS[Math.floor(Math.random() * 3)];
-      let res = 0;
-      if (op === '+') res = n1 + n2;
-      if (op === '-') res = Math.max(1, n1 - n2);
-      if (op === '×') res = n1 * n2;
-      if (op === '÷') res = n1;
-      if (res > 0 && !targets.includes(res)) {
-        targets.push(res);
+    let attempts = 0;
+    while (targets.length < 5 && attempts < 100) {
+      attempts++;
+      // Calculate realistic random targets based on level constraints
+      // Ideally we should verify if they are solvable in the grid, strictly speaking, 
+      // but for infinite procedural generation we use a probability range.
+      // We generate a result first, then user finds it.
+
+      const targetVal = Math.floor(Math.random() * (max - min + 1)) + min;
+
+      if (!targets.includes(targetVal)) {
+        targets.push(targetVal);
       }
+    }
+    // Fallback if loop creates too few targets (rare)
+    while (targets.length < 5) {
+      targets.push(Math.floor(Math.random() * 20) + 1);
     }
 
     return { grid: newGrid, targets };
   }, []);
 
-  const generateGrid = useCallback(() => {
+  const generateGrid = useCallback((forceStartLevel?: number) => {
     let nextLevelData;
     let newBuffer = [...levelBuffer];
 
-    if (newBuffer.length === 0) {
-      // Initialize buffer if empty
-      nextLevelData = createLevelData();
-      for (let i = 0; i < 5; i++) {
-        newBuffer.push(createLevelData());
+    // Use forced level if provided (for restarts), otherwise use current state level
+    const currentLevel = forceStartLevel !== undefined ? forceStartLevel : gameState.level;
+
+    if (newBuffer.length === 0 || forceStartLevel !== undefined) {
+      // Initialize buffer from scratch
+      newBuffer = []; // Clear buffer if forcing start
+      nextLevelData = createLevelData(currentLevel);
+      for (let i = 1; i <= 5; i++) {
+        newBuffer.push(createLevelData(currentLevel + i));
       }
     } else {
-      // Shift buffer
+      // Shift buffer (Normal progression)
       nextLevelData = newBuffer.shift()!;
       // Replenish buffer
-      newBuffer.push(createLevelData());
+      // We start adding from: Current Level + Buffer Length (remaining) + 1
+      // Buffer length after shift is 4. Next level to generate is Level + 5.
+      // E.g. Level 1 playing. Buffer has [L2, L3, L4, L5, L6]. Shift -> Plays L2. Buffer has [L3..L6]. Gen L7.
+      // So logic: (gameState.level + 1) is the level we represent now. + buffer.length (4) + 1 = +6.
+      newBuffer.push(createLevelData(gameState.level + 6));
     }
 
     setGrid(nextLevelData.grid);
@@ -189,11 +214,11 @@ const App: React.FC = () => {
 
     setGameState(prev => ({
       ...prev,
-      targetResult: 0, // Legacy support, unused
+      targetResult: 0,
       levelTargets: nextLevelData.targets.map(t => ({ value: t, completed: false }))
     }));
     setTargetAnimKey(k => k + 1);
-  }, [levelBuffer, createLevelData]);
+  }, [levelBuffer, createLevelData, gameState.level]);
 
   const startGame = async () => {
     await handleUserInteraction();
@@ -206,6 +231,8 @@ const App: React.FC = () => {
     setIsVictoryAnimating(false);
     setTriggerParticles(false);
     setPreviewResult(null);
+
+    // Explicitly reset Main State
     setGameState({
       score: 0,
       totalScore: 0,
@@ -219,10 +246,9 @@ const App: React.FC = () => {
       basePoints: BASE_POINTS_START,
       levelTargets: [],
     });
-    // Reset buffer on start to ensure fresh sequence
-    setLevelBuffer([]);
-    // generateGrid will handle initialization because buffer is empty
-    setTimeout(() => generateGrid(), 0);
+
+    // Reset Buffer and Grid with explicit Level 1
+    setTimeout(() => generateGrid(1), 0);
   };
 
   const handleStartGameClick = async (e?: React.PointerEvent) => {
@@ -290,9 +316,23 @@ const App: React.FC = () => {
 
   const handleSuccess = (matchedValue: number) => {
     soundService.playSuccess();
-    const nextStreak = gameState.streak + 1;
-    const currentPoints = gameState.basePoints * Math.pow(2, Math.min(nextStreak - 1, MAX_STREAK - 1));
+
+    // NEW SCORING: 2^(Level-1) * 2^Streak
+    // L1: 1, 2, 4, 8...
+    // L2: 2, 4, 8, 16...
+    const baseForLevel = Math.pow(2, gameState.level - 1);
+    const multiplier = Math.pow(2, gameState.streak); // Streak starts at 0, so 2^0=1, 2^1=2...
+    const currentPoints = baseForLevel * multiplier;
+
     setScoreAnimKey(k => k + 1);
+
+    // TIME BONUS: > Level 5 adds +2 seconds per target
+    if (gameState.level > 5) {
+      setGameState(prev => ({
+        ...prev,
+        timeLeft: prev.timeLeft + 2
+      }));
+    }
 
     // Update targets state
     const newTargets = gameState.levelTargets.map(t =>
@@ -322,17 +362,15 @@ const App: React.FC = () => {
         setIsVictoryAnimating(false);
         setTriggerParticles(false);
       }, 1200);
-    } else {
       // Level Continues
       setGameState(prev => ({
         ...prev,
         totalScore: prev.totalScore + currentPoints,
-        streak: nextStreak,
+        streak: prev.streak + 1,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 0.5),
         levelTargets: newTargets
       }));
-      // Regenerate ONLY grid, keep targets
-      setGrid(createLevelData().grid);
+      // GRID stays STATIC. We do NOT regenerate it here anymore.
     }
     setSelectedPath([]);
   };
@@ -353,9 +391,11 @@ const App: React.FC = () => {
     soundService.playUIClick();
     setGameState(prev => ({
       ...prev,
+      level: prev.level + 1,
       status: 'playing',
-      basePoints: prev.lastLevelPerfect ? 6 : 5,
-      lastLevelPerfect: true,
+      streak: 0, // Reset streak on new level? Rule says "combinazioni del livello successiva" - implies standard streak rules reset per level usually, or it carries? Assuming reset per level is standard for "Level 1 has range X".
+      // CARRY OVER: Add 60s to whatever is left
+      timeLeft: prev.timeLeft + 60,
     }));
     generateGrid();
   };
