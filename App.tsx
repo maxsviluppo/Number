@@ -4,14 +4,15 @@ import { HexCellData, GameState } from './types';
 import { INITIAL_TIME, BASE_POINTS_START, MAX_STREAK, GRID_ROWS, GRID_COLS, OPERATORS, MOCK_LEADERBOARD } from './constants';
 import HexCell from './components/HexCell';
 import ParticleEffect from './components/ParticleEffect';
+import CharacterHelper from './components/CharacterHelper';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX } from 'lucide-react';
 
 const TUTORIAL_STEPS = [
   {
-    title: "BENVENUTO",
-    description: "In 'number', il tuo obiettivo è collegare numeri e operatori sulla griglia esagonale per raggiungere il risultato Target visualizzato in alto.",
+    title: "OBIETTIVO & GRIGLIA",
+    description: "Collega numeri e operatori per trovare i 5 Target visualizzati. ATTENZIONE: La griglia è FISSA! Non cambierà finché non avrai trovato tutte le soluzioni con le tessere a disposizione.",
     icon: <Brain className="w-12 h-12 text-[#FF8800]" />
   },
   {
@@ -20,13 +21,13 @@ const TUTORIAL_STEPS = [
     icon: <RefreshCw className="w-12 h-12 text-[#FF8800]" />
   },
   {
-    title: "IL POTERE DELLA STREAK",
-    description: "Ogni successo consecutivo raddoppia i punti (5, 10, 20, 40, 80). Completa 5 successi per superare il livello. Un errore resetta la streak a 5 punti!",
+    title: "PUNTEGGIO ESPONENZIALE",
+    description: "I punti crescono col Livello e raddoppiano con la Streak! Es. Livello 1: 1, 2, 4, 8, 16 punti. Un errore resetta la streak al valore base. La precisione è tutto.",
     icon: <Zap className="w-12 h-12 text-[#FF8800]" />
   },
   {
-    title: "TEMPO E CARRY-OVER",
-    description: "Hai 60 secondi base. La vera sfida? Il tempo che risparmi in un livello viene aggiunto interamente a quello successivo. La velocità è la tua arma migliore.",
+    title: "TEMPO, CARRY-OVER & BONUS",
+    description: "60 secondi iniziali. Il tempo che risparmi si SOMMA al livello successivo. Dal Livello 5 in poi, ogni risposta corretta aggiunge anche +2 secondi extra immediati!",
     icon: <Timer className="w-12 h-12 text-[#FF8800]" />
   },
   {
@@ -133,12 +134,15 @@ const App: React.FC = () => {
 
   // LEVELS & DIFFICULTY SCALING
   const getDifficultyRange = (level: number) => {
-    // Progressive Difficulty logic
-    if (level <= 2) return { min: 1, max: 20 };
-    if (level <= 5) return { min: 8, max: 30 };
-    if (level <= 10) return { min: 20, max: 50 };
-    // Infinite scaling for levels > 10
-    return { min: 20 + (level * 2), max: 50 + (level * 5) };
+    // MODIFIED: Much gentler slope for first 30 levels to ease player in
+    if (level <= 5) return { min: 1, max: 12 };       // Very easy start (mostly sums)
+    if (level <= 10) return { min: 5, max: 20 };      // Introducing complexity slowly
+    if (level <= 20) return { min: 10, max: 35 };     // Moderate
+    if (level <= 30) return { min: 15, max: 50 };     // Challenging but fair
+
+    // Original linear scaling kicking in after level 30
+    // Adjusted formula to match the curve
+    return { min: 20 + ((level - 20) * 2), max: 50 + ((level - 20) * 5) };
   };
 
   // Helper: Calculate result from a cell path (for solver)
@@ -223,10 +227,59 @@ const App: React.FC = () => {
     let attempts = 0;
     const maxAttempts = 15;
 
+    // Helper: Weighted numbers for early levels
+    const getWeightedNumber = () => {
+      if (level <= 30) {
+        const r = Math.random();
+        // 60% chance of small numbers (1-4), 30% mid (5-7), 10% high (8-9) or 0
+        if (r < 0.60) return Math.floor(Math.random() * 4) + 1;
+        if (r < 0.90) return Math.floor(Math.random() * 3) + 5;
+        return Math.floor(Math.random() * 3) + 7; // 7,8,9 (occasional 0 if map allows, keeping simple 1-9 for now) | Actually logic was 0-9 before. Let's allowing 0 to 9 but biased.
+      }
+      return Math.floor(Math.random() * 10);
+    };
+
+    // Helper: generate a balanced pool of operators to distribute spatially
+    const generateBalancedOperatorPool = (count: number) => {
+      const pool = [];
+      let weights = { '+': 0.35, '-': 0.35, '×': 0.20, '÷': 0.10 };
+
+      // Easier operators for early levels
+      if (level <= 5) weights = { '+': 0.50, '-': 0.50, '×': 0.0, '÷': 0.0 };
+      else if (level <= 15) weights = { '+': 0.40, '-': 0.40, '×': 0.20, '÷': 0.0 };
+      else if (level <= 30) weights = { '+': 0.35, '-': 0.35, '×': 0.25, '÷': 0.05 };
+
+      for (let i = 0; i < count; i++) {
+        const r = Math.random();
+        if (r < weights['+']) pool.push('+');
+        else if (r < weights['+'] + weights['-']) pool.push('-');
+        else if (r < weights['+'] + weights['-'] + weights['×']) pool.push('×');
+        else pool.push('÷');
+      }
+
+      // Shuffle pool (Fisher-Yates) for uniform distribution
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      return pool;
+    };
+
     while (attempts < maxAttempts) {
       attempts++;
 
-      // Generate random grid
+      // Count operators needed
+      let opCount = 0;
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          if ((r + c) % 2 !== 0) opCount++;
+        }
+      }
+
+      const opPool = generateBalancedOperatorPool(opCount);
+      let opIndex = 0;
+
+      // Generate random grid with spatial distribution logic
       const newGrid: HexCellData[] = [];
       for (let r = 0; r < GRID_ROWS; r++) {
         for (let c = 0; c < GRID_COLS; c++) {
@@ -237,14 +290,8 @@ const App: React.FC = () => {
             col: c,
             type: isOperator ? 'operator' : 'number',
             value: isOperator
-              ? (() => {
-                const rand = Math.random();
-                if (rand < 0.35) return '+';
-                if (rand < 0.70) return '-'; // 0.35 + 0.35
-                if (rand < 0.90) return '×'; // 0.70 + 0.20
-                return '÷';                   // Restante 10%
-              })()
-              : Math.floor(Math.random() * 10).toString(),
+              ? (opPool[opIndex++] || '+')
+              : getWeightedNumber().toString(),
           });
         }
       }
@@ -253,16 +300,27 @@ const App: React.FC = () => {
       const allSolutions = findAllSolutions(newGrid);
       const validSolutions = Array.from(allSolutions).filter(n => n >= min && n <= max);
 
-      // Need at least 5 unique solutions
+      // Need at least 5 unique solutions. 
+      // Ensure we pick solution targets that are somewhat spread out (numerically) if possible, or just shuffle well.
       if (validSolutions.length >= 5) {
+        // Better shuffle for targets
         const shuffled = validSolutions.sort(() => Math.random() - 0.5);
+        // Double shuffle to ensure no bottom-bias inherited from generation order
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
         const targets = shuffled.slice(0, 5);
+
+        // Extra check: If low level, ensure targets aren't too close to each other? 
+        // No, randomness is fine as long as they are distinct.
         return { grid: newGrid, targets };
       }
     }
 
-    // Fallback: use last grid with any solutions
-    console.warn(`Level ${level}: Using fallback grid`);
+    // Fallback: simpler grid if generation fails often
+    console.warn(`Level ${level}: Using fallback grid generation`);
     const newGrid: HexCellData[] = [];
     for (let r = 0; r < GRID_ROWS; r++) {
       for (let c = 0; c < GRID_COLS; c++) {
@@ -272,18 +330,15 @@ const App: React.FC = () => {
           row: r,
           col: c,
           type: isOperator ? 'operator' : 'number',
-          value: isOperator
-            ? OPERATORS[Math.floor(Math.random() * OPERATORS.length)]
-            : Math.floor(Math.random() * 10).toString(),
+          value: isOperator ? '+' : Math.floor(Math.random() * 5).toString(), // Fallback to very simple
         });
       }
     }
-    const allSolutions = findAllSolutions(newGrid);
-    const anySolutions = Array.from(allSolutions).slice(0, 5);
-    while (anySolutions.length < 5) {
-      anySolutions.push(Math.floor(Math.random() * 20) + 1);
-    }
-    return { grid: newGrid, targets: anySolutions };
+    // Generate simple targets for fallback
+    const targets = [];
+    for (let i = 0; i < 5; i++) targets.push(Math.floor(Math.random() * (max - min + 1)) + min);
+
+    return { grid: newGrid, targets };
   }, []);
 
   const generateGrid = useCallback((forceStartLevel?: number) => {
@@ -631,90 +686,93 @@ const App: React.FC = () => {
 
 
       {gameState.status === 'idle' && (
-        <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-10 animate-screen-in">
-          <div className="mb-6 flex flex-col items-center">
-            {/* Logo: Custom Shape Image with White Border & Brain */}
-            {/* Logo: Pure Color CSS Mask Implementation */}
-            <div className="relative w-36 h-36 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500">
-              {/* 1. White Border Layer (Masked Div) */}
-              <div className="absolute inset-0 bg-white" style={{
-                maskImage: 'url(/oct.png)',
-                WebkitMaskImage: 'url(/oct.png)',
-                maskSize: 'contain',
-                WebkitMaskSize: 'contain',
-                maskPosition: 'center',
-                WebkitMaskPosition: 'center',
-                maskRepeat: 'no-repeat',
-                WebkitMaskRepeat: 'no-repeat',
-              }}></div>
+        <>
+          <CharacterHelper />
+          <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-10 animate-screen-in">
+            <div className="mb-6 flex flex-col items-center">
+              {/* Logo: Custom Shape Image with White Border & Brain */}
+              {/* Logo: Pure Color CSS Mask Implementation */}
+              <div className="relative w-36 h-36 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500">
+                {/* 1. White Border Layer (Masked Div) */}
+                <div className="absolute inset-0 bg-white" style={{
+                  maskImage: 'url(/oct.png)',
+                  WebkitMaskImage: 'url(/oct.png)',
+                  maskSize: 'contain',
+                  WebkitMaskSize: 'contain',
+                  maskPosition: 'center',
+                  WebkitMaskPosition: 'center',
+                  maskRepeat: 'no-repeat',
+                  WebkitMaskRepeat: 'no-repeat',
+                }}></div>
 
-              {/* 2. Orange Body Layer (Masked Div - Scaled Down) */}
-              <div className="absolute inset-0 bg-[#FF8800] scale-[0.85]" style={{
-                maskImage: 'url(/oct.png)',
-                WebkitMaskImage: 'url(/oct.png)',
-                maskSize: 'contain',
-                WebkitMaskSize: 'contain',
-                maskPosition: 'center',
-                WebkitMaskPosition: 'center',
-                maskRepeat: 'no-repeat',
-                WebkitMaskRepeat: 'no-repeat',
-              }}></div>
+                {/* 2. Orange Body Layer (Masked Div - Scaled Down) */}
+                <div className="absolute inset-0 bg-[#FF8800] scale-[0.85]" style={{
+                  maskImage: 'url(/oct.png)',
+                  WebkitMaskImage: 'url(/oct.png)',
+                  maskSize: 'contain',
+                  WebkitMaskSize: 'contain',
+                  maskPosition: 'center',
+                  WebkitMaskPosition: 'center',
+                  maskRepeat: 'no-repeat',
+                  WebkitMaskRepeat: 'no-repeat',
+                }}></div>
 
-              {/* 3. Brain Icon - Centered */}
-              <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
+                {/* 3. Brain Icon - Centered */}
+                <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
+              </div>
+
+              <h1 className="text-6xl sm:text-8xl font-black font-orbitron tracking-tighter text-[#FF8800] lowercase" style={{ WebkitTextStroke: '3px white' }}>
+                number
+              </h1>
             </div>
 
-            <h1 className="text-6xl sm:text-8xl font-black font-orbitron tracking-tighter text-[#FF8800] lowercase" style={{ WebkitTextStroke: '3px white' }}>
-              number
-            </h1>
-          </div>
-
-          <div className="max-w-md bg-white/10 border-2 border-white/20 backdrop-blur-md px-8 py-4 rounded-2xl mb-10 shadow-[0_8px_0_rgba(0,0,0,0.1)] transform rotate-1 hover:rotate-0 transition-transform duration-300">
-            <p className="text-white text-sm sm:text-base font-bold leading-relaxed drop-shadow-sm">
-              Sincronizza i tuoi neuroni. <br />
-              Risolvi puzzle aritmetici in una corsa contro il tempo.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-4 items-center w-full max-w-sm relative z-20">
-            <button
-              onPointerDown={handleStartGameClick}
-              className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[#FF8800] text-white py-5 rounded-2xl font-orbitron font-black text-xl border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_4px_0_rgba(0,0,0,0.2)] hover:scale-105 transition-all duration-300"
-            >
-              <Play className="w-8 h-8 fill-current" />
-              <span className="tracking-widest">GIOCA</span>
-            </button>
-
-            <div className="grid grid-cols-2 gap-4 w-full">
-              <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
-                className="flex items-center justify-center gap-2 bg-white text-[#FF8800] py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300">
-                <HelpCircle className="w-6 h-6" />
-                <span className="font-orbitron text-xs font-black uppercase tracking-widest">Tutorial</span>
-              </button>
-              <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
-                className="flex items-center justify-center gap-2 bg-white text-[#FF8800] py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300">
-                <BarChart3 className="w-6 h-6" />
-                <span className="font-orbitron text-xs font-black uppercase tracking-widest">Classifica</span>
-              </button>
+            <div className="max-w-md bg-white/10 border-2 border-white/20 backdrop-blur-md px-8 py-4 rounded-2xl mb-10 shadow-[0_8px_0_rgba(0,0,0,0.1)] transform rotate-1 hover:rotate-0 transition-transform duration-300">
+              <p className="text-white text-sm sm:text-base font-bold leading-relaxed drop-shadow-sm">
+                Sincronizza i tuoi neuroni. <br />
+                Risolvi puzzle aritmetici in una corsa contro il tempo.
+              </p>
             </div>
 
-            <button
-              onPointerDown={toggleMute}
-              className={`mt-2 flex items-center gap-3 px-6 py-3 rounded-2xl border-[3px] border-white transition-all duration-300 shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105
+            <div className="flex flex-col gap-4 items-center w-full max-w-sm relative z-20">
+              <button
+                onPointerDown={handleStartGameClick}
+                className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[#FF8800] text-white py-5 rounded-2xl font-orbitron font-black text-xl border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_4px_0_rgba(0,0,0,0.2)] hover:scale-105 transition-all duration-300"
+              >
+                <Play className="w-8 h-8 fill-current" />
+                <span className="tracking-widest">GIOCA</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-4 w-full">
+                <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
+                  className="flex items-center justify-center gap-2 bg-white text-[#FF8800] py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300">
+                  <HelpCircle className="w-6 h-6" />
+                  <span className="font-orbitron text-xs font-black uppercase tracking-widest">Tutorial</span>
+                </button>
+                <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
+                  className="flex items-center justify-center gap-2 bg-white text-[#FF8800] py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300">
+                  <BarChart3 className="w-6 h-6" />
+                  <span className="font-orbitron text-xs font-black uppercase tracking-widest">Classifica</span>
+                </button>
+              </div>
+
+              <button
+                onPointerDown={toggleMute}
+                className={`mt-2 flex items-center gap-3 px-6 py-3 rounded-2xl border-[3px] border-white transition-all duration-300 shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105
                 ${isMuted
-                  ? 'bg-slate-300 text-slate-500'
-                  : 'bg-white text-[#FF8800]'
-                }`}
-            >
-              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              <span className="font-orbitron text-xs font-black uppercase tracking-[0.2em]">
-                Audio {isMuted ? 'OFF' : 'ON'}
-              </span>
-            </button>
+                    ? 'bg-slate-300 text-slate-500'
+                    : 'bg-white text-[#FF8800]'
+                  }`}
+              >
+                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                <span className="font-orbitron text-xs font-black uppercase tracking-[0.2em]">
+                  Audio {isMuted ? 'OFF' : 'ON'}
+                </span>
+              </button>
 
 
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {gameState.status !== 'idle' && (
