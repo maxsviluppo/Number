@@ -66,6 +66,8 @@ const App: React.FC = () => {
   const [triggerParticles, setTriggerParticles] = useState(false);
   const [toast, setToast] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
   const [isMuted, setIsMuted] = useState(false);
+  const [showVideo, setShowVideo] = useState(false); // Win Video state
+  const [showLostVideo, setShowLostVideo] = useState(false); // Lost Video state
   const theme = 'orange'; // Fixed theme
   const [levelBuffer, setLevelBuffer] = useState<{ grid: HexCellData[], targets: number[] }[]>([]);
   const timerRef = useRef<number | null>(null);
@@ -505,20 +507,15 @@ const App: React.FC = () => {
         totalScore: prev.totalScore + currentPoints,
         streak: 0,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
-        levelTargets: newTargets
+        levelTargets: newTargets,
+        // Status remains 'playing' to keep grid visible during particles
       }));
+
+      // Delay to show particles before video
       setTimeout(() => {
-        setGameState(prev => {
-          if (prev.status === 'idle') return prev;
-          return {
-            ...prev,
-            level: prev.level + 1,
-            status: 'level-complete'
-          }
-        });
-        setIsVictoryAnimating(false);
         setTriggerParticles(false);
-      }, 1200);
+        setShowVideo(true); // Trigger video
+      }, 1000);
     } else {
       // Level Continues (NOT all targets completed yet)
       setGameState(prev => ({
@@ -559,11 +556,14 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (gameState.status === 'playing' && gameState.timeLeft > 0) {
+    // Timer runs only if playing AND not in victory sequence (animation or video)
+    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo) {
       timerRef.current = window.setInterval(() => {
         setGameState(prev => {
           if (prev.timeLeft <= 1) {
             if (timerRef.current) window.clearInterval(timerRef.current);
+            // Trigger LOST video immediately
+            setShowLostVideo(true);
             return { ...prev, timeLeft: 0, status: 'game-over' };
           }
           return { ...prev, timeLeft: prev.timeLeft - 1 };
@@ -622,6 +622,16 @@ const App: React.FC = () => {
 
   const onMoveInteraction = (id: string) => {
     if (!isDragging || gameState.status !== 'playing' || isVictoryAnimating) return;
+    // BACKTRACKING LOGIC
+    // Se l'utente torna alla penultima casella selezionata, rimuovi l'ultima (backtrack)
+    if (selectedPath.length > 1 && id === selectedPath[selectedPath.length - 2]) {
+      soundService.playTick(); // Suono feedback rimozione
+      const newPath = selectedPath.slice(0, -1);
+      setSelectedPath(newPath);
+      setPreviewResult(calculateResultFromPath(newPath));
+      return;
+    }
+
     if (selectedPath.includes(id)) return;
 
     const lastId = selectedPath[selectedPath.length - 1];
@@ -658,6 +668,37 @@ const App: React.FC = () => {
       onMouseUp={handleGlobalEnd}
       onTouchEnd={handleGlobalEnd}
     >
+
+      {/* WIN VIDEO OVERLAY */}
+      {showVideo && (
+        <div className="absolute inset-0 z-[5000] bg-black flex items-center justify-center animate-fadeIn">
+          <video
+            src="/win.mp4"
+            autoPlay
+            onEnded={() => {
+              setShowVideo(false);
+              setIsVictoryAnimating(false);
+              // Show Level Complete Modal ONLY after video ends
+              setGameState(prev => ({ ...prev, status: 'level-complete' }));
+            }}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      {/* LOST VIDEO OVERLAY */}
+      {showLostVideo && (
+        <div className="absolute inset-0 z-[5000] bg-black flex items-center justify-center animate-fadeIn">
+          <video
+            src="/lost.mp4"
+            autoPlay
+            onEnded={() => {
+              setShowLostVideo(false);
+            }}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
 
 
       <ParticleEffect trigger={triggerParticles} />
@@ -863,8 +904,8 @@ const App: React.FC = () => {
                                 flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300
                                 ${t.completed
                           ? 'bg-[#FF8800] border-2 border-white scale-110 shadow-[0_0_15px_rgba(255,136,0,0.6)]'
-                          : 'bg-[#0055AA] border-2 border-white/30 opacity-80'}
-                                font-orbitron font-bold text-white text-md shadow-md
+                          : 'bg-[#0055AA] border-2 border-white/50 opacity-100'}
+                                font-orbitron font-black text-white text-xl shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
                              `}>
                         {t.value}
                       </div>
@@ -887,28 +928,97 @@ const App: React.FC = () => {
             )}
 
             {gameState.status === 'game-over' && (
-              <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in">
-                <h2 className="text-4xl font-black font-orbitron mb-4 text-red-500">FINE</h2>
+              <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-md">
+                <h2 className="text-4xl font-black font-orbitron mb-2 text-red-500">FINE</h2>
+                <div className="text-xl font-bold text-white mb-6 uppercase tracking-wider">Livello Non Superato</div>
+
                 <div className="mb-8">
-                  <span className="text-[10px] text-slate-500 uppercase font-black">QI Stimato</span>
-                  <div className="text-7xl font-black font-orbitron text-white">{Math.round(gameState.estimatedIQ)}</div>
+                  <span className="text-[10px] text-slate-500 uppercase font-black">Punteggio Finale</span>
+                  <div className="text-6xl font-black font-orbitron text-white glitch-text" data-text={gameState.totalScore}>{gameState.totalScore}</div>
                 </div>
-                <div className="bg-white/5 p-4 rounded-2xl mb-8 text-xs italic text-slate-300">
-                  "{insight}"
+
+                <div className="bg-white/5 p-4 rounded-2xl mb-8 flex flex-col gap-2">
+                  <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                    <span className="text-xs font-bold text-slate-300">Livello Raggiunto</span>
+                    <span className="text-lg font-orbitron font-black text-white">{gameState.level}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-300">QI Stimato</span>
+                    <span className="text-lg font-orbitron font-black text-cyan-400">{Math.round(gameState.estimatedIQ)}</span>
+                  </div>
                 </div>
-                <button onPointerDown={(e) => { e.stopPropagation(); startGame(); }} className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm mb-4 active:scale-95 transition-all">RIPROVA</button>
-                <button onPointerDown={goToHome} className="text-[10px] text-slate-500 font-black uppercase tracking-widest hover:text-white transition-colors">Torna alla Home</button>
+
+                <div className="space-y-3">
+                  <button onPointerDown={(e) => { e.stopPropagation(); startGame(); }}
+                    className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all">
+                    RIGIOCA
+                  </button>
+                  <button onPointerDown={goToHome}
+                    className="w-full bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm border border-slate-700 active:scale-95 transition-all hover:bg-slate-700 hover:text-white">
+                    TORNA ALLA HOME
+                  </button>
+                </div>
               </div>
             )}
 
             {gameState.status === 'level-complete' && (
-              <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in">
-                <Trophy className="w-16 h-16 text-cyan-400 mx-auto mb-6" />
-                <h2 className="text-2xl font-black font-orbitron mb-4">LIVELLO {gameState.level - 1} OK</h2>
-                <div className="bg-white/5 p-4 rounded-2xl mb-8 text-xs italic text-slate-300">
-                  "{insight}"
+              <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-md">
+                <div className="flex justify-center items-center gap-4 mb-6">
+                  <div className="flex flex-col items-center">
+                    <span className="text-[10px] uppercase font-black text-slate-400">Livello</span>
+                    <span className="text-3xl font-black font-orbitron text-white">{gameState.level - 1}</span>
+                  </div>
+                  <ChevronRight className="w-8 h-8 text-cyan-400 animate-pulse" />
+                  <div className="flex flex-col items-center">
+                    <span className="text-[10px] uppercase font-black text-cyan-400">Prossimo</span>
+                    <span className="text-4xl font-black font-orbitron text-cyan-400">{gameState.level}</span>
+                  </div>
                 </div>
-                <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }} className="w-full bg-cyan-400 text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm active:scale-95 transition-all">PROSSIMO LIVELLO</button>
+
+                <div className="bg-white/5 p-4 rounded-2xl mb-6 flex flex-col gap-2">
+                  <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                    <span className="text-xs font-bold text-slate-300">Punti Ottenuti</span>
+                    {/* Calcolo approssimativo o reale se salvato nello stato precedente */}
+                    <span className="text-lg font-orbitron font-black text-[#FF8800] animate-pulse">
+                      +{Math.pow(2, gameState.level - 2) * Math.pow(2, gameState.streak > 0 ? gameState.streak - 1 : 0) * 5}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                    <span className="text-xs font-bold text-slate-300">Punteggio Totale</span>
+                    <span className="text-lg font-orbitron font-black text-white">{gameState.totalScore}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-green-400">Tempo Residuo</span>
+                    <span className="text-lg font-orbitron font-black text-green-400">{gameState.timeLeft}s</span>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-white/10 flex justify-between items-center bg-green-500/10 p-2 rounded-lg">
+                    <span className="text-xs font-black uppercase tracking-wider text-green-300">Tempo Totale</span>
+                    <span className="text-xl font-orbitron font-black text-white">{gameState.timeLeft + 60}s</span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }}
+                    className="w-full bg-[#FF8800] text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 border-2 border-white">
+                    <Play className="w-5 h-5 fill-current" />
+                    Prossimo Livello
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onPointerDown={(e) => { e.stopPropagation(); generateGrid(gameState.level - 1); setGameState(p => ({ ...p, status: 'playing', streak: 0 })); }}
+                      className="bg-slate-700 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-600">
+                      Rigioca
+                    </button>
+                    <button onPointerDown={(e) => { e.stopPropagation(); /* Save logic here if needed, currently valid */ goToHome(e); }}
+                      className="bg-slate-700 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-600">
+                      Home
+                    </button>
+                  </div>
+
+                  <button className="text-[10px] text-cyan-500/50 uppercase font-black tracking-widest hover:text-cyan-400 transition-colors pt-2">
+                    Salvataggio Automatico Attivo
+                  </button>
+                </div>
               </div>
             )}
           </main>
