@@ -17,7 +17,7 @@ class SoundService {
         this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)({
           latencyHint: 'interactive'
         });
-        
+
         this.masterGain = this.ctx.createGain();
         this.masterGain.connect(this.ctx.destination);
         this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.4, this.ctx.currentTime);
@@ -33,7 +33,7 @@ class SoundService {
       source.buffer = buffer;
       source.connect(this.ctx.destination);
       source.start(0);
-      
+
       this.initialized = true;
       console.log("Audio Engine Energized:", this.ctx.state);
     } catch (e) {
@@ -52,7 +52,7 @@ class SoundService {
 
   private async playFMSound(carrierFreq: number, modFreq: number, modIndex: number, duration: number, volume: number, type: OscillatorType = 'sine') {
     if (this.isMuted) return;
-    
+
     // Check critico: Se l'audio si è sospeso (es. tab cambiata), riprendilo prima di suonare
     if (this.ctx && this.ctx.state === 'suspended') {
       await this.ctx.resume();
@@ -87,7 +87,7 @@ class SoundService {
 
     carrier.start(startTime);
     modulator.start(startTime);
-    
+
     carrier.stop(startTime + duration);
     modulator.stop(startTime + duration);
   }
@@ -121,16 +121,36 @@ class SoundService {
     const now = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
-    
+
     osc.frequency.setValueAtTime(660, now);
     osc.frequency.exponentialRampToValueAtTime(220, now + 0.15);
     g.gain.setValueAtTime(0.1, now);
     g.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
-    
+
     osc.connect(g);
     g.connect(this.masterGain);
     osc.start(now);
     osc.stop(now + 0.15);
+  }
+
+  /**
+   * Riproduce un file audio esterno (es. MP3/WAV) dalla cartella public
+   * @param filename Nome del file (es. 'win.mp3')
+   */
+  async playExternalSound(filename: string) {
+    if (this.isMuted) return;
+
+    if (this.ctx && this.ctx.state === 'suspended') {
+      await this.ctx.resume();
+    }
+
+    try {
+      const audio = new Audio(`/${filename}`);
+      audio.volume = 0.5; // Volume moderato
+      await audio.play();
+    } catch (e) {
+      console.warn("External sound playback failed:", e);
+    }
   }
 }
 

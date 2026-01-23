@@ -514,6 +514,7 @@ const App: React.FC = () => {
       // Delay to show particles before video
       setTimeout(() => {
         setTriggerParticles(false);
+        soundService.playExternalSound('win.mp3'); // Play sound separate from video
         setShowVideo(true); // Trigger video
       }, 1000);
     } else {
@@ -671,10 +672,12 @@ const App: React.FC = () => {
 
       {/* WIN VIDEO OVERLAY */}
       {showVideo && (
-        <div className="absolute inset-0 z-[5000] bg-black flex items-center justify-center animate-fadeIn">
+        <div className="absolute inset-0 z-[5000] bg-black flex items-center justify-center animate-fadeIn" onPointerDown={(e) => e.stopPropagation()}>
           <video
             src="/win.mp4"
             autoPlay
+            playsInline
+            muted
             onEnded={() => {
               setShowVideo(false);
               setIsVictoryAnimating(false);
@@ -688,10 +691,12 @@ const App: React.FC = () => {
 
       {/* LOST VIDEO OVERLAY */}
       {showLostVideo && (
-        <div className="absolute inset-0 z-[5000] bg-black flex items-center justify-center animate-fadeIn">
+        <div className="absolute inset-0 z-[5000] bg-black flex items-center justify-center animate-fadeIn" onPointerDown={(e) => e.stopPropagation()}>
           <video
             src="/lost.mp4"
             autoPlay
+            playsInline
+            muted
             onEnded={() => {
               setShowLostVideo(false);
             }}
