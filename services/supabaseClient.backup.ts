@@ -60,27 +60,21 @@ export interface LeaderboardEntry {
     created_at?: string;
 }
 
-// Helper to convert username to email structure for Supabase Auth
-const toEmail = (username: string) => `${username.toLowerCase().replace(/\s+/g, '')}@number-game.app`;
-
 export const authService = {
-    // Modified: Logic now uses Username as the primary identifier
-    async signUp(username: string, password: string) {
-        const email = toEmail(username);
+    async signUp(email: string, password: string, username: string) {
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
                 data: {
-                    username: username, // Store original username in metadata
+                    username: username, // Metadata
                 },
             },
         });
         return { data, error };
     },
 
-    async signIn(username: string, password: string) {
-        const email = toEmail(username);
+    async signIn(email: string, password: string) {
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
@@ -93,10 +87,9 @@ export const authService = {
         return { error };
     },
 
-    async resetPassword(username: string) {
-        const email = toEmail(username);
+    async resetPassword(email: string) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + '/reset-password',
+            redirectTo: window.location.origin + '/reset-password', // Handle this route if needed
         });
         return { error };
     },

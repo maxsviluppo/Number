@@ -27,7 +27,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
 
         try {
             if (mode === 'signup') {
-                const { data, error } = await authService.signUp(email, password, username);
+                const { data, error } = await authService.signUp(username, password);
                 if (error) throw error;
                 if (data.user) {
                     // If email confirmation is enabled, user might not be logged in immediately
@@ -37,14 +37,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                     if (data.session) onSuccess(data.user);
                 }
             } else if (mode === 'login') {
-                const { data, error } = await authService.signIn(email, password);
+                const { data, error } = await authService.signIn(username, password);
                 if (error) throw error;
                 if (data.user && data.session) {
                     onSuccess(data.user);
                     onClose();
                 }
             } else if (mode === 'forgot-password') {
-                const { error } = await authService.resetPassword(email);
+                const { error } = await authService.resetPassword(username);
                 if (error) throw error;
                 setSuccessMsg('Ti abbiamo inviato una email per reimpostare la password.');
             }
@@ -91,33 +91,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
 
-                    {mode === 'signup' && (
-                        <div className="space-y-1">
-                            <label className="text-[10px] uppercase font-bold text-cyan-400 ml-2">Username</label>
-                            <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <input
-                                    type="text"
-                                    value={username}
-                                    onChange={e => setUsername(e.target.value)}
-                                    className="w-full bg-slate-900/50 border-2 border-slate-700/50 rounded-xl py-3 pl-12 pr-4 text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-none transition-colors font-bold"
-                                    placeholder="Il tuo nome in codice"
-                                    required
-                                />
-                            </div>
-                        </div>
-                    )}
-
                     <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-cyan-400 ml-2">Email</label>
+                        <label className="text-[10px] uppercase font-bold text-cyan-400 ml-2">Username</label>
                         <div className="relative">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                             <input
-                                type="email"
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
+                                type="text"
+                                value={username}
+                                onChange={e => setUsername(e.target.value)}
                                 className="w-full bg-slate-900/50 border-2 border-slate-700/50 rounded-xl py-3 pl-12 pr-4 text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-none transition-colors font-bold"
-                                placeholder="email@esempio.com"
+                                placeholder="Il tuo nome in codice"
                                 required
                             />
                         </div>
@@ -162,7 +145,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                         {loading && <Loader2 className="w-5 h-5 animate-spin" />}
                         {mode === 'login' && 'ENTRA NEL SISTEMA'}
                         {mode === 'signup' && 'REGISTRA CODICE'}
-                        {mode === 'forgot-password' && 'INVIA LINK'}
+                        {mode === 'forgot-password' && 'INVIA CODICE RIPRISTINO'}
                     </button>
 
                 </form>
