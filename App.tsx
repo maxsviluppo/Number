@@ -476,11 +476,11 @@ const App: React.FC = () => {
   const handleSuccess = (matchedValue: number) => {
     soundService.playSuccess();
 
-    // NEW SCORING: 2^(Level-1) * 2^Streak
-    // L1: 1, 2, 4, 8...
-    // L2: 2, 4, 8, 16...
+    // NEW SCORING: Linear Progression based on streak
+    // Example Level 1: 1, 2, 3, 4, 5...
+    // Formula: Base(Level) * (Streak + 1)
     const baseForLevel = Math.pow(2, gameState.level - 1);
-    const multiplier = Math.pow(2, gameState.streak); // Streak starts at 0, so 2^0=1, 2^1=2...
+    const multiplier = gameState.streak + 1; // Linear instead of exponential (Math.pow(2, streak))
     const currentPoints = baseForLevel * multiplier;
 
     setScoreAnimKey(k => k + 1);
@@ -564,6 +564,7 @@ const App: React.FC = () => {
           if (prev.timeLeft <= 1) {
             if (timerRef.current) window.clearInterval(timerRef.current);
             // Trigger LOST video immediately
+            soundService.playExternalSound('lost.mp3'); // Play sound separate from video
             setShowLostVideo(true);
             return { ...prev, timeLeft: 0, status: 'game-over' };
           }
@@ -739,31 +740,10 @@ const App: React.FC = () => {
               {/* Logo: Custom Shape Image with White Border & Brain */}
               {/* Logo: Pure Color CSS Mask Implementation */}
               <div className="relative w-36 h-36 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500">
-                {/* 1. White Border Layer (Masked Div) */}
-                <div className="absolute inset-0 bg-white" style={{
-                  maskImage: 'url(/oct.png)',
-                  WebkitMaskImage: 'url(/oct.png)',
-                  maskSize: 'contain',
-                  WebkitMaskSize: 'contain',
-                  maskPosition: 'center',
-                  WebkitMaskPosition: 'center',
-                  maskRepeat: 'no-repeat',
-                  WebkitMaskRepeat: 'no-repeat',
-                }}></div>
+                {/* Custom Octagon Image */}
+                <img src="/octagon-base.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
 
-                {/* 2. Orange Body Layer (Masked Div - Scaled Down) */}
-                <div className="absolute inset-0 bg-[#FF8800] scale-[0.85]" style={{
-                  maskImage: 'url(/oct.png)',
-                  WebkitMaskImage: 'url(/oct.png)',
-                  maskSize: 'contain',
-                  WebkitMaskSize: 'contain',
-                  maskPosition: 'center',
-                  WebkitMaskPosition: 'center',
-                  maskRepeat: 'no-repeat',
-                  WebkitMaskRepeat: 'no-repeat',
-                }}></div>
-
-                {/* 3. Brain Icon - Centered */}
+                {/* Brain Icon - Centered */}
                 <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
               </div>
 
@@ -971,12 +951,12 @@ const App: React.FC = () => {
                 <div className="flex justify-center items-center gap-4 mb-6">
                   <div className="flex flex-col items-center">
                     <span className="text-[10px] uppercase font-black text-slate-400">Livello</span>
-                    <span className="text-3xl font-black font-orbitron text-white">{gameState.level - 1}</span>
+                    <span className="text-3xl font-black font-orbitron text-white">{gameState.level}</span>
                   </div>
-                  <ChevronRight className="w-8 h-8 text-cyan-400 animate-pulse" />
+                  <ChevronRight className="w-8 h-8 text-[#FF8800] animate-pulse" />
                   <div className="flex flex-col items-center">
-                    <span className="text-[10px] uppercase font-black text-cyan-400">Prossimo</span>
-                    <span className="text-4xl font-black font-orbitron text-cyan-400">{gameState.level}</span>
+                    <span className="text-[10px] uppercase font-black text-[#FF8800]">Prossimo</span>
+                    <span className="text-4xl font-black font-orbitron text-[#FF8800]">{gameState.level + 1}</span>
                   </div>
                 </div>
 

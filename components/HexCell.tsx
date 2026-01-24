@@ -148,7 +148,7 @@ const HexCell: React.FC<HexCellProps> = ({
       {/* PNG Background for Orange Theme Octagons (Numbers) */}
       {isOrangeTheme && isNumber && (
         <img
-          src="/oct.png"
+          src="/octagon-base.png"
           alt="cell"
           className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-md"
           style={{
