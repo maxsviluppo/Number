@@ -1,25 +1,21 @@
-console.log('STARTING INDEX.TSX EXECUTION');
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+
+console.log('STARTING REACT BOOTSTRAP');
 
 try {
-  const root = document.getElementById('root');
-  if (root) {
-    root.innerHTML = `
-      <div style="background: yellow; color: black; font-size: 30px; padding: 20px; height: 100vh;">
-        <h1>PURE JS CHECK</h1>
-        <p>React is bypassed. If you see this, JS is running.</p>
-      </div>
-    `;
-    console.log('DOM UPDATED MANUALLY');
-  } else {
-    console.error('ROOT NOT FOUND');
-    document.body.innerHTML = 'ROOT MISSING';
-  }
-} catch (e) {
-  console.error('FATAL JS ERROR', e);
-  document.body.innerHTML = 'FATAL ERROR: ' + e;
-}
+  const rootElement = document.getElementById('root');
+  if (!rootElement) throw new Error("Root not found");
 
-// STOP HERE - NO REACT IMPORT
-// import React from 'react';
-// import ReactDOM from 'react-dom/client';
-// import App from './App'; ...
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <div style={{ background: 'green', height: '100vh', padding: 50, color: 'white' }}>
+      <h1>REACT 19 BOOTSTRAP SUCCESS</h1>
+      <p>React Core is working. Next step: Re-connect App.</p>
+    </div>
+  );
+  console.log('REACT RENDER CALLED');
+} catch (e) {
+  console.error('REACT BOOTSTRAP FAILED', e);
+  document.body.innerHTML = '<div style="background:red;color:white;padding:20px">REACT FATAL: ' + e + '</div>';
+}
