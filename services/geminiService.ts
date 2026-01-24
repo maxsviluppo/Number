@@ -3,7 +3,9 @@ import { GoogleGenAI } from "@google/genai";
 
 // Initialize GoogleGenAI inside the function to ensure the most up-to-date API key is used from the environment.
 export async function getIQInsights(score: number, level: number, timeLeft: number) {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (window as any).process?.env?.API_KEY || '';
+  if (!apiKey) return "Ottima sfida! Supera i tuoi limiti.";
+  const ai = new GoogleGenAI({ apiKey });
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",

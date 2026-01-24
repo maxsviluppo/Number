@@ -1,13 +1,44 @@
 import { createClient, User } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('Missing Supabase credentials in .env file');
+let supabaseClient: any;
+
+// SAFE INITIALIZATION: Prevent crash if Envs are missing (Vercel Build step or unconfigured env)
+try {
+    if (supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http')) {
+        supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    } else {
+        console.warn('⚠️ Supabase credentials missing! App running in Offline/Demo mode.');
+        // Create a Dummy Client that simply returns null/errors without crashing
+        supabaseClient = {
+            auth: {
+                getSession: async () => ({ data: { session: null } }),
+                getUser: async () => ({ data: { user: null } }),
+                signUp: async () => ({ error: { message: 'Offline Mode' } }),
+                signInWithPassword: async () => ({ error: { message: 'Offline Mode' } }),
+                signOut: async () => ({ error: null }),
+                onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
+            },
+            from: () => ({
+                select: () => ({
+                    eq: () => ({ single: async () => ({ data: null, error: null }), maybeSingle: async () => ({ data: null }) }),
+                    order: () => ({ limit: async () => ({ data: [] }) }),
+                    upsert: async () => ({ error: null }),
+                    insert: async () => ({ error: null }),
+                    update: async () => ({ eq: async () => ({ error: null }) })
+                }),
+                upsert: async () => ({ select: () => ({ single: async () => ({ data: null }) }) }),
+                update: async () => ({ eq: async () => ({ error: null }) }) // Chain fix
+            })
+        };
+    }
+} catch (e) {
+    console.error('Supabase Critical Init Error:', e);
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+export const supabase = supabaseClient;
 
 export interface UserProfile {
     id: string; // Matches auth.users.id
