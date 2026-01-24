@@ -850,10 +850,7 @@ const App: React.FC = () => {
       onMouseUp={handleGlobalEnd}
       onTouchEnd={handleGlobalEnd}
     >
-      {/* FORCE DEBUG VISIBILITY */}
-      <div className="fixed top-0 left-0 bg-green-500 text-black text-[10px] font-bold z-[99999] px-2 py-1 pointer-events-none opacity-50">
-        SYSTEM ONLINE - V 1.0.5 - IQ: {gameState.estimatedIQ}
-      </div>
+
 
       {/* WIN VIDEO OVERLAY */}
       {showVideo && !showLostVideo && (
