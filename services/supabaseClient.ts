@@ -60,29 +60,48 @@ export interface LeaderboardEntry {
     created_at?: string;
 }
 
-// Helper to convert username to email structure for Supabase Auth
-const toEmail = (username: string) => `${username.toLowerCase().replace(/\s+/g, '')}@number-game.app`;
-
+// Helper to login via username by resolving email first
 export const authService = {
-    // Modified: Logic now uses Username as the primary identifier
-    async signUp(username: string, password: string) {
-        const email = toEmail(username);
+    // 1. REGISTRATION: Full data (Email required for recovery)
+    async signUp(email: string, username: string, password: string) {
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
                 data: {
-                    username: username, // Store original username in metadata
+                    username: username, // Store in metadata
                 },
             },
         });
+
+        // Manual sync to profiles if trigger fails or delayed (Double safety)
+        if (data.user && !error) {
+            await supabase.from('profiles').upsert({
+                id: data.user.id,
+                username: username,
+                email: email
+            });
+        }
+
         return { data, error };
     },
 
+    // 2. LOGIN: Username only (Resolves email behind scenes)
     async signIn(username: string, password: string) {
-        const email = toEmail(username);
+        // Step A: Find email for this username
+        const { data: profile, error: lookupError } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('username', username)
+            .single();
+
+        if (lookupError || !profile || !profile.email) {
+            return { data: { user: null, session: null }, error: { message: 'Username non trovato.' } };
+        }
+
+        // Step B: Login with resolved email
         const { data, error } = await supabase.auth.signInWithPassword({
-            email,
+            email: profile.email,
             password,
         });
         return { data, error };
@@ -93,8 +112,20 @@ export const authService = {
         return { error };
     },
 
-    async resetPassword(username: string) {
-        const email = toEmail(username);
+    // 3. RECOVERY: Accepts Username OR Email
+    async resetPassword(identifier: string) {
+        let email = identifier;
+
+        // If it looks like a username (no @), try to find the email
+        if (!identifier.includes('@')) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('username', identifier)
+                .single();
+            if (profile?.email) email = profile.email;
+        }
+
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: window.location.origin + '/reset-password',
         });

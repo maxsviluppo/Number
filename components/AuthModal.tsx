@@ -27,7 +27,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
 
         try {
             if (mode === 'signup') {
-                const { data, error } = await authService.signUp(username, password);
+                const { data, error } = await authService.signUp(email, username, password);
                 if (error) throw error;
                 if (data.user) {
                     // If email confirmation is enabled, user might not be logged in immediately
@@ -91,6 +91,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
 
+                    {/* USERNAME FIELD - ALWAYS VISIBLE (Keys: Login, Signup, Recovery via Username) */}
                     <div className="space-y-1">
                         <label className="text-[10px] uppercase font-bold text-cyan-400 ml-2">Username</label>
                         <div className="relative">
@@ -100,11 +101,29 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                                 value={username}
                                 onChange={e => setUsername(e.target.value)}
                                 className="w-full bg-slate-900/50 border-2 border-slate-700/50 rounded-xl py-3 pl-12 pr-4 text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-none transition-colors font-bold"
-                                placeholder="Il tuo nome in codice"
+                                placeholder={mode === 'forgot-password' ? "Username o Email" : "Il tuo nome in codice"}
                                 required
                             />
                         </div>
                     </div>
+
+                    {/* EMAIL FIELD - ONLY FOR REGISTRATION */}
+                    {mode === 'signup' && (
+                        <div className="space-y-1 animate-fadeIn">
+                            <label className="text-[10px] uppercase font-bold text-cyan-400 ml-2">Email (Personale)</label>
+                            <div className="relative">
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    className="w-full bg-slate-900/50 border-2 border-slate-700/50 rounded-xl py-3 pl-12 pr-4 text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-none transition-colors font-bold"
+                                    placeholder="Per il recupero password"
+                                    required
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     {mode !== 'forgot-password' && (
                         <div className="space-y-1">
