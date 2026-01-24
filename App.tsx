@@ -7,7 +7,8 @@ import ParticleEffect from './components/ParticleEffect';
 import CharacterHelper from './components/CharacterHelper';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
-import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX } from 'lucide-react';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause } from 'lucide-react';
+import AuthModal from './components/AuthModal';
 
 const TUTORIAL_STEPS = [
   {
@@ -73,6 +74,92 @@ const App: React.FC = () => {
   const timerRef = useRef<number | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
 
+  // Supabase Integration
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  // Leaderboard data state
+  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+
+  const [savedGame, setSavedGame] = useState<any>(null);
+  const [isPaused, setIsPaused] = useState(false);
+
+  // Initialize Session
+  useEffect(() => {
+    import('./services/supabaseClient').then(async ({ authService, profileService }) => {
+      const session = await authService.getCurrentSession();
+      if (session?.user) {
+        setCurrentUser(session.user);
+        loadProfile(session.user.id);
+      }
+    });
+  }, []);
+
+  const togglePause = async (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await handleUserInteraction();
+    soundService.playUIClick();
+    setIsPaused(!isPaused);
+  };
+
+  // Timer: Dedicated Loop for decrementing time only
+  useEffect(() => {
+    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused) {
+      timerRef.current = window.setInterval(() => {
+        setGameState(prev => {
+          if (prev.timeLeft <= 0) return prev; // Should be handled by effect below, but safety check
+          return { ...prev, timeLeft: prev.timeLeft - 1 };
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+    }
+    return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
+  }, [gameState.status, isPaused, isVictoryAnimating, showVideo]);
+
+  // Game Over Watcher: Handles Time hitting 0
+  useEffect(() => {
+    if (gameState.status === 'playing' && gameState.timeLeft <= 0) {
+      // CLEAR TIMER IMMEDIATELY
+      if (timerRef.current) window.clearInterval(timerRef.current);
+
+      // PREVENT RACE: If we are already animating victory, do NOT trigger loss
+      if (isVictoryAnimating || showVideo) return;
+
+      soundService.playExternalSound('lost.mp3');
+      setShowLostVideo(true);
+      setGameState(prev => ({ ...prev, status: 'game-over', timeLeft: 0 }));
+    }
+  }, [gameState.timeLeft, gameState.status, isVictoryAnimating, showVideo]);
+
+
+
+  const loadProfile = async (userId: string) => {
+    const { profileService } = await import('./services/supabaseClient');
+    const profile = await profileService.getProfile(userId);
+    const save = await profileService.loadGameState(userId);
+
+    if (save) setSavedGame(save);
+
+    if (profile) {
+      setUserProfile(profile);
+      // SYNC: Keep max stats locally for display
+      setGameState(prev => ({
+        ...prev,
+        totalScore: Math.max(prev.totalScore, profile.total_score || 0),
+        estimatedIQ: Math.max(prev.estimatedIQ, profile.estimated_iq || 0)
+      }));
+    }
+  };
+
+  const handleLoginSuccess = (user: any) => {
+    setCurrentUser(user);
+    loadProfile(user.id);
+    setShowAuthModal(false);
+    showToast(`Benvenuto, ${user.user_metadata?.username || 'Operatore'}`);
+  };
+
   const handleUserInteraction = useCallback(async () => {
     await soundService.init();
   }, []);
@@ -97,6 +184,44 @@ const App: React.FC = () => {
       setToast(prev => ({ ...prev, visible: false }));
     }, 2500);
   };
+
+  // Caricamento Leaderboard (Fixed duplicate state)
+  useEffect(() => {
+    if (activeModal === 'leaderboard') {
+      import('./services/supabaseClient').then(({ leaderboardService }) => {
+        leaderboardService.getLeaderboard().then(data => setLeaderboardData(data));
+      });
+    }
+  }, [activeModal]);
+
+  // Salvataggio Punteggio su Game Over & Sync Progress
+  useEffect(() => {
+    if (gameState.status === 'game-over' && gameState.totalScore > 0) {
+      import('./services/supabaseClient').then(async ({ leaderboardService, profileService }) => {
+        // Save to Leaderboard (Public)
+        await leaderboardService.addEntry({
+          player_name: userProfile?.username || 'Guest',
+          score: gameState.totalScore,
+          level: gameState.level,
+          country: 'IT',
+          iq: Math.round(gameState.estimatedIQ)
+        });
+
+        // Sync to Profile (Private Persistence)
+        if (currentUser) {
+          const updated = await profileService.syncProgress(
+            currentUser.id,
+            gameState.totalScore,
+            gameState.level,
+            Math.round(gameState.estimatedIQ)
+          );
+          if (updated) setUserProfile(updated);
+          profileService.clearSavedGame(currentUser.id); // Clear saved game on game over
+          setSavedGame(null);
+        }
+      });
+    }
+  }, [gameState.status]);
 
   const calculateResultFromPath = (pathIds: string[]): number | null => {
     if (pathIds.length < 1) return null;
@@ -391,7 +516,7 @@ const App: React.FC = () => {
     setTriggerParticles(false);
     setPreviewResult(null);
 
-    // Explicitly reset Main State
+    // Explicitly reset Main State for NEW GAME
     setGameState({
       score: 0,
       totalScore: 0,
@@ -408,6 +533,45 @@ const App: React.FC = () => {
 
     // Reset Buffer and Grid with explicit Level 1
     setTimeout(() => generateGrid(1), 0);
+
+    // Clear save if starting new
+    if (currentUser) {
+      import('./services/supabaseClient').then(({ profileService }) => {
+        profileService.clearSavedGame(currentUser.id);
+        setSavedGame(null);
+      });
+    }
+  };
+
+  const restoreGame = async () => {
+    if (!savedGame) return;
+    await handleUserInteraction();
+    soundService.playSuccess(); // Different sound for restore?
+
+    setActiveModal(null);
+    setIsVictoryAnimating(false);
+    setTriggerParticles(false);
+    setPreviewResult(null);
+
+    setGameState(prev => ({
+      ...prev, // Keep some defaults
+      score: savedGame.score || 0,
+      totalScore: savedGame.totalScore || 0,
+      streak: savedGame.streak || 0,
+      level: savedGame.level || 1,
+      timeLeft: savedGame.timeLeft || INITIAL_TIME,
+      status: 'playing',
+      estimatedIQ: savedGame.estimatedIQ || 100,
+      // Re-hydrate targets from save if possible, or regenerate?
+      // Simplest is to regenerate level. 
+      // This allows "save scumming" the grid layout but keeps points/time.
+      // Acceptable for this iteration.
+      levelTargets: [],
+    }));
+
+    // Generate Grid for the SAVED Level
+    setTimeout(() => generateGrid(savedGame.level), 0);
+    showToast("Partita Ripristinata");
   };
 
   const handleStartGameClick = async (e?: React.PointerEvent) => {
@@ -416,6 +580,15 @@ const App: React.FC = () => {
       e.stopPropagation();
     }
     await handleUserInteraction();
+
+    if (savedGame) {
+      // Simple Native Confirm for MVP. Could be a custom modal later.
+      if (confirm(`Trovata partita salvata:\nLivello ${savedGame.level} - Punti ${savedGame.totalScore}\n\nVuoi riprenderla?`)) {
+        restoreGame();
+        return;
+      }
+    }
+
     let tutorialDone = 'false';
     try {
       tutorialDone = localStorage.getItem('number_tutorial_done') || 'false';
@@ -436,7 +609,7 @@ const App: React.FC = () => {
       e.stopPropagation();
     }
     soundService.playReset();
-    showToast("Sincronizzazione Terminata");
+    // Toast removed as per user request
     setGameState(prev => ({ ...prev, status: 'idle' }));
     setSelectedPath([]);
     setIsDragging(false);
@@ -474,6 +647,9 @@ const App: React.FC = () => {
   };
 
   const handleSuccess = (matchedValue: number) => {
+    // RACE CONDITION FIX: Do not process win if game is already over
+    if (gameState.status !== 'playing') return;
+
     soundService.playSuccess();
 
     // NEW SCORING: Linear Progression based on streak
@@ -500,22 +676,50 @@ const App: React.FC = () => {
     const allDone = newTargets.every(t => t.completed);
 
     if (allDone) {
+      // STOP TIMER IMMEDIATELY
+      if (timerRef.current) window.clearInterval(timerRef.current);
+
       setIsVictoryAnimating(true);
       setTriggerParticles(true);
+
+      const nextLevelState = {
+        ...gameState,
+        totalScore: gameState.totalScore + currentPoints,
+        streak: 0,
+        estimatedIQ: Math.min(200, gameState.estimatedIQ + 4),
+        levelTargets: newTargets,
+        timeLeft: gameState.timeLeft,
+      };
+
       setGameState(prev => ({
         ...prev,
         totalScore: prev.totalScore + currentPoints,
         streak: 0,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
         levelTargets: newTargets,
-        // Status remains 'playing' to keep grid visible during particles
       }));
+
+      // AUTO SAVE HERE (Level Completed -> State for STARTING next level)
+      if (currentUser) {
+        const saveState = {
+          totalScore: nextLevelState.totalScore,
+          streak: 0,
+          level: gameState.level + 1, // Ready for next level
+          timeLeft: gameState.timeLeft + 60, // Anticipate the +60s bonus
+          estimatedIQ: nextLevelState.estimatedIQ
+        };
+
+        import('./services/supabaseClient').then(({ profileService }) => {
+          profileService.saveGameState(currentUser.id, saveState);
+          setSavedGame(saveState);
+        });
+      }
 
       // Delay to show particles before video
       setTimeout(() => {
         setTriggerParticles(false);
-        soundService.playExternalSound('win.mp3'); // Play sound separate from video
-        setShowVideo(true); // Trigger video
+        soundService.playExternalSound('win.mp3');
+        setShowVideo(true);
       }, 1000);
     } else {
       // Level Continues (NOT all targets completed yet)
@@ -526,7 +730,6 @@ const App: React.FC = () => {
         estimatedIQ: Math.min(200, prev.estimatedIQ + 0.5),
         levelTargets: newTargets
       }));
-      // GRID stays STATIC. We do NOT regenerate it here anymore.
     }
     setSelectedPath([]);
   };
@@ -556,26 +759,7 @@ const App: React.FC = () => {
     generateGrid();
   };
 
-  useEffect(() => {
-    // Timer runs only if playing AND not in victory sequence (animation or video)
-    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo) {
-      timerRef.current = window.setInterval(() => {
-        setGameState(prev => {
-          if (prev.timeLeft <= 1) {
-            if (timerRef.current) window.clearInterval(timerRef.current);
-            // Trigger LOST video immediately
-            soundService.playExternalSound('lost.mp3'); // Play sound separate from video
-            setShowLostVideo(true);
-            return { ...prev, timeLeft: 0, status: 'game-over' };
-          }
-          return { ...prev, timeLeft: prev.timeLeft - 1 };
-        });
-      }, 1000);
-    } else {
-      if (timerRef.current) window.clearInterval(timerRef.current);
-    }
-    return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
-  }, [gameState.status]);
+
 
   useEffect(() => {
     if (gameState.status === 'level-complete' || gameState.status === 'game-over') {
@@ -672,13 +856,14 @@ const App: React.FC = () => {
     >
 
       {/* WIN VIDEO OVERLAY */}
-      {showVideo && (
+      {showVideo && !showLostVideo && (
         <div className="absolute inset-0 z-[5000] bg-black flex items-center justify-center animate-fadeIn" onPointerDown={(e) => e.stopPropagation()}>
           <video
             src="/win.mp4"
             autoPlay
             playsInline
             muted
+            loop={false}
             onEnded={() => {
               setShowVideo(false);
               setIsVictoryAnimating(false);
@@ -691,13 +876,14 @@ const App: React.FC = () => {
       )}
 
       {/* LOST VIDEO OVERLAY */}
-      {showLostVideo && (
+      {showLostVideo && !showVideo && (
         <div className="absolute inset-0 z-[5000] bg-black flex items-center justify-center animate-fadeIn" onPointerDown={(e) => e.stopPropagation()}>
           <video
             src="/lost.mp4"
             autoPlay
             playsInline
             muted
+            loop={false}
             onEnded={() => {
               setShowLostVideo(false);
             }}
@@ -777,9 +963,31 @@ const App: React.FC = () => {
                 <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
                   className="flex items-center justify-center gap-2 bg-white text-[#FF8800] py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300">
                   <BarChart3 className="w-6 h-6" />
-                  <span className="font-orbitron text-xs font-black uppercase tracking-widest">Classifica</span>
+                  <span className="font-orbitron text-xs font-black uppercase tracking-widest">Ranking</span>
                 </button>
               </div>
+
+              {/* AUTH BUTTON */}
+              <button
+                onPointerDown={async (e) => {
+                  e.stopPropagation();
+                  await handleUserInteraction();
+                  soundService.playUIClick();
+                  if (currentUser) {
+                    if (confirm('Vuoi effettuare il logout?')) {
+                      import('./services/supabaseClient').then(({ authService }) => authService.signOut());
+                      setCurrentUser(null);
+                      setUserProfile(null);
+                    }
+                  } else {
+                    setShowAuthModal(true);
+                  }
+                }}
+                className="mt-4 w-full bg-slate-900/50 text-cyan-400 py-3 rounded-xl border border-cyan-500/30 font-orbitron font-bold text-xs uppercase tracking-widest hover:bg-slate-900 hover:text-cyan-300 transition-all flex items-center justify-center gap-2"
+              >
+                <User className="w-4 h-4" />
+                {currentUser ? `Operatore: ${userProfile?.username || 'Sconosciuto'}` : 'Accedi / Registrati'}
+              </button>
 
               <button
                 onPointerDown={toggleMute}
@@ -827,24 +1035,31 @@ const App: React.FC = () => {
               </div>
 
               {/* Center: Floating Timer (Half-In/Half-Out) */}
-              <div className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-20">
-                <div className="relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl">
+              {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={togglePause}>
+                <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'}`}>
                   <svg className="absolute inset-0 w-full h-full -rotate-90 scale-90">
                     <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
-                    <circle
-                      cx="50%" cy="50%" r="45%"
-                      stroke={gameState.timeLeft < 10 ? '#ef4444' : '#FF8800'}
-                      strokeWidth="8"
-                      fill="none"
-                      strokeDasharray="283"
-                      strokeDashoffset={283 - (283 * gameState.timeLeft / INITIAL_TIME)}
-                      strokeLinecap="round"
-                      className="transition-all duration-1000"
-                    />
+                    {!isPaused && (
+                      <circle
+                        cx="50%" cy="50%" r="45%"
+                        stroke={gameState.timeLeft < 10 ? '#ef4444' : '#FF8800'}
+                        strokeWidth="8"
+                        fill="none"
+                        strokeDasharray="283"
+                        strokeDashoffset={283 - (283 * gameState.timeLeft / INITIAL_TIME)}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000"
+                      />
+                    )}
                   </svg>
-                  <span className="text-3xl font-black font-orbitron text-white">
-                    {gameState.timeLeft}
-                  </span>
+                  {isPaused ? (
+                    <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
+                  ) : (
+                    <span className="text-3xl font-black font-orbitron text-white">
+                      {gameState.timeLeft}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -899,13 +1114,24 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="relative flex-grow w-full flex items-center justify-center overflow-visible">
-                  <div className={`relative mx-auto transition-all duration-300
+
+                  {isPaused && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl rounded-3xl transition-all animate-fadeIn">
+                      <div className="flex flex-col items-center gap-4">
+                        <Pause className="w-24 h-24 text-white opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
+                        <span className="font-orbitron font-black text-2xl text-white tracking-[0.3em] animate-pulse">PAUSA</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={`relative mx-auto transition-all duration-500 transform
+                    ${isPaused ? 'opacity-10 scale-95 filter blur-lg pointer-events-none grayscale' : 'opacity-100 scale-100 filter-none'}
                     ${theme === 'orange'
                       ? 'w-[calc(272px*var(--hex-scale))] h-[calc(376px*var(--hex-scale))]'
                       : 'w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))]'
                     }`}>
                     {grid.map(cell => (
-                      <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} />
+                      <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} />
                     ))}
                   </div>
                 </div>
@@ -1031,23 +1257,34 @@ const App: React.FC = () => {
         activeModal === 'leaderboard' && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
             <div className="glass-panel w-full max-w-md p-8 rounded-[2rem] modal-content flex flex-col" onPointerDown={e => e.stopPropagation()}>
-              <h2 className="text-2xl font-black font-orbitron text-white mb-6 uppercase flex items-center gap-3"><Award className="text-amber-400" /> RANKING</h2>
-              <div className="space-y-3 overflow-y-auto max-h-[50vh] pr-2 custom-scroll">
-                {MOCK_LEADERBOARD.map((p, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-white">{idx + 1}. {p.name}</span>
-                      <span className="text-[8px] text-slate-500 uppercase">{p.country}</span>
+              <h2 className="text-2xl font-black font-orbitron text-white mb-6 uppercase flex items-center gap-3"><Award className="text-amber-400" /> RANKING GLOBAL</h2>
+
+              {leaderboardData.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 font-orbitron">Caricamento...</div>
+              ) : (
+                <div className="space-y-3 overflow-y-auto max-h-[50vh] pr-2 custom-scroll">
+                  {leaderboardData.map((p, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-white">{idx + 1}. {p.player_name || 'Anonimo'}</span>
+                        <span className="text-[8px] text-slate-500 uppercase">{p.country || 'IT'}</span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="font-orbitron font-black text-[#FF8800] text-sm">{p.score}</span>
+                        <span className="font-orbitron font-bold text-cyan-400 text-[10px]">IQ {p.iq}</span>
+                      </div>
                     </div>
-                    <span className="font-orbitron font-bold text-cyan-400 text-xs">IQ {p.iq}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
+
               <button onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }} className="mt-8 w-full bg-slate-800 text-white py-4 rounded-xl font-orbitron font-black text-xs uppercase active:scale-95 transition-all">CHIUDI</button>
             </div>
           </div>
         )
       }
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={handleLoginSuccess} />}
 
       <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.6</footer>
     </div >
