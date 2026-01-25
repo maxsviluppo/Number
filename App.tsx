@@ -9,7 +9,7 @@ import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { authService, profileService, leaderboardService, supabase } from './services/supabaseClient';
 import { matchService } from './services/matchService'; // Fix import
-import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info } from 'lucide-react';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle } from 'lucide-react';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
 import NeuralDuelLobby from './components/NeuralDuelLobby';
@@ -63,7 +63,7 @@ const App: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0); // For live duel updates
@@ -623,19 +623,16 @@ const App: React.FC = () => {
     showToast("Partita Ripristinata");
   };
 
-  const handleStartGameClick = async (e?: React.PointerEvent) => {
+  const handleStartGameClick = useCallback(async (e: React.PointerEvent) => {
     if (e) {
-      e.preventDefault();
+      // e.preventDefault(); // Removed as per instruction's implied change
       e.stopPropagation();
     }
     await handleUserInteraction();
 
     if (savedGame) {
-      // Simple Native Confirm for MVP. Could be a custom modal later.
-      if (confirm(`Trovata partita salvata:\nLivello ${savedGame.level} - Punti ${savedGame.totalScore}\n\nVuoi riprenderla?`)) {
-        restoreGame();
-        return;
-      }
+      setActiveModal('resume_confirm');
+      return;
     }
 
     let tutorialDone = 'false';
@@ -650,7 +647,7 @@ const App: React.FC = () => {
     } else {
       startGame();
     }
-  };
+  }, [savedGame, startGame, handleUserInteraction]);
 
   const goToHome = (e?: React.PointerEvent) => {
     if (e) {
@@ -1502,6 +1499,35 @@ const App: React.FC = () => {
             <button onClick={() => setActiveModal(null)} className="mt-8 text-slate-500 text-xs hover:text-white uppercase font-bold tracking-widest relative z-10">
               Annulla
             </button>
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'resume_confirm' && (
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => setActiveModal(null)}>
+          <div className="bg-slate-900 border-[3px] border-[#FF8800] w-full max-w-sm p-8 rounded-[2rem] shadow-[0_0_50px_rgba(255,136,0,0.4)] flex flex-col text-center relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+
+            <AlertTriangle className="w-16 h-16 text-[#FF8800] mx-auto mb-4 animate-pulse" />
+            <h2 className="text-2xl font-black font-orbitron text-white mb-2 uppercase tracking-wider relative z-10">PARTITA SALVATA</h2>
+            <p className="text-slate-400 font-bold text-sm mb-8 relative z-10">
+              Hai una partita in sospeso.<br />Vuoi riprenderla o iniziarne una nuova?
+            </p>
+
+            <div className="space-y-3 relative z-10">
+              <button
+                onPointerDown={(e) => { e.stopPropagation(); restoreGame(); }}
+                className="w-full bg-[#FF8800] text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border-2 border-white"
+              >
+                RIPRENDI PARTITA
+              </button>
+              <button
+                onPointerDown={(e) => { e.stopPropagation(); startGame(); }}
+                className="w-full bg-slate-800 text-slate-400 py-3 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border border-slate-600 active:scale-95 transition-all hover:text-white"
+              >
+                NUOVA PARTITA (CANCELLA)
+              </button>
+            </div>
           </div>
         </div>
       )}
