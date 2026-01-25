@@ -8,8 +8,9 @@ import CharacterHelper from './components/CharacterHelper';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { authService, profileService, leaderboardService } from './services/supabaseClient';
-import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause } from 'lucide-react';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield } from 'lucide-react';
 import AuthModal from './components/AuthModal';
+import AdminPanel from './components/AdminPanel';
 
 const TUTORIAL_STEPS = [
   {
@@ -60,7 +61,7 @@ const App: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | null>(null);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [targetAnimKey, setTargetAnimKey] = useState(0);
   const [scoreAnimKey, setScoreAnimKey] = useState(0);
@@ -1000,6 +1001,20 @@ const App: React.FC = () => {
                 </span>
               </button>
 
+              {/* ADMIN ACCESS - Subtle Icon */}
+              <button
+                onPointerDown={async (e) => {
+                  e.stopPropagation();
+                  await handleUserInteraction();
+                  soundService.playUIClick();
+                  setActiveModal('admin');
+                }}
+                className="mt-4 p-2 text-white/20 hover:text-[#FF8800] transition-colors duration-300"
+                title="Admin Access"
+              >
+                <Shield size={16} />
+              </button>
+
 
             </div>
           </div>
@@ -1280,6 +1295,8 @@ const App: React.FC = () => {
           </div>
         )
       }
+
+      {activeModal === 'admin' && <AdminPanel onClose={() => setActiveModal(null)} />}
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={handleLoginSuccess} />}
 
