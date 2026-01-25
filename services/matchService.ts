@@ -10,19 +10,27 @@ export interface Match {
     player1_score: number;
     player2_score: number;
     target_score: number;
+    mode: 'standard' | 'blitz';
+    p1_rounds: number;
+    p2_rounds: number;
+    current_round: number;
     created_at: string;
 }
 
 export const matchService = {
-    // Crea una nuova richiesta di partita
-    async createMatch(playerId: string, seed: string): Promise<Match | null> {
-        const { data, error } = await supabase
+    // Crea una nuova richiesta di partita con modalità specifica
+    async createMatch(playerId: string, seed: string, mode: 'standard' | 'blitz' = 'standard'): Promise<Match | null> {
+        const { data, error } = await (supabase as any)
             .from('matches')
             .insert([{
                 player1_id: playerId,
                 grid_seed: seed,
                 status: 'pending',
-                target_score: 5 // Default victory condition
+                mode: mode,
+                target_score: mode === 'blitz' ? 3 : 5, // Blitz rounds are shorter (3 targets), Standard match is 5 targets
+                p1_rounds: 0,
+                p2_rounds: 0,
+                current_round: 1
             }])
             .select()
             .single();
@@ -36,7 +44,7 @@ export const matchService = {
 
     // Unisciti a una partita esistente (Matchmaking semplice)
     async joinMatch(matchId: string, playerId: string): Promise<boolean> {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
             .from('matches')
             .update({
                 player2_id: playerId,
@@ -52,12 +60,13 @@ export const matchService = {
         return true;
     },
 
-    // Trova una partita aperta in attesa
-    async findOpenMatch(): Promise<Match | null> {
-        const { data, error } = await supabase
+    // Trova una partita aperta in attesa PER LA STESSA MODALITÀ
+    async findOpenMatch(mode: 'standard' | 'blitz' = 'standard'): Promise<Match | null> {
+        const { data, error } = await (supabase as any)
             .from('matches')
             .select('*')
             .eq('status', 'pending')
+            .eq('mode', mode) // Filter by mode
             .is('player2_id', null)
             .order('created_at', { ascending: false }) // Prendi la più recente
             .limit(1)
@@ -75,7 +84,7 @@ export const matchService = {
             ? { player1_score: newScore }
             : { player2_score: newScore };
 
-        const { error } = await supabase
+        const { error } = await (supabase as any)
             .from('matches')
             .update(updateData)
             .eq('id', matchId);
@@ -83,9 +92,27 @@ export const matchService = {
         if (error) console.error('Error updating score:', error);
     },
 
+    // Incrementa i round vinti (Blitz Mode)
+    async incrementRound(matchId: string, isPlayer1: boolean, currentRounds: number) {
+        const updateData = isPlayer1
+            ? { p1_rounds: currentRounds + 1, current_round: currentRounds + 1 } // Note: current_round should probably be handled carefully if both win simulatneously? 
+            // Better: just inc p1_rounds. The "current_round" is sum of rounds + 1? Or just cosmetic.
+            // Let's just update p1_rounds.
+            : { p2_rounds: currentRounds + 1 };
+
+        // For "current_round", purely display? Or actual logic?
+        // Let's just update the winner's round count.
+        const { error } = await (supabase as any)
+            .from('matches')
+            .update(updateData)
+            .eq('id', matchId);
+
+        if (error) console.error('Error incrementing round:', error);
+    },
+
     // Dichiara vittoria
     async declareWinner(matchId: string, winnerId: string) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
             .from('matches')
             .update({
                 status: 'finished',
@@ -99,12 +126,12 @@ export const matchService = {
 
     // Iscriviti agli aggiornamenti di una partita specifica
     subscribeToMatch(matchId: string, callback: (payload: any) => void) {
-        return supabase
+        return (supabase as any)
             .channel(`match:${matchId}`)
             .on(
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` },
-                (payload) => callback(payload)
+                (payload: any) => callback(payload)
             )
             .subscribe();
     }

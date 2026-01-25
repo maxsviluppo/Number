@@ -2,15 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Swords, Loader2, Trophy, XCircle, AlertTriangle } from 'lucide-react';
 import { matchService, Match } from '../services/matchService';
 import { soundService } from '../services/soundService';
-import { authService } from '../services/supabaseClient';
+import { authService, supabase } from '../services/supabaseClient';
 
 interface NeuralDuelProps {
     currentUser: any; // User object
     onClose: () => void;
     onMatchStart: (seed: string, matchId: string, opponentId: string) => void;
+    mode: 'standard' | 'blitz';
 }
 
-const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMatchStart }) => {
+const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMatchStart, mode }) => {
     const [status, setStatus] = useState<'idle' | 'searching' | 'found' | 'error'>('idle');
     const [currentMatch, setCurrentMatch] = useState<Match | null>(null);
     const [statusMsg, setStatusMsg] = useState('');
@@ -19,18 +20,18 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     // Gestione Pulizia
     useEffect(() => {
         return () => {
-            if (channelRef.current) supabase.removeChannel(channelRef.current);
+            if (channelRef.current) (supabase as any).removeChannel(channelRef.current);
         };
     }, []);
 
     const findMatch = async () => {
         setStatus('searching');
-        setStatusMsg('Scansione rete neurale...');
+        setStatusMsg(`Scansione rete neurale (${mode === 'blitz' ? 'BLITZ' : 'STANDARD'})...`);
         soundService.playTick(); // Simuliamo suono radar
 
         try {
             // 1. Cerca partita esistente
-            const openMatch = await matchService.findOpenMatch();
+            const openMatch = await matchService.findOpenMatch(mode);
 
             if (openMatch && openMatch.player1_id !== currentUser.id) {
                 // TROVATA! Unisciti
@@ -39,7 +40,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
 
                 if (joined) {
                     setStatus('found');
-                    soundService.playVictory(); // Suono successo
+                    soundService.playSuccess(); // Suono successo
                     setTimeout(() => {
                         onMatchStart(openMatch.grid_seed, openMatch.id, openMatch.player1_id);
                     }, 1500);
@@ -51,7 +52,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                 // 2. Nessuna partita, CREANE UNA
                 setStatusMsg('Nessun segnale. Creazione beacon...');
                 const seed = Math.random().toString(36).substring(7); // Genera seed casuale
-                const newMatch = await matchService.createMatch(currentUser.id, seed);
+                const newMatch = await matchService.createMatch(currentUser.id, seed, mode);
 
                 if (newMatch) {
                     setCurrentMatch(newMatch);
@@ -62,7 +63,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                         if (payload.new.status === 'active' && payload.new.player2_id) {
                             // QUALCUNO È ENTRATO!
                             setStatus('found');
-                            soundService.playVictory();
+                            soundService.playSuccess();
                             setTimeout(() => {
                                 onMatchStart(newMatch.grid_seed, newMatch.id, payload.new.player2_id);
                             }, 1500);
@@ -97,15 +98,19 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                         )}
                     </div>
 
-                    <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase italic tracking-wider">NEURAL DUEL</h2>
-                    <p className="text-slate-400 text-sm mb-8 font-mono">{statusMsg || "Modalità 1vs1 Realtime"}</p>
+                    <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase italic tracking-wider">
+                        {mode === 'blitz' ? 'BLITZ ARENA' : 'NEURAL DUEL'}
+                    </h2>
+                    <p className="text-slate-400 text-sm mb-8 font-mono">
+                        {statusMsg || (mode === 'blitz' ? "Best of 5 Rounds (3 Targets/Round)" : "Standard 1vs1 (5 Targets)")}
+                    </p>
 
                     {status === 'idle' && (
                         <button
                             onClick={findMatch}
                             className="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:scale-105 active:scale-95 transition-all text-white font-orbitron font-black text-lg py-4 rounded-xl shadow-lg shadow-red-900/40 uppercase tracking-widest"
                         >
-                            TROVA AVVERSARIO
+                            CERCA AVVERSARIO {mode === 'blitz' ? 'BLITZ' : 'STANDARD'}
                         </button>
                     )}
 
