@@ -923,12 +923,26 @@ const App: React.FC = () => {
             <div className="mb-6 flex flex-col items-center">
               {/* Logo: Custom Shape Image with White Border & Brain */}
               {/* Logo: Pure Color CSS Mask Implementation */}
-              <div className="relative w-36 h-36 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500">
+              <div className="relative w-36 h-36 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500 group">
                 {/* Custom Octagon Image */}
                 <img src="/octagon-base.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
 
                 {/* Brain Icon - Centered */}
                 <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
+
+                {/* ADMIN ACCESS - Hidden Top Left Trigger */}
+                <button
+                  onPointerDown={async (e) => {
+                    e.stopPropagation();
+                    await handleUserInteraction();
+                    soundService.playUIClick();
+                    setActiveModal('admin');
+                  }}
+                  className="absolute -top-4 -left-4 p-4 text-white/5 hover:text-[#FF8800] transition-colors duration-300 z-50 rounded-full"
+                  title="Admin Access"
+                >
+                  <Shield size={16} />
+                </button>
               </div>
 
               <h1 className="text-6xl sm:text-8xl font-black font-orbitron tracking-tighter text-[#FF8800] lowercase" style={{ WebkitTextStroke: '3px white' }}>
@@ -999,20 +1013,6 @@ const App: React.FC = () => {
                 <span className="font-orbitron text-xs font-black uppercase tracking-[0.2em]">
                   Audio {isMuted ? 'OFF' : 'ON'}
                 </span>
-              </button>
-
-              {/* ADMIN ACCESS - Subtle Icon */}
-              <button
-                onPointerDown={async (e) => {
-                  e.stopPropagation();
-                  await handleUserInteraction();
-                  soundService.playUIClick();
-                  setActiveModal('admin');
-                }}
-                className="mt-4 p-2 text-white/20 hover:text-[#FF8800] transition-colors duration-300"
-                title="Admin Access"
-              >
-                <Shield size={16} />
               </button>
 
 
