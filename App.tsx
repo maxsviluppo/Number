@@ -11,31 +11,32 @@ import { authService, profileService, leaderboardService } from './services/supa
 import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords } from 'lucide-react';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
+import NeuralDuelLobby from './components/NeuralDuelLobby';
 
 const TUTORIAL_STEPS = [
   {
     title: "OBIETTIVO & GRIGLIA",
-    description: "Collega numeri e operatori per trovare i 5 Target visualizzati. ATTENZIONE: La griglia è FISSA! Non cambierà finché non avrai trovato tutte le soluzioni con le tessere a disposizione.",
+    description: "Trova i 5 Target numerici usando le tessere a disposizione. La griglia è FISSA per ogni livello: trova tutte le combinazioni per avanzare.",
     icon: <Brain className="w-12 h-12 text-[#FF8800]" />
   },
   {
     title: "REGOLE DI CONNESSIONE",
-    description: "Trascina il dito partendo da un Numero. Devi sempre alternare: Numero → Operatore → Numero. Non puoi collegare due numeri o due operatori direttamente.",
+    description: "Trascina dai Numeri. Alterna sempre: Numero → Operatore → Numero. Non puoi collegare due tipi uguali consecutivamente.",
     icon: <RefreshCw className="w-12 h-12 text-[#FF8800]" />
   },
   {
-    title: "PUNTEGGIO ESPONENZIALE",
-    description: "I punti crescono col Livello e raddoppiano con la Streak! Es. Livello 1: 1, 2, 4, 8, 16 punti. Un errore resetta la streak al valore base. La precisione è tutto.",
+    title: "PUNTEGGIO & STREAK",
+    description: "La precisione premia! Ogni risposta corretta consecutiva aumenta il moltiplicatore. Un errore azzera il moltiplicatore base.",
     icon: <Zap className="w-12 h-12 text-[#FF8800]" />
   },
   {
-    title: "TEMPO, CARRY-OVER & BONUS",
-    description: "60 secondi iniziali. Il tempo che risparmi si SOMMA al livello successivo. Dal Livello 5 in poi, ogni risposta corretta aggiunge anche +2 secondi extra immediati!",
-    icon: <Timer className="w-12 h-12 text-[#FF8800]" />
+    title: "SFIDE & CLASSIFICHE",
+    description: "Oltre alla modalità Classica, competi in NEURAL DUEL (1vs1) e scala la Classifica Globale per Punti e Livello Massimo.",
+    icon: <Swords className="w-12 h-12 text-[#FF8800]" />
   },
   {
-    title: "QI RANKING",
-    description: "La nostra AI valuterà la tua velocità e precisione per stimare il tuo Quoziente Intellettivo. Scala la classifica globale e dimostra di essere una delle menti più brillanti.",
+    title: "QI RANKING AI",
+    description: "L'AI analizza la tua velocità e precisione per stimare il tuo QI di gioco. Punta all'Eccellenza Neurale.",
     icon: <Award className="w-12 h-12 text-[#FF8800]" />
   }
 ];
@@ -61,7 +62,9 @@ const App: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | null>(null);
+  const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean } | null>(null);
+  const [opponentScore, setOpponentScore] = useState(0); // For live duel updates
   const [tutorialStep, setTutorialStep] = useState(0);
   const [targetAnimKey, setTargetAnimKey] = useState(0);
   const [scoreAnimKey, setScoreAnimKey] = useState(0);
@@ -922,21 +925,65 @@ const App: React.FC = () => {
           <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-10 animate-screen-in relative">
 
             {/* ADMIN ACCESS - Top Left Corner of Home Screen */}
-            <button
-              onPointerDown={async (e) => {
-                e.stopPropagation();
-                await handleUserInteraction();
-                soundService.playUIClick();
-                setActiveModal('admin');
-              }}
-              className="absolute top-0 left-0 p-6 text-white/50 hover:text-[#FF8800] transition-colors duration-300 z-50"
-              title="Admin Access"
-            >
-              <Shield size={20} />
-            </button>
+            {/* TOP RIGHT ICONS: User & Audio */}
+            <div className="absolute top-4 right-4 z-50 flex gap-3 items-center">
 
-            {/* TOP RIGHT ICONS: Tutorial & Audio */}
-            <div className="absolute top-4 right-4 z-50 flex gap-3">
+              {/* USER AUTH ICON */}
+              <button
+                onPointerDown={async (e) => {
+                  e.stopPropagation();
+                  await handleUserInteraction();
+                  soundService.playUIClick();
+                  if (currentUser) {
+                    // Logout Immediato
+                    import('./services/supabaseClient').then(({ authService }) => authService.signOut());
+                    setCurrentUser(null);
+                    setUserProfile(null);
+                    showToast(`Logout effettuato. A presto!`);
+                  } else {
+                    showToast('Accesso richiesto');
+                    setShowAuthModal(true);
+                  }
+                }}
+                className="flex items-center gap-3 pl-1 pr-3 py-1 rounded-full bg-black/40 border border-white/20 backdrop-blur-md hover:bg-black/60 transition-all group"
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 border-white/50 shadow-lg ${currentUser ? 'bg-[#FF8800] text-white' : 'bg-slate-700 text-slate-400 group-hover:bg-white group-hover:text-[#FF8800] transition-colors'}`}>
+                  <User size={20} strokeWidth={2.5} />
+                </div>
+                {currentUser && (
+                  <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest hidden sm:block">
+                    {userProfile?.username || 'GUEST'}
+                  </span>
+                )}
+              </button>
+
+              {/* Audio Icon */}
+              <button
+                onPointerDown={toggleMute}
+                className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
+                    ${isMuted ? 'bg-slate-700 text-slate-400' : 'bg-[#FF8800] text-white'}`}
+                title="Audio"
+              >
+                {isMuted ? <VolumeX size={24} strokeWidth={2.5} /> : <Volume2 size={24} strokeWidth={2.5} />}
+              </button>
+            </div>
+
+            {/* BOTTOM LEFT ICONS: Admin & Tutorial */}
+            <div className="absolute bottom-4 left-4 z-50 flex gap-3">
+              {/* Admin Access */}
+              <button
+                onPointerDown={async (e) => {
+                  e.stopPropagation();
+                  await handleUserInteraction();
+                  soundService.playUIClick();
+                  setActiveModal('admin');
+                }}
+                className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                title="Admin Access"
+              >
+                <Shield size={24} strokeWidth={2.5} />
+              </button>
+
               {/* Tutorial Icon */}
               <button
                 onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
@@ -944,16 +991,6 @@ const App: React.FC = () => {
                 title="Tutorial"
               >
                 <HelpCircle size={24} strokeWidth={2.5} />
-              </button>
-
-              {/* Audio Icon - Orange ON, Gray OFF */}
-              <button
-                onPointerDown={toggleMute}
-                className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
-                    ${isMuted ? 'bg-slate-700 text-slate-400' : 'bg-[#FF8800] text-white'}`}
-                title="Audio Toggle"
-              >
-                {isMuted ? <VolumeX size={24} strokeWidth={2.5} /> : <Volume2 size={24} strokeWidth={2.5} />}
               </button>
             </div>
             <div className="mb-6 flex flex-col items-center">
@@ -989,7 +1026,15 @@ const App: React.FC = () => {
                 {/* 1VS1 MODE BUTTON - NEURAL DUEL */}
                 <button
                   className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 text-white py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
-                  onPointerDown={() => { soundService.playUIClick(); showToast("Modalità 1vs1 in arrivo!"); }}
+                  onPointerDown={() => {
+                    soundService.playUIClick();
+                    if (!currentUser) {
+                      showToast("Accedi per sfidare altri giocatori!");
+                      setShowAuthModal(true);
+                    } else {
+                      setActiveModal('duel');
+                    }
+                  }}
                 >
                   <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
                   <Swords className="w-8 h-8 animate-pulse text-yellow-300" />
@@ -1020,27 +1065,24 @@ const App: React.FC = () => {
                 </button>
               </div>
 
+              {/* DUEL HUD - OPPONENT PROGRESS */}
+              {activeMatch && activeMatch.isDuel && (
+                <div className="absolute top-20 right-4 w-48 bg-black/60 backdrop-blur border border-red-500/30 p-2 rounded-lg z-30">
+                  <div className="flex justify-between items-center text-xs text-red-400 font-bold mb-1">
+                    <span>AVVERSARIO</span>
+                    <span>{opponentScore}/5</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-red-600 transition-all duration-500"
+                      style={{ width: `${(opponentScore / 5) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+
               {/* AUTH BUTTON */}
-              <button
-                onPointerDown={async (e) => {
-                  e.stopPropagation();
-                  await handleUserInteraction();
-                  soundService.playUIClick();
-                  if (currentUser) {
-                    if (confirm('Vuoi effettuare il logout?')) {
-                      import('./services/supabaseClient').then(({ authService }) => authService.signOut());
-                      setCurrentUser(null);
-                      setUserProfile(null);
-                    }
-                  } else {
-                    setShowAuthModal(true);
-                  }
-                }}
-                className="mt-4 w-full bg-slate-900/50 text-cyan-400 py-3 rounded-xl border border-cyan-500/30 font-orbitron font-bold text-xs uppercase tracking-widest hover:bg-slate-900 hover:text-cyan-300 transition-all flex items-center justify-center gap-2"
-              >
-                <User className="w-4 h-4" />
-                {currentUser ? `Operatore: ${userProfile?.username || 'Sconosciuto'}` : 'Accedi / Registrati'}
-              </button>
+              {/* Auth Button Moved to Top Right - Removed from here */}
 
               {/* Audio Button Removed */}
 
@@ -1293,6 +1335,40 @@ const App: React.FC = () => {
           </div>
         )
       }
+
+      {activeModal === 'duel' && currentUser && (
+        <NeuralDuelLobby
+          currentUser={currentUser}
+          onClose={() => setActiveModal(null)}
+          onMatchStart={(seed, matchId, opponentId) => {
+            setActiveModal(null);
+            setActiveMatch({ id: matchId, opponentId, isDuel: true });
+
+            // Initialize Duel Game
+            soundService.playGameStart();
+            setGameState({
+              score: 0,
+              totalScore: 0,
+              streak: 0,
+              level: 1,
+              timeLeft: INITIAL_TIME, // Or maybe shorter for duel?
+              targetResult: 0,
+              status: 'playing',
+              estimatedIQ: 100,
+              lastLevelPerfect: true,
+              basePoints: BASE_POINTS_START,
+              levelTargets: [],
+            });
+            // Use the Match SEED to generate the grid (TODO: Update generateLevel to accept seed or deterministic RNG)
+            // For now, we just rely on standard random, but in production we MUST use the seed for identical grids.
+            // We simulate this by passing the seed to a new generator function or just initiating standard level 1.
+            // FUTURE: Implement seeded RNG in services/gameLogic.ts
+            generateLevel(1);
+            // Reset Opponent Score
+            setOpponentScore(0);
+          }}
+        />
+      )}
 
       {
         activeModal === 'leaderboard' && (
