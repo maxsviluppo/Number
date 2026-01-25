@@ -105,30 +105,28 @@ export const matchService = {
             console.error('Error finding match:', error);
         }
         return data || null;
-        return data || null;
     },
 
-    // Ottieni tutte le partite aperte per una modalità (per la lista lobby)
+    // Ottieni tutte le partite (Aperte o In Corso) per mostrare lo stato dei giocatori
     async getOpenMatches(mode: 'standard' | 'blitz'): Promise<any[]> {
         console.log("Fetching matches for mode:", mode);
-        // Usa una query più permissiva per il debug: prendi TUTTE le pending
+
+        // Prendiamo sia le 'pending' (In Attesa) che le 'active' (In Sfida)
         const { data, error } = await (supabase as any)
             .from('matches')
             .select(`
                 *,
-                player1:profiles(*)
+                player1:profiles (*)
             `)
-            .eq('status', 'pending')
+            .in('status', ['pending', 'active'])
             .eq('mode', mode)
-            .is('player2_id', null)
             .order('created_at', { ascending: false })
-            .limit(20);
+            .limit(30);
 
         if (error) {
             console.error('GET MATCHES ERROR:', error);
             return [];
         }
-        console.log("Matches found:", data?.length, data);
         return data || [];
     },
 
