@@ -131,8 +131,9 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <button onClick={fetchMatches} className="p-2 text-slate-400 hover:text-white transition-colors bg-white/5 rounded-lg">
-                            <Loader2 className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                        <button onClick={fetchMatches} className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-white transition-colors bg-white/5 rounded-lg active:scale-95 border border-white/5 hover:border-white/20">
+                            <span className="text-[10px] font-bold uppercase hidden sm:block">Aggiorna</span>
+                            <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         </button>
                         <button onClick={() => {
                             if (myHostedMatch) cancelHosting();
@@ -167,8 +168,8 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                             {matches.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-60 text-slate-500 gap-4">
                                     <Swords className="w-12 h-12 opacity-20" />
-                                    <p className="text-sm font-mono">NESSUNA SFIDA ATTIVA</p>
-                                    <p className="text-xs max-w-xs text-center opacity-60">Sii il primo a scendere nell'arena. Crea un tavolo e aspetta un avversario.</p>
+                                    <p className="text-sm font-mono text-center">NESSUNA SFIDA ATTIVA</p>
+                                    <p className="text-xs max-w-xs text-center opacity-60">Non vedo nessuno? Prova a cliccare AGGIORNA in alto a destra, oppure crea tu il primo tavolo!</p>
                                 </div>
                             ) : (
                                 matches.map((match) => (

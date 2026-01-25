@@ -116,7 +116,7 @@ export const matchService = {
             .from('matches')
             .select(`
                 *,
-                player1:profiles!player1_id (username, max_level)
+                player1:profiles(*)
             `)
             .eq('status', 'pending')
             .eq('mode', mode)

@@ -63,7 +63,7 @@ const App: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0); // For live duel updates
@@ -1020,17 +1020,14 @@ const App: React.FC = () => {
           <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 pt-24 pb-32 animate-screen-in relative">
 
             {/* TOP LEFT: User Auth */}
-            <div className="absolute top-14 left-5 z-50 flex gap-3 items-center" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="absolute top-10 left-5 z-50 flex gap-3 items-center" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               <button
                 onPointerDown={async (e) => {
                   e.stopPropagation();
                   await handleUserInteraction();
                   soundService.playUIClick();
                   if (currentUser) {
-                    import('./services/supabaseClient').then(({ authService }) => authService.signOut());
-                    setCurrentUser(null);
-                    setUserProfile(null);
-                    showToast(`Logout effettuato. A presto!`);
+                    setActiveModal('logout_confirm');
                   } else {
                     showToast('Accesso richiesto');
                     setShowAuthModal(true);
@@ -1050,7 +1047,7 @@ const App: React.FC = () => {
             </div>
 
             {/* TOP RIGHT: Audio */}
-            <div className="absolute top-14 right-5 z-50 flex gap-3 items-center" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="absolute top-10 right-5 z-50 flex gap-3 items-center" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               <button
                 onPointerDown={toggleMute}
                 className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
@@ -1526,6 +1523,42 @@ const App: React.FC = () => {
                 className="w-full bg-slate-800 text-slate-400 py-3 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border border-slate-600 active:scale-95 transition-all hover:text-white"
               >
                 NUOVA PARTITA (CANCELLA)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeModal === 'logout_confirm' && (
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => setActiveModal(null)}>
+          <div className="bg-slate-900 border-[3px] border-red-500/50 w-full max-w-sm p-8 rounded-[2rem] shadow-[0_0_50px_rgba(220,38,38,0.4)] flex flex-col text-center relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+
+            <User className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-black font-orbitron text-white mb-2 uppercase tracking-wider relative z-10">LOGOUT</h2>
+            <p className="text-slate-400 font-bold text-sm mb-8 relative z-10">
+              Vuoi davvero disconnetterti?
+            </p>
+
+            <div className="space-y-3 relative z-10">
+              <button
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  import('./services/supabaseClient').then(({ authService }) => authService.signOut());
+                  setCurrentUser(null);
+                  setUserProfile(null);
+                  showToast(`Logout effettuato.`);
+                  setActiveModal(null);
+                }}
+                className="w-full bg-red-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border-2 border-white"
+              >
+                CONFERMA USCITA
+              </button>
+              <button
+                onPointerDown={(e) => { e.stopPropagation(); setActiveModal(null); }}
+                className="w-full bg-slate-800 text-slate-400 py-3 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border border-slate-600 active:scale-95 transition-all hover:text-white"
+              >
+                ANNULLA
               </button>
             </div>
           </div>
