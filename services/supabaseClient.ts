@@ -260,23 +260,25 @@ export const profileService = {
 };
 
 export const leaderboardService = {
-    async getLeaderboard(limit = 10): Promise<LeaderboardEntry[]> {
-        // Try to fetch from 'profiles' first if we unify tables, else 'leaderboard'
-        // Let's assume we read from 'profiles' for the source of truth if connected.
-        // But for now, user asked for 'leaderboard' table support previously.
-        // Let's stick to 'leaderboard' table for GLOBAL ranking, but synced from profile.
-
-        const { data, error } = await supabase
-            .from('leaderboard') // Or 'profiles' ordered by total_score
-            .select('*')
-            .order('score', { ascending: false })
+    async getTopPlayers(limit = 10) {
+        // Fetch top by Score
+        const { data: byScore } = await (supabase as any)
+            .from('profiles')
+            .select('username, total_score, max_level, estimated_iq')
+            .order('total_score', { ascending: false })
             .limit(limit);
 
-        if (error) {
-            console.error('Error fetching leaderboard:', error);
-            return [];
-        }
-        return data || [];
+        // Fetch top by Level
+        const { data: byLevel } = await (supabase as any)
+            .from('profiles')
+            .select('username, total_score, max_level, estimated_iq')
+            .order('max_level', { ascending: false })
+            .limit(limit);
+
+        return {
+            byScore: byScore || [],
+            byLevel: byLevel || []
+        };
     },
 
     async addEntry(entry: LeaderboardEntry): Promise<void> {
