@@ -20,23 +20,52 @@ export interface Match {
 export const matchService = {
     // Crea una nuova richiesta di partita con modalità specifica
     async createMatch(playerId: string, seed: string, mode: 'standard' | 'blitz' = 'standard'): Promise<Match | null> {
+        // [SELF-HEALING] Check if profile exists to prevent Foreign Key Error
+        const { data: profileCheck } = await (supabase as any).from('profiles').select('id').eq('id', playerId).maybeSingle();
+
+        if (!profileCheck) {
+            console.warn("⚠️ Profile not found for user. Attempting auto-fix...", playerId);
+            // Attempt to create a fallback profile
+            const { error: profileError } = await (supabase as any).from('profiles').insert([
+                { id: playerId, username: 'Player_' + playerId.substring(0, 4), max_level: 1, elo_rating: 1200 }
+            ]);
+            if (profileError) {
+                console.error("❌ CRITICAL: Failed to create fallback profile. Match creation will likely fail.", profileError);
+                // We continue anyway hoping for the best (maybe race condition), but log it.
+            } else {
+                console.info("✅ Profile auto-created. Proceeding with match.");
+            }
+        }
+
         const { data, error } = await (supabase as any)
             .from('matches')
-            .insert([{
-                player1_id: playerId,
-                grid_seed: seed,
-                status: 'pending',
-                mode: mode,
-                target_score: mode === 'blitz' ? 3 : 5, // Blitz rounds are shorter (3 targets), Standard match is 5 targets
-                p1_rounds: 0,
-                p2_rounds: 0,
-                current_round: 1
-            }])
-            .select()
+            .insert([
+                {
+                    player1_id: playerId,
+                    grid_seed: seed,
+                    mode: mode,
+                    status: 'pending', // Explicitly set pending
+                    target_score: mode === 'blitz' ? 3 : 5, // Blitz rounds are shorter (3 targets), Standard match is 5 targets
+                    p1_rounds: 0,
+                    p2_rounds: 0,
+                    current_round: 1
+                }
+            ])
+            .select() // Returns the created object
             .single();
 
         if (error) {
-            console.error('Error creating match:', error);
+            console.error('CREATE MATCH ERROR FULL:', error);
+            console.error('Payload:', { player1_id: playerId, grid_seed: seed, mode });
+
+            // Analyze Error Code
+            if (error.code === '23503') {
+                alert("ERRORE CRITICO DB: Il tuo profilo utente non esiste nel database (FK Violation).\nProva a fare Logout e rientrare.");
+            } else if (error.code === '42703') {
+                alert("ERRORE SCHEMA: Colonne mancanti (mode/grid_seed). Esegui lo script SQL di Reset.");
+            } else {
+                alert(`ERRORE SCONOSCIUTO (${error.code}): ${error.message}`);
+            }
             return null;
         }
         return data;
@@ -94,7 +123,7 @@ export const matchService = {
             .limit(20);
 
         if (error) {
-            console.error('Error fetching matches:', error);
+            console.error('GET MATCHES ERROR:', error);
             return [];
         }
         return data || [];

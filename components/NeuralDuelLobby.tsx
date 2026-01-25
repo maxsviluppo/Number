@@ -73,6 +73,8 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                     onMatchStart(newMatch.grid_seed, newMatch.id, payload.new.player2_id);
                 }
             });
+        } else {
+            alert("ERRORE: Impossibile creare la partita. \nPossibili cause:\n1. Problemi di rete.\n2. Permessi Database (RLS).\nControlla che le colonne 'mode' e 'grid_seed' esistano.");
         }
     };
 
