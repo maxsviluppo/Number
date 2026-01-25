@@ -18,9 +18,24 @@ export interface Match {
 }
 
 export const matchService = {
+    // Pulisce partite vecchie "appese" del giocatore
+    async cleanupUserMatches(playerId: string) {
+        console.log("🧹 Inizializzazione pulizia partite per:", playerId);
+        const { error } = await (supabase as any)
+            .from('matches')
+            .update({ status: 'finished' }) // O delete, ma finished è più sicuro per storico
+            .or(`player1_id.eq.${playerId},player2_id.eq.${playerId}`)
+            .in('status', ['pending', 'active']);
+
+        if (error) console.error("Errore pulizia sessioni:", error);
+    },
+
     // Crea una nuova richiesta di partita con modalità specifica
     async createMatch(playerId: string, seed: string, mode: 'standard' | 'blitz' = 'standard'): Promise<Match | null> {
-        // [SELF-HEALING] Check if profile exists to prevent Foreign Key Error
+        // [IMPORTANT] Prima di creare, puliamo eventuali partite vecchie rimaste "appese"
+        await this.cleanupUserMatches(playerId);
+
+        // [SELF-HEALING] Check if profile exists...
         const { data: profileCheck } = await (supabase as any).from('profiles').select('id').eq('id', playerId).maybeSingle();
 
         if (!profileCheck) {
@@ -71,8 +86,11 @@ export const matchService = {
         return data;
     },
 
-    // Unisciti a una partita esistente (Matchmaking semplice)
+    // Partecipa a una partita esistente
     async joinMatch(matchId: string, playerId: string): Promise<boolean> {
+        // [IMPORTANT] Prima di unirci, puliamo le nostre vecchie sessioni
+        await this.cleanupUserMatches(playerId);
+
         const { error } = await (supabase as any)
             .from('matches')
             .update({

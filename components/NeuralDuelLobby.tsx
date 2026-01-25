@@ -16,6 +16,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     const [onlinePlayers, setOnlinePlayers] = useState<any[]>([]);
     const [myHostedMatch, setMyHostedMatch] = useState<Match | null>(null);
     const [loading, setLoading] = useState(false);
+    const [pendingChallenge, setPendingChallenge] = useState<any | null>(null); // Stato per la conferma sfida
     const channelRef = useRef<any>(null);
 
     const fetchMatches = useCallback(async () => {
@@ -82,6 +83,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     };
 
     const joinMatch = async (matchId: string, seed: string, p1Id: string) => {
+        setPendingChallenge(null);
         soundService.playUIClick();
         if (myHostedMatch) {
             await cleanupMyMatch();
@@ -150,15 +152,18 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                             if (match.player1_id === currentUser.id) return null;
 
                             return (
-                                <div key={match.id} className={`p-4 rounded-2xl flex items-center justify-between transition-all border
+                                <div
+                                    key={match.id}
+                                    onClick={() => !isBusy && setPendingChallenge(match)}
+                                    className={`p-4 rounded-2xl flex items-center justify-between transition-all border group
                                     ${isBusy
-                                        ? 'bg-slate-900/40 border-slate-800 opacity-80'
-                                        : 'bg-green-500/5 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.05)]'}`}>
+                                            ? 'bg-slate-900/40 border-slate-800 opacity-80 cursor-not-allowed'
+                                            : 'bg-green-500/5 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.05)] cursor-pointer hover:border-green-500/50 hover:bg-green-500/10 active:scale-[0.98]'}`}>
 
                                     <div className="flex items-center gap-3">
                                         <div className="relative">
                                             <div className={`w-11 h-11 rounded-full flex items-center justify-center border-2
-                                                ${isBusy ? 'bg-slate-800 border-red-500/30' : 'bg-green-500/10 border-green-500/50'}`}>
+                                                ${isBusy ? 'bg-slate-800 border-red-500/30' : 'bg-green-500/10 border-green-500/50 group-hover:border-green-500'}`}>
                                                 {isBusy ? <Swords className="text-red-500" size={20} /> : <Play className="text-green-500" size={20} />}
                                             </div>
                                             <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-slate-900
@@ -166,13 +171,8 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                         </div>
 
                                         <div>
-                                            <div className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                                            <div className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 group-hover:text-green-400 transition-colors">
                                                 {match.player1?.username || 'Player'}
-                                                {isBusy ? (
-                                                    <span className="text-[8px] bg-red-600/20 text-red-500 px-1.5 py-0.5 rounded border border-red-600/20">IN SFIDA</span>
-                                                ) : (
-                                                    <span className="text-[8px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded border border-green-500/20">IN ATTESA</span>
-                                                )}
                                             </div>
                                             <div className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">
                                                 LVL {match.player1?.max_level || 1} • {isBusy ? "Partita avviata" : "In attesa di sfidanti"}
@@ -180,14 +180,14 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                         </div>
                                     </div>
 
-                                    {!isBusy && (
-                                        <button
-                                            onClick={() => joinMatch(match.id, match.grid_seed, match.player1_id)}
-                                            className="bg-white text-slate-950 hover:bg-green-500 hover:text-white px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-90"
-                                        >
-                                            SFIDA
-                                        </button>
-                                    )}
+                                    <div className="flex flex-col items-end gap-1">
+                                        {isBusy ? (
+                                            <span className="text-[9px] bg-red-600 font-black text-white px-2 py-0.5 rounded shadow-lg uppercase tracking-widest border border-red-400/30">IN SFIDA</span>
+                                        ) : (
+                                            <span className="text-[9px] bg-green-500 font-black text-slate-950 px-2 py-0.5 rounded shadow-lg uppercase tracking-widest animate-pulse">PRONTO</span>
+                                        )}
+                                        <div className="text-[8px] text-slate-600 font-bold uppercase">{isBusy ? "Occupato" : "Clicca per sfidare"}</div>
+                                    </div>
                                 </div>
                             );
                         })}
@@ -252,6 +252,39 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                         </span>
                     </div>
                 </div>
+
+                {/* TOAST DI CONFERMA SFIDA */}
+                {pendingChallenge && (
+                    <div className="absolute inset-0 z-50 flex items-end justify-center p-6 bg-black/40 backdrop-blur-sm animate-fadeIn">
+                        <div className="bg-slate-900 border-2 border-green-500/50 p-6 rounded-[2rem] w-full max-w-sm shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_30px_rgba(34,197,94,0.2)] animate-slideUp">
+                            <div className="flex flex-col items-center text-center gap-4">
+                                <div className="w-16 h-16 rounded-full bg-green-500/10 border-2 border-green-500 flex items-center justify-center animate-bounce-subtle">
+                                    <Swords className="text-green-500" size={28} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black font-orbitron text-white uppercase tracking-wider">CONFERMI SFIDA?</h3>
+                                    <p className="text-slate-400 text-sm mt-1">
+                                        Stai per sfidare <span className="text-green-400 font-bold">{pendingChallenge.player1?.username || 'Guerriero'}</span>.
+                                    </p>
+                                </div>
+                                <div className="flex gap-3 w-full mt-2">
+                                    <button
+                                        onClick={() => setPendingChallenge(null)}
+                                        className="flex-1 py-3 bg-slate-800 text-slate-400 rounded-xl font-black text-xs uppercase tracking-widest border border-slate-700 hover:bg-slate-700 transition-all"
+                                    >
+                                        ANNULLA
+                                    </button>
+                                    <button
+                                        onClick={() => joinMatch(pendingChallenge.id, pendingChallenge.grid_seed, pendingChallenge.player1_id)}
+                                        className="flex-1 py-3 bg-green-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(22,163,74,0.4)] hover:bg-green-500 transition-all"
+                                    >
+                                        SI, SFIDA!
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

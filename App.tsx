@@ -234,14 +234,65 @@ const App: React.FC = () => {
     }, 2500);
   };
 
-  // Caricamento Leaderboard (Fixed duplicate state)
-  // Caricamento Leaderboard (Fixed duplicate state)
-  useEffect(() => {
-    if (activeModal === 'leaderboard') {
-      leaderboardService.getTopPlayers().then(data => {
-        setLeaderboardData(data as any);
-      });
+  const goToHome = async (e?: React.PointerEvent) => {
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
+    soundService.playReset();
+
+    // SFIDA LOGIC: Se usciamo da una sfida, la cancelliamo sul server e torniamo in Lobby
+    if (activeMatch && currentUser) {
+      await matchService.cancelMatch(activeMatch.id);
+      setActiveMatch(null);
+      setActiveModal('duel_selection'); // Torna alla scelta lobby invece del menu principale
+      setGameState(prev => ({ ...prev, status: 'idle' }));
+      setSelectedPath([]);
+      setIsDragging(false);
+      setPreviewResult(null);
+      return;
+    }
+
+    setGameState(prev => ({ ...prev, status: 'idle' }));
+    setSelectedPath([]);
+    setIsDragging(false);
+    setPreviewResult(null);
+  };
+
+  // Caricamento Leaderboard (Fixed duplicate state)
+  // Caricamento Leaderboard (Fixed duplicate state)
+  // MONITORAGGIO SFIDA: Se l'altro esce, usciamo anche noi
+  useEffect(() => {
+    if (!activeMatch || !currentUser) return;
+
+    const channel = (supabase as any)
+      .channel(`match_monitor_${activeMatch.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'matches',
+        filter: `id=eq.${activeMatch.id}`
+      }, (payload: any) => {
+        if (payload.new.status === 'finished' || payload.new.status === 'cancelled') {
+          showToast("L'avversario ha lasciato la sfida.");
+          goToHome();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      (supabase as any).removeChannel(channel);
+    };
+  }, [activeMatch, currentUser, goToHome]); // Added goToHome to dependencies
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (activeModal) {
+        setActiveModal(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, [activeModal]);
 
   // Salvataggio Punteggio su Game Over & Sync Progress
@@ -272,7 +323,7 @@ const App: React.FC = () => {
       };
       saveScore();
     }
-  }, [gameState.status]);
+  }, [gameState.status, gameState.totalScore, gameState.level, gameState.estimatedIQ, currentUser, userProfile]); // Added dependencies
 
   const calculateResultFromPath = (pathIds: string[]): number | null => {
     if (pathIds.length < 1) return null;
@@ -625,7 +676,7 @@ const App: React.FC = () => {
 
   const handleStartGameClick = useCallback(async (e: React.PointerEvent) => {
     if (e) {
-      // e.preventDefault(); // Removed as per instruction's implied change
+      // e.preventDefault(); 
       e.stopPropagation();
     }
     await handleUserInteraction();
@@ -648,19 +699,6 @@ const App: React.FC = () => {
       startGame();
     }
   }, [savedGame, startGame, handleUserInteraction]);
-
-  const goToHome = (e?: React.PointerEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    soundService.playReset();
-    // Toast removed as per user request
-    setGameState(prev => ({ ...prev, status: 'idle' }));
-    setSelectedPath([]);
-    setIsDragging(false);
-    setPreviewResult(null);
-  };
 
   const nextTutorialStep = async () => {
     await handleUserInteraction();
@@ -730,7 +768,6 @@ const App: React.FC = () => {
       // In NeuralDuelLobby onMatchStart, we pass (seed, matchId, opponentId). We don't verify if I am P1.
       // Hack: fetch match or assume P1 if I created? No.
       // Better: Just matchService.updateScore(matchId, userId, score, isPlayer1??)
-      // matchService.updateScore takes `isPlayer1` boolean. I don't know it here easily without fetch.
       // I'll update matchService.updateScore to NOT require isPlayer1, just userId? 
       // OR I just fetch it once.
       // Let's rely on stored profile or pass it in `onMatchStart`.
@@ -863,7 +900,7 @@ const App: React.FC = () => {
     if (gameState.status === 'level-complete' || gameState.status === 'game-over') {
       getIQInsights(gameState.totalScore, gameState.level, gameState.timeLeft).then(setInsight);
     }
-  }, [gameState.status]);
+  }, [gameState.status, gameState.totalScore, gameState.level, gameState.timeLeft]); // Added dependencies
 
   const onStartInteraction = async (id: string) => {
     if (gameState.status !== 'playing' || isVictoryAnimating) return;
@@ -1156,50 +1193,6 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              {/* DUEL HUD - OPPONENT SCORE CIRCLE */}
-              {activeMatch && activeMatch.isDuel && (
-                <div className="absolute top-28 right-6 z-[500] flex flex-col items-center gap-3 animate-screen-in group">
-                  <div className="relative w-24 h-24 rounded-full bg-slate-950/90 backdrop-blur-2xl border-[3px] border-red-600/30 flex items-center justify-center shadow-[0_0_40px_rgba(220,38,38,0.4)] group-hover:scale-110 transition-transform duration-500">
-                    {/* Glow Ring */}
-                    <div className="absolute inset-0 rounded-full bg-red-600/10 animate-pulse blur-xl"></div>
-
-                    {/* Progress Circle SVG */}
-                    <svg className="absolute inset-0 w-full h-full -rotate-90 scale-[0.85]">
-                      <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="none" />
-                      <circle
-                        cx="50%" cy="50%" r="45%"
-                        stroke="#dc2626"
-                        strokeWidth="8"
-                        fill="none"
-                        strokeDasharray="283"
-                        strokeDashoffset={283 - (283 * (opponentScore / (duelMode === 'blitz' ? 3 : 5)))}
-                        strokeLinecap="round"
-                        className="transition-all duration-1000 ease-out"
-                        style={{ filter: 'drop-shadow(0 0 10px #dc2626)' }}
-                      />
-                    </svg>
-
-                    {/* Score Text */}
-                    <div className="flex flex-col items-center leading-none z-10">
-                      <span className="text-[10px] font-black text-red-500/80 mb-1 uppercase tracking-tighter">Enemy</span>
-                      <span className="text-4xl font-black font-orbitron text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
-                        {opponentScore}
-                      </span>
-                    </div>
-
-                    {/* Decorative Scanner Line (Vertical) */}
-                    <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-red-500/20 translate-x-[-1px]"></div>
-                    <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-red-500/20 translate-y-[-1px]"></div>
-                  </div>
-
-                  {/* Opponent Status Badge */}
-                  <div className="px-4 py-1.5 rounded-full bg-red-600/20 border border-red-600/40 backdrop-blur-md shadow-lg flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                    <span className="text-[10px] font-black font-orbitron text-white tracking-[0.2em] italic uppercase">Sfidante</span>
-                  </div>
-                </div>
-              )}
-
               {/* AUTH BUTTON */}
               {/* Auth Button Moved to Top Right - Removed from here */}
 
@@ -1265,22 +1258,24 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* LEADERBOARD/STATS Header - ADAPTED FOR DUEL */}
+              {/* LEADERBOARD/STATS Header - ADAPTED FOR DUEL (WHITE CIRCLE VERSION) */}
               {activeMatch?.isDuel ? (
                 <div className="flex items-center gap-4 pl-20 sm:pl-0">
                   {duelMode === 'blitz' ? (
                     <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-black uppercase text-amber-400">ROUND</span>
+                      <span className="text-[10px] font-black uppercase text-amber-100">ROUND</span>
                       <span className="text-2xl font-black font-orbitron text-white">{duelRounds.current}/5</span>
-                      <span className="text-[8px] font-bold text-slate-400">P1: {duelRounds.p1} - P2: {duelRounds.p2}</span>
+                      {/* Opponent Mini Circle for Blitz too? */}
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-black uppercase text-red-500 animate-pulse">VS</span>
-                      <span className="text-xl font-black font-orbitron text-white">{opponentScore}</span>
-                      <span className="text-[8px] text-slate-400">OPPONENT</span>
-                    </div>
-                  )}
+                  ) : null}
+
+                  {/* Common White Circle for Opponent Score */}
+                  <div className="w-14 h-14 rounded-full bg-white border-[3px] border-slate-900 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
+                    <span className="text-[7px] font-black text-slate-500 leading-none mb-0.5 uppercase">OPP</span>
+                    <span className="text-xl font-black font-orbitron text-slate-900 leading-none">
+                      {opponentScore}
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 pl-20 sm:pl-0">
