@@ -922,20 +922,16 @@ const App: React.FC = () => {
       {gameState.status === 'idle' && (
         <>
           <CharacterHelper />
-          <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-10 animate-screen-in relative">
+          <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 pt-10 pb-32 animate-screen-in relative">
 
-            {/* ADMIN ACCESS - Top Left Corner of Home Screen */}
-            {/* TOP RIGHT ICONS: User & Audio */}
-            <div className="absolute top-4 right-4 z-50 flex gap-3 items-center">
-
-              {/* USER AUTH ICON */}
+            {/* TOP LEFT: User Auth */}
+            <div className="absolute top-4 left-4 z-50 flex gap-3 items-center">
               <button
                 onPointerDown={async (e) => {
                   e.stopPropagation();
                   await handleUserInteraction();
                   soundService.playUIClick();
                   if (currentUser) {
-                    // Logout Immediato
                     import('./services/supabaseClient').then(({ authService }) => authService.signOut());
                     setCurrentUser(null);
                     setUserProfile(null);
@@ -945,19 +941,21 @@ const App: React.FC = () => {
                     setShowAuthModal(true);
                   }
                 }}
-                className="flex items-center gap-3 pl-1 pr-3 py-1 rounded-full bg-black/40 border border-white/20 backdrop-blur-md hover:bg-black/60 transition-all group"
+                className="flex items-center gap-3 pr-3 pl-1 py-1 rounded-full bg-black/40 border border-white/20 backdrop-blur-md hover:bg-black/60 transition-all group"
               >
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 border-white/50 shadow-lg ${currentUser ? 'bg-[#FF8800] text-white' : 'bg-slate-700 text-slate-400 group-hover:bg-white group-hover:text-[#FF8800] transition-colors'}`}>
                   <User size={20} strokeWidth={2.5} />
                 </div>
                 {currentUser && (
-                  <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest hidden sm:block">
+                  <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest pl-2">
                     {userProfile?.username || 'GUEST'}
                   </span>
                 )}
               </button>
+            </div>
 
-              {/* Audio Icon */}
+            {/* TOP RIGHT: Audio */}
+            <div className="absolute top-4 right-4 z-50 flex gap-3 items-center">
               <button
                 onPointerDown={toggleMute}
                 className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
@@ -968,8 +966,17 @@ const App: React.FC = () => {
               </button>
             </div>
 
-            {/* BOTTOM LEFT ICONS: Admin & Tutorial */}
-            <div className="absolute bottom-4 left-4 z-50 flex gap-3">
+            {/* BOTTOM RIGHT ICONS: Admin & Tutorial (FIXED Position) */}
+            <div className="fixed bottom-5 right-5 z-[2000] flex gap-3">
+              {/* Tutorial Icon */}
+              <button
+                onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
+                className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                title="Tutorial"
+              >
+                <HelpCircle size={24} strokeWidth={2.5} />
+              </button>
+
               {/* Admin Access */}
               <button
                 onPointerDown={async (e) => {
@@ -982,15 +989,6 @@ const App: React.FC = () => {
                 title="Admin Access"
               >
                 <Shield size={24} strokeWidth={2.5} />
-              </button>
-
-              {/* Tutorial Icon */}
-              <button
-                onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
-                className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
-                title="Tutorial"
-              >
-                <HelpCircle size={24} strokeWidth={2.5} />
               </button>
             </div>
             <div className="mb-6 flex flex-col items-center">
@@ -1043,7 +1041,7 @@ const App: React.FC = () => {
                     <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Sfida 1vs1 Realtime</span>
                   </div>
                   {/* Coming Soon Badge */}
-                  <div className="absolute top-2 right-2 bg-black/30 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-yellow-300 animate-pulse">PRESTO</div>
+                  <div className="absolute top-2 right-2 bg-red-600/90 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-white animate-pulse shadow-lg">NEW!</div>
                 </button>
 
                 <button
@@ -1345,7 +1343,7 @@ const App: React.FC = () => {
             setActiveMatch({ id: matchId, opponentId, isDuel: true });
 
             // Initialize Duel Game
-            soundService.playGameStart();
+            soundService.playUIClick();
             setGameState({
               score: 0,
               totalScore: 0,
@@ -1363,7 +1361,7 @@ const App: React.FC = () => {
             // For now, we just rely on standard random, but in production we MUST use the seed for identical grids.
             // We simulate this by passing the seed to a new generator function or just initiating standard level 1.
             // FUTURE: Implement seeded RNG in services/gameLogic.ts
-            generateLevel(1);
+            generateGrid(1);
             // Reset Opponent Score
             setOpponentScore(0);
           }}
