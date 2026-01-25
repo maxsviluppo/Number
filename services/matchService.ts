@@ -76,6 +76,38 @@ export const matchService = {
             console.error('Error finding match:', error);
         }
         return data || null;
+        return data || null;
+    },
+
+    // Ottieni tutte le partite aperte per una modalità (per la lista lobby)
+    async getOpenMatches(mode: 'standard' | 'blitz'): Promise<any[]> {
+        const { data, error } = await (supabase as any)
+            .from('matches')
+            .select(`
+                *,
+                player1:profiles!player1_id (username, max_level)
+            `)
+            .eq('status', 'pending')
+            .eq('mode', mode)
+            .is('player2_id', null)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (error) {
+            console.error('Error fetching matches:', error);
+            return [];
+        }
+        return data || [];
+    },
+
+    // Cancella una richiesta di partita (se mi stanco di aspettare)
+    async cancelMatch(matchId: string) {
+        const { error } = await (supabase as any)
+            .from('matches')
+            .delete() // O .update({ status: 'cancelled' }) se vogliamo storico. Delete è più pulito per lobby.
+            .eq('id', matchId);
+
+        if (error) console.error('Error canceling match:', error);
     },
 
     // Aggiorna il punteggio di un giocatore

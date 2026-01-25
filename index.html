@@ -116,6 +116,23 @@
       color: #f8fafc;
       overflow: hidden;
       touch-action: none;
+      /* Safe Area for Notches/Curved Edges */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      height: 100vh;
+      /* Fallback */
+      height: 100dvh;
+      /* Dynamic Viewport Height */
+      width: 100vw;
+      box-sizing: border-box;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: inherit;
     }
 
     .allow-scroll {
