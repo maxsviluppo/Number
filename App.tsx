@@ -922,7 +922,7 @@ const App: React.FC = () => {
       {gameState.status === 'idle' && (
         <>
           <CharacterHelper />
-          <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 pt-10 pb-32 animate-screen-in relative">
+          <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 pt-24 pb-32 animate-screen-in relative">
 
             {/* TOP LEFT: User Auth */}
             <div className="absolute top-4 left-4 z-50 flex gap-3 items-center">
