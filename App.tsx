@@ -1156,18 +1156,46 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              {/* DUEL HUD - OPPONENT PROGRESS */}
+              {/* DUEL HUD - OPPONENT SCORE CIRCLE */}
               {activeMatch && activeMatch.isDuel && (
-                <div className="absolute top-20 right-4 w-48 bg-black/60 backdrop-blur border border-red-500/30 p-2 rounded-lg z-30">
-                  <div className="flex justify-between items-center text-xs text-red-400 font-bold mb-1">
-                    <span>AVVERSARIO</span>
-                    <span>{opponentScore}/5</span>
+                <div className="absolute top-28 right-6 z-[500] flex flex-col items-center gap-3 animate-screen-in group">
+                  <div className="relative w-24 h-24 rounded-full bg-slate-950/90 backdrop-blur-2xl border-[3px] border-red-600/30 flex items-center justify-center shadow-[0_0_40px_rgba(220,38,38,0.4)] group-hover:scale-110 transition-transform duration-500">
+                    {/* Glow Ring */}
+                    <div className="absolute inset-0 rounded-full bg-red-600/10 animate-pulse blur-xl"></div>
+
+                    {/* Progress Circle SVG */}
+                    <svg className="absolute inset-0 w-full h-full -rotate-90 scale-[0.85]">
+                      <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="none" />
+                      <circle
+                        cx="50%" cy="50%" r="45%"
+                        stroke="#dc2626"
+                        strokeWidth="8"
+                        fill="none"
+                        strokeDasharray="283"
+                        strokeDashoffset={283 - (283 * (opponentScore / (duelMode === 'blitz' ? 3 : 5)))}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 ease-out"
+                        style={{ filter: 'drop-shadow(0 0 10px #dc2626)' }}
+                      />
+                    </svg>
+
+                    {/* Score Text */}
+                    <div className="flex flex-col items-center leading-none z-10">
+                      <span className="text-[10px] font-black text-red-500/80 mb-1 uppercase tracking-tighter">Enemy</span>
+                      <span className="text-4xl font-black font-orbitron text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
+                        {opponentScore}
+                      </span>
+                    </div>
+
+                    {/* Decorative Scanner Line (Vertical) */}
+                    <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-red-500/20 translate-x-[-1px]"></div>
+                    <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-red-500/20 translate-y-[-1px]"></div>
                   </div>
-                  <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-red-600 transition-all duration-500"
-                      style={{ width: `${(opponentScore / 5) * 100}%` }}
-                    ></div>
+
+                  {/* Opponent Status Badge */}
+                  <div className="px-4 py-1.5 rounded-full bg-red-600/20 border border-red-600/40 backdrop-blur-md shadow-lg flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                    <span className="text-[10px] font-black font-orbitron text-white tracking-[0.2em] italic uppercase">Sfidante</span>
                   </div>
                 </div>
               )}
