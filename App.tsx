@@ -1020,7 +1020,7 @@ const App: React.FC = () => {
           <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 pt-24 pb-32 animate-screen-in relative">
 
             {/* TOP LEFT: User Auth */}
-            <div className="absolute top-10 left-4 z-50 flex gap-3 items-center">
+            <div className="absolute top-14 left-5 z-50 flex gap-3 items-center" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               <button
                 onPointerDown={async (e) => {
                   e.stopPropagation();
@@ -1050,7 +1050,7 @@ const App: React.FC = () => {
             </div>
 
             {/* TOP RIGHT: Audio */}
-            <div className="absolute top-10 right-4 z-50 flex gap-3 items-center">
+            <div className="absolute top-14 right-5 z-50 flex gap-3 items-center" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               <button
                 onPointerDown={toggleMute}
                 className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
@@ -1062,7 +1062,7 @@ const App: React.FC = () => {
             </div>
 
             {/* BOTTOM RIGHT ICONS: Admin & Tutorial (FIXED Position) */}
-            <div className="fixed bottom-5 right-5 z-[2000] flex gap-3">
+            <div className="fixed bottom-4 right-4 z-[2000] flex gap-3" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
               {/* Tutorial Icon */}
               <button
                 onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
