@@ -925,7 +925,7 @@ const App: React.FC = () => {
           <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 pt-24 pb-32 animate-screen-in relative">
 
             {/* TOP LEFT: User Auth */}
-            <div className="absolute top-4 left-4 z-50 flex gap-3 items-center">
+            <div className="absolute top-7 left-4 z-50 flex gap-3 items-center">
               <button
                 onPointerDown={async (e) => {
                   e.stopPropagation();
@@ -955,7 +955,7 @@ const App: React.FC = () => {
             </div>
 
             {/* TOP RIGHT: Audio */}
-            <div className="absolute top-4 right-4 z-50 flex gap-3 items-center">
+            <div className="absolute top-7 right-4 z-50 flex gap-3 items-center">
               <button
                 onPointerDown={toggleMute}
                 className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
