@@ -110,6 +110,8 @@ export const matchService = {
 
     // Ottieni tutte le partite aperte per una modalità (per la lista lobby)
     async getOpenMatches(mode: 'standard' | 'blitz'): Promise<any[]> {
+        console.log("Fetching matches for mode:", mode);
+        // Usa una query più permissiva per il debug: prendi TUTTE le pending
         const { data, error } = await (supabase as any)
             .from('matches')
             .select(`
@@ -126,6 +128,7 @@ export const matchService = {
             console.error('GET MATCHES ERROR:', error);
             return [];
         }
+        console.log("Matches found:", data?.length, data);
         return data || [];
     },
 

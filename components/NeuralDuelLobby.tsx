@@ -17,23 +17,30 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     const [loading, setLoading] = useState(false);
     const channelRef = useRef<any>(null);
 
-    // Initial Fetch & Subscription
+    // Initial Fetch & Subscription & POLLING
     useEffect(() => {
         fetchMatches();
+
+        // Polling di sicurezza ogni 3 secondi (perché il socket websocket a volte fallisce su reti mobili)
+        const intervalId = setInterval(fetchMatches, 3000);
 
         // Realtime Listener for the Lobby List
         const lobbyChannel = (supabase as any)
             .channel(`lobby_${mode}`)
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'matches', filter: `mode=eq.${mode}` },
+                { event: '*', schema: 'public', table: 'matches' }, // Listen to ALL match changes
                 () => {
-                    fetchMatches(); // Refresh list on any change
+                    console.log("Realtime Change Detected -> Refetching");
+                    fetchMatches();
                 }
             )
-            .subscribe();
+            .subscribe((status: string) => {
+                console.log("Lobby Subscription Status:", status);
+            });
 
         return () => {
+            clearInterval(intervalId);
             (supabase as any).removeChannel(lobbyChannel);
             if (channelRef.current) (supabase as any).removeChannel(channelRef.current);
             // Cleanup: If I am hosting, delete my match on unmount? 
