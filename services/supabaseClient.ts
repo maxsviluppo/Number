@@ -41,6 +41,11 @@ try {
         console.log('✅ Supabase Client Initialized');
     } else {
         console.warn('⚠️ Supabase credentials missing! App running in Offline/Demo mode.');
+        console.debug('Debug Info:', {
+            urlPresent: !!supabaseUrl,
+            keyPresent: !!supabaseAnonKey,
+            urlStartWithHttp: supabaseUrl?.startsWith('http')
+        });
     }
 } catch (e) {
     console.error('❌ Supabase Critical Init Error:', e);

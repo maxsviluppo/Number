@@ -1,21 +1,26 @@
+// GEMINI SERVICE REMOVED - USING STATIC MESSAGES
+// L'utente ha richiesto di non usare API Key esterne per questo.
 
-import { GoogleGenAI } from "@google/genai";
+const MOTIVATIONAL_MESSAGES = [
+  "Ottima sfida! Supera i tuoi limiti.",
+  "La tua mente è agile come un calcolatore!",
+  "Stai andando alla grande, continua così!",
+  "Incredibile velocità di pensiero!",
+  "Sei un vero campione dei numeri!",
+  "Logica impeccabile!",
+  "Non fermarti ora, il record è vicino!",
+  "Fantastico! I tuoi neuroni stanno correndo!",
+  "Precisione chirurgica!",
+  "Un vero maestro dell'aritmetica!"
+];
 
-// Initialize GoogleGenAI inside the function to ensure the most up-to-date API key is used from the environment.
 export async function getIQInsights(score: number, level: number, timeLeft: number) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (window as any).process?.env?.API_KEY || '';
-  if (!apiKey) return "Ottima sfida! Supera i tuoi limiti.";
-  const ai = new GoogleGenAI({ apiKey });
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Analizza questa performance di un giocatore in un gioco aritmetico basato su esagoni: 
-      Punteggio: ${score}, Livello: ${level}, Tempo rimanente: ${timeLeft} secondi. 
-      Fornisci un breve commento motivazionale in italiano (massimo 20 parole) che rifletta la loro capacità logico-matematica.`,
-    });
-    return response.text || "Continua così, la tua mente è agile!";
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    return "Ottima sfida! Supera i tuoi limiti.";
-  }
+  // Simple logic to pick a message based on performance
+  if (score > 1000) return "Livello Genio! Prestazione eccezionale.";
+  if (level > 10) return "Stai scalando le vette della classifica!";
+  if (timeLeft > 50) return "Velocità luce! Sei rapidissimo.";
+
+  // Random fallback
+  const randomIndex = Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length);
+  return MOTIVATIONAL_MESSAGES[randomIndex];
 }
