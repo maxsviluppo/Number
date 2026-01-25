@@ -919,7 +919,21 @@ const App: React.FC = () => {
       {gameState.status === 'idle' && (
         <>
           <CharacterHelper />
-          <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-10 animate-screen-in">
+          <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-10 animate-screen-in relative">
+
+            {/* ADMIN ACCESS - Top Left Corner of Home Screen */}
+            <button
+              onPointerDown={async (e) => {
+                e.stopPropagation();
+                await handleUserInteraction();
+                soundService.playUIClick();
+                setActiveModal('admin');
+              }}
+              className="absolute top-0 left-0 p-6 text-white/50 hover:text-[#FF8800] transition-colors duration-300 z-50"
+              title="Admin Access"
+            >
+              <Shield size={20} />
+            </button>
             <div className="mb-6 flex flex-col items-center">
               {/* Logo: Custom Shape Image with White Border & Brain */}
               {/* Logo: Pure Color CSS Mask Implementation */}
@@ -930,19 +944,6 @@ const App: React.FC = () => {
                 {/* Brain Icon - Centered */}
                 <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
 
-                {/* ADMIN ACCESS - Hidden Top Left Trigger */}
-                <button
-                  onPointerDown={async (e) => {
-                    e.stopPropagation();
-                    await handleUserInteraction();
-                    soundService.playUIClick();
-                    setActiveModal('admin');
-                  }}
-                  className="absolute -top-4 -left-4 p-4 text-white/5 hover:text-[#FF8800] transition-colors duration-300 z-50 rounded-full"
-                  title="Admin Access"
-                >
-                  <Shield size={16} />
-                </button>
               </div>
 
               <h1 className="text-6xl sm:text-8xl font-black font-orbitron tracking-tighter text-[#FF8800] lowercase" style={{ WebkitTextStroke: '3px white' }}>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Users, DollarSign, Trophy, TrendingUp, Calendar, Mail, X, Shield, Lock, Activity, List, Send, Save } from 'lucide-react';
+import { Users, DollarSign, Trophy, TrendingUp, Calendar, Mail, X, Shield, Lock, Activity, List, Send, Save, Menu } from 'lucide-react';
 
 interface AdminPanelProps {
     onClose: () => void;
@@ -126,9 +126,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
     // Dashboard Interface
     return (
-        <div className="fixed inset-0 z-50 flex bg-[#0a0a0a] text-white overflow-hidden animate-fade-in">
-            {/* Sidebar */}
-            <div className="w-64 bg-[#111] border-r border-[#222] flex flex-col p-4">
+        <div className="fixed inset-0 z-50 flex flex-col md:flex-row bg-[#0a0a0a] text-white overflow-hidden animate-fade-in">
+            {/* Sidebar (Desktop) */}
+            <div className="hidden md:flex w-64 bg-[#111] border-r border-[#222] flex-col p-4">
                 <div className="flex items-center gap-3 px-2 mb-8 mt-2">
                     <div className="w-8 h-8 bg-[#FF8800] rounded-lg flex items-center justify-center text-black font-bold">
                         <Shield size={18} />
@@ -149,15 +149,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </button>
             </div>
 
+            {/* Mobile Header */}
+            <div className="md:hidden bg-[#111] border-b border-[#222] p-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-[#FF8800] rounded-lg flex items-center justify-center text-black font-bold">
+                        <Shield size={18} />
+                    </div>
+                    <span className="font-bold text-lg">Admin</span>
+                </div>
+                <button onClick={onClose} className="p-2 text-gray-400 hover:text-white">
+                    <X size={24} />
+                </button>
+            </div>
+
             {/* Main Content */}
-            <div className="flex-1 overflow-y-auto bg-[#0a0a0a] p-8">
-                <header className="flex justify-between items-center mb-8">
-                    <h1 className="text-3xl font-bold">{
+            <div className="flex-1 overflow-y-auto bg-[#0a0a0a] p-4 md:p-8 pb-24 md:pb-8">
+                <header className="flex flex-col md:flex-row justify-between md:items-center mb-6 md:mb-8 gap-2">
+                    <h1 className="text-2xl md:text-3xl font-bold">{
                         activeTab === 'overview' ? 'Panoramica App' :
                             activeTab === 'subscribers' ? 'Lista Iscritti' :
                                 activeTab === 'planning' ? 'Pianificazione Sfide' : 'Newsletter'
                     }</h1>
-                    <div className="text-sm text-gray-500">Ultimo aggiornamento: Oggi, {new Date().toLocaleTimeString()}</div>
+                    <div className="text-xs md:text-sm text-gray-500">Ultimo aggiornamento: Oggi, {new Date().toLocaleTimeString()}</div>
                 </header>
 
                 {loading ? (
@@ -305,6 +318,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     </>
                 )}
             </div>
+
+            {/* Mobile Bottom Navigation */}
+            <div className="md:hidden bg-[#111] border-t border-[#222] flex justify-around p-2 pb-safe">
+                <MobileNavItem icon={<Activity />} label="Panoramica" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+                <MobileNavItem icon={<Users />} label="Iscritti" active={activeTab === 'subscribers'} onClick={() => setActiveTab('subscribers')} />
+                <MobileNavItem icon={<Calendar />} label="Pianif." active={activeTab === 'planning'} onClick={() => setActiveTab('planning')} />
+                <MobileNavItem icon={<Mail />} label="News" active={activeTab === 'newsletter'} onClick={() => setActiveTab('newsletter')} />
+            </div>
         </div>
     );
 };
@@ -342,5 +363,15 @@ const StatCard = ({ icon, label, value, subtext, color }: any) => {
         </div>
     );
 };
+
+const MobileNavItem = ({ icon, label, active, onClick }: any) => (
+    <button
+        onClick={onClick}
+        className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${active ? 'text-[#FF8800]' : 'text-gray-500'}`}
+    >
+        {React.cloneElement(icon, { size: 24, strokeWidth: active ? 2.5 : 2 })}
+        <span className="text-[10px] mt-1 font-medium">{label}</span>
+    </button>
+);
 
 export default AdminPanel;
