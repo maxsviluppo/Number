@@ -1,7 +1,7 @@
 import { createClient, User } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = 'https://bpyqazhiespiknhflowh.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJweXFhemhpZXNwaWtuaGZsb3doIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyNzMwNTQsImV4cCI6MjA4NDg0OTA1NH0.QI9NbyaYRzDAcFPMWtsggeQgYSPSaUbNFTi-_7YjQ';
 
 // DUMMY CLIENT FACTORY (Safe Fallback)
 const createDummyClient = () => ({
