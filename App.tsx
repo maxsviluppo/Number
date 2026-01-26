@@ -1909,6 +1909,7 @@ const App: React.FC = () => {
             currentUser={currentUser}
             userProfile={userProfile}
             onClose={() => setActiveModal(null)}
+            onUpdate={(newP) => setUserProfile(newP)}
           />
         )}
 

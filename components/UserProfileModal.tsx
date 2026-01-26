@@ -8,6 +8,7 @@ interface UserProfileModalProps {
     currentUser: any;
     userProfile: UserProfile | null;
     onClose: () => void;
+    onUpdate?: (newProfile: UserProfile) => void;
 }
 
 // Rank Logic - Expanded for long-term progression
@@ -25,10 +26,11 @@ export const getRank = (level: number) => {
     return { title: 'Neofita', icon: BookOpen, color: 'text-slate-500', bg: 'bg-slate-500/10' };
 };
 
-const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userProfile, onClose }) => {
+const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userProfile, onClose, onUpdate }) => {
     const [activeTab, setActiveTab] = useState<'profile' | 'badges' | 'trophies' | 'boss'>('profile');
     const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
     const [previewAvatar, setPreviewAvatar] = useState<string | null>(null); // Local preview state
+    const [toastMessage, setToastMessage] = useState<string | null>(null); // Toast state
 
     // Fallback data if profile is missing (e.g. offline)
     const stats = userProfile || {
@@ -68,9 +70,19 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                     // SAVE TO DB (Base64 string in avatar_url for now - assuming column supports long text or we are testing)
                     // If supabase storage is not set, this might fail if string is too big, but we capped it at ~20-50kb.
                     await profileService.updateProfile({ id: userProfile.id, avatar_url: base64Image });
+                    // Update Parent State to reflect changes everywhere immediately
+                    if (onUpdate) {
+                        onUpdate({ ...userProfile, avatar_url: base64Image });
+                    }
+
+                    // Show Toast
+                    setToastMessage("Foto aggiornata con successo!");
+                    setTimeout(() => setToastMessage(null), 3000);
                 }
             } catch (err) {
                 console.error("Avatar error:", err);
+                setToastMessage("Errore caricamento foto.");
+                setTimeout(() => setToastMessage(null), 3000);
             }
         }
     };
@@ -82,11 +94,22 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
 
         try {
             await profileService.updateProfile({ id: userProfile.id, avatar_url: null as any }); // Send null to DB
+            if (onUpdate) onUpdate({ ...userProfile, avatar_url: undefined });
+            setToastMessage("Foto rimossa.");
+            setTimeout(() => setToastMessage(null), 3000);
         } catch (e) { console.error("Remove Avatar Fail", e); }
     };
 
     return (
         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={(e) => { e.stopPropagation(); onClose(); }}>
+
+            {/* TOAST NOTIFICATION */}
+            {toastMessage && (
+                <div className="absolute top-10 left-1/2 -translate-x-1/2 z-[6000] px-6 py-3 bg-green-500 text-white rounded-full shadow-2xl font-bold text-sm animate-bounce flex items-center gap-2">
+                    <Sparkles size={16} /> {toastMessage}
+                </div>
+            )}
+
             <div className="bg-slate-900 border-[3px] border-slate-700 w-full max-w-lg h-[80vh] rounded-[2rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
                 {/* Background Pattern */}
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
