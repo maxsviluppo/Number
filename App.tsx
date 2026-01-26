@@ -1857,18 +1857,27 @@ const App: React.FC = () => {
                           {/* Top 3 Highlight */}
                           {idx < 3 && <div className={`absolute left-0 top-0 bottom-0 w-1 ${idx === 0 ? 'bg-[#FFD700]' : idx === 1 ? 'bg-gray-300' : 'bg-[#CD7F32]'}`}></div>}
 
-                          <div className="flex flex-col pl-2">
-                            <div className="flex items-center gap-2">
-                              {p.avatar_url && <img src={p.avatar_url} className="w-4 h-4 rounded-full object-cover border border-white/20" alt="" />}
-                              <span className={`text-sm font-bold ${idx < 3 ? 'text-white' : 'text-gray-300'}`}>
+                          <div className="flex items-center gap-3 pl-2">
+                            {/* Avatar or Placeholder */}
+                            <div className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full bg-slate-800 border-2 border-white/10 overflow-hidden flex items-center justify-center">
+                              {p.avatar_url ? (
+                                <img src={p.avatar_url} className="w-full h-full object-cover" alt={p.username} />
+                              ) : (
+                                <span className="text-xs font-bold text-slate-500">{p.username?.charAt(0) || '?'}</span>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col">
+                              <span className={`text-sm font-bold leading-tight ${idx < 3 ? 'text-white' : 'text-gray-300'}`}>
                                 {idx + 1}. {p.username || 'Giocatore'}
                               </span>
+
+                              <div className="flex items-center gap-1 mt-0.5">
+                                {idx === 0 && <Sparkles size={10} className="text-yellow-400" />}
+                                <RankIcon size={10} className={playerRank.color} />
+                                <span className={`text-[8px] uppercase font-black tracking-widest ${playerRank.color}`}>{playerRank.title}</span>
+                              </div>
                             </div>
-                            <span className="text-[10px] text-slate-500 uppercase flex items-center gap-1">
-                              {idx === 0 && <Sparkles size={8} className="text-yellow-400" />}
-                              <RankIcon size={10} className={playerRank.color} />
-                              <span className={`text-[8px] uppercase font-black tracking-widest ${playerRank.color}`}>{playerRank.title}</span>
-                            </span>
                           </div>
                           <div className="flex flex-col items-end">
                             {tutorialStep === 0 ? (
