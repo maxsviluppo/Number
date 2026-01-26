@@ -165,31 +165,40 @@ export const matchService = {
             return rawMatches || [];
         }
 
-        // REPLENISH NAMES FALLBACK: If join query failed to return profiles (e.g. relation missing), try manual hydration
+        // REPLENISH NAMES FALLBACK: Check if any username is missing or null
         if (data.length > 0) {
+            // Check if ANY required profile is missing username property
             const needsHydration = data.some(m => !m.player1?.username || (m.player2_id && !m.player2?.username));
+
             if (needsHydration) {
                 console.log("LOBBY: Manual hydration required for names.");
                 const userIds = new Set<string>();
+
+                // Collect IDs only for missing profiles
                 data.forEach(m => {
-                    if (m.player1_id) userIds.add(m.player1_id);
-                    if (m.player2_id) userIds.add(m.player2_id);
+                    if (m.player1_id && !m.player1?.username) userIds.add(m.player1_id);
+                    if (m.player2_id && !m.player2?.username) userIds.add(m.player2_id);
                 });
 
-                const { data: profiles } = await (supabase as any)
-                    .from('profiles')
-                    .select('id, username')
-                    .in('id', Array.from(userIds));
+                if (userIds.size > 0) {
+                    const { data: profiles } = await (supabase as any)
+                        .from('profiles')
+                        .select('id, username') // Minimum fields
+                        .in('id', Array.from(userIds));
 
-                if (profiles) {
-                    data.forEach(m => {
-                        if (!m.player1?.username) {
-                            m.player1 = profiles.find(p => p.id === m.player1_id) || m.player1;
-                        }
-                        if (!m.player2?.username && m.player2_id) {
-                            m.player2 = profiles.find(p => p.id === m.player2_id) || m.player2;
-                        }
-                    });
+                    if (profiles) {
+                        data.forEach(m => {
+                            // Only patch if missing
+                            if (!m.player1?.username && m.player1_id) {
+                                const p = profiles.find(p => p.id === m.player1_id);
+                                if (p) m.player1 = p;
+                            }
+                            if (!m.player2?.username && m.player2_id) {
+                                const p = profiles.find(p => p.id === m.player2_id);
+                                if (p) m.player2 = p;
+                            }
+                        });
+                    }
                 }
             }
         }

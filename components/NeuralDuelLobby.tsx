@@ -168,8 +168,13 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                     <Swords className="text-[#FF8800] animate-pulse" size={40} />
                                 </div>
                             </div>
-                            <h3 className="text-2xl font-black font-orbitron text-white uppercase tracking-wider mb-2">Tavolo Online</h3>
-                            <p className="text-slate-400 text-sm max-w-xs mb-8">Sei in attesa di uno sfidante. La partita inizierà automaticamente.</p>
+                            <h3 className="text-2xl font-black font-orbitron text-white uppercase tracking-wider mb-2">
+                                {userProfile?.username || currentUser.user_metadata?.username || 'Guerriero'}
+                            </h3>
+                            <div className="flex items-center gap-2 mb-8 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                                <span className="text-[10px] font-black text-slate-500 uppercase">LIVELLO {userProfile?.max_level || 1}</span>
+                            </div>
+                            <p className="text-slate-400 text-sm max-w-xs mb-8">Sei in attesa di uno sfidante.<br />La partita inizierà automaticamente.</p>
 
                             <div className="flex flex-col gap-4 w-full max-w-xs">
                                 <div className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center justify-between">
@@ -222,7 +227,9 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 group-hover:text-green-400 transition-colors">
-                                                        {match.player1?.username || 'Player'} {isBusy && <span className="text-red-500 mx-1">VS</span>} {isBusy && (match.player2?.username || 'Rival')}
+                                                        {match.player1?.username || match.player1_id?.slice(0, 8) || 'Guerriero'}
+                                                        {isBusy && <span className="text-red-500 mx-1">VS</span>}
+                                                        {isBusy && (match.player2?.username || match.player2_id?.slice(0, 8) || 'Rival')}
                                                     </div>
                                                     <div className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">
                                                         LVL {match.player1?.max_level || 1} • {isBusy ? "Partita avviata" : "In attesa di sfidanti"}
