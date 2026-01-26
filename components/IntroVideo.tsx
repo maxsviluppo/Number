@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { FastForward, Play } from 'lucide-react';
+import { FastForward, Play, Volume2, VolumeX } from 'lucide-react';
 
 interface IntroVideoProps {
     onFinish: () => void;
@@ -10,6 +10,19 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [started, setStarted] = useState(false);
     const [hasFired, setHasFired] = useState(false);
+    const [isMuted, setIsMuted] = useState(false);
+
+    const toggleAudio = (e: React.PointerEvent) => {
+        e.stopPropagation();
+        const newMuted = !isMuted;
+        setIsMuted(newMuted);
+        if (audioRef.current) {
+            audioRef.current.muted = newMuted;
+        }
+        if (videoRef.current) {
+            videoRef.current.muted = newMuted; // Mute video track too just in case
+        }
+    };
 
     // Funzione per navigare alla Home
     const triggerHome = () => {
@@ -43,7 +56,20 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
     };
 
     return (
+
         <div className="fixed inset-0 z-[100000] bg-black flex items-center justify-center overflow-hidden w-full h-[100dvh]" onPointerDown={(e) => e.stopPropagation()}>
+
+            {/* Audio Toggle (Always visible) */}
+            <button
+                onPointerDown={toggleAudio}
+                className={`absolute top-6 right-6 z-[100010] p-3 rounded-full border transition-all active:scale-95 shadow-lg
+                    ${!isMuted
+                        ? 'bg-[#FF8800] border-[#FF8800] text-white shadow-[0_0_20px_rgba(255,136,0,0.4)]'
+                        : 'bg-black/40 backdrop-blur-md border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
+            >
+                {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+            </button>
 
             {/* Background Video */}
             <video

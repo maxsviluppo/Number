@@ -267,14 +267,14 @@ export const leaderboardService = {
         // Fetch top by Score
         const { data: byScore } = await (supabase as any)
             .from('profiles')
-            .select('username, total_score, max_level, estimated_iq')
+            .select('username, total_score, max_level, estimated_iq, avatar_url')
             .order('total_score', { ascending: false })
             .limit(limit);
 
         // Fetch top by Level
         const { data: byLevel } = await (supabase as any)
             .from('profiles')
-            .select('username, total_score, max_level, estimated_iq')
+            .select('username, total_score, max_level, estimated_iq, avatar_url')
             .order('max_level', { ascending: false })
             .limit(limit);
 
