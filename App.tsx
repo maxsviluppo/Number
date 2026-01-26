@@ -731,60 +731,51 @@ const App: React.FC = () => {
     );
     const allDone = newTargets.every(t => t.completed);
 
-    // DUEL LOGIC
+    // 4. DUEL LOGIC
     if (activeMatch?.isDuel && currentUser) {
       const myTargetsFound = newTargets.filter(t => t.completed).length;
 
-      // Update My Info on Server
+      // Update Match Stats on Server
       matchService.updateScore(activeMatch.id, currentUser.id, gameState.totalScore + currentPoints, activeMatch.isP1);
       matchService.updateTargets(activeMatch.id, activeMatch.isP1, myTargetsFound);
 
       // BLITZ LOGIC: Check Round Win (3 Targets)
-      if (duelMode === 'blitz') {
-        if (myTargetsFound >= 3) {
-          // ROUND WON!
-          soundService.playSuccess();
-          showToast(`ROUND ${duelRounds.current} VINTO!`);
+      if (duelMode === 'blitz' && myTargetsFound >= 3) {
+        soundService.playSuccess();
+        showToast(`ROUND ${duelRounds.current} VINTO!`);
 
-          // Increment on Server
-          // We need to know if Im P1. I'll pass that info or fetch it.
-          // For this task, I'll rely on the subscription to update `duelRounds` eventually, but I must trigger it.
-          // TODO: Fix isPlayer1 detection.
-
-          // Reset Grid/Targets for next round
-          setTimeout(() => {
-            generateGrid(gameState.level); // Regenerate same level? Or level + 1?
-            // Blitz usually same difficulty or slight increase?
-            // Rules: "fissa 5 partite, ogni partita sullo stesso tabellone" -> Same Board?
-            // "ogni partita giocata sullo stesso tabellone" implies RESTART board.
-            // I'll just reset targets.
-            setGameState(prev => ({
-              ...prev,
-              levelTargets: prev.levelTargets.map(t => ({ ...t, completed: false })),
-              status: 'playing'
-            }));
-          }, 2000);
-          setSelectedPath([]); // Clear path after processing
-          return; // Stop processing level complete standard flow
-        }
+        setTimeout(() => {
+          generateGrid(gameState.level);
+          setGameState(prev => ({
+            ...prev,
+            levelTargets: prev.levelTargets.map(t2 => ({ ...t2, completed: false })),
+            status: 'playing'
+          }));
+        }, 2000);
+        setSelectedPath([]);
+        return;
       }
+    }
+
+    // 5. GLOBAL SYNC: Always update career stats on every success
+    if (currentUser) {
+      profileService.syncProgress(currentUser.id, currentPoints, gameState.level, gameState.estimatedIQ);
     }
 
     if (allDone) {
       if (activeMatch?.isDuel && duelMode === 'standard') {
-        // STANDARD DUEL WIN (5 Targets) - Match Ends Immediately
+        // Match Ends Immediately
         matchService.declareWinner(activeMatch.id, currentUser.id);
-
-        // Sync Points to Global Profile - Adding match points to lifetime total
-        profileService.syncProgress(currentUser.id, currentPoints, gameState.level, gameState.estimatedIQ)
-          .then(() => loadProfile(currentUser.id)); // Reload badge after sync finishes
 
         // Update Local State but skip video/standard recap
         setGameState(prev => ({
           ...prev,
+          score: prev.score + currentPoints,
           totalScore: prev.totalScore + currentPoints,
           status: 'idle'
         }));
+
+        loadProfile(currentUser.id); // Reload badge after sync finishes (sync was called above)
 
         setShowDuelRecap(true);
         setSelectedPath([]); // Clear path after processing
@@ -801,6 +792,7 @@ const App: React.FC = () => {
 
       setGameState(prev => ({
         ...prev,
+        score: prev.score + currentPoints,
         totalScore: nextLevelScore,
         streak: 0,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
@@ -817,9 +809,8 @@ const App: React.FC = () => {
           estimatedIQ: Math.min(200, gameState.estimatedIQ + 4)
         };
 
-        // In classic mode, we sync progress to career stats on level completion
-        profileService.syncProgress(currentUser.id, currentPoints, gameState.level, gameState.estimatedIQ)
-          .then(() => profileService.saveGameState(currentUser.id, saveState))
+        // Save active run state (snapshot) - syncProgress was already called for the last target
+        profileService.saveGameState(currentUser.id, saveState)
           .then(() => loadProfile(currentUser.id)); // Reload badge when both finish
 
         setSavedGame(saveState);
@@ -835,6 +826,7 @@ const App: React.FC = () => {
       // Level Continues (NOT all targets completed yet)
       setGameState(prev => ({
         ...prev,
+        score: prev.score + currentPoints,
         totalScore: prev.totalScore + currentPoints,
         streak: prev.streak + 1,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 0.5),
@@ -1063,7 +1055,7 @@ const App: React.FC = () => {
                       {userProfile?.username || 'GUEST'}
                     </span>
                     <span className="font-orbitron text-[8px] font-black text-[#FF8800] uppercase tracking-tighter mt-1">
-                      {gameState.totalScore} PTS
+                      {userProfile?.total_score || 0} PTS
                     </span>
                   </div>
                 )}
@@ -1276,7 +1268,7 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-3 pl-20 sm:pl-0">
                   <div className="w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
                     <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
-                    <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
+                    <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.score}</span>
                   </div>
                   <div className="w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
                     <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">LV</span>
