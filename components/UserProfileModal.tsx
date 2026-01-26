@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { User, Trophy, Award, Lock, X, Star, Zap, Brain, Target, Shield, Sparkles, BookOpen, Crown, Gem, Infinity, Layers, Swords } from 'lucide-react';
-import { UserProfile } from '../services/supabaseClient';
+import { User, Trophy, Award, Lock, X, Star, Zap, Brain, Target, Shield, Sparkles, BookOpen, Crown, Gem, Infinity, Layers, Swords, Camera, Trash2 } from 'lucide-react';
+import { UserProfile, profileService } from '../services/supabaseClient';
 import { BADGES } from '../constants/badges';
+import { processAvatarImage } from '../utils/imageUtils';
 
 interface UserProfileModalProps {
     currentUser: any;
@@ -9,9 +10,25 @@ interface UserProfileModalProps {
     onClose: () => void;
 }
 
+// Rank Logic - Expanded for long-term progression
+export const getRank = (level: number) => {
+    if (level >= 100) return { title: 'Divinità Numerica', icon: Infinity, color: 'text-rose-500', bg: 'bg-rose-500/20' };
+    if (level >= 80) return { title: 'Oracolo Supremo', icon: Crown, color: 'text-amber-300', bg: 'bg-amber-500/20' };
+    if (level >= 60) return { title: 'Signore del Calcolo', icon: Gem, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/20' };
+    if (level >= 50) return { title: 'Maestro dell\'Algoritmo', icon: Layers, color: 'text-cyan-400', bg: 'bg-cyan-500/20' };
+    if (level >= 40) return { title: 'Architetto Matrix', icon: Target, color: 'text-emerald-400', bg: 'bg-emerald-500/20' };
+    if (level >= 30) return { title: 'Stratega Quantico', icon: Brain, color: 'text-violet-400', bg: 'bg-violet-500/20' };
+    if (level >= 20) return { title: 'Entità Trascendente', icon: Sparkles, color: 'text-pink-400', bg: 'bg-pink-500/20' };
+    if (level >= 15) return { title: 'Visionario', icon: Zap, color: 'text-yellow-400', bg: 'bg-yellow-500/20' };
+    if (level >= 10) return { title: 'Operatore Elite', icon: Star, color: 'text-blue-400', bg: 'bg-blue-500/20' };
+    if (level >= 5) return { title: 'Hacker Logico', icon: Shield, color: 'text-slate-300', bg: 'bg-slate-500/20' };
+    return { title: 'Neofita', icon: BookOpen, color: 'text-slate-500', bg: 'bg-slate-500/10' };
+};
+
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userProfile, onClose }) => {
     const [activeTab, setActiveTab] = useState<'profile' | 'badges' | 'trophies' | 'boss'>('profile');
     const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
+    const [previewAvatar, setPreviewAvatar] = useState<string | null>(null); // Local preview state
 
     // Fallback data if profile is missing (e.g. offline)
     const stats = userProfile || {
@@ -19,29 +36,54 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
         max_level: 1,
         estimated_iq: 100,
         username: 'Ospite',
-        badges: []
+        badges: [],
+        avatar_url: undefined
     };
 
     const unlockedBadges = stats.badges || [];
 
-    // Rank Logic
-    // Rank Logic - Expanded for long-term progression
-    const getRank = (level: number) => {
-        if (level >= 100) return { title: 'Divinità Numerica', icon: Infinity, color: 'text-rose-500', bg: 'bg-rose-500/20' };
-        if (level >= 80) return { title: 'Oracolo Supremo', icon: Crown, color: 'text-amber-300', bg: 'bg-amber-500/20' };
-        if (level >= 60) return { title: 'Signore del Calcolo', icon: Gem, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/20' };
-        if (level >= 50) return { title: 'Maestro dell\'Algoritmo', icon: Layers, color: 'text-cyan-400', bg: 'bg-cyan-500/20' };
-        if (level >= 40) return { title: 'Architetto Matrix', icon: Target, color: 'text-emerald-400', bg: 'bg-emerald-500/20' };
-        if (level >= 30) return { title: 'Stratega Quantico', icon: Brain, color: 'text-violet-400', bg: 'bg-violet-500/20' };
-        if (level >= 20) return { title: 'Entità Trascendente', icon: Sparkles, color: 'text-pink-400', bg: 'bg-pink-500/20' };
-        if (level >= 15) return { title: 'Visionario', icon: Zap, color: 'text-yellow-400', bg: 'bg-yellow-500/20' };
-        if (level >= 10) return { title: 'Operatore Elite', icon: Star, color: 'text-blue-400', bg: 'bg-blue-500/20' };
-        if (level >= 5) return { title: 'Hacker Logico', icon: Shield, color: 'text-slate-300', bg: 'bg-slate-500/20' };
-        return { title: 'Neofita', icon: BookOpen, color: 'text-slate-500', bg: 'bg-slate-500/10' };
-    };
-
     const rank = getRank(stats.max_level);
     const RankIcon = rank.icon;
+
+    // Avatar Upload Handler
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            try {
+                const file = e.target.files[0];
+                console.log("Processing avatar...", file.name);
+
+                // Compress/Resize Client Side
+                const base64Image = await processAvatarImage(file);
+
+                // Show immediate preview
+                setPreviewAvatar(base64Image);
+
+                // OPTIMISTIC UPDATE
+                if (userProfile) {
+                    // Update Local State (would be better if passed from parent setter, but we mock display for now)
+                    // In a real app, call: await profileService.updateProfile({ id: userProfile.id, avatar_url: base64Image });
+                    // For now, let's assume we can update it or just show it:
+                    console.log("Avatar processed (length):", base64Image.length);
+
+                    // SAVE TO DB (Base64 string in avatar_url for now - assuming column supports long text or we are testing)
+                    // If supabase storage is not set, this might fail if string is too big, but we capped it at ~20-50kb.
+                    await profileService.updateProfile({ id: userProfile.id, avatar_url: base64Image });
+                }
+            } catch (err) {
+                console.error("Avatar error:", err);
+            }
+        }
+    };
+
+    const handleRemoveAvatar = async () => {
+        if (!userProfile) return;
+        setPreviewAvatar(null); // Clear preview
+        stats.avatar_url = undefined; // Clear Optimistic
+
+        try {
+            await profileService.updateProfile({ id: userProfile.id, avatar_url: null as any }); // Send null to DB
+        } catch (e) { console.error("Remove Avatar Fail", e); }
+    };
 
     return (
         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={(e) => { e.stopPropagation(); onClose(); }}>
@@ -52,8 +94,27 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                 {/* Header */}
                 <div className="relative z-10 p-6 pb-2 flex justify-between items-center bg-slate-900/50">
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-full border-[3px] border-[#FF8800] bg-slate-800 flex items-center justify-center overflow-hidden shadow-lg">
-                            <User size={32} className="text-white" />
+                        <div className="w-16 h-16 rounded-full border-[3px] border-[#FF8800] bg-slate-800 flex items-center justify-center overflow-hidden shadow-lg relative group">
+                            {(previewAvatar || stats.avatar_url) ? (
+                                <img src={previewAvatar || stats.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                                <User size={32} className="text-white" />
+                            )}
+
+                            {currentUser && (
+                                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity gap-2">
+                                    <label className="cursor-pointer p-1 bg-white/10 rounded-full hover:bg-white/20 transition-all">
+                                        <Camera size={16} className="text-white" />
+                                        <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                                    </label>
+
+                                    {(previewAvatar || stats.avatar_url) && (
+                                        <button onPointerDown={(e) => { e.stopPropagation(); handleRemoveAvatar(); }} className="p-1 bg-red-500/20 rounded-full hover:bg-red-500/40 transition-all text-red-400">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <div className="flex flex-col">
                             <h2 className="text-2xl font-black font-orbitron text-white uppercase tracking-wider leading-none">

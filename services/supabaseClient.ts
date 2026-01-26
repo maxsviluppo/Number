@@ -62,6 +62,7 @@ export interface UserProfile {
     max_level: number;
     badges: string[]; // JSON array of badge IDs
     estimated_iq: number;
+    avatar_url?: string;
     updated_at?: string;
 }
 

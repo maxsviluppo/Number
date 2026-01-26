@@ -43,7 +43,7 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[100000] bg-black flex items-center justify-center overflow-hidden w-screen h-screen" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100000] bg-black flex items-center justify-center overflow-hidden w-full h-[100dvh]" onPointerDown={(e) => e.stopPropagation()}>
 
             {/* Background Video */}
             <video

@@ -15,7 +15,7 @@ import NeuralDuelLobby from './components/NeuralDuelLobby';
 import DuelRecapModal from './components/DuelRecapModal';
 import IntroVideo from './components/IntroVideo';
 import ComicTutorial, { TutorialStep } from './components/ComicTutorial';
-import UserProfileModal from './components/UserProfileModal';
+import UserProfileModal, { getRank } from './components/UserProfileModal'; // Updated import
 import { BADGES } from './constants/badges';
 import { authService, profileService, leaderboardService, supabase, UserProfile } from './services/supabaseClient'; // Moved this import here
 
@@ -1114,10 +1114,9 @@ const App: React.FC = () => {
         }
       }} />}
       <div
-        className="h-[100dvh] w-full bg-gradient-to-t from-[#004488] to-[#0088dd] text-slate-100 flex flex-col items-center justify-center select-none relative overflow-hidden"
-        onPointerDown={handleUserInteraction}
-        onMouseUp={handleGlobalEnd}
-        onTouchEnd={handleGlobalEnd}
+        className="min-h-[100dvh] bg-gradient-to-t from-[#004488] to-[#0088dd] text-slate-100 font-sans overflow-hidden select-none pb-20 safe-area-bottom"
+        onPointerUp={handleGlobalEnd}
+        onPointerLeave={handleGlobalEnd}
       >
 
 
@@ -1848,40 +1847,50 @@ const App: React.FC = () => {
                 ) : (
                   <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scroll">
                     {/* DATA LIST */}
-                    {((tutorialStep === 0 ? (leaderboardData as any).byScore : (leaderboardData as any).byLevel) || []).map((p: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5 relative overflow-hidden group">
-                        {/* Top 3 Highlight */}
-                        {idx < 3 && <div className={`absolute left-0 top-0 bottom-0 w-1 ${idx === 0 ? 'bg-[#FFD700]' : idx === 1 ? 'bg-gray-300' : 'bg-[#CD7F32]'}`}></div>}
+                    {((tutorialStep === 0 ? (leaderboardData as any).byScore : (leaderboardData as any).byLevel) || []).map((p: any, idx: number) => {
+                      // Rank Calculation Inline for Leaderboard (avoiding circular dependency or extra imports if possible, but we imported `getRank` so use it)
+                      const playerRank = getRank(p.max_level || 1);
+                      const RankIcon = playerRank.icon;
 
-                        <div className="flex flex-col pl-2">
-                          <span className={`text-sm font-bold ${idx < 3 ? 'text-white' : 'text-gray-300'}`}>
-                            {idx + 1}. {p.username || 'Giocatore'}
-                          </span>
-                          <span className="text-[10px] text-slate-500 uppercase flex items-center gap-1">
-                            {p.country || 'IT'} {idx === 0 && <Sparkles size={8} className="text-yellow-400" />}
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          {tutorialStep === 0 ? (
-                            <>
-                              <span className="font-orbitron font-black text-[#FF8800] text-sm">{p.total_score} pts</span>
-                              <span className="font-orbitron font-bold text-gray-500 text-[9px]">Liv {p.max_level}</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="font-orbitron font-black text-cyan-400 text-sm">Liv {p.max_level}</span>
-                              <span className="font-orbitron font-bold text-gray-500 text-[9px]">{p.total_score} pts</span>
-                            </>
-                          )}
+                      return (
+                        <div key={idx} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5 relative overflow-hidden group">
+                          {/* Top 3 Highlight */}
+                          {idx < 3 && <div className={`absolute left-0 top-0 bottom-0 w-1 ${idx === 0 ? 'bg-[#FFD700]' : idx === 1 ? 'bg-gray-300' : 'bg-[#CD7F32]'}`}></div>}
 
+                          <div className="flex flex-col pl-2">
+                            <div className="flex items-center gap-2">
+                              {p.avatar_url && <img src={p.avatar_url} className="w-4 h-4 rounded-full object-cover border border-white/20" alt="" />}
+                              <span className={`text-sm font-bold ${idx < 3 ? 'text-white' : 'text-gray-300'}`}>
+                                {idx + 1}. {p.username || 'Giocatore'}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 uppercase flex items-center gap-1">
+                              {idx === 0 && <Sparkles size={8} className="text-yellow-400" />}
+                              <RankIcon size={10} className={playerRank.color} />
+                              <span className={`text-[8px] uppercase font-black tracking-widest ${playerRank.color}`}>{playerRank.title}</span>
+                            </span>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            {tutorialStep === 0 ? (
+                              <>
+                                <span className="font-orbitron font-black text-[#FF8800] text-sm">{p.total_score} pts</span>
+                                <span className="font-orbitron font-bold text-gray-500 text-[9px]">Liv {p.max_level}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="font-orbitron font-black text-cyan-400 text-sm">Liv {p.max_level}</span>
+                                <span className="font-orbitron font-bold text-gray-500 text-[9px]">{p.total_score} pts</span>
+                              </>
+                            )}
+
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
 
                     {((tutorialStep === 0 ? (leaderboardData as any).byScore : (leaderboardData as any).byLevel) || []).length === 0 && (
                       <div className="text-center py-8 text-gray-500 text-xs">Nessun dato disponibile</div>
                     )}
-
                   </div>
                 )}
 
@@ -2018,7 +2027,7 @@ const App: React.FC = () => {
           }}
         />
 
-      </div>
+      </div >
     </>
   );
 };
