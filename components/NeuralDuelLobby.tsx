@@ -133,9 +133,8 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <button onClick={fetchMatches} className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-white transition-colors bg-white/5 rounded-lg active:scale-95 border border-white/5">
-                            <span className="text-[10px] font-bold uppercase">Aggiorna</span>
-                            <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        <button onClick={fetchMatches} className="p-2 text-slate-400 hover:text-white transition-colors bg-white/5 rounded-lg active:scale-95 border border-white/5" title="Aggiorna">
+                            <Loader2 className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                         </button>
                         <button onClick={async () => { await cleanupMyMatch(); onClose(); }} className="p-2 text-slate-400 hover:text-white transition-colors bg-white/5 rounded-lg border border-white/5">
                             <XCircle className="w-5 h-5" />

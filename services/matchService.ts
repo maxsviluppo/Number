@@ -134,10 +134,10 @@ export const matchService = {
             .from('matches')
             .select(`
                 *,
-                player1:profiles!matches_player1_id_fkey (*),
-                player2:profiles!matches_player2_id_fkey (*)
+                player1:profiles!player1_id (*),
+                player2:profiles!player2_id (*)
             `)
-            .in('status', ['pending', 'active'])
+            .in('status', ['pending', 'active', 'finished'])
             .eq('mode', mode)
             .order('created_at', { ascending: false })
             .limit(30);
