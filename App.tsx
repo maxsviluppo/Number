@@ -98,6 +98,31 @@ const App: React.FC = () => {
 
 
 
+  const handleUserInteraction = useCallback(async () => {
+    await soundService.init();
+  }, []);
+
+  const showToast = useCallback((message: string) => {
+    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
+    setToast({ message, visible: true });
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+    }, 2500);
+  }, []);
+
+  const loadProfile = useCallback(async (userId: string) => {
+    const profile = await profileService.getProfile(userId);
+    const save = await profileService.loadGameState(userId);
+    if (save) setSavedGame(save);
+    if (profile) {
+      setUserProfile(profile);
+      setGameState(prev => ({
+        ...prev,
+        totalScore: Math.max(prev.totalScore, profile.total_score || 0),
+        estimatedIQ: Math.max(prev.estimatedIQ, profile.estimated_iq || 0)
+      }));
+    }
+  }, []);
 
   // Initialize Session
   useEffect(() => {
@@ -109,7 +134,21 @@ const App: React.FC = () => {
       }
     };
     initSession();
-  }, []);
+  }, [loadProfile]);
+
+  // NEW: Game Over Trigger on Time Left reaching zero
+  useEffect(() => {
+    if (gameState.status === 'playing' && gameState.timeLeft === 0 && !activeMatch?.isDuel && !isVictoryAnimating) {
+      soundService.playExternalSound('lost.mp3');
+      setShowLostVideo(true);
+      setGameState(prev => ({ ...prev, status: 'game-over' }));
+
+      if (currentUser) {
+        profileService.clearSavedGame(currentUser.id);
+        loadProfile(currentUser.id);
+      }
+    }
+  }, [gameState.timeLeft, gameState.status, activeMatch, currentUser, isVictoryAnimating, loadProfile]);
 
 
   const togglePause = async (e: React.PointerEvent) => {
@@ -147,38 +186,8 @@ const App: React.FC = () => {
       if (timerRef.current) window.clearInterval(timerRef.current);
     }
     return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
-  }, [gameState.status, isPaused, isVictoryAnimating, showVideo, activeMatch]); // Added activeMatch dependency
+  }, [gameState.status, isPaused, isVictoryAnimating, showVideo, activeMatch, gameState.timeLeft]);
 
-  // ... 
-
-  // Match subscription moved to bottom to resolve scoping issues
-
-
-  const handleUserInteraction = useCallback(async () => {
-    await soundService.init();
-  }, []);
-
-  const showToast = (message: string) => {
-    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
-    setToast({ message, visible: true });
-    toastTimeoutRef.current = window.setTimeout(() => {
-      setToast(prev => ({ ...prev, visible: false }));
-    }, 2500);
-  };
-
-  const loadProfile = async (userId: string) => {
-    const profile = await profileService.getProfile(userId);
-    const save = await profileService.loadGameState(userId);
-    if (save) setSavedGame(save);
-    if (profile) {
-      setUserProfile(profile);
-      setGameState(prev => ({
-        ...prev,
-        totalScore: Math.max(prev.totalScore, profile.total_score || 0),
-        estimatedIQ: Math.max(prev.estimatedIQ, profile.estimated_iq || 0)
-      }));
-    }
-  };
 
   const handleLoginSuccess = (user: any) => {
     setCurrentUser(user);
@@ -578,7 +587,7 @@ const App: React.FC = () => {
     // Explicitly reset Main State for NEW GAME
     setGameState({
       score: 0,
-      totalScore: 0,
+      totalScore: userProfile?.total_score || 0,
       streak: 0,
       level: 1,
       timeLeft: INITIAL_TIME,
@@ -663,7 +672,17 @@ const App: React.FC = () => {
     if (tutorialStep < TUTORIAL_STEPS.length - 1) {
       setTutorialStep(prev => prev + 1);
     } else {
-      startGame();
+      // Tutorial Finished
+      setActiveModal(null);
+      // Mark as done
+      localStorage.setItem('number_tutorial_done', 'true');
+
+      // Only start game if we are in home screen (idle) and tutorial was never done
+      const wasNeverDone = localStorage.getItem('number_was_never_done') !== 'true';
+      if (wasNeverDone && gameState.status === 'idle') {
+        localStorage.setItem('number_was_never_done', 'true');
+        startGame();
+      }
     }
   };
 
@@ -749,6 +768,7 @@ const App: React.FC = () => {
               status: 'playing'
             }));
           }, 2000);
+          setSelectedPath([]); // Clear path after processing
           return; // Stop processing level complete standard flow
         }
       }
@@ -759,8 +779,9 @@ const App: React.FC = () => {
         // STANDARD DUEL WIN (5 Targets) - Match Ends Immediately
         matchService.declareWinner(activeMatch.id, currentUser.id);
 
-        // Sync Points to Global Profile immediately for the winner
-        profileService.syncProgress(currentUser.id, gameState.totalScore + currentPoints, gameState.level, gameState.estimatedIQ);
+        // Sync Points to Global Profile - Adding match points to lifetime total
+        profileService.syncProgress(currentUser.id, currentPoints, gameState.level, gameState.estimatedIQ)
+          .then(() => loadProfile(currentUser.id)); // Reload badge after sync finishes
 
         // Update Local State but skip video/standard recap
         setGameState(prev => ({
@@ -770,6 +791,7 @@ const App: React.FC = () => {
         }));
 
         setShowDuelRecap(true);
+        setSelectedPath([]); // Clear path after processing
         return; // EXIT EARLY - NO VIDEOS FOR DUELS
       }
 
@@ -779,18 +801,11 @@ const App: React.FC = () => {
       setIsVictoryAnimating(true);
       setTriggerParticles(true);
 
-      const nextLevelState = {
-        ...gameState,
-        totalScore: gameState.totalScore + currentPoints,
-        streak: 0,
-        estimatedIQ: Math.min(200, gameState.estimatedIQ + 4),
-        levelTargets: newTargets,
-        timeLeft: gameState.timeLeft,
-      };
+      const nextLevelScore = gameState.totalScore + currentPoints;
 
       setGameState(prev => ({
         ...prev,
-        totalScore: prev.totalScore + currentPoints,
+        totalScore: nextLevelScore,
         streak: 0,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
         levelTargets: newTargets,
@@ -799,14 +814,18 @@ const App: React.FC = () => {
       // AUTO SAVE HERE (Level Completed -> State for STARTING next level)
       if (currentUser) {
         const saveState = {
-          totalScore: nextLevelState.totalScore,
+          totalScore: nextLevelScore,
           streak: 0,
           level: gameState.level + 1, // Ready for next level
           timeLeft: gameState.timeLeft + 60, // Anticipate the +60s bonus
-          estimatedIQ: nextLevelState.estimatedIQ
+          estimatedIQ: Math.min(200, gameState.estimatedIQ + 4)
         };
 
-        profileService.saveGameState(currentUser.id, saveState);
+        // In classic mode, we sync progress to career stats on level completion
+        profileService.syncProgress(currentUser.id, currentPoints, gameState.level, gameState.estimatedIQ)
+          .then(() => profileService.saveGameState(currentUser.id, saveState))
+          .then(() => loadProfile(currentUser.id)); // Reload badge when both finish
+
         setSavedGame(saveState);
       }
 
@@ -1044,11 +1063,11 @@ const App: React.FC = () => {
                 </div>
                 {currentUser && (
                   <div className="flex flex-col items-start pl-2 leading-none">
-                    <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest">
+                    <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest leading-none">
                       {userProfile?.username || 'GUEST'}
                     </span>
-                    <span className="font-orbitron text-[8px] font-black text-[#FF8800] uppercase tracking-tighter mt-0.5">
-                      {userProfile?.total_score || 0} PNT
+                    <span className="font-orbitron text-[8px] font-black text-[#FF8800] uppercase tracking-tighter mt-1">
+                      {gameState.totalScore} PTS
                     </span>
                   </div>
                 )}
@@ -1251,7 +1270,7 @@ const App: React.FC = () => {
 
                   {/* Duel Dashboard circle: Shows Player Points */}
                   <div className="w-14 h-14 rounded-full bg-white border-[3px] border-slate-900 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
-                    <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PNT</span>
+                    <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
                     <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
                       {gameState.totalScore}
                     </span>
@@ -1584,19 +1603,20 @@ const App: React.FC = () => {
 
             // Initialize Duel Game
             soundService.playUIClick();
-            setGameState({
+            setGameState(prev => ({
+              ...prev,
               score: 0,
-              totalScore: 0,
+              totalScore: prev.totalScore, // Preserve points during duel
               streak: 0,
               level: 1,
-              timeLeft: INITIAL_TIME, // Or maybe shorter for duel?
+              timeLeft: INITIAL_TIME,
               targetResult: 0,
               status: 'playing',
-              estimatedIQ: 100,
+              estimatedIQ: prev.estimatedIQ,
               lastLevelPerfect: true,
               basePoints: BASE_POINTS_START,
               levelTargets: [],
-            });
+            }));
             // Pass the MATCH SEED to create the exact same board for both players
             generateGrid(1, seed);
             // Reset Opponent Score

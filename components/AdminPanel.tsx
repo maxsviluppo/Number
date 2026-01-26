@@ -50,7 +50,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             const { data: profiles, count, error } = await (supabase as any)
                 .from('profiles')
                 // FIXED: Include ID to allow deletion. Added updated_at for status check.
-                .select('id, username, email, total_score, max_level, updated_at', { count: 'exact' });
+                .select('id, username, email, total_score, max_level, updated_at', { count: 'exact' })
+                .order('updated_at', { ascending: false });
 
             if (error) throw error;
 
