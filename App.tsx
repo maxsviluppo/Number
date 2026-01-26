@@ -567,7 +567,7 @@ const App: React.FC = () => {
           current: newData.current_round || 1
         });
 
-        // Check Victory/Defeat (Final) - INTERRUPT GAME FOR LOSER
+        // Check Victory/Defeat (Final) - INTERRUPT GAME FOR LOSER AND WINNER
         if (newData.status === 'finished') {
           const amIWinner = newData.winner_id === currentUser?.id;
 
@@ -575,6 +575,7 @@ const App: React.FC = () => {
           // This handles cases like Opponent Abandonment where I win passively
           if (amIWinner && processedWinRef.current !== newData.id) {
             console.log("SYNCING WIN FROM SUBSCRIPTION (Passive/Abandonment)");
+            processedWinRef.current = newData.id; // Mark as processed
             profileService.syncProgress(
               currentUser!.id,
               gameStateRef.current.score,
@@ -584,6 +585,17 @@ const App: React.FC = () => {
             loadProfile(currentUser!.id);
           }
 
+          // PLAY SOUNDS
+          if (amIWinner) {
+            // Winner sound usually played locally, but good safety
+          } else {
+            soundService.playExternalSound('lost.mp3'); // Sound for loser
+          }
+
+          // FORCE STOP GAME LOOP
+          if (timerRef.current) window.clearInterval(timerRef.current);
+
+          // SHOW RECAP
           setGameState(prev => ({ ...prev, status: 'idle' }));
           setShowDuelRecap(true);
         }
