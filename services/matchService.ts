@@ -316,6 +316,47 @@ export const matchService = {
         if (error) console.error('Error resetting round status:', error);
     },
 
+    // --- REMATCH SIGNALING (BROADCAST) ---
+    subscribeToRematch(matchId: string, onEvent: (event: string, payload: any) => void) {
+        const channel = (supabase as any).channel(`match_${matchId}_rematch`);
+
+        channel
+            .on('broadcast', { event: 'rematch_request' }, (payload: any) => onEvent('rematch_request', payload))
+            .on('broadcast', { event: 'rematch_accepted' }, (payload: any) => onEvent('rematch_accepted', payload))
+            .subscribe();
+
+        return channel;
+    },
+
+    async sendRematchRequest(matchId: string, fromUserId: string) {
+        const channel = (supabase as any).channel(`match_${matchId}_rematch`);
+        // Ensure subscribed or just send? Send requires subscription usually.
+        // Assuming App keeps this subscription open or we open briefly.
+        // Better: App subscribes once. Here we just get the channel and send.
+        // We will make App subscribe.
+        await channel.subscribe(async (status: string) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.send({
+                    type: 'broadcast',
+                    event: 'rematch_request',
+                    payload: { fromUserId }
+                });
+            }
+        });
+    },
+
+    async sendRematchAccept(matchId: string, newMatchId: string) {
+        const channel = (supabase as any).channel(`match_${matchId}_rematch`);
+        await channel.subscribe(async (status: string) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.send({
+                    type: 'broadcast',
+                    event: 'rematch_accepted',
+                    payload: { newMatchId }
+                });
+            }
+        });
+    },
     // Iscriviti agli aggiornamenti di una partita specifica
     subscribeToMatch(matchId: string, callback: (payload: any) => void) {
         return (supabase as any)

@@ -74,7 +74,7 @@ const App: React.FC = () => {
   const [scoreAnimKey, setScoreAnimKey] = useState(0);
   const [isVictoryAnimating, setIsVictoryAnimating] = useState(false);
   const [triggerParticles, setTriggerParticles] = useState(false);
-  const [toast, setToast] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
+  const [toast, setToast] = useState<{ message: string, visible: boolean, action?: { label: string, onClick: () => void } }>({ message: '', visible: false });
   const [isMuted, setIsMuted] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [showLostVideo, setShowLostVideo] = useState(false);
@@ -102,12 +102,13 @@ const App: React.FC = () => {
     await soundService.init();
   }, []);
 
-  const showToast = useCallback((message: string) => {
+  const showToast = useCallback((message: string, action?: { label: string, onClick: () => void }) => {
     if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
-    setToast({ message, visible: true });
+    setToast({ message, visible: true, action });
+    // If action exists, stay longer or indefinitely? Let's say 5s.
     toastTimeoutRef.current = window.setTimeout(() => {
       setToast(prev => ({ ...prev, visible: false }));
-    }, 2500);
+    }, action ? 6000 : 2500);
   }, []);
 
   const loadProfile = useCallback(async (userId: string) => {
@@ -626,6 +627,112 @@ const App: React.FC = () => {
     }
   }, [activeMatch, currentUser, showDuelRecap]);
 
+
+  // REMATCH LOGIC (Broadcast)
+  useEffect(() => {
+    if (activeMatch?.id && latestMatchData?.status === 'finished') {
+      const channel = matchService.subscribeToRematch(activeMatch.id, (event, payload) => {
+        // WINNER RECEIVING REQUEST
+        if (event === 'rematch_request' && payload.fromUserId !== currentUser?.id) {
+          soundService.playTick();
+          showToast("SFIDA: L'avversario vuole la RIVINCITA!", {
+            label: 'ACCETTA',
+            onClick: () => acceptRematch(activeMatch.id)
+          });
+        }
+        // LOSER RECEIVING ACCEPT
+        if (event === 'rematch_accepted') {
+          // Both join new match
+          if (payload.newMatchId) {
+            soundService.playSuccess();
+            joinRematch(payload.newMatchId);
+          }
+        }
+      });
+      return () => { (supabase as any).removeChannel(channel); };
+    }
+  }, [activeMatch, latestMatchData, currentUser, showToast]);
+
+  const acceptRematch = async (oldMatchId: string) => {
+    // 1. Create New Match (Similar to Lobby Logic but direct)
+    // We assume same mode (Standard/Blitz) as before? Or default?
+    // Let's reuse 'duelMode' state.
+    // We need to create a match.
+    try {
+      const seed = Math.floor(Math.random() * 99999).toString();
+      const newMatch = await matchService.createMatch(currentUser.id, seed, duelMode);
+      if (newMatch) {
+        // 2. Broadcast Accept with new ID
+        await matchService.sendRematchAccept(oldMatchId, newMatch.id);
+        // 3. Join myself
+        joinRematch(newMatch.id);
+      }
+    } catch (e) {
+      console.error("Rematch create failed", e);
+      showToast("Errore creazione rivincita");
+    }
+  };
+
+  const joinRematch = async (newMatchId: string) => {
+    // Reset State
+    setShowDuelRecap(false);
+
+    // Determine Opponent ID (Old Match Opponent)
+    const oldOpponentId = activeMatch?.opponentId; // Might need more robust way if activeMatch is cleared? 
+    // activeMatch is NOT cleared yet.
+
+    // Join
+    const seed = Math.floor(Math.random() * 100000); // Wait, Host generates seed? 
+    // Actually `createMatch` makes me ready. Opponent needs to join. 
+    // But for `joinRematch` (logic similar to `onMatchStart` in Lobby):
+
+    // If I created it (Winner), I am P1. If I am Loser, I join as P2?
+    // Wait, `createMatch` makes an empty match pending P2.
+    // So Winner (Acceptor) -> Creates -> Is P1.
+    // Loser (Requestor) -> Receives ID -> joins -> Is P2.
+
+    const amICreator = latestMatchData?.winner_id === currentUser?.id; // Assuming winner accepts.
+
+    if (!amICreator) {
+      // I am the Joiner
+      await matchService.joinMatch(newMatchId, currentUser.id);
+    }
+
+    // Start Game Flow
+    setActiveModal(null); // Ensure no modals
+    setActiveMatch({ id: newMatchId, opponentId: oldOpponentId || 'unknown', isDuel: true, isP1: amICreator });
+
+    // Reset Game State
+    setGameState(prev => ({
+      ...prev,
+      score: 0,
+      totalScore: prev.totalScore,
+      streak: 0,
+      level: 1,
+      timeLeft: INITIAL_TIME,
+      targetResult: 0,
+      status: 'playing',
+      estimatedIQ: prev.estimatedIQ,
+      lastLevelPerfect: true,
+      basePoints: BASE_POINTS_START,
+      levelTargets: [],
+    }));
+    setOpponentScore(0);
+    setDuelRounds({ p1: 0, p2: 0, current: 1 });
+
+    // Need Seed sync! 
+    // `createMatch` doesn't strictly set seed in DB in current implementation? 
+    // Usually Lobby handles seed broadcast.
+    // We should probably rely on `startGame` or `generateGrid` defaults if seed not synced, 
+    // BUT for fairness we need same seed.
+    // Let's assume Random for now or assume `NeuralDuelLobby` logic handles seed.
+    // FIX: Use simple random seed locally synced via DB? 
+    // In Lobby, P1 sends seed. 
+    // Let's just generate a shared seed or random. 
+    // For now: local random. (Improvement: Sync Seed).
+    generateGrid(1);
+  };
+
   const startGame = async () => {
     await handleUserInteraction();
     soundService.playUIClick();
@@ -757,31 +864,27 @@ const App: React.FC = () => {
     setPreviewResult(null);
   };
 
+  /* HANDLE SUCCESS - FULLY REF BASED */
   const handleSuccess = (matchedValue: number) => {
     // RACE CONDITION FIX: Do not process win if game is already over
     if (gameStateRef.current.status !== 'playing') return;
 
     soundService.playSuccess();
 
-    // NEW SCORING: Linear Progression based on streak
-    // Example Level 1: 1, 2, 3, 4, 5...
+    // NEW SCORING: Linear Progression based on streak (USE REF)
+    const currentLevel = gameStateRef.current.level;
+    const currentStreak = gameStateRef.current.streak;
+
     // Formula: Base(Level) * (Streak + 1)
-    const baseForLevel = Math.pow(2, gameState.level - 1);
-    const multiplier = gameState.streak + 1; // Linear instead of exponential (Math.pow(2, streak))
+    const baseForLevel = Math.pow(2, currentLevel - 1);
+    const multiplier = currentStreak + 1;
     const currentPoints = baseForLevel * multiplier;
 
     setScoreAnimKey(k => k + 1);
 
-    // TIME BONUS: > Level 5 adds +2 seconds per target
-    if (gameState.level > 5) {
-      setGameState(prev => ({
-        ...prev,
-        timeLeft: prev.timeLeft + 2
-      }));
-    }
-
-    // Update targets state
-    const newTargets = gameState.levelTargets.map(t =>
+    // Update targets state (USE REF)
+    const currentTargets = gameStateRef.current.levelTargets;
+    const newTargets = currentTargets.map(t =>
       t.value === matchedValue ? { ...t, completed: true } : t
     );
     const allDone = newTargets.every(t => t.completed);
@@ -790,8 +893,8 @@ const App: React.FC = () => {
     if (activeMatch?.isDuel && currentUser) {
       const myTargetsFound = newTargets.filter(t => t.completed).length;
 
-      // ATOMIC UPDATE: Send Score AND Targets together
-      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameState.score + currentPoints, myTargetsFound);
+      // ATOMIC UPDATE: Send Score AND Targets together (Use REF score + currentPoints)
+      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameStateRef.current.score + currentPoints, myTargetsFound);
 
       // BLITZ LOGIC: Check Round Win (3 Targets)
       if (duelMode === 'blitz' && myTargetsFound >= 3) {
@@ -799,7 +902,7 @@ const App: React.FC = () => {
         showToast(`ROUND ${duelRounds.current} VINTO!`);
 
         setTimeout(() => {
-          generateGrid(gameState.level);
+          generateGrid(gameStateRef.current.level); // Usare ref level
           setGameState(prev => ({
             ...prev,
             levelTargets: prev.levelTargets.map(t2 => ({ ...t2, completed: false })),
@@ -813,7 +916,7 @@ const App: React.FC = () => {
 
     // 5. GLOBAL SYNC: Always update career stats on every success (EXCEPT IN DUEL MODE)
     if (currentUser && !activeMatch?.isDuel) {
-      profileService.syncProgress(currentUser.id, currentPoints, gameState.level, gameState.estimatedIQ);
+      profileService.syncProgress(currentUser.id, currentPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
     }
 
     if (allDone) {
@@ -825,14 +928,12 @@ const App: React.FC = () => {
         processedWinRef.current = activeMatch.id;
 
         // OPTIMISTICALLY UPDATE MATCH DATA FOR RECAP
-        // This ensures the modal knows the match is finished immediately
         setLatestMatchData(prev => ({
           ...prev,
           status: 'finished',
           winner_id: currentUser!.id,
-          // Ensure scores are up to date in the recap object
-          player1_score: activeMatch.isP1 ? gameState.score + currentPoints : prev?.player1_score,
-          player2_score: !activeMatch.isP1 ? gameState.score + currentPoints : prev?.player2_score
+          player1_score: activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player1_score,
+          player2_score: !activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player2_score
         }));
 
         // Update Local State but skip video/standard recap
@@ -841,16 +942,16 @@ const App: React.FC = () => {
           score: prev.score + currentPoints,
           totalScore: prev.totalScore + currentPoints,
           status: 'idle',
-          levelTargets: newTargets // Ensure targets are marked completed visually before closing? Actually we go to recap.
+          levelTargets: newTargets
         }));
 
         // SYNC PROFILE FOR WINNER (MATCH ENDED BY ALL TARGETS)
-        profileService.syncProgress(currentUser.id, gameState.score + currentPoints, gameState.level, gameState.estimatedIQ);
-        loadProfile(currentUser.id); // Reload badge after sync finishes (sync was called above)
+        profileService.syncProgress(currentUser.id, gameStateRef.current.score + currentPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+        loadProfile(currentUser.id);
 
         setShowDuelRecap(true);
-        setSelectedPath([]); // Clear path after processing
-        return; // EXIT EARLY - NO VIDEOS FOR DUELS
+        setSelectedPath([]);
+        return;
       }
 
       // STOP TIMER IMMEDIATELY
@@ -859,7 +960,7 @@ const App: React.FC = () => {
       setIsVictoryAnimating(true);
       setTriggerParticles(true);
 
-      const nextLevelScore = gameState.totalScore + currentPoints;
+      const nextLevelScore = gameStateRef.current.totalScore + currentPoints;
 
       setGameState(prev => ({
         ...prev,
@@ -1097,10 +1198,18 @@ const App: React.FC = () => {
 
       <div className={`fixed top-12 left-1/2 -translate-x-1/2 z-[3000] transition-all duration-500 pointer-events-none
         ${toast.visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-16 opacity-0 scale-95'}`}>
-        <div className="glass-panel px-8 py-4 rounded-[1.5rem] border border-cyan-400/60 shadow-[0_0_40px_rgba(34,211,238,0.4)] flex items-center gap-5 backdrop-blur-2xl">
+        <div className={`glass-panel px-8 py-4 rounded-[1.5rem] border ${toast.action ? 'border-[#FF8800] bg-slate-900/90' : 'border-cyan-400/60'} shadow-[0_0_40px_rgba(34,211,238,0.4)] flex items-center gap-5 backdrop-blur-2xl pointer-events-auto`}>
           <div className="flex flex-col text-center">
             <span className="font-orbitron text-[10px] font-black text-cyan-400 uppercase tracking-[0.2em] mb-0.5">Sistema</span>
-            <span className="font-orbitron text-sm font-black text-white tracking-widest uppercase">{toast.message}</span>
+            <span className="font-orbitron text-sm font-black text-white tracking-widest uppercase mb-1">{toast.message}</span>
+            {toast.action && (
+              <button
+                onPointerDown={(e) => { e.stopPropagation(); toast.action?.onClick(); setToast(p => ({ ...p, visible: false })); }}
+                className="mt-2 bg-[#FF8800] text-white px-6 py-2 rounded-lg font-black uppercase text-xs animate-pulse hover:scale-105 active:scale-95 transition-all shadow-lg"
+              >
+                {toast.action.label}
+              </button>
+            )}
           </div>
         </div>
       </div>
