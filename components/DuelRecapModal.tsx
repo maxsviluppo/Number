@@ -12,8 +12,6 @@ interface DuelRecapProps {
     isFinal: boolean; // True if Blitz ended or Standard ended
     onReady: () => void; // Triggered when server says GO
     onExit: () => void;
-    onRematch?: () => void;
-    onRematchRequest?: () => void;
     isWinnerProp?: boolean; // Override derived logic
 }
 
@@ -25,8 +23,6 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
     isFinal,
     onReady,
     onExit,
-    onRematch,
-    onRematchRequest,
     isWinnerProp
 }) => {
     // Determine status: Use explicit prop if available, else derive
@@ -44,14 +40,6 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
             (myRounds < 5 && oppRounds < 5) : // Check Rounds/Targets (5 for Standard)
             (myRounds < 3 && oppRounds < 3)); // 3 for Blitz
 
-    const [rematchRequested, setRematchRequested] = useState(false);
-
-    const handleRematchClick = () => {
-        if (onRematchRequest) {
-            onRematchRequest();
-            setRematchRequested(true);
-        }
-    };
 
     return (
         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 modal-overlay bg-black/95 backdrop-blur-xl animate-fadeIn">
@@ -111,16 +99,6 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                     <button onClick={onExit} className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-orbitron font-black uppercase tracking-widest transition-all active:scale-95 border-2 border-slate-600 flex items-center justify-center gap-2">
                         <Home size={18} /> TORNA ALLA LOBBY
                     </button>
-                    {!isWinner && (
-                        <button
-                            onClick={handleRematchClick}
-                            disabled={rematchRequested}
-                            className={`flex-1 py-4 text-white rounded-xl font-orbitron font-black uppercase tracking-widest shadow-lg transition-all active:scale-95 border-2 flex items-center justify-center gap-2
-                            ${rematchRequested ? 'bg-slate-700 border-slate-600 cursor-wait' : 'bg-[#FF8800] border-white animate-pulse'}`}
-                        >
-                            <RotateCw size={18} /> {rematchRequested ? "RICHIESTA INVIATA..." : "RIVINCITA"}
-                        </button>
-                    )}
                 </div>
             </div>
         </div>

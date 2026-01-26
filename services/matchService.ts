@@ -316,73 +316,19 @@ export const matchService = {
         if (error) console.error('Error resetting round status:', error);
     },
 
-    // --- REMATCH SIGNALING (BROADCAST) ---
-    subscribeToRematch(matchId: string, onEvent: (event: string, payload: any) => void) {
-        const channel = (supabase as any).channel(`match_${matchId}_rematch`);
+    // --- MATCH SIGNALING (BROADCAST) ---
+    subscribeToMatchEvents(matchId: string, onEvent: (event: string, payload: any) => void) {
+        const channel = (supabase as any).channel(`match_${matchId}_events`);
 
         channel
-            .on('broadcast', { event: 'rematch_request' }, (payload: any) => onEvent('rematch_request', payload))
-            .on('broadcast', { event: 'rematch_accepted' }, (payload: any) => onEvent('rematch_accepted', payload))
-            .on('broadcast', { event: 'rematch_rejected' }, (payload: any) => onEvent('rematch_rejected', payload))
             .on('broadcast', { event: 'match_abandoned' }, (payload: any) => onEvent('match_abandoned', payload))
             .subscribe();
 
         return channel;
     },
 
-    async sendRematchRequest(matchId: string, fromUserId: string) {
-        const channel = (supabase as any).channel(`match_${matchId}_rematch`);
-        channel.subscribe(async (status: string) => {
-            if (status === 'SUBSCRIBED') {
-                try {
-                    await channel.send({
-                        type: 'broadcast',
-                        event: 'rematch_request',
-                        payload: { fromUserId }
-                    });
-                } catch (e) {
-                    console.error("Broadcast send failed:", e);
-                }
-            }
-        });
-    },
-
-    async sendRematchAccept(matchId: string, newMatchId: string, seed: string) {
-        const channel = (supabase as any).channel(`match_${matchId}_rematch`);
-        channel.subscribe(async (status: string) => {
-            if (status === 'SUBSCRIBED') {
-                try {
-                    await channel.send({
-                        type: 'broadcast',
-                        event: 'rematch_accepted',
-                        payload: { newMatchId, seed }
-                    });
-                } catch (e) {
-                    console.error("Broadcast send failed:", e);
-                }
-            }
-        });
-    },
-
-    async sendRematchReject(matchId: string) {
-        const channel = (supabase as any).channel(`match_${matchId}_rematch`);
-        channel.subscribe(async (status: string) => {
-            if (status === 'SUBSCRIBED') {
-                try {
-                    await channel.send({
-                        type: 'broadcast',
-                        event: 'rematch_rejected',
-                        payload: { rejected: true }
-                    });
-                } catch (e) {
-                    console.error("Broadcast send failed:", e);
-                }
-            }
-        });
-    },
-
     async sendAbandonment(matchId: string, fromUserId: string) {
-        const channel = (supabase as any).channel(`match_${matchId}_rematch`);
+        const channel = (supabase as any).channel(`match_${matchId}_events`);
         channel.subscribe(async (status: string) => {
             if (status === 'SUBSCRIBED') {
                 try {
