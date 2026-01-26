@@ -15,9 +15,7 @@ import NeuralDuelLobby from './components/NeuralDuelLobby';
 import DuelRecapModal from './components/DuelRecapModal';
 import IntroVideo from './components/IntroVideo';
 import ComicTutorial, { TutorialStep } from './components/ComicTutorial';
-import UserProfileModal from './components/UserProfileModal';
-import { BADGES } from './constants/badges';
-import { authService, profileService, leaderboardService, supabase, UserProfile } from './services/supabaseClient'; // Moved this import here
+import { authService, profileService, leaderboardService, supabase } from './services/supabaseClient'; // Moved this import here
 
 const TUTORIAL_STEPS = [
   {
@@ -67,8 +65,7 @@ const App: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
-
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean, isP1: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0);
@@ -92,18 +89,8 @@ const App: React.FC = () => {
 
   // Supabase Integration
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [logoAnim, setLogoAnim] = useState(false);
-
-  // Logo Animation Effect
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLogoAnim(true);
-      setTimeout(() => setLogoAnim(false), 2000); // Slower breath (2s)
-    }, 8000); // Slightly more frequent
-    return () => clearInterval(interval);
-  }, []);
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
 
   const [savedGame, setSavedGame] = useState<any>(null);
@@ -131,53 +118,20 @@ const App: React.FC = () => {
     }, actions ? 8000 : 2500);
   }, []);
 
-  // BADGE CHECKER
-  const checkAndUnlockBadges = useCallback(async (profile: UserProfile) => {
-    if (!profile) return;
-    const unlockedIds = profile.badges || [];
-    const newBadges: string[] = [];
-
-    BADGES.forEach(badge => {
-      if (!unlockedIds.includes(badge.id)) {
-        if (badge.condition(profile)) {
-          newBadges.push(badge.id);
-          // Toast Notification
-          showToast(`🏆 Medaglia Sbloccata: ${badge.title}!`);
-          soundService.playSuccess();
-        }
-      }
-    });
-
-    if (newBadges.length > 0) {
-      const updatedBadges = [...unlockedIds, ...newBadges];
-      // Update Local
-      setUserProfile(prev => prev ? ({ ...prev, badges: updatedBadges }) : null);
-      // Update Remote
-      await profileService.updateProfile({ id: profile.id, badges: updatedBadges });
-    }
-  }, [showToast]);
-
   const loadProfile = useCallback(async (userId: string) => {
-    try {
-      const profile = await profileService.getProfile(userId);
-      const save = await profileService.loadGameState(userId);
-      if (save) setSavedGame(save);
-      if (profile) {
-        setUserProfile(profile);
-
-        // Check for Badges on Load (In case of missed updates or offline play sync)
-        checkAndUnlockBadges(profile);
-
-        setGameState(prev => ({
-          ...prev,
-          // Only update stats if they are better in DB (usually sync handles this, but just in case)
-          estimatedIQ: profile.estimated_iq || 100
-        }));
-      }
-    } catch (error) {
-      console.error("Error loading profile:", error);
+    const profile = await profileService.getProfile(userId);
+    const save = await profileService.loadGameState(userId);
+    if (save) setSavedGame(save);
+    if (profile) {
+      setUserProfile(profile);
+      setGameState(prev => ({
+        ...prev,
+        totalScore: Math.max(prev.totalScore, profile.total_score || 0),
+        estimatedIQ: Math.max(prev.estimatedIQ, profile.estimated_iq || 0),
+        status: prev.status === 'intro' ? 'intro' : prev.status
+      }));
     }
-  }, [checkAndUnlockBadges]);
+  }, []);
 
   // Initialize Session
   useEffect(() => {
@@ -1279,19 +1233,7 @@ const App: React.FC = () => {
               <div className="mb-6 flex flex-col items-center">
                 {/* Logo: Custom Shape Image with White Border & Brain */}
                 {/* Logo: Pure Color CSS Mask Implementation */}
-                {/* Logo: Custom Shape Image with White Border & Brain */}
-                {/* Logo: Pure Color CSS Mask Implementation */}
-                <div
-                  onPointerDown={async (e) => {
-                    e.stopPropagation();
-                    await handleUserInteraction();
-                    soundService.playUIClick();
-                    setActiveModal('profile');
-                  }}
-                  id="logo-home"
-                  className={`relative w-36 h-36 flex items-center justify-center mb-4 transition-all duration-[2000ms] ease-in-out group cursor-pointer ${logoAnim ? 'scale-110 drop-shadow-[0_0_25px_rgba(255,136,0,0.6)]' : 'hover:scale-110'}`}
-                  title="Apri Profilo"
-                >
+                <div className="relative w-36 h-36 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500 group">
                   {/* Custom Octagon Image */}
                   <img src="/octagon-base.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
 
@@ -1895,14 +1837,6 @@ const App: React.FC = () => {
 
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={handleLoginSuccess} />}
 
-        {activeModal === 'profile' && (
-          <UserProfileModal
-            currentUser={currentUser}
-            userProfile={userProfile}
-            onClose={() => setActiveModal(null)}
-          />
-        )}
-
         {/* DUEL RECAP MODAL */}
         {/* DUEL RECAP MODAL */}
         {showDuelRecap && latestMatchData && (
@@ -1937,12 +1871,6 @@ const App: React.FC = () => {
                 ? 'Qui puoi vedere il tuo punteggio totale e gestire il tuo account.'
                 : 'Registrati per salvare i progressi, scalare le classifiche e sfidare altri giocatori!',
               position: 'top'
-            },
-            {
-              targetId: 'logo-home',
-              title: 'IL TUO HUB',
-              description: 'Clicca sul logo NUMBER per accedere al tuo Profilo Completo, vedere i Badge sbloccati e i Trofei!',
-              position: 'bottom'
             },
             {
               targetId: 'tutorial-btn-home',
