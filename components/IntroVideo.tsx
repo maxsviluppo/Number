@@ -64,7 +64,7 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
                     {/* Main Logo Background */}
                     <div
                         className="absolute inset-0 bg-cover bg-center bg-no-repeat w-full h-full opacity-90"
-                        style={{ backgroundImage: 'url("/intrologo.png")' }}
+                        style={{ backgroundImage: 'url("/intrologo.png?v=2")' }}
                     />
 
                     {/* Start Button Container */}
