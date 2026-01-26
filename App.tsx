@@ -7,12 +7,13 @@ import ParticleEffect from './components/ParticleEffect';
 import CharacterHelper from './components/CharacterHelper';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
-import { authService, profileService, leaderboardService, supabase } from './services/supabaseClient';
-import { matchService } from './services/matchService'; // Fix import
+import { matchService } from './services/matchService';
 import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle } from 'lucide-react';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
 import NeuralDuelLobby from './components/NeuralDuelLobby';
+import DuelRecapModal from './components/DuelRecapModal';
+import { authService, profileService, leaderboardService, supabase } from './services/supabaseClient'; // Moved this import here
 
 const TUTORIAL_STEPS = [
   {
@@ -42,7 +43,6 @@ const TUTORIAL_STEPS = [
   }
 ];
 
-
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
@@ -66,8 +66,8 @@ const App: React.FC = () => {
   const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
-  const [opponentScore, setOpponentScore] = useState(0); // For live duel updates
-  const [duelRounds, setDuelRounds] = useState({ p1: 0, p2: 0, current: 1 }); // Blitz Round Tracking
+  const [opponentScore, setOpponentScore] = useState(0);
+  const [duelRounds, setDuelRounds] = useState({ p1: 0, p2: 0, current: 1 });
   const [tutorialStep, setTutorialStep] = useState(0);
   const [targetAnimKey, setTargetAnimKey] = useState(0);
   const [scoreAnimKey, setScoreAnimKey] = useState(0);
@@ -75,9 +75,9 @@ const App: React.FC = () => {
   const [triggerParticles, setTriggerParticles] = useState(false);
   const [toast, setToast] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
   const [isMuted, setIsMuted] = useState(false);
-  const [showVideo, setShowVideo] = useState(false); // Win Video state
-  const [showLostVideo, setShowLostVideo] = useState(false); // Lost Video state
-  const theme = 'orange'; // Fixed theme
+  const [showVideo, setShowVideo] = useState(false);
+  const [showLostVideo, setShowLostVideo] = useState(false);
+  const theme = 'orange';
   const [levelBuffer, setLevelBuffer] = useState<{ grid: HexCellData[], targets: number[] }[]>([]);
   const timerRef = useRef<number | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -86,11 +86,17 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  // Leaderboard data state
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
 
   const [savedGame, setSavedGame] = useState<any>(null);
   const [isPaused, setIsPaused] = useState(false);
+
+  // NEW STATE FOR DUEL RECAP
+  const [showDuelRecap, setShowDuelRecap] = useState(false);
+  const [latestMatchData, setLatestMatchData] = useState<any>(null); // NEW: Full Match Object Store
+
+
+
 
   // Initialize Session
   useEffect(() => {
@@ -114,10 +120,11 @@ const App: React.FC = () => {
 
   // Timer: Dedicated Loop for decrementing time only
   useEffect(() => {
-    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused) {
+    // MODIFIED: Timer disabled for DUEL mode
+    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && !activeMatch?.isDuel) {
       timerRef.current = window.setInterval(() => {
         setGameState(prev => {
-          if (prev.timeLeft <= 0) return prev; // Should be handled by effect below, but safety check
+          if (prev.timeLeft <= 0) return prev;
           return { ...prev, timeLeft: prev.timeLeft - 1 };
         });
       }, 1000);
@@ -125,75 +132,31 @@ const App: React.FC = () => {
       if (timerRef.current) window.clearInterval(timerRef.current);
     }
     return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
-  }, [gameState.status, isPaused, isVictoryAnimating, showVideo]);
+  }, [gameState.status, isPaused, isVictoryAnimating, showVideo, activeMatch]); // Added activeMatch dependency
 
-  // Game Over Watcher: Handles Time hitting 0
-  useEffect(() => {
-    if (gameState.status === 'playing' && gameState.timeLeft <= 0) {
-      // CLEAR TIMER IMMEDIATELY
-      if (timerRef.current) window.clearInterval(timerRef.current);
+  // ... 
 
-      // PREVENT RACE: If we are already animating victory, do NOT trigger loss
-      if (isVictoryAnimating || showVideo) return;
-
-      soundService.playExternalSound('lost.mp3');
-      setShowLostVideo(true);
-      setGameState(prev => ({ ...prev, status: 'game-over', timeLeft: 0 }));
-    }
-  }, [gameState.timeLeft, gameState.status, isVictoryAnimating, showVideo]);
-
-  // DUEL: Subscribe to Match Updates (Score, Rounds, Winner)
-  useEffect(() => {
-    if (activeMatch?.id && activeMatch.isDuel) {
-      const sub = matchService.subscribeToMatch(activeMatch.id, (payload) => {
-        const newData = payload.new;
-        if (!newData) return;
-
-        // Determine if I am P1 or P2
-        const amIP1 = newData.player1_id === currentUser?.id;
-
-        // Update Opponent Score (for visual bar or comparison)
-        setOpponentScore(amIP1 ? newData.player2_score : newData.player1_score);
-
-        // Update Rounds (Blitz)
-        setDuelRounds({
-          p1: newData.p1_rounds || 0,
-          p2: newData.p2_rounds || 0,
-          current: newData.current_round || 1
-        });
-
-        // Check Victory Condition (Standard & Blitz)
-        if (newData.status === 'finished') {
-          if (newData.winner_id === currentUser?.id) {
-            // I Won! (Already handled locally mostly, but ensuring)
-            // If I triggered the win local, I might be seeing this echo.
-          } else {
-            // I Lost...
-            soundService.playExternalSound('lost.mp3');
-            setShowLostVideo(true);
-            setGameState(prev => ({ ...prev, status: 'game-over', timeLeft: 0 }));
-            showToast("L'avversario ha vinto!");
-          }
-        }
-      });
-
-      return () => {
-        if (sub) (supabase as any).removeChannel(sub);
-      };
-    }
-  }, [activeMatch, currentUser]);
+  // Match subscription moved to bottom to resolve scoping issues
 
 
+  const handleUserInteraction = useCallback(async () => {
+    await soundService.init();
+  }, []);
+
+  const showToast = (message: string) => {
+    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
+    setToast({ message, visible: true });
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+    }, 2500);
+  };
 
   const loadProfile = async (userId: string) => {
     const profile = await profileService.getProfile(userId);
     const save = await profileService.loadGameState(userId);
-
     if (save) setSavedGame(save);
-
     if (profile) {
       setUserProfile(profile);
-      // SYNC: Keep max stats locally for display
       setGameState(prev => ({
         ...prev,
         totalScore: Math.max(prev.totalScore, profile.total_score || 0),
@@ -209,29 +172,16 @@ const App: React.FC = () => {
     showToast(`Benvenuto, ${user.user_metadata?.username || 'Operatore'}`);
   };
 
-  const handleUserInteraction = useCallback(async () => {
-    await soundService.init();
-  }, []);
-
   const toggleMute = async (e?: React.PointerEvent) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
     await handleUserInteraction();
-
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     soundService.setMuted(newMuted);
     if (!newMuted) soundService.playUIClick();
-  };
-
-  const showToast = (message: string) => {
-    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
-    setToast({ message, visible: true });
-    toastTimeoutRef.current = window.setTimeout(() => {
-      setToast(prev => ({ ...prev, visible: false }));
-    }, 2500);
   };
 
   const goToHome = async (e?: React.PointerEvent) => {
@@ -241,12 +191,13 @@ const App: React.FC = () => {
     }
     soundService.playReset();
 
-    // SFIDA LOGIC: Se usciamo da una sfida, la cancelliamo sul server e torniamo in Lobby
+    // SFIDA LOGIC
     if (activeMatch && currentUser) {
       await matchService.cancelMatch(activeMatch.id);
       setActiveMatch(null);
-      setActiveModal('duel_selection'); // Torna alla scelta lobby invece del menu principale
+      setActiveModal('duel_selection');
       setGameState(prev => ({ ...prev, status: 'idle' }));
+      await loadProfile(currentUser.id);
       setSelectedPath([]);
       setIsDragging(false);
       setPreviewResult(null);
@@ -254,114 +205,13 @@ const App: React.FC = () => {
     }
 
     setGameState(prev => ({ ...prev, status: 'idle' }));
+    if (currentUser) loadProfile(currentUser.id);
     setSelectedPath([]);
     setIsDragging(false);
     setPreviewResult(null);
   };
 
-  // Caricamento Leaderboard (Fixed duplicate state)
-  // Caricamento Leaderboard (Fixed duplicate state)
-  // MONITORAGGIO SFIDA: Se l'altro esce, usciamo anche noi
-  useEffect(() => {
-    if (!activeMatch || !currentUser) return;
 
-    const channel = (supabase as any)
-      .channel(`match_monitor_${activeMatch.id}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'matches',
-        filter: `id=eq.${activeMatch.id}`
-      }, (payload: any) => {
-        if (payload.new.status === 'finished' || payload.new.status === 'cancelled') {
-          showToast("L'avversario ha lasciato la sfida.");
-          goToHome();
-        }
-      })
-      .subscribe();
-
-    return () => {
-      (supabase as any).removeChannel(channel);
-    };
-  }, [activeMatch, currentUser, goToHome]); // Added goToHome to dependencies
-
-  useEffect(() => {
-    const handlePopState = () => {
-      if (activeModal) {
-        setActiveModal(null);
-      }
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [activeModal]);
-
-  // Salvataggio Punteggio su Game Over & Sync Progress
-  useEffect(() => {
-    if (gameState.status === 'game-over' && gameState.totalScore > 0) {
-      const saveScore = async () => {
-        // Save to Leaderboard (Public)
-        await leaderboardService.addEntry({
-          player_name: userProfile?.username || 'Guest',
-          score: gameState.totalScore,
-          level: gameState.level,
-          country: 'IT',
-          iq: Math.round(gameState.estimatedIQ)
-        });
-
-        // Sync to Profile (Private Persistence)
-        if (currentUser) {
-          const updated = await profileService.syncProgress(
-            currentUser.id,
-            gameState.totalScore,
-            gameState.level,
-            Math.round(gameState.estimatedIQ)
-          );
-          if (updated) setUserProfile(updated);
-          profileService.clearSavedGame(currentUser.id); // Clear saved game on game over
-          setSavedGame(null);
-        }
-      };
-      saveScore();
-    }
-  }, [gameState.status, gameState.totalScore, gameState.level, gameState.estimatedIQ, currentUser, userProfile]); // Added dependencies
-
-  const calculateResultFromPath = (pathIds: string[]): number | null => {
-    if (pathIds.length < 1) return null;
-
-    const expression: string[] = pathIds.map(id => {
-      const cell = grid.find(c => c.id === id);
-      return cell ? cell.value : '';
-    });
-
-    try {
-      let result = 0;
-      let currentOp = '+';
-      let hasStarted = false;
-
-      for (let i = 0; i < expression.length; i++) {
-        const part = expression[i];
-        if (OPERATORS.includes(part)) {
-          currentOp = part;
-        } else {
-          const num = parseInt(part);
-          if (!hasStarted) {
-            result = num;
-            hasStarted = true;
-          } else {
-            if (currentOp === '+') result += num;
-            else if (currentOp === '-') result -= num;
-            else if (currentOp === '×') result *= num;
-            else if (currentOp === '÷') result = num !== 0 ? Math.floor(result / num) : result;
-          }
-        }
-      }
-      return result;
-    } catch (e) {
-      return null;
-    }
-  };
-
-  // LEVELS & DIFFICULTY SCALING
   const getDifficultyRange = (level: number) => {
     // MODIFIED: Much gentler slope for first 30 levels to ease player in
     if (level <= 5) return { min: 1, max: 12 };       // Very easy start (mostly sums)
@@ -605,6 +455,69 @@ const App: React.FC = () => {
     }));
     setTargetAnimKey(k => k + 1);
   }, [levelBuffer, createLevelData, gameState.level]);
+
+  const handleDuelRoundStart = (matchData: any) => {
+    // Close Modal
+    setShowDuelRecap(false);
+    setGameState(prev => ({
+      ...prev,
+      levelTargets: [],
+      status: 'playing'
+    }));
+    generateGrid(gameState.level);
+    if (currentUser?.id === matchData.player1_id) {
+      matchService.resetRoundStatus(matchData.id);
+    }
+    soundService.playReset();
+  };
+
+  // Wrapper for calculation using paths (IDs) instead of Cells
+  const calculateResultFromPath = (pathIds: string[]): number | null => {
+    const cells = pathIds.map(id => grid.find(c => c.id === id)).filter(Boolean) as HexCellData[];
+    return calculateResultFromCells(cells);
+  };
+
+  // DUEL: Subscribe to Match Updates (Score, Rounds, Winner, READY STATUS)
+  useEffect(() => {
+    if (activeMatch?.id && activeMatch.isDuel) {
+      const sub = matchService.subscribeToMatch(activeMatch.id, (payload) => {
+        const newData = payload.new;
+        if (!newData) return;
+
+        setLatestMatchData(newData); // SAVE FULL DATA FOR MODAL
+
+        const amIP1 = newData.player1_id === currentUser?.id;
+
+        // SYNC ROUND START
+        // Use local variable or state checking
+        // We need to access 'showDuelRecap' which is state.
+        // CAUTION: Effect captures stale state if not in dep array. 'showDuelRecap' IS in dep array below.
+        if (newData.p1_ready && newData.p2_ready && showDuelRecap) {
+          handleDuelRoundStart(newData);
+        }
+
+        // Update Opponent Score
+        setOpponentScore(amIP1 ? newData.player2_score : newData.player1_score);
+
+        // Update Rounds
+        setDuelRounds({
+          p1: newData.p1_rounds || 0,
+          p2: newData.p2_rounds || 0,
+          current: newData.current_round || 1
+        });
+
+        // Check Victory/Defeat (Final)
+        if (newData.status === 'finished') {
+          // Ensure local state reflects finished to show final recap
+          setShowDuelRecap(true);
+        }
+      });
+
+      return () => {
+        if (sub) (supabase as any).removeChannel(sub);
+      };
+    }
+  }, [activeMatch, currentUser, showDuelRecap]);
 
   const startGame = async () => {
     await handleUserInteraction();
@@ -982,6 +895,9 @@ const App: React.FC = () => {
     }
   };
 
+
+
+
   return (
     <div
       className="h-[100dvh] w-full bg-gradient-to-t from-[#004488] to-[#0088dd] text-slate-100 flex flex-col items-center justify-center select-none relative overflow-hidden"
@@ -989,6 +905,8 @@ const App: React.FC = () => {
       onMouseUp={handleGlobalEnd}
       onTouchEnd={handleGlobalEnd}
     >
+
+
 
 
       {/* WIN VIDEO OVERLAY */}
@@ -1057,7 +975,7 @@ const App: React.FC = () => {
           <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 pt-24 pb-32 animate-screen-in relative">
 
             {/* TOP LEFT: User Auth */}
-            <div className="absolute top-10 left-5 z-50 flex gap-3 items-center" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="absolute top-4 left-4 z-50 flex gap-3 items-center" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               <button
                 onPointerDown={async (e) => {
                   e.stopPropagation();
@@ -1084,7 +1002,7 @@ const App: React.FC = () => {
             </div>
 
             {/* TOP RIGHT: Audio */}
-            <div className="absolute top-10 right-5 z-50 flex gap-3 items-center" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+            <div className="absolute top-4 right-4 z-50 flex gap-3 items-center" style={{ marginTop: 'env(safe-area-inset-top)' }}>
               <button
                 onPointerDown={toggleMute}
                 className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
@@ -1146,7 +1064,7 @@ const App: React.FC = () => {
               >
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
                 <Play className="w-8 h-8 fill-current relative z-10" />
-                <span className="tracking-widest relative z-10">GIOCA</span>
+                <span className="tracking-widest relative z-10">{savedGame && savedGame.level > 1 ? `CONTINUA LVL ${savedGame.level}` : "GIOCA"}</span>
               </button>
 
               <div className="grid grid-cols-2 gap-4 w-full">
@@ -1705,7 +1623,21 @@ const App: React.FC = () => {
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={handleLoginSuccess} />}
 
-      <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.6</footer>
+      {/* DUEL RECAP MODAL */}
+      {showDuelRecap && latestMatchData && (
+        <DuelRecapModal
+          matchData={latestMatchData}
+          currentUser={currentUser}
+          myScore={gameState.totalScore}
+          opponentScore={opponentScore}
+          isFinal={latestMatchData.status === 'finished'}
+          roundWinnerId={null}
+          onReady={() => { }}
+          onExit={goToHome}
+        />
+      )}
+
+      <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.6 - LOCAL DEV</footer>
     </div >
   );
 };

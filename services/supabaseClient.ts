@@ -208,8 +208,9 @@ export const profileService = {
                 updates.estimated_iq = newIq;
                 shouldUpdate = true;
             }
-            if (newScore > (current.total_score || 0)) {
-                updates.total_score = newScore;
+            // ACCUMULATE SCORE (Lifetime Points) - Modified as per user request to not reset progress
+            if (newScore > 0) {
+                updates.total_score = (current.total_score || 0) + newScore;
                 shouldUpdate = true;
             }
         }

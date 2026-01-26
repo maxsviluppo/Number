@@ -204,6 +204,30 @@ export const matchService = {
         if (error) console.error('Error declaring winner:', error);
     },
 
+    // Imposta lo stato "Pronto" per il round successivo
+    async setPlayerReady(matchId: string, isPlayer1: boolean, ready: boolean) {
+        const updateData = isPlayer1
+            ? { p1_ready: ready }
+            : { p2_ready: ready };
+
+        const { error } = await (supabase as any)
+            .from('matches')
+            .update(updateData)
+            .eq('id', matchId);
+
+        if (error) console.error('Error setting player ready:', error);
+    },
+
+    // Reset degli stati "Pronto" all'inizio di un nuovo round
+    async resetRoundStatus(matchId: string) {
+        const { error } = await (supabase as any)
+            .from('matches')
+            .update({ p1_ready: false, p2_ready: false })
+            .eq('id', matchId);
+
+        if (error) console.error('Error resetting round status:', error);
+    },
+
     // Iscriviti agli aggiornamenti di una partita specifica
     subscribeToMatch(matchId: string, callback: (payload: any) => void) {
         return (supabase as any)
