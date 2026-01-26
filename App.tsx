@@ -558,12 +558,11 @@ const App: React.FC = () => {
   // DUEL: Subscribe to Match Updates (Score, Rounds, Winner, READY STATUS)
   useEffect(() => {
     if (activeMatch?.id && activeMatch.isDuel) {
-      const sub = matchService.subscribeToMatch(activeMatch.id, (payload) => {
+      const sub = matchService.subscribeToMatch(activeMatch.id, (payload: any) => {
         const newData = payload.new;
         if (!newData) return;
 
-        // PROTECT LOCAL WIN STATUS: Do not overwrite a finished match with an active one from a late broadcast
-        setLatestMatchData(prev => {
+        setLatestMatchData((prev: any) => {
           if (prev?.id === newData.id && prev.status === 'finished' && newData.status !== 'finished') {
             return { ...newData, status: 'finished', winner_id: prev.winner_id };
           }
@@ -572,95 +571,70 @@ const App: React.FC = () => {
 
         const amIP1 = newData.player1_id === currentUser?.id;
 
-        // Update local isP1 state if needed
         if (activeMatch && activeMatch.isP1 !== amIP1) {
           setActiveMatch(prev => prev ? { ...prev, isP1: amIP1 } : null);
         }
 
-        // SYNC ROUND START
-        // Use local variable or state checking
-        // We need to access 'showDuelRecap' which is state.
-        // CAUTION: Effect captures stale state if not in dep array. 'showDuelRecap' IS in dep array below.
         if (newData.p1_ready && newData.p2_ready && showDuelRecap) {
           handleDuelRoundStart(newData);
         }
 
-        // Update Opponent Info
         setOpponentScore(amIP1 ? newData.player2_score : newData.player1_score);
         setOpponentTargets(amIP1 ? newData.p2_rounds : newData.p1_rounds);
 
-        // Update Rounds
         setDuelRounds({
           p1: newData.p1_rounds || 0,
           p2: newData.p2_rounds || 0,
           current: newData.current_round || 1
         });
 
-        // FAIL-SAFE INTERRUPTION: Check if opponent has won (Score/Target Reach) BEFORE 'finished' status arrives
-        // This prevents the loser from playing while server processes the win
         const opponentTargetCount = amIP1 ? newData.p2_rounds : newData.p1_rounds;
         const targetToWin = duelMode === 'blitz' ? 3 : 5;
 
         if (opponentTargetCount >= targetToWin && newData.status !== 'finished') {
-          console.log("FAIL-SAFE: Opponent reached target. Forcing interruption.");
           if (timerRef.current) window.clearInterval(timerRef.current);
           setGameState(prev => ({ ...prev, status: 'idle' }));
-          // Don't show recap yet? Or show "Waiting for results..."? 
-          // Ideally show Recap immediately as "Defeat" pending confirmation.
-          // We'll let the 'finished' event handle the actual Recap data population/display fully if needed, 
-          // but blocking input is priority.
-          // Actually, showing lost video or simple block is good.
-          // Let's just block input via status 'idle' and maybe play sound.
+          setIsDragging(false);
+          setSelectedPath([]);
           soundService.playExternalSound('lost.mp3');
-          setShowDuelRecap(true); // Open modal, it will populate with latest data available
+          setShowDuelRecap(true);
         }
 
-        // Check Victory/Defeat (Final) - INTERRUPT GAME FOR LOSER AND WINNER
         if (newData.status === 'finished') {
           const amIWinner = newData.winner_id === currentUser?.id;
-
-          // SYNC PROFILE ONLY IF WINNER AND NOT ALREADY PROCESSED LOCALLY
-          // This handles cases like Opponent Abandonment where I win passively
           if (amIWinner && processedWinRef.current !== newData.id) {
-            console.log("SYNCING WIN FROM SUBSCRIPTION (Passive/Abandonment)");
-            processedWinRef.current = newData.id; // Mark as processed
-            profileService.syncProgress(
-              currentUser!.id,
-              gameStateRef.current.score,
-              gameStateRef.current.level,
-              gameStateRef.current.estimatedIQ
-            );
+            processedWinRef.current = newData.id;
+            profileService.syncProgress(currentUser!.id, gameStateRef.current.score, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
             loadProfile(currentUser!.id);
           }
 
-          // PLAY SOUNDS
-          if (amIWinner) {
-            // Winner sound usually played locally, but good safety
-          } else {
-            soundService.playExternalSound('lost.mp3'); // Sound for loser
-          }
-
-          // FORCE STOP GAME LOOP
+          if (!amIWinner) soundService.playExternalSound('lost.mp3');
           if (timerRef.current) window.clearInterval(timerRef.current);
 
-          // SHOW RECAP
           setGameState(prev => ({ ...prev, status: 'idle' }));
+          setIsDragging(false);
+          setSelectedPath([]);
           setShowDuelRecap(true);
         }
       });
+
+      if (latestMatchData?.status === 'finished' && gameStateRef.current.status === 'playing') {
+        setGameState(prev => ({ ...prev, status: 'idle' }));
+        setIsDragging(false);
+        setSelectedPath([]);
+        setShowDuelRecap(true);
+      }
 
       return () => {
         if (sub) (supabase as any).removeChannel(sub);
       };
     }
-  }, [activeMatch, currentUser, showDuelRecap]);
-
+  }, [activeMatch, currentUser, showDuelRecap, latestMatchData]);
 
   // REMATCH LOGIC (Broadcast)
   useEffect(() => {
     if (activeMatch?.id && latestMatchData?.status === 'finished') {
       const channel = matchService.subscribeToRematch(activeMatch.id, (event, payload) => {
-        // WINNER RECEIVING REQUEST
         if (event === 'rematch_request' && payload.fromUserId !== currentUser?.id) {
           soundService.playTick();
           showToast("SFIDA: L'avversario vuole la RIVINCITA!", [
@@ -673,24 +647,23 @@ const App: React.FC = () => {
               label: 'RIFIUTA',
               variant: 'secondary',
               onClick: () => {
+                matchService.sendRematchReject(activeMatch.id);
                 setToast(prev => ({ ...prev, visible: false }));
-                showToast("Rivincita rifiutata.");
               }
             }
           ]);
         }
-        // LOSER RECEIVING ACCEPT
-        if (event === 'rematch_accepted') {
-          // Both join new match
-          if (payload.newMatchId) {
-            soundService.playSuccess();
-            joinRematch(payload.newMatchId);
-          }
+        if (event === 'rematch_accepted' && payload.newMatchId) {
+          soundService.playSuccess();
+          joinRematch(payload.newMatchId);
+        }
+        if (event === 'rematch_rejected') {
+          showToast("La richiesta di rivincita è stata rifiutata.");
         }
       });
-      return () => { (supabase as any).removeChannel(channel); };
+      return () => { if (channel) (supabase as any).removeChannel(channel); };
     }
-  }, [activeMatch, latestMatchData, currentUser, showToast]);
+  }, [activeMatch, latestMatchData, currentUser]);
 
   const acceptRematch = async (oldMatchId: string) => {
     // 1. Create New Match (Similar to Lobby Logic but direct)
@@ -1238,7 +1211,7 @@ const App: React.FC = () => {
         <path d="M800 -100 Q 600 300 900 600" stroke="white" strokeWidth="30" fill="none" />
       </svg>
 
-      <div className={`fixed top-12 left-1/2 -translate-x-1/2 z-[3000] transition-all duration-500 pointer-events-none
+      <div className={`fixed top-12 left-1/2 -translate-x-1/2 z-[9999] transition-all duration-500 pointer-events-none
         ${toast.visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-16 opacity-0 scale-95'}`}>
         <div className={`glass-panel px-8 py-4 rounded-[1.5rem] border ${toast.actions ? 'border-[#FF8800] bg-slate-900/95' : 'border-cyan-400/60'} shadow-[0_0_40px_rgba(34,211,238,0.4)] flex items-center gap-5 backdrop-blur-2xl pointer-events-auto`}>
           <div className="flex flex-col text-center">
