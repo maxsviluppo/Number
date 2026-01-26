@@ -151,6 +151,14 @@ const App: React.FC = () => {
   }, [gameState.timeLeft, gameState.status, activeMatch, currentUser, isVictoryAnimating, loadProfile]);
 
 
+  // REF: Track GameState for Subscriptions (Avoid Stale Closures)
+  const gameStateRef = useRef(gameState);
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
+  // REF: Track Processed Wins (Avoid Double Sync)
+  const processedWinRef = useRef<string | null>(null);
+
+
   const togglePause = async (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -561,12 +569,18 @@ const App: React.FC = () => {
 
         // Check Victory/Defeat (Final) - INTERRUPT GAME FOR LOSER
         if (newData.status === 'finished') {
-          // SYNC PROFILE ONLY FOR THE WINNER AT THE END
           const amIWinner = newData.winner_id === currentUser?.id;
-          if (amIWinner) {
-            // Use current match score (gameState.score) to update profile
-            // We use the local state 'gameState.score' which tracks match points
-            profileService.syncProgress(currentUser!.id, gameState.score, gameState.level, gameState.estimatedIQ);
+
+          // SYNC PROFILE ONLY IF WINNER AND NOT ALREADY PROCESSED LOCALLY
+          // This handles cases like Opponent Abandonment where I win passively
+          if (amIWinner && processedWinRef.current !== newData.id) {
+            console.log("SYNCING WIN FROM SUBSCRIPTION (Passive/Abandonment)");
+            profileService.syncProgress(
+              currentUser!.id,
+              gameStateRef.current.score,
+              gameStateRef.current.level,
+              gameStateRef.current.estimatedIQ
+            );
             loadProfile(currentUser!.id);
           }
 
@@ -775,6 +789,9 @@ const App: React.FC = () => {
       if (activeMatch?.isDuel && duelMode === 'standard') {
         // Match Ends Immediately
         matchService.declareWinner(activeMatch.id, currentUser.id);
+
+        // FLAG AS PROCESSED LOCALLY TO AVOID DOUBLE SYNC IN SUBSCRIPTION
+        processedWinRef.current = activeMatch.id;
 
         // Update Local State but skip video/standard recap
         setGameState(prev => ({
