@@ -14,7 +14,6 @@ import AdminPanel from './components/AdminPanel';
 import NeuralDuelLobby from './components/NeuralDuelLobby';
 import DuelRecapModal from './components/DuelRecapModal';
 import IntroVideo from './components/IntroVideo';
-import ComicTutorial, { TutorialStep } from './components/ComicTutorial';
 import { authService, profileService, leaderboardService, supabase } from './services/supabaseClient'; // Moved this import here
 
 const TUTORIAL_STEPS = [
@@ -80,8 +79,6 @@ const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [showLostVideo, setShowLostVideo] = useState(false);
-  const [showHomeTutorial, setShowHomeTutorial] = useState(false);
-  const [showGameTutorial, setShowGameTutorial] = useState(false);
   const theme = 'orange';
   const [levelBuffer, setLevelBuffer] = useState<{ grid: HexCellData[], targets: number[] }[]>([]);
   const timerRef = useRef<number | null>(null);
@@ -723,9 +720,9 @@ const App: React.FC = () => {
     showToast("Partita Ripristinata");
   };
 
-  const handleStartGameClick = useCallback(async (e?: React.PointerEvent) => {
+  const handleStartGameClick = useCallback(async (e: React.PointerEvent) => {
     if (e) {
-      e.preventDefault();
+      // e.preventDefault();
       e.stopPropagation();
     }
     await handleUserInteraction();
@@ -735,10 +732,15 @@ const App: React.FC = () => {
       return;
     }
 
-    // New Comic Tutorial Check
-    if (localStorage.getItem('comic_game_tutorial_done') !== 'true') {
-      startGame(); // Start the game first so elements exist
-      setTimeout(() => setShowGameTutorial(true), 1000); // Delay to let animation finish
+    let tutorialDone = 'false';
+    try {
+      tutorialDone = localStorage.getItem('number_tutorial_done') || 'false';
+    } catch (e) { tutorialDone = 'true'; }
+
+    if (tutorialDone !== 'true') {
+      soundService.playUIClick();
+      setTutorialStep(0);
+      setActiveModal('tutorial');
     } else {
       startGame();
     }
@@ -1062,10 +1064,6 @@ const App: React.FC = () => {
       {showIntro && <IntroVideo onFinish={() => {
         setShowIntro(false);
         setGameState(prev => ({ ...prev, status: 'idle' }));
-        // Check for Home Tutorial
-        if (localStorage.getItem('comic_home_tutorial_done') !== 'true') {
-          setTimeout(() => setShowHomeTutorial(true), 500);
-        }
       }} />}
       <div
         className="h-[100dvh] w-full bg-gradient-to-t from-[#004488] to-[#0088dd] text-slate-100 flex flex-col items-center justify-center select-none relative overflow-hidden"
@@ -1172,7 +1170,6 @@ const App: React.FC = () => {
                       setShowAuthModal(true);
                     }
                   }}
-                  id={currentUser ? "user-profile-home" : "login-btn-home"}
                   className="flex items-center gap-3 pr-3 pl-1 py-1 rounded-full bg-black/40 border border-white/20 backdrop-blur-md hover:bg-black/60 transition-all group"
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 border-white/50 shadow-lg ${currentUser ? 'bg-[#FF8800] text-white' : 'bg-slate-700 text-slate-400 group-hover:bg-white group-hover:text-[#FF8800] transition-colors'}`}>
@@ -1198,7 +1195,6 @@ const App: React.FC = () => {
                   className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
                     ${isMuted ? 'bg-slate-700 text-slate-400' : 'bg-[#FF8800] text-white'}`}
                   title="Audio"
-                  id="audio-btn-home"
                 >
                   {isMuted ? <VolumeX size={24} strokeWidth={2.5} /> : <Volume2 size={24} strokeWidth={2.5} />}
                 </button>
@@ -1209,7 +1205,6 @@ const App: React.FC = () => {
                 {/* Tutorial Icon */}
                 <button
                   onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
-                  id="tutorial-btn-home"
                   className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
                   title="Tutorial"
                 >
@@ -1252,7 +1247,6 @@ const App: React.FC = () => {
               <div className="flex flex-col gap-4 items-center w-full max-w-sm relative z-20">
                 <button
                   onPointerDown={handleStartGameClick}
-                  id="play-btn-home"
                   className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-gradient-to-r from-[#FF8800] to-[#FF5500] text-white py-5 rounded-2xl font-orbitron font-black text-xl border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_4px_0_rgba(0,0,0,0.2)] hover:scale-105 transition-all duration-300"
                 >
                   <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
@@ -1265,7 +1259,6 @@ const App: React.FC = () => {
                   {/* 1VS1 MODE BUTTON - SINGLE ENTRY */}
                   <button
                     className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 text-white py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
-                    id="duel-btn-home"
                     onPointerDown={() => {
                       soundService.playUIClick();
                       if (!currentUser) {
@@ -1288,7 +1281,6 @@ const App: React.FC = () => {
 
                   <button
                     className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
-                    id="challenges-btn-home"
                     onPointerDown={() => { soundService.playUIClick(); showToast("Nessuna sfida attiva al momento"); }}
                   >
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
@@ -1299,7 +1291,6 @@ const App: React.FC = () => {
                   </button>
 
                   <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
-                    id="ranking-btn-home"
                     className="flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-900 py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group">
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-15"></div>
                     <BarChart3 className="w-6 h-6 relative z-10" />
@@ -1345,7 +1336,7 @@ const App: React.FC = () => {
 
                 {/* Center: Floating Timer (Half-In/Half-Out) */}
                 {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
-                <div id="timer-display-game" className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
+                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
                   <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${activeMatch?.isDuel ? 'border-red-500/50 grayscale-0 opacity-100 flex flex-col' : ''}`}>
                     <svg className="absolute inset-0 w-full h-full -rotate-90 scale-90">
                       <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
@@ -1392,7 +1383,7 @@ const App: React.FC = () => {
                     ) : null}
 
                     {/* Duel Dashboard circle: Shows Match Points, not global */}
-                    <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-slate-900 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
+                    <div className="w-14 h-14 rounded-full bg-white border-[3px] border-slate-900 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
                       <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
                       <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
                         {gameState.score}
@@ -1401,7 +1392,7 @@ const App: React.FC = () => {
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 pl-20 sm:pl-0">
-                    <div id="score-display-game" className="w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
+                    <div className="w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
                       <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
                       <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.score}</span>
                     </div>
@@ -1435,7 +1426,7 @@ const App: React.FC = () => {
 
                   <div className="flex flex-col items-center gap-2 mb-5">
                     {/* Level Targets List */}
-                    <div className="flex gap-2 items-center flex-wrap justify-center max-w-[300px]" id="targets-display-tutorial">
+                    <div className="flex gap-2 items-center flex-wrap justify-center max-w-[300px]">
                       {gameState.levelTargets.map((t, i) => (
                         <div key={i} className={`
                                 flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300
@@ -1453,7 +1444,7 @@ const App: React.FC = () => {
                   <div className="relative flex-grow w-full flex items-center justify-center overflow-visible">
 
                     {isPaused && (
-                      <div id="pause-overlay-game" className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl rounded-3xl transition-all animate-fadeIn">
+                      <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl rounded-3xl transition-all animate-fadeIn">
                         <div className="flex flex-col items-center gap-4">
                           <Pause className="w-24 h-24 text-white opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
                           <span className="font-orbitron font-black text-2xl text-white tracking-[0.3em] animate-pulse">PAUSA</span>
@@ -1461,7 +1452,7 @@ const App: React.FC = () => {
                       </div>
                     )}
 
-                    <div id="grid-container-game" className={`relative mx-auto transition-all duration-500 transform
+                    <div className={`relative mx-auto transition-all duration-500 transform
                     ${isPaused ? 'opacity-10 scale-95 filter blur-lg pointer-events-none grayscale' : 'opacity-100 scale-100 filter-none'}
                     ${theme === 'orange'
                         ? 'w-[calc(272px*var(--hex-scale))] h-[calc(376px*var(--hex-scale))]'
@@ -1852,100 +1843,7 @@ const App: React.FC = () => {
           />
         )}
 
-        <footer className="mt-auto py-6 text-slate-600 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.6 - LOCAL DEV</footer>
-
-        {/* HOMEPAGE TUTORIAL OVERLAY */}
-        <ComicTutorial
-          isVisible={showHomeTutorial}
-          steps={[
-            {
-              targetId: 'audio-btn-home',
-              title: 'AUDIO IMMERSIVO',
-              description: 'Clicca qui per attivare o disattivare il suono. Per un\'esperienza ottimale, ti consigliamo di tenerlo acceso!',
-              position: 'top'
-            },
-            {
-              targetId: currentUser ? 'user-profile-home' : 'login-btn-home',
-              title: currentUser ? 'PROFILO & STATS' : 'ACCEDI ORA',
-              description: currentUser
-                ? 'Qui puoi vedere il tuo punteggio totale e gestire il tuo account.'
-                : 'Registrati per salvare i progressi, scalare le classifiche e sfidare altri giocatori!',
-              position: 'top'
-            },
-            {
-              targetId: 'tutorial-btn-home',
-              title: 'GUIDA AI COMANDI',
-              description: 'Se hai dubbi su come giocare, clicca qui per rivedere le regole base.',
-              position: 'bottom'
-            },
-            {
-              targetId: 'play-btn-home',
-              title: 'INIZIA L\'AVVENTURA',
-              description: 'Pronto a mettere alla prova i tuoi neuroni? Clicca qui per avviare la modalità Classica.',
-              position: 'center'
-            },
-            {
-              targetId: 'duel-btn-home',
-              title: 'SFIDE 1VS1',
-              description: 'Entra nell\'arena! Sfida altri utenti in tempo reale in duelli di velocità matematica.',
-              position: 'bottom'
-            },
-            {
-              targetId: 'ranking-btn-home',
-              title: 'CLASSIFICA GLOBALE',
-              description: 'Controlla la tua posizione nel mondo. Diventerai il numero 1?',
-              position: 'bottom'
-            }
-          ]}
-          onComplete={(neverShow) => {
-            setShowHomeTutorial(false);
-            if (neverShow) localStorage.setItem('comic_home_tutorial_done', 'true');
-          }}
-          onSkip={(neverShow) => {
-            setShowHomeTutorial(false);
-            if (neverShow) localStorage.setItem('comic_home_tutorial_done', 'true');
-          }}
-        />
-
-        {/* GAME TUTORIAL OVERLAY */}
-        <ComicTutorial
-          isVisible={showGameTutorial}
-          steps={[
-            {
-              targetId: 'targets-display-tutorial',
-              title: 'I TUOI OBIETTIVI',
-              description: 'Questi sono i numeri che devi ottenere. Trova le combinazioni nella griglia per raggiungerli tutti!',
-              position: 'top'
-            },
-            {
-              targetId: 'grid-container-game',
-              title: 'LA GRIGLIA',
-              description: 'Collega le celle: NUMERO -> OPERATORE -> NUMERO.  Esempio: 5 + 3.  Non puoi collegare due numeri vicini senza operatore!',
-              position: 'center'
-            },
-            {
-              targetId: 'score-display-game',
-              title: 'PUNTEGGIO',
-              description: 'Più sei veloce e mantieni la streak (serie di risposte corrette), più punti farai. Punta al record!',
-              position: 'right'
-            },
-            {
-              targetId: 'timer-display-game',
-              title: 'TEMPO & PAUSA',
-              description: 'Hai poco tempo! Se ti serve respirare, clicca qui per mettere in PAUSA il sistema.',
-              position: 'center'
-            }
-          ]}
-          onComplete={(neverShow) => {
-            setShowGameTutorial(false);
-            if (neverShow) localStorage.setItem('comic_game_tutorial_done', 'true');
-          }}
-          onSkip={(neverShow) => {
-            setShowGameTutorial(false);
-            if (neverShow) localStorage.setItem('comic_game_tutorial_done', 'true');
-          }}
-        />
-
+        <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.6 - LOCAL DEV</footer>
       </div>
     </>
   );
