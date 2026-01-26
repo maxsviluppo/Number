@@ -726,8 +726,9 @@ const App: React.FC = () => {
     }
 
     const result = calculateResultFromPath(pathIds);
-    // Check if result matches any uncompleted target
-    const matchedTarget = gameState.levelTargets.find(t => t.value === result && !t.completed);
+    // USE REF TO ENSURE FRESHNESS (Fixes First Target Glitch)
+    const currentTargets = gameStateRef.current.levelTargets || [];
+    const matchedTarget = currentTargets.find(t => t.value === result && !t.completed);
 
     if (matchedTarget) {
       handleSuccess(result!);
@@ -739,7 +740,7 @@ const App: React.FC = () => {
 
   const handleSuccess = (matchedValue: number) => {
     // RACE CONDITION FIX: Do not process win if game is already over
-    if (gameState.status !== 'playing') return;
+    if (gameStateRef.current.status !== 'playing') return;
 
     soundService.playSuccess();
 
@@ -805,12 +806,24 @@ const App: React.FC = () => {
         // FLAG AS PROCESSED LOCALLY TO AVOID DOUBLE SYNC IN SUBSCRIPTION
         processedWinRef.current = activeMatch.id;
 
+        // OPTIMISTICALLY UPDATE MATCH DATA FOR RECAP
+        // This ensures the modal knows the match is finished immediately
+        setLatestMatchData(prev => ({
+          ...prev,
+          status: 'finished',
+          winner_id: currentUser!.id,
+          // Ensure scores are up to date in the recap object
+          player1_score: activeMatch.isP1 ? gameState.score + currentPoints : prev?.player1_score,
+          player2_score: !activeMatch.isP1 ? gameState.score + currentPoints : prev?.player2_score
+        }));
+
         // Update Local State but skip video/standard recap
         setGameState(prev => ({
           ...prev,
           score: prev.score + currentPoints,
           totalScore: prev.totalScore + currentPoints,
-          status: 'idle'
+          status: 'idle',
+          levelTargets: newTargets // Ensure targets are marked completed visually before closing? Actually we go to recap.
         }));
 
         // SYNC PROFILE FOR WINNER (MATCH ENDED BY ALL TARGETS)
@@ -911,8 +924,19 @@ const App: React.FC = () => {
     }
   }, [gameState.status, gameState.totalScore, gameState.level, gameState.timeLeft]); // Added dependencies
 
+  /* INPUT BLOCKING LOGIC */
+  const canInteract = () => {
+    // STRICTLY BLOCK if game is over or paused or not playing
+    if (gameState.status !== 'playing') return false;
+    if (isPaused) return false;
+    if (isVictoryAnimating) return false;
+    if (showVideo || showLostVideo) return false;
+    if (showDuelRecap) return false; // Explicitly block if recap is open
+    return true;
+  };
+
   const onStartInteraction = async (id: string) => {
-    if (gameState.status !== 'playing' || isVictoryAnimating) return;
+    if (!canInteract()) return;
     await handleUserInteraction();
 
     const cell = grid.find(c => c.id === id);
@@ -951,7 +975,7 @@ const App: React.FC = () => {
   };
 
   const onMoveInteraction = (id: string) => {
-    if (!isDragging || gameState.status !== 'playing' || isVictoryAnimating) return;
+    if (!isDragging || !canInteract()) return;
     // BACKTRACKING LOGIC
     // Se l'utente torna alla penultima casella selezionata, rimuovi l'ultima (backtrack)
     if (selectedPath.length > 1 && id === selectedPath[selectedPath.length - 2]) {

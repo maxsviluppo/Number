@@ -90,14 +90,13 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                             ${isWinner ? 'border-[#FF8800] bg-[#FF8800]/10' : 'border-slate-800 bg-slate-900/50'}`}>
                                 <span className="text-[10px] font-black text-slate-500 uppercase leading-none mb-1">PUNTI TUOI</span>
                                 <span className={`font-orbitron font-black text-4xl ${isWinner ? 'text-[#FF8800]' : 'text-slate-400'}`}>{myScore}</span>
-                                {isWinner && <Trophy className="absolute -top-6 text-yellow-400 drop-shadow-lg animate-bounce" size={40} />}
                             </div>
                             <div className="text-center">
                                 <h3 className="text-white font-black uppercase text-sm tracking-wider">TU</h3>
                             </div>
                             {isFinal && isWinner && (
                                 <span className="text-[#FF8800] font-black uppercase text-[10px] bg-[#FF8800]/20 px-3 py-1 rounded-full border border-[#FF8800]/30 animate-pulse">
-                                    +{myScore} PUNTI ACCUMULATI
+                                    VITTORIA
                                 </span>
                             )}
                         </div>
@@ -113,7 +112,6 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                             ${!isWinner ? 'border-green-500 bg-green-500/10' : 'border-slate-800 bg-slate-900/50'}`}>
                                 <span className="text-[10px] font-black text-slate-500 uppercase leading-none mb-1">PUNTI AVV</span>
                                 <span className={`font-orbitron font-black text-4xl ${!isWinner ? 'text-green-500' : 'text-slate-500'}`}>{opponentScore}</span>
-                                {!isWinner && <Trophy className="absolute -top-6 text-yellow-400 drop-shadow-lg animate-bounce" size={40} />}
                             </div>
                             <div className="text-center">
                                 <h3 className="text-white font-black uppercase text-sm tracking-wider">{amIP1 ? matchData.player2?.username : matchData.player1?.username || 'Avversario'}</h3>
@@ -129,14 +127,14 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                     {isFinal ? (
                         <div className="flex flex-col sm:flex-row gap-3">
                             <button onClick={onExit} className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-orbitron font-black uppercase tracking-widest transition-all active:scale-95 border-2 border-slate-600 flex items-center justify-center gap-2">
-                                <Home size={18} /> TORNA ALLA HOME
+                                <Home size={18} /> TORNA ALLA LOBBY
                             </button>
                             {!isWinner && (
                                 <button
                                     onClick={() => onRematch?.()}
                                     className="flex-1 py-4 bg-[#FF8800] text-white rounded-xl font-orbitron font-black uppercase tracking-widest shadow-lg transition-all active:scale-95 border-2 border-white flex items-center justify-center gap-2 animate-pulse"
                                 >
-                                    <RotateCw size={18} /> RIVINCITA?
+                                    <RotateCw size={18} /> RIVINCITA
                                 </button>
                             )}
                         </div>
