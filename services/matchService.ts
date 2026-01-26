@@ -161,68 +161,51 @@ export const matchService = {
 
         if (error) {
             console.error('LOBBY ERROR (JOINED):', error);
-            // Fallback to raw matches if join failed
-            return rawMatches || [];
         }
 
-        // REPLENISH NAMES FALLBACK: Check if any username is missing or null
-        if (data.length > 0) {
-            // Check if ANY required profile is missing username property
-            const needsHydration = data.some(m => !m.player1?.username || (m.player2_id && !m.player2?.username));
+        // STRATEGIA ROBUSTA: Ignoriamo la join automatica se fallisce e IDRATIAMO SEMPRE MANUALMENTE
+        // Raccogliamo tutti gli ID unici dai match trovati
+        const matchesToReturn = (data && data.length > 0) ? data : (rawMatches || []);
+        const userIds = new Set<string>();
 
-            if (needsHydration) {
-                console.log("LOBBY: Manual hydration required for names.");
-                const userIds = new Set<string>();
+        matchesToReturn.forEach((m: any) => { // Type assertion per sicurezza
+            if (m.player1_id) userIds.add(m.player1_id);
+            if (m.player2_id) userIds.add(m.player2_id);
+        });
 
-                // Collect IDs only for missing profiles
-                data.forEach(m => {
-                    if (m.player1_id && !m.player1?.username) userIds.add(m.player1_id);
-                    if (m.player2_id && !m.player2?.username) userIds.add(m.player2_id);
-                });
+        if (userIds.size > 0) {
+            console.log(`LOBBY: Idratazione manuale per ${userIds.size} profili...`);
+            const { data: profiles, error: profileError } = await (supabase as any)
+                .from('profiles')
+                .select('id, username, max_level')
+                .in('id', Array.from(userIds));
 
-                if (userIds.size > 0) {
-                    const { data: profiles } = await (supabase as any)
-                        .from('profiles')
-                        .select('id, username') // Minimum fields
-                        .in('id', Array.from(userIds));
-
-                    if (profiles) {
-                        data.forEach(m => {
-                            // Only patch if missing
-                            if (!m.player1?.username && m.player1_id) {
-                                const p = profiles.find(p => p.id === m.player1_id);
-                                if (p) m.player1 = p;
-                            }
-                            if (!m.player2?.username && m.player2_id) {
-                                const p = profiles.find(p => p.id === m.player2_id);
-                                if (p) m.player2 = p;
-                            }
-                        });
-                    }
-                }
+            if (profileError) {
+                console.error("LOBBY: Errore idratazione profili:", profileError);
             }
-        }
 
-        if (data.length === 0 && rawMatches.length > 0) {
-            console.warn("LOBBY: Join query returned 0 rows but raw query had data. Possible profile mismatch. Using raw data.");
-            // Even here, we can try to hydrate rawMatches
-            const userIds = new Set<string>();
-            rawMatches.forEach(m => {
-                if (m.player1_id) userIds.add(m.player1_id);
-                if (m.player2_id) userIds.add(m.player2_id);
-            });
-
-            const { data: profiles } = await (supabase as any).from('profiles').select('id, username').in('id', Array.from(userIds));
             if (profiles) {
-                rawMatches.forEach(m => {
-                    m.player1 = profiles.find(p => p.id === m.player1_id);
-                    m.player2 = profiles.find(p => p.id === m.player2_id);
+                matchesToReturn.forEach((m: any) => {
+                    // Sovrascrivi o riempi player1
+                    if (m.player1_id) {
+                        const p1 = profiles.find((p: any) => p.id === m.player1_id);
+                        if (p1) {
+                            // Merge per preservare altri campi se presenti
+                            m.player1 = m.player1 ? { ...m.player1, ...p1 } : p1;
+                        }
+                    }
+                    // Sovrascrivi o riempi player2
+                    if (m.player2_id) {
+                        const p2 = profiles.find((p: any) => p.id === m.player2_id);
+                        if (p2) {
+                            m.player2 = m.player2 ? { ...m.player2, ...p2 } : p2;
+                        }
+                    }
                 });
             }
-            return rawMatches;
         }
 
-        return (data.length > 0) ? data : rawMatches;
+        return matchesToReturn;
     },
 
     // Cancella una richiesta di partita (se mi stanco di aspettare)

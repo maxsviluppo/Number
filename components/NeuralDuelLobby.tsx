@@ -227,9 +227,9 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 group-hover:text-green-400 transition-colors">
-                                                        {match.player1?.username || match.player1_id?.slice(0, 8) || 'Guerriero'}
+                                                        {match.player1?.username || match.player1_id?.slice(0, 8) || 'Sconosciuto'}
                                                         {isBusy && <span className="text-red-500 mx-1">VS</span>}
-                                                        {isBusy && (match.player2?.username || match.player2_id?.slice(0, 8) || 'Rival')}
+                                                        {isBusy && (match.player2?.username || match.player2_id?.slice(0, 8) || 'Sconosciuto')}
                                                     </div>
                                                     <div className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">
                                                         LVL {match.player1?.max_level || 1} • {isBusy ? "Partita avviata" : "In attesa di sfidanti"}
