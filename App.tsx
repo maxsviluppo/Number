@@ -567,6 +567,25 @@ const App: React.FC = () => {
           current: newData.current_round || 1
         });
 
+        // FAIL-SAFE INTERRUPTION: Check if opponent has won (Score/Target Reach) BEFORE 'finished' status arrives
+        // This prevents the loser from playing while server processes the win
+        const opponentTargetCount = amIP1 ? newData.p2_rounds : newData.p1_rounds;
+        const targetToWin = duelMode === 'blitz' ? 3 : 5;
+
+        if (opponentTargetCount >= targetToWin && newData.status !== 'finished') {
+          console.log("FAIL-SAFE: Opponent reached target. Forcing interruption.");
+          if (timerRef.current) window.clearInterval(timerRef.current);
+          setGameState(prev => ({ ...prev, status: 'idle' }));
+          // Don't show recap yet? Or show "Waiting for results..."? 
+          // Ideally show Recap immediately as "Defeat" pending confirmation.
+          // We'll let the 'finished' event handle the actual Recap data population/display fully if needed, 
+          // but blocking input is priority.
+          // Actually, showing lost video or simple block is good.
+          // Let's just block input via status 'idle' and maybe play sound.
+          soundService.playExternalSound('lost.mp3');
+          setShowDuelRecap(true); // Open modal, it will populate with latest data available
+        }
+
         // Check Victory/Defeat (Final) - INTERRUPT GAME FOR LOSER AND WINNER
         if (newData.status === 'finished') {
           const amIWinner = newData.winner_id === currentUser?.id;
@@ -771,9 +790,8 @@ const App: React.FC = () => {
     if (activeMatch?.isDuel && currentUser) {
       const myTargetsFound = newTargets.filter(t => t.completed).length;
 
-      // Update Match Stats on Server - USE LOCAL SCORE (MATCH POINTS)
-      matchService.updateScore(activeMatch.id, currentUser.id, gameState.score + currentPoints, activeMatch.isP1);
-      matchService.updateTargets(activeMatch.id, activeMatch.isP1, myTargetsFound);
+      // ATOMIC UPDATE: Send Score AND Targets together
+      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameState.score + currentPoints, myTargetsFound);
 
       // BLITZ LOGIC: Check Round Win (3 Targets)
       if (duelMode === 'blitz' && myTargetsFound >= 3) {

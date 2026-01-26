@@ -246,6 +246,20 @@ export const matchService = {
         if (error) console.error('Error updating targets:', error);
     },
 
+    // ATOMIC UPDATE: Punteggio + Target insieme per evitare race conditions/glitch di sync
+    async updateMatchStats(matchId: string, isPlayer1: boolean, score: number, targetsCount: number) {
+        const updateData = isPlayer1
+            ? { player1_score: score, p1_rounds: targetsCount }
+            : { player2_score: score, p2_rounds: targetsCount };
+
+        const { error } = await (supabase as any)
+            .from('matches')
+            .update(updateData)
+            .eq('id', matchId);
+
+        if (error) console.error('Error updating match stats:', error);
+    },
+
     // Incrementa i round vinti (Blitz Mode)
     async incrementRound(matchId: string, isPlayer1: boolean, currentRounds: number) {
         const updateData = isPlayer1
