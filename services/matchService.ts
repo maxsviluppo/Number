@@ -75,11 +75,11 @@ export const matchService = {
 
             // Analyze Error Code
             if (error.code === '23503') {
-                alert("ERRORE CRITICO DB: Il tuo profilo utente non esiste nel database (FK Violation).\nProva a fare Logout e rientrare.");
+                throw new Error("PROFILO NON TROVATO: Effettua il logout e rientra per sincronizzare i dati.");
             } else if (error.code === '42703') {
-                alert("ERRORE SCHEMA: Colonne mancanti (mode/grid_seed). Esegui lo script SQL di Reset.");
+                throw new Error("ERRORE SCHEMA: Il database non è aggiornato alle ultime funzionalità.");
             } else {
-                alert(`ERRORE SCONOSCIUTO (${error.code}): ${error.message}`);
+                throw new Error(`ERRORE SFIDA (${error.code}): ${error.message}`);
             }
             return null;
         }
@@ -134,7 +134,8 @@ export const matchService = {
             .from('matches')
             .select(`
                 *,
-                player1:profiles (*)
+                player1:profiles!matches_player1_id_fkey (*),
+                player2:profiles!matches_player2_id_fkey (*)
             `)
             .in('status', ['pending', 'active'])
             .eq('mode', mode)
@@ -170,6 +171,20 @@ export const matchService = {
             .eq('id', matchId);
 
         if (error) console.error('Error updating score:', error);
+    },
+
+    // Aggiorna il numero di target trovati
+    async updateTargets(matchId: string, isPlayer1: boolean, targetsCount: number) {
+        const updateData = isPlayer1
+            ? { p1_rounds: targetsCount }
+            : { p2_rounds: targetsCount };
+
+        const { error } = await (supabase as any)
+            .from('matches')
+            .update(updateData)
+            .eq('id', matchId);
+
+        if (error) console.error('Error updating targets:', error);
     },
 
     // Incrementa i round vinti (Blitz Mode)

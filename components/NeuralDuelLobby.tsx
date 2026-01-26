@@ -7,11 +7,12 @@ import { authService, supabase } from '../services/supabaseClient';
 interface NeuralDuelProps {
     currentUser: any; // User object
     onClose: () => void;
-    onMatchStart: (seed: string, matchId: string, opponentId: string) => void;
+    onMatchStart: (seed: string, matchId: string, opponentId: string, isP1: boolean) => void;
     mode: 'standard' | 'blitz';
+    showToast: (msg: string) => void;
 }
 
-const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMatchStart, mode }) => {
+const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMatchStart, mode, showToast }) => {
     const [matches, setMatches] = useState<any[]>([]);
     const [onlinePlayers, setOnlinePlayers] = useState<any[]>([]);
     const [myHostedMatch, setMyHostedMatch] = useState<Match | null>(null);
@@ -71,14 +72,19 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
         if (myHostedMatch) return;
         soundService.playUIClick();
         const seed = Math.random().toString(36).substring(7);
-        const newMatch = await matchService.createMatch(currentUser.id, seed, mode);
-        if (newMatch) {
-            setMyHostedMatch(newMatch);
-            channelRef.current = matchService.subscribeToMatch(newMatch.id, (payload) => {
-                if (payload.new.status === 'active' && payload.new.player2_id) {
-                    onMatchStart(newMatch.grid_seed, newMatch.id, payload.new.player2_id);
-                }
-            });
+        try {
+            const newMatch = await matchService.createMatch(currentUser.id, seed, mode);
+            if (newMatch) {
+                setMyHostedMatch(newMatch);
+                channelRef.current = matchService.subscribeToMatch(newMatch.id, (payload) => {
+                    if (payload.new.status === 'active' && payload.new.player2_id) {
+                        onMatchStart(newMatch.grid_seed, newMatch.id, payload.new.player2_id, true);
+                    }
+                });
+            }
+        } catch (e: any) {
+            console.error('Lobby error:', e);
+            showToast(e.message || "Impossibile creare la sfida");
         }
     };
 
@@ -89,12 +95,19 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
             await cleanupMyMatch();
         }
 
-        const success = await matchService.joinMatch(matchId, currentUser.id);
-        if (success) {
-            soundService.playSuccess();
-            onMatchStart(seed, matchId, p1Id);
-        } else {
-            soundService.playError();
+        try {
+            const success = await matchService.joinMatch(matchId, currentUser.id);
+            if (success) {
+                soundService.playSuccess();
+                onMatchStart(seed, matchId, p1Id, false);
+            } else {
+                soundService.playError();
+                showToast("Sfida non più disponibile.");
+                fetchMatches();
+            }
+        } catch (e: any) {
+            console.error('Join error:', e);
+            showToast(e.message || "Impossibile unirsi alla sfida");
             fetchMatches();
         }
     };
@@ -149,7 +162,6 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
 
                         {matches.map((match) => {
                             const isBusy = match.status === 'active';
-                            if (match.player1_id === currentUser.id) return null;
 
                             return (
                                 <div
@@ -172,7 +184,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
 
                                         <div>
                                             <div className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 group-hover:text-green-400 transition-colors">
-                                                {match.player1?.username || 'Player'}
+                                                {match.player1?.username || 'Player'} {isBusy && <span className="text-red-500 mx-1">VS</span>} {isBusy && (match.player2?.username || 'Rival')}
                                             </div>
                                             <div className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">
                                                 LVL {match.player1?.max_level || 1} • {isBusy ? "Partita avviata" : "In attesa di sfidanti"}
@@ -200,12 +212,15 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Spettatori in Lobby</span>
                         </div>
 
-                        {onlinePlayers.filter(p => !matches.some(m => m.player1_id === p.id) && p.id !== currentUser.id).length === 0 && (
-                            <p className="text-[10px] text-slate-600 italic text-center py-2 uppercase">Nessun osservatore attivo</p>
-                        )}
+                        {onlinePlayers.filter(p =>
+                            !matches.some(m => m.player1_id === p.id || m.player2_id === p.id) &&
+                            p.id !== currentUser.id
+                        ).length === 0 && (
+                                <p className="text-[10px] text-slate-600 italic text-center py-2 uppercase">Nessun osservatore attivo</p>
+                            )}
 
                         {onlinePlayers.map((player) => {
-                            if (matches.some(m => m.player1_id === player.id) || player.id === currentUser.id) return null;
+                            if (matches.some(m => m.player1_id === player.id || m.player2_id === player.id) || player.id === currentUser.id) return null;
 
                             return (
                                 <div key={player.id} className="p-3 bg-white/[0.03] border border-white/5 rounded-xl flex items-center justify-between opacity-70">

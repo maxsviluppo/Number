@@ -64,9 +64,10 @@ const App: React.FC = () => {
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
   const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | null>(null);
-  const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean } | null>(null);
+  const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean, isP1: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0);
+  const [opponentTargets, setOpponentTargets] = useState(0);
   const [duelRounds, setDuelRounds] = useState({ p1: 0, p2: 0, current: 1 });
   const [tutorialStep, setTutorialStep] = useState(0);
   const [targetAnimKey, setTargetAnimKey] = useState(0);
@@ -203,26 +204,47 @@ const App: React.FC = () => {
       if (typeof e.preventDefault === 'function') e.preventDefault();
       if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
+    await handleUserInteraction();
     soundService.playReset();
 
-    // SFIDA LOGIC
+    // SFIDA LOGIC (ABBANDONO)
     if (activeMatch && currentUser) {
-      await matchService.cancelMatch(activeMatch.id);
-      setActiveMatch(null);
-      setActiveModal('duel_selection');
-      setGameState(prev => ({ ...prev, status: 'idle' }));
-      await loadProfile(currentUser.id);
-      setSelectedPath([]);
-      setIsDragging(false);
-      setPreviewResult(null);
-      return;
+      // Se esco durante un duello, dichiaro l'avversario vincitore (Abbandono)
+      await matchService.declareWinner(activeMatch.id, activeMatch.opponentId);
+      showToast("Sfida abbandonata.");
     }
 
     setGameState(prev => ({ ...prev, status: 'idle' }));
-    if (currentUser) loadProfile(currentUser.id);
-    setSelectedPath([]);
-    setIsDragging(false);
+    setActiveModal(null);
+    setActiveMatch(null);
+    setShowDuelRecap(false);
+    setShowVideo(false);
+    setShowLostVideo(false);
+    setIsVictoryAnimating(false);
+    setTriggerParticles(false);
     setPreviewResult(null);
+    setSelectedPath([]);
+    if (timerRef.current) window.clearInterval(timerRef.current);
+    if (currentUser) loadProfile(currentUser.id);
+  };
+
+  // DETERMINISTIC RNG HELPERS
+  const stringToSeed = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  };
+
+  const seededRandom = (seed: number) => {
+    return () => {
+      seed |= 0; seed = seed + 0x6d2b79f5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
   };
 
 
@@ -315,21 +337,24 @@ const App: React.FC = () => {
     return solutions;
   };
 
-  const createLevelData = useCallback((level: number) => {
+  const createLevelData = useCallback((level: number, seedStr?: string) => {
     const { min, max } = getDifficultyRange(level);
     let attempts = 0;
-    const maxAttempts = 15;
+    const maxAttempts = 20;
+
+    // Initialize RNG
+    const rng = seedStr ? seededRandom(stringToSeed(seedStr)) : Math.random;
 
     // Helper: Weighted numbers for early levels
     const getWeightedNumber = () => {
       if (level <= 30) {
-        const r = Math.random();
+        const r = rng();
         // 60% chance of small numbers (1-4), 30% mid (5-7), 10% high (8-9) or 0
-        if (r < 0.60) return Math.floor(Math.random() * 4) + 1;
-        if (r < 0.90) return Math.floor(Math.random() * 3) + 5;
-        return Math.floor(Math.random() * 3) + 7; // 7,8,9 (occasional 0 if map allows, keeping simple 1-9 for now) | Actually logic was 0-9 before. Let's allowing 0 to 9 but biased.
+        if (r < 0.60) return Math.floor(rng() * 4) + 1;
+        if (r < 0.90) return Math.floor(rng() * 3) + 5;
+        return Math.floor(rng() * 3) + 7;
       }
-      return Math.floor(Math.random() * 10);
+      return Math.floor(rng() * 10);
     };
 
     // Helper: generate a balanced pool of operators to distribute spatially
@@ -343,7 +368,7 @@ const App: React.FC = () => {
       else if (level <= 30) weights = { '+': 0.35, '-': 0.35, '×': 0.25, '÷': 0.05 };
 
       for (let i = 0; i < count; i++) {
-        const r = Math.random();
+        const r = rng();
         if (r < weights['+']) pool.push('+');
         else if (r < weights['+'] + weights['-']) pool.push('-');
         else if (r < weights['+'] + weights['-'] + weights['×']) pool.push('×');
@@ -352,7 +377,7 @@ const App: React.FC = () => {
 
       // Shuffle pool (Fisher-Yates) for uniform distribution
       for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(rng() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
       }
       return pool;
@@ -396,11 +421,11 @@ const App: React.FC = () => {
       // Need at least 5 unique solutions. 
       // Ensure we pick solution targets that are somewhat spread out (numerically) if possible, or just shuffle well.
       if (validSolutions.length >= 5) {
-        // Better shuffle for targets
-        const shuffled = validSolutions.sort(() => Math.random() - 0.5);
-        // Double shuffle to ensure no bottom-bias inherited from generation order
+        // Better shuffle for targets using deterministic RNG
+        const shuffled = validSolutions.sort(() => rng() - 0.5);
+        // Double shuffle
         for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
+          const j = Math.floor(rng() * (i + 1));
           [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
 
@@ -434,17 +459,16 @@ const App: React.FC = () => {
     return { grid: newGrid, targets };
   }, []);
 
-  const generateGrid = useCallback((forceStartLevel?: number) => {
+  const generateGrid = useCallback((forceStartLevel?: number, forcedSeed?: string) => {
     let nextLevelData;
     let newBuffer = [...levelBuffer];
 
-    // Use forced level if provided (for restarts), otherwise use current state level
     const currentLevel = forceStartLevel !== undefined ? forceStartLevel : gameState.level;
 
-    if (newBuffer.length === 0 || forceStartLevel !== undefined) {
-      // Initialize buffer from scratch
-      newBuffer = []; // Clear buffer if forcing start
-      nextLevelData = createLevelData(currentLevel);
+    if (newBuffer.length === 0 || forceStartLevel !== undefined || forcedSeed) {
+      // If we have a forced seed (DUEL MODE), generate exactly that board
+      newBuffer = [];
+      nextLevelData = createLevelData(currentLevel, forcedSeed);
       for (let i = 1; i <= 5; i++) {
         newBuffer.push(createLevelData(currentLevel + i));
       }
@@ -502,6 +526,11 @@ const App: React.FC = () => {
 
         const amIP1 = newData.player1_id === currentUser?.id;
 
+        // Update local isP1 state if needed
+        if (activeMatch && activeMatch.isP1 !== amIP1) {
+          setActiveMatch(prev => prev ? { ...prev, isP1: amIP1 } : null);
+        }
+
         // SYNC ROUND START
         // Use local variable or state checking
         // We need to access 'showDuelRecap' which is state.
@@ -510,8 +539,9 @@ const App: React.FC = () => {
           handleDuelRoundStart(newData);
         }
 
-        // Update Opponent Score
+        // Update Opponent Info
         setOpponentScore(amIP1 ? newData.player2_score : newData.player1_score);
+        setOpponentTargets(amIP1 ? newData.p2_rounds : newData.p1_rounds);
 
         // Update Rounds
         setDuelRounds({
@@ -590,7 +620,7 @@ const App: React.FC = () => {
       status: 'playing',
       estimatedIQ: savedGame.estimatedIQ || 100,
       // Re-hydrate targets from save if possible, or regenerate?
-      // Simplest is to regenerate level. 
+      // Simplest is to regenerate level.
       // This allows "save scumming" the grid layout but keeps points/time.
       // Acceptable for this iteration.
       levelTargets: [],
@@ -603,7 +633,7 @@ const App: React.FC = () => {
 
   const handleStartGameClick = useCallback(async (e: React.PointerEvent) => {
     if (e) {
-      // e.preventDefault(); 
+      // e.preventDefault();
       e.stopPropagation();
     }
     await handleUserInteraction();
@@ -688,31 +718,21 @@ const App: React.FC = () => {
 
     // DUEL LOGIC
     if (activeMatch?.isDuel && currentUser) {
-      // Update My Score on Server
-      matchService.updateScore(activeMatch.id, currentUser.id, gameState.totalScore + currentPoints, activeMatch.id === currentUser.id); // Wait, activeMatch.id is match ID. Need to check if I am P1. 
-      // Fix: activeMatch doesn't store if I am P1. Need to store player1_id or derive.
-      // Assumption: If I created/joined, I know my ID. I need to check against match data? 
-      // In NeuralDuelLobby onMatchStart, we pass (seed, matchId, opponentId). We don't verify if I am P1.
-      // Hack: fetch match or assume P1 if I created? No.
-      // Better: Just matchService.updateScore(matchId, userId, score, isPlayer1??)
-      // I'll update matchService.updateScore to NOT require isPlayer1, just userId? 
-      // OR I just fetch it once.
-      // Let's rely on stored profile or pass it in `onMatchStart`.
-      // For now, I will COMMENT out the server update or use a "try both" approach? No.
-      // I'll assume I am P1 if opponentId != match.p1?
-      // Simplest fix: In `onMatchStart`, pass `amIP1`.
-      // I'll Assume standard logic update in a bit. USE CAUTION.
+      const myTargetsFound = newTargets.filter(t => t.completed).length;
+
+      // Update My Info on Server
+      matchService.updateScore(activeMatch.id, currentUser.id, gameState.totalScore + currentPoints, activeMatch.isP1);
+      matchService.updateTargets(activeMatch.id, activeMatch.isP1, myTargetsFound);
 
       // BLITZ LOGIC: Check Round Win (3 Targets)
       if (duelMode === 'blitz') {
-        const targetsDone = newTargets.filter(t => t.completed).length;
-        if (targetsDone >= 3) {
+        if (myTargetsFound >= 3) {
           // ROUND WON!
           soundService.playSuccess();
           showToast(`ROUND ${duelRounds.current} VINTO!`);
 
           // Increment on Server
-          // We need to know if Im P1. I'll pass that info or fetch it. 
+          // We need to know if Im P1. I'll pass that info or fetch it.
           // For this task, I'll rely on the subscription to update `duelRounds` eventually, but I must trigger it.
           // TODO: Fix isPlayer1 detection.
 
@@ -820,6 +840,8 @@ const App: React.FC = () => {
     }));
     setSelectedPath([]);
   };
+
+
 
   const nextLevel = () => {
     soundService.playUIClick();
@@ -1021,9 +1043,14 @@ const App: React.FC = () => {
                   <User size={20} strokeWidth={2.5} />
                 </div>
                 {currentUser && (
-                  <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest pl-2">
-                    {userProfile?.username || 'GUEST'}
-                  </span>
+                  <div className="flex flex-col items-start pl-2 leading-none">
+                    <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest">
+                      {userProfile?.username || 'GUEST'}
+                    </span>
+                    <span className="font-orbitron text-[8px] font-black text-[#FF8800] uppercase tracking-tighter mt-0.5">
+                      {userProfile?.total_score || 0} PNT
+                    </span>
+                  </div>
                 )}
               </button>
             </div>
@@ -1183,12 +1210,14 @@ const App: React.FC = () => {
                     {!isPaused && (
                       <circle
                         cx="50%" cy="50%" r="45%"
-                        stroke={activeMatch?.isDuel ? '#ef4444' : (gameState.timeLeft < 10 ? '#ef4444' : '#FF8800')}
+                        stroke={activeMatch?.isDuel
+                          ? `rgb(${Math.floor(((opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5)) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5)) * 129 + 68)}, 68)`
+                          : (gameState.timeLeft < 10 ? '#ef4444' : '#FF8800')}
                         strokeWidth="8"
                         fill="none"
                         strokeDasharray="283"
                         strokeDashoffset={activeMatch?.isDuel
-                          ? 283 - (283 * (opponentScore || 0) / (duelMode === 'blitz' ? 3 : 5))
+                          ? 283 - (283 * (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5))
                           : 283 - (283 * gameState.timeLeft / INITIAL_TIME)
                         }
                         strokeLinecap="round"
@@ -1202,7 +1231,7 @@ const App: React.FC = () => {
                     <>
                       {activeMatch?.isDuel && <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>}
                       <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
-                        {activeMatch?.isDuel ? opponentScore : gameState.timeLeft}
+                        {activeMatch?.isDuel ? opponentTargets : gameState.timeLeft}
                       </span>
                     </>
                   )}
@@ -1222,7 +1251,7 @@ const App: React.FC = () => {
 
                   {/* Duel Dashboard circle: Shows Player Points */}
                   <div className="w-14 h-14 rounded-full bg-white border-[3px] border-slate-900 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
-                    <span className="text-[7px] font-black text-slate-500 leading-none mb-0.5 uppercase">PTN</span>
+                    <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PNT</span>
                     <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
                       {gameState.totalScore}
                     </span>
@@ -1543,10 +1572,15 @@ const App: React.FC = () => {
         <NeuralDuelLobby
           currentUser={currentUser}
           mode={duelMode}
+          showToast={showToast}
           onClose={() => setActiveModal('duel_selection')}
-          onMatchStart={(seed, matchId, opponentId) => {
+          onMatchStart={(seed, matchId, opponentId, isP1) => {
             setActiveModal(null);
-            setActiveMatch({ id: matchId, opponentId, isDuel: true });
+
+            // Check if I am P1 by fetching match from matches state or just check if matchId was hosted by me
+            // Simplified: The lobby component knows, or we just rely on latest match data sync.
+            // Better: neuralDuelLobby already knows, but let's just use current user logic.
+            setActiveMatch({ id: matchId, opponentId, isDuel: true, isP1: isP1 }); // Placeholder, fix in effect
 
             // Initialize Duel Game
             soundService.playUIClick();
@@ -1563,11 +1597,8 @@ const App: React.FC = () => {
               basePoints: BASE_POINTS_START,
               levelTargets: [],
             });
-            // Use the Match SEED to generate the grid (TODO: Update generateLevel to accept seed or deterministic RNG)
-            // For now, we just rely on standard random, but in production we MUST use the seed for identical grids.
-            // We simulate this by passing the seed to a new generator function or just initiating standard level 1.
-            // FUTURE: Implement seeded RNG in services/gameLogic.ts
-            generateGrid(1);
+            // Pass the MATCH SEED to create the exact same board for both players
+            generateGrid(1, seed);
             // Reset Opponent Score
             setOpponentScore(0);
           }}

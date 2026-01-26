@@ -25,6 +25,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
     // Confirm Delete State
     const [userToDelete, setUserToDelete] = useState<string | null>(null);
+    const [adminToast, setAdminToast] = useState<{ msg: string, visible: boolean }>({ msg: '', visible: false });
+
+    const showToast = (msg: string) => {
+        setAdminToast({ msg, visible: true });
+        setTimeout(() => setAdminToast(prev => ({ ...prev, visible: false })), 3000);
+    };
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
@@ -32,7 +38,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             setIsAuthenticated(true);
             fetchData();
         } else {
-            alert('Credenziali non valide');
+            showToast('Credenziali non valide');
         }
     };
 
@@ -111,13 +117,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             }
 
             // Success feedback
-            alert('Utente eliminato correttamente.');
+            showToast('Utente eliminato correttamente.');
             fetchData();
             setUserToDelete(null);
 
         } catch (e: any) {
             console.error('Delete error:', e);
-            alert('Errore eliminazione: ' + (e.message || 'Controlla che la funzione SQL sia stata eseguita.'));
+            showToast('Errore: ' + (e.message || 'Controlla la funzione SQL.'));
         }
     };
 
@@ -293,8 +299,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                 <td className="px-4 py-3 text-gray-300 text-sm">{(user as any).max_level || 1}</td>
                                                 <td className="px-4 py-3 flex items-center justify-between">
                                                     <span className={`px-2 py-0.5 text-[9px] rounded-full border ${(user as any).status === 'Inattivo'
-                                                            ? 'bg-red-900/20 text-red-500 border-red-900/30'
-                                                            : 'bg-green-900/30 text-green-400 border-green-900'
+                                                        ? 'bg-red-900/20 text-red-500 border-red-900/30'
+                                                        : 'bg-green-900/30 text-green-400 border-green-900'
                                                         }`}>
                                                         {(user as any).status || 'Attivo'}
                                                     </span>
