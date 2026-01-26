@@ -12,7 +12,9 @@ interface DuelRecapProps {
     isFinal: boolean; // True if Blitz ended or Standard ended
     onReady: () => void; // Triggered when server says GO
     onExit: () => void;
+    onRematch?: () => void;
     onRematchRequest?: () => void;
+    isWinnerProp?: boolean; // Override derived logic
 }
 
 const DuelRecapModal: React.FC<DuelRecapProps> = ({
@@ -24,11 +26,15 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
     onReady,
     onExit,
     onRematch,
-    onRematchRequest
+    onRematchRequest,
+    isWinnerProp
 }) => {
-    // Determine status
+    // Determine status: Use explicit prop if available, else derive
     const amIP1 = matchData?.player1_id === currentUser.id;
-    const isWinner = matchData?.winner_id === currentUser.id;
+    const derivedWinner = matchData?.winner_id === currentUser.id;
+    // Fix: If isWinnerProp is provided (true/false), use it. otherwise use derived.
+    const isWinner = isWinnerProp !== undefined ? isWinnerProp : derivedWinner;
+
     const isAbandonment = matchData?.status === 'finished' &&
         matchData?.winner_id &&
         (matchData.mode === 'standard' ?
@@ -71,6 +77,13 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                             <span className={`font-orbitron font-black text-5xl ${isWinner ? 'text-[#FF8800]' : 'text-slate-400'}`}>{myScore}</span>
                         </div>
                         <h3 className="text-white font-black uppercase text-sm tracking-wider">TU</h3>
+                        {isFinal && isWinner && (
+                            <div className="flex flex-col items-center mt-2 animate-bounce">
+                                <span className="text-[#FF8800] font-black uppercase text-xs bg-[#FF8800]/20 px-3 py-1 rounded-full border border-[#FF8800]/30">
+                                    +500 XP
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {/* VS */}

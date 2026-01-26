@@ -1894,19 +1894,18 @@ const App: React.FC = () => {
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={handleLoginSuccess} />}
 
       {/* DUEL RECAP MODAL */}
+      {/* DUEL RECAP MODAL */}
       {showDuelRecap && latestMatchData && (
         <DuelRecapModal
           matchData={latestMatchData}
           currentUser={currentUser}
+          isWinnerProp={latestMatchData.winner_id === currentUser.id}
           myScore={gameState.totalScore}
           opponentScore={opponentScore}
           isFinal={latestMatchData.status === 'finished'}
-          roundWinnerId={null}
           onReady={() => { }}
-          onRematch={() => {
-            setShowDuelRecap(false);
-            setActiveMatch(null);
-            setActiveModal('duel_selection');
+          onRematchRequest={() => {
+            if (activeMatch?.id) matchService.sendRematchRequest(activeMatch.id, currentUser.id);
           }}
           onExit={goToHome}
         />
