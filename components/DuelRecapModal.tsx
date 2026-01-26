@@ -22,7 +22,8 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
     opponentScore,
     isFinal,
     onReady,
-    onExit
+    onExit,
+    onRematch
 }) => {
     const [imReady, setImReady] = useState(false);
     const [opponentReady, setOpponentReady] = useState(false);
@@ -76,56 +77,44 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                 {/* PLAYERS COMPARISON */}
                 <div className="relative z-10 flex-1 p-8 flex flex-col sm:flex-row items-center justify-between gap-8">
 
-                    {/* ME */}
-                    <div className={`flex flex-col items-center gap-3 transition-all duration-500 ${iWonRound ? 'scale-110' : 'opacity-80 scale-95'}`}>
-                        <div className={`w-24 h-24 rounded-full border-[4px] flex items-center justify-center shadow-xl relative
-                            ${iWonRound ? 'border-green-500 bg-green-500/10' : 'border-slate-600 bg-slate-800'}`}>
-                            <span className="font-orbitron font-black text-4xl text-white">{myScore}</span>
-                            {iWonRound && <Trophy className="absolute -top-6 text-yellow-400 drop-shadow-lg animate-bounce" size={32} />}
-                        </div>
-                        <div className="text-center">
-                            <h3 className="text-white font-black uppercase text-sm tracking-wider">TU</h3>
-                            <p className="text-[#FF8800] text-xs font-bold">Lvl {currentUser.user_metadata?.max_level || 1}</p>
-                        </div>
-                        {isFinal ? (
-                            isWinner ?
-                                <span className="text-green-400 font-bold uppercase text-xs border border-green-400/30 px-2 py-1 rounded">+XP EARNED</span> :
-                                <span className="text-red-500 font-bold uppercase text-xs">NO POINTS</span>
-                        ) : (
-                            <div className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase border transition-all flex items-center gap-2
-                                ${imReady ? 'bg-green-500 text-slate-900 border-green-500' : 'bg-slate-800 text-slate-500 border-slate-600'}`}>
-                                {imReady ? <><CheckCircle2 size={12} /> PRONTO</> : <><Clock size={12} /> IN ATTESA</>}
-                            </div>
-                        )}
-                    </div>
+                    <div className="relative z-10 flex-1 p-8 flex flex-col sm:flex-row items-center justify-between gap-8">
 
-                    {/* VS */}
-                    <div className="flex flex-col items-center">
-                        <span className="font-black font-orbitron text-4xl text-white/20 italic">VS</span>
-                        {!isFinal && <div className="text-[10px] text-slate-500 uppercase font-bold mt-2">Best of {matchData.mode === 'blitz' ? '5 Rounds' : '1 Match'}</div>}
-                    </div>
-
-                    {/* OPPONENT */}
-                    <div className={`flex flex-col items-center gap-3 transition-all duration-500 ${!iWonRound ? 'scale-110' : 'opacity-80 scale-95'}`}>
-                        <div className={`w-24 h-24 rounded-full border-[4px] flex items-center justify-center shadow-xl relative
-                            ${!iWonRound ? 'border-green-500 bg-green-500/10' : 'border-slate-600 bg-slate-800'}`}>
-                            <span className="font-orbitron font-black text-4xl text-white">{opponentScore}</span>
-                            {!iWonRound && <Trophy className="absolute -top-6 text-yellow-400 drop-shadow-lg animate-bounce" size={32} />}
-                        </div>
-                        <div className="text-center">
-                            <h3 className="text-white font-black uppercase text-sm tracking-wider">{amIP1 ? matchData.player2?.username : matchData.player1?.username || 'Avversario'}</h3>
-                            <p className="text-slate-500 text-xs font-bold">Rivale</p>
-                        </div>
-                        {isFinal ? (
-                            !isWinner ?
-                                <span className="text-green-400 font-bold uppercase text-xs border border-green-400/30 px-2 py-1 rounded">WINNER</span> :
-                                <span className="text-slate-500 font-bold uppercase text-xs">DEFEATED</span>
-                        ) : (
-                            <div className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase border transition-all flex items-center gap-2
-                                ${opponentReady ? 'bg-green-500 text-slate-900 border-green-500' : 'bg-slate-800 text-slate-500 border-slate-600'}`}>
-                                {opponentReady ? <><CheckCircle2 size={12} /> PRONTO</> : <><Clock size={12} /> ...</>}
+                        {/* ME */}
+                        <div className={`flex flex-col items-center gap-3 transition-all duration-500 ${isWinner ? 'scale-110' : 'opacity-80 scale-95'}`}>
+                            <div className={`w-28 h-28 rounded-full border-[6px] flex flex-col items-center justify-center shadow-2xl relative
+                            ${isWinner ? 'border-[#FF8800] bg-[#FF8800]/10' : 'border-slate-800 bg-slate-900/50'}`}>
+                                <span className="text-[10px] font-black text-slate-500 uppercase leading-none mb-1">PUNTI TUOI</span>
+                                <span className={`font-orbitron font-black text-4xl ${isWinner ? 'text-[#FF8800]' : 'text-slate-400'}`}>{myScore}</span>
+                                {isWinner && <Trophy className="absolute -top-6 text-yellow-400 drop-shadow-lg animate-bounce" size={40} />}
                             </div>
-                        )}
+                            <div className="text-center">
+                                <h3 className="text-white font-black uppercase text-sm tracking-wider">TU</h3>
+                            </div>
+                            {isFinal && isWinner && (
+                                <span className="text-[#FF8800] font-black uppercase text-[10px] bg-[#FF8800]/20 px-3 py-1 rounded-full border border-[#FF8800]/30 animate-pulse">
+                                    +{myScore} PUNTI ACCUMULATI
+                                </span>
+                            )}
+                        </div>
+
+                        {/* VS */}
+                        <div className="flex flex-col items-center">
+                            <span className="font-black font-orbitron text-5xl text-white/5 italic">VS</span>
+                        </div>
+
+                        {/* OPPONENT */}
+                        <div className={`flex flex-col items-center gap-3 transition-all duration-500 ${!isWinner ? 'scale-110' : 'opacity-80 scale-95'}`}>
+                            <div className={`w-28 h-28 rounded-full border-[6px] flex flex-col items-center justify-center shadow-2xl relative
+                            ${!isWinner ? 'border-green-500 bg-green-500/10' : 'border-slate-800 bg-slate-900/50'}`}>
+                                <span className="text-[10px] font-black text-slate-500 uppercase leading-none mb-1">PUNTI AVV</span>
+                                <span className={`font-orbitron font-black text-4xl ${!isWinner ? 'text-green-500' : 'text-slate-500'}`}>{opponentScore}</span>
+                                {!isWinner && <Trophy className="absolute -top-6 text-yellow-400 drop-shadow-lg animate-bounce" size={40} />}
+                            </div>
+                            <div className="text-center">
+                                <h3 className="text-white font-black uppercase text-sm tracking-wider">{amIP1 ? matchData.player2?.username : matchData.player1?.username || 'Avversario'}</h3>
+                            </div>
+                        </div>
+
                     </div>
 
                 </div>
@@ -133,11 +122,18 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                 {/* FOOTER ACTIONS */}
                 <div className="relative z-10 bg-slate-950 p-6 flex flex-col gap-3 border-t border-white/10">
                     {isFinal ? (
-                        <div className="flex gap-4">
+                        <div className="flex flex-col sm:flex-row gap-3">
                             <button onClick={onExit} className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-orbitron font-black uppercase tracking-widest transition-all active:scale-95 border-2 border-slate-600 flex items-center justify-center gap-2">
                                 <Home size={18} /> TORNA ALLA HOME
                             </button>
-                            {/* Rematch could be implemented here */}
+                            {!isWinner && (
+                                <button
+                                    onClick={() => onRematch?.()}
+                                    className="flex-1 py-4 bg-[#FF8800] text-white rounded-xl font-orbitron font-black uppercase tracking-widest shadow-lg transition-all active:scale-95 border-2 border-white flex items-center justify-center gap-2 animate-pulse"
+                                >
+                                    <RotateCw size={18} /> RIVINCITA?
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <button

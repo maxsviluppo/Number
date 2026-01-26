@@ -520,9 +520,9 @@ const App: React.FC = () => {
           current: newData.current_round || 1
         });
 
-        // Check Victory/Defeat (Final)
+        // Check Victory/Defeat (Final) - INTERRUPT GAME FOR LOSER
         if (newData.status === 'finished') {
-          // Ensure local state reflects finished to show final recap
+          setGameState(prev => ({ ...prev, status: 'idle' }));
           setShowDuelRecap(true);
         }
       });
@@ -736,8 +736,21 @@ const App: React.FC = () => {
 
     if (allDone) {
       if (activeMatch?.isDuel && duelMode === 'standard') {
-        // STANDARD DUEL WIN (5 Targets)
+        // STANDARD DUEL WIN (5 Targets) - Match Ends Immediately
         matchService.declareWinner(activeMatch.id, currentUser.id);
+
+        // Sync Points to Global Profile immediately for the winner
+        profileService.syncProgress(currentUser.id, gameState.totalScore + currentPoints, gameState.level, gameState.estimatedIQ);
+
+        // Update Local State but skip video/standard recap
+        setGameState(prev => ({
+          ...prev,
+          totalScore: prev.totalScore + currentPoints,
+          status: 'idle'
+        }));
+
+        setShowDuelRecap(true);
+        return; // EXIT EARLY - NO VIDEOS FOR DUELS
       }
 
       // STOP TIMER IMMEDIATELY
@@ -1163,18 +1176,21 @@ const App: React.FC = () => {
 
               {/* Center: Floating Timer (Half-In/Half-Out) */}
               {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
-              <div className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={togglePause}>
-                <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'}`}>
+              <div className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
+                <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${activeMatch?.isDuel ? 'border-red-500/50 grayscale-0 opacity-100 flex flex-col' : ''}`}>
                   <svg className="absolute inset-0 w-full h-full -rotate-90 scale-90">
                     <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
                     {!isPaused && (
                       <circle
                         cx="50%" cy="50%" r="45%"
-                        stroke={gameState.timeLeft < 10 ? '#ef4444' : '#FF8800'}
+                        stroke={activeMatch?.isDuel ? '#ef4444' : (gameState.timeLeft < 10 ? '#ef4444' : '#FF8800')}
                         strokeWidth="8"
                         fill="none"
                         strokeDasharray="283"
-                        strokeDashoffset={283 - (283 * gameState.timeLeft / INITIAL_TIME)}
+                        strokeDashoffset={activeMatch?.isDuel
+                          ? 283 - (283 * (opponentScore || 0) / (duelMode === 'blitz' ? 3 : 5))
+                          : 283 - (283 * gameState.timeLeft / INITIAL_TIME)
+                        }
                         strokeLinecap="round"
                         className="transition-all duration-1000"
                       />
@@ -1183,9 +1199,12 @@ const App: React.FC = () => {
                   {isPaused ? (
                     <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
                   ) : (
-                    <span className="text-3xl font-black font-orbitron text-white">
-                      {gameState.timeLeft}
-                    </span>
+                    <>
+                      {activeMatch?.isDuel && <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>}
+                      <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
+                        {activeMatch?.isDuel ? opponentScore : gameState.timeLeft}
+                      </span>
+                    </>
                   )}
                 </div>
               </div>
@@ -1201,11 +1220,11 @@ const App: React.FC = () => {
                     </div>
                   ) : null}
 
-                  {/* Common White Circle for Opponent Score */}
+                  {/* Duel Dashboard circle: Shows Player Points */}
                   <div className="w-14 h-14 rounded-full bg-white border-[3px] border-slate-900 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
-                    <span className="text-[7px] font-black text-slate-500 leading-none mb-0.5 uppercase">OPP</span>
-                    <span className="text-xl font-black font-orbitron text-slate-900 leading-none">
-                      {opponentScore}
+                    <span className="text-[7px] font-black text-slate-500 leading-none mb-0.5 uppercase">PTN</span>
+                    <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
+                      {gameState.totalScore}
                     </span>
                   </div>
                 </div>
@@ -1647,6 +1666,11 @@ const App: React.FC = () => {
           isFinal={latestMatchData.status === 'finished'}
           roundWinnerId={null}
           onReady={() => { }}
+          onRematch={() => {
+            setShowDuelRecap(false);
+            setActiveMatch(null);
+            setActiveModal('duel_selection');
+          }}
           onExit={goToHome}
         />
       )}
