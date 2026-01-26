@@ -130,6 +130,23 @@ export const matchService = {
         console.log("Fetching matches for mode:", mode);
 
         // Prendiamo sia le 'pending' (In Attesa) che le 'active' (In Sfida)
+        // DEBUG: Fetch raw matches first to see if they exist at all
+        const { data: rawMatches, error: rawError } = await (supabase as any)
+            .from('matches')
+            .select('*')
+            .in('status', ['pending', 'active', 'finished'])
+            .eq('mode', mode)
+            .order('created_at', { ascending: false })
+            .limit(30);
+
+        if (rawError) {
+            console.error('LOBBY ERROR (RAW):', rawError);
+            return [];
+        }
+
+        console.log(`LOBBY: Raw matches found for ${mode}:`, rawMatches?.length || 0);
+
+        // Now attempt to hydrate with profiles but don't fail if join fails
         const { data, error } = await (supabase as any)
             .from('matches')
             .select(`
@@ -143,17 +160,17 @@ export const matchService = {
             .limit(30);
 
         if (error) {
-            console.error('LOBBY ERROR: Impossibile caricare i tavoli:', error);
-            return [];
+            console.error('LOBBY ERROR (JOINED):', error);
+            // Fallback to raw matches if join failed
+            return rawMatches || [];
         }
 
-        if (data.length === 0) {
-            console.log(`LOBBY: Nessun tavolo trovato per la modalita' ${mode}. Verifico presenza record generici...`);
-            const { count } = await supabase.from('matches').select('*', { count: 'exact', head: true });
-            console.log(`LOBBY: Totale record in tabella matches: ${count}`);
+        if (data.length === 0 && rawMatches.length > 0) {
+            console.warn("LOBBY: Join query returned 0 rows but raw query had data. Possible profile mismatch. Using raw data.");
+            return rawMatches;
         }
 
-        return data || [];
+        return data || rawMatches || [];
     },
 
     // Cancella una richiesta di partita (se mi stanco di aspettare)

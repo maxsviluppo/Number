@@ -251,17 +251,17 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
 
                                 {(() => {
                                     const observers = onlinePlayers.filter(p => {
-                                        const isInMatch = matches.some(m => m.player1_id === p.id || m.player2_id === p.id);
-                                        const isMe = p.id === currentUser.id;
+                                        const isInMatch = matches.some(m => String(m.player1_id) === String(p.id) || String(m.player2_id) === String(p.id));
+                                        const isMe = String(p.id) === String(currentUser.id);
                                         if (isMe) return false;
+
                                         // LOG PER DIAGNOSTICA
                                         if (isInMatch) {
-                                            console.log(`LOBBY: Nascondo ${p.username} dagli osservatori.`);
+                                            console.log(`LOBBY: Nascondo ${p.username} (${p.id}) dagli osservatori perche' e' in una partita.`);
                                         } else {
-                                            // Debug comparison
-                                            const firstMatch = matches[0];
-                                            if (firstMatch) {
-                                                console.log(`DEBUG VISIBILITY: Controllo ${p.username} (${p.id}) contro Match P1 (${firstMatch.player1_id}) -> Match? ${p.id === firstMatch.player1_id}`);
+                                            // Debug comparison for the first match if it exists
+                                            if (matches.length > 0) {
+                                                console.log(`DEBUG VISIBILITY: ${p.username} (${p.id}) NOT IN MATCH. First Match P1: ${matches[0].player1_id}`);
                                             }
                                         }
                                         return !isInMatch;
