@@ -672,16 +672,12 @@ const App: React.FC = () => {
     if (tutorialStep < TUTORIAL_STEPS.length - 1) {
       setTutorialStep(prev => prev + 1);
     } else {
-      // Tutorial Finished
+      // Tutorial Finished - Just close and stay on Home
       setActiveModal(null);
-      // Mark as done
       localStorage.setItem('number_tutorial_done', 'true');
-
-      // Only start game if we are in home screen (idle) and tutorial was never done
-      const wasNeverDone = localStorage.getItem('number_was_never_done') !== 'true';
-      if (wasNeverDone && gameState.status === 'idle') {
-        localStorage.setItem('number_was_never_done', 'true');
-        startGame();
+      // If we are not playing, ensure we are visible in idle
+      if (gameState.status !== 'playing') {
+        setGameState(prev => ({ ...prev, status: 'idle' }));
       }
     }
   };
@@ -1459,7 +1455,7 @@ const App: React.FC = () => {
                 <h2 className="text-2xl font-black font-orbitron text-[#FF8800] mb-4 uppercase tracking-widest">{TUTORIAL_STEPS[tutorialStep].title}</h2>
                 <p className="text-slate-600 font-bold text-sm leading-relaxed mb-10 border-t-2 border-slate-100 pt-4 w-full">{TUTORIAL_STEPS[tutorialStep].description}</p>
                 <button onPointerDown={(e) => { e.stopPropagation(); nextTutorialStep(); }} className="w-full bg-[#FF8800] text-white border-[3px] border-white py-5 rounded-2xl font-orbitron font-black text-sm uppercase shadow-lg active:scale-95 transition-all outline-none ring-0">
-                  {tutorialStep === TUTORIAL_STEPS.length - 1 ? 'GIOCA ORA' : 'AVANTI'}
+                  {tutorialStep === TUTORIAL_STEPS.length - 1 ? 'HO CAPITO' : 'AVANTI'}
                 </button>
               </div>
             </div>

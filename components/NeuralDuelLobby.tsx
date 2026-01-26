@@ -186,12 +186,16 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
 
                                 {matches.map((match) => {
                                     const isBusy = match.status === 'active';
+                                    const isJoinable = match.status === 'pending' && !match.player2_id;
+
                                     return (
                                         <div
                                             key={match.id}
-                                            onClick={() => !isBusy && setPendingChallenge(match)}
+                                            onClick={() => isJoinable && setPendingChallenge(match)}
                                             className={`p-4 rounded-2xl flex items-center justify-between transition-all border group
-                                            ${isBusy ? 'bg-slate-900/40 border-slate-800 opacity-80 cursor-not-allowed' : 'bg-green-500/5 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.05)] cursor-pointer hover:border-green-500/50 hover:bg-green-500/10 active:scale-[0.98]'}`}
+                                            ${isBusy ? 'bg-slate-900/40 border-slate-800 opacity-80 cursor-not-allowed' :
+                                                    isJoinable ? 'bg-green-500/5 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.05)] cursor-pointer hover:border-green-500/50 hover:bg-green-500/10 active:scale-[0.98]' :
+                                                        'bg-slate-900/40 border-slate-800 opacity-50 cursor-not-allowed'}`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div className="relative">
@@ -212,10 +216,12 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                             <div className="flex flex-col items-end gap-1">
                                                 {isBusy ? (
                                                     <span className="text-[9px] bg-red-600 font-black text-white px-2 py-0.5 rounded uppercase tracking-widest border border-red-400/30">IN SFIDA</span>
-                                                ) : (
+                                                ) : isJoinable ? (
                                                     <span className="text-[9px] bg-green-500 font-black text-slate-950 px-2 py-0.5 rounded uppercase tracking-widest animate-pulse">PRONTO</span>
+                                                ) : (
+                                                    <span className="text-[9px] bg-slate-700 font-black text-white px-2 py-0.5 rounded uppercase tracking-widest">PULL</span>
                                                 )}
-                                                <div className="text-[8px] text-slate-600 font-bold uppercase">{isBusy ? "Occupato" : "Sfida ora"}</div>
+                                                <div className="text-[8px] text-slate-600 font-bold uppercase">{isBusy ? "Occupato" : isJoinable ? "Sfida ora" : "In attesa"}</div>
                                             </div>
                                         </div>
                                     );
