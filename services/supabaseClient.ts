@@ -28,7 +28,8 @@ const createDummyClient = () => ({
         upsert: async () => ({ select: () => ({ single: async () => ({ data: null, error: null }) }) }),
         insert: async () => ({ error: null }),
         update: async () => ({ eq: async () => ({ error: null }) })
-    })
+    }),
+    rpc: async () => ({ data: null, error: { message: 'Offline Mode: RPC not available' } })
 });
 
 let supabaseClient = createDummyClient(); // Default to Safe Mode
