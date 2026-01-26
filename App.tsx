@@ -226,7 +226,7 @@ const App: React.FC = () => {
     soundService.playReset();
 
     // SFIDA LOGIC (ABBANDONO)
-    if (activeMatch && currentUser) {
+    if (activeMatch && currentUser && latestMatchData?.status !== 'finished') {
       // Se esco durante un duello, dichiaro l'avversario vincitore (Abbandono)
       await matchService.declareWinner(activeMatch.id, activeMatch.opponentId);
       showToast("Sfida abbandonata.");
@@ -933,7 +933,10 @@ const App: React.FC = () => {
           status: 'finished',
           winner_id: currentUser!.id,
           player1_score: activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player1_score,
-          player2_score: !activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player2_score
+          player2_score: !activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player2_score,
+          // Update Rounds for Abandonment Check
+          p1_rounds: activeMatch.isP1 ? (duelMode === 'blitz' ? 3 : 5) : prev?.p1_rounds,
+          p2_rounds: !activeMatch.isP1 ? (duelMode === 'blitz' ? 3 : 5) : prev?.p2_rounds
         }));
 
         // Update Local State but skip video/standard recap

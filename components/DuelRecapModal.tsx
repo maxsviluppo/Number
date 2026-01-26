@@ -35,11 +35,14 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
     // Fix: If isWinnerProp is provided (true/false), use it. otherwise use derived.
     const isWinner = isWinnerProp !== undefined ? isWinnerProp : derivedWinner;
 
+    const myRounds = amIP1 ? matchData.p1_rounds : matchData.p2_rounds;
+    const oppRounds = amIP1 ? matchData.p2_rounds : matchData.p1_rounds;
+
     const isAbandonment = matchData?.status === 'finished' &&
         matchData?.winner_id &&
         (matchData.mode === 'standard' ?
-            (myScore < 5 && opponentScore < 5) :
-            (matchData.p1_rounds < 3 && matchData.p2_rounds < 3));
+            (myRounds < 5 && oppRounds < 5) : // Check Rounds/Targets (5 for Standard)
+            (myRounds < 3 && oppRounds < 3)); // 3 for Blitz
 
     const [rematchRequested, setRematchRequested] = useState(false);
 
@@ -80,7 +83,7 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                         {isFinal && isWinner && (
                             <div className="flex flex-col items-center mt-2 animate-bounce">
                                 <span className="text-[#FF8800] font-black uppercase text-xs bg-[#FF8800]/20 px-3 py-1 rounded-full border border-[#FF8800]/30">
-                                    +500 XP
+                                    +{myScore} XP
                                 </span>
                             </div>
                         )}
