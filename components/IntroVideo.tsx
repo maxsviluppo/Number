@@ -63,7 +63,7 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-end w-full h-full pb-[10vh]">
                     {/* Main Logo Background */}
                     <div
-                        className="absolute inset-0 bg-contain bg-center bg-no-repeat w-full h-full opacity-90"
+                        className="absolute inset-0 bg-cover bg-center bg-no-repeat w-full h-full opacity-90"
                         style={{ backgroundImage: 'url("/intrologo.png")' }}
                     />
 
@@ -99,9 +99,7 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
                 </button>
             )}
 
-            {/* Cinematic bars */}
-            <div className="absolute top-0 left-0 w-full h-[12%] bg-black z-10 pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-full h-[12%] bg-black z-10 pointer-events-none"></div>
+            {/* Cinematic bars removed for full screen feel */}
         </div>
     );
 };
