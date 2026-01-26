@@ -655,7 +655,9 @@ const App: React.FC = () => {
         }
         if (event === 'rematch_accepted' && payload.newMatchId) {
           soundService.playSuccess();
-          joinRematch(payload.newMatchId, payload.seed);
+          // Pass explicitly whether I am the winner (acceptor) or loser (requester)
+          const amWinner = latestMatchData?.winner_id === currentUser?.id;
+          joinRematch(payload.newMatchId, payload.seed, amWinner);
         }
         if (event === 'rematch_rejected') {
           showToast("La richiesta di rivincita è stata rifiutata.");
@@ -676,8 +678,8 @@ const App: React.FC = () => {
       if (newMatch) {
         // 2. Broadcast Accept with new ID and Seed
         await matchService.sendRematchAccept(oldMatchId, newMatch.id, seed);
-        // 3. Join myself
-        joinRematch(newMatch.id, seed);
+        // 3. Join myself as Winner/Creator
+        joinRematch(newMatch.id, seed, true);
       }
     } catch (e) {
       console.error("Rematch create failed", e);
@@ -685,14 +687,14 @@ const App: React.FC = () => {
     }
   };
 
-  const joinRematch = async (newMatchId: string, seed?: string) => {
-    // Reset State
+  const joinRematch = async (newMatchId: string, seed?: string, amICreator: boolean = false) => {
+    // 1. Reset State IMMEDIATELY to avoid old match logic interference
     setShowDuelRecap(false);
+    setLatestMatchData(null);
+    processedWinRef.current = null;
 
     // Determine Opponent ID (Old Match Opponent)
     const oldOpponentId = activeMatch?.opponentId;
-
-    const amICreator = latestMatchData?.winner_id === currentUser?.id;
 
     if (!amICreator) {
       // I am the Joiner
