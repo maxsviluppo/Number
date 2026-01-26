@@ -324,6 +324,7 @@ export const matchService = {
             .on('broadcast', { event: 'rematch_request' }, (payload: any) => onEvent('rematch_request', payload))
             .on('broadcast', { event: 'rematch_accepted' }, (payload: any) => onEvent('rematch_accepted', payload))
             .on('broadcast', { event: 'rematch_rejected' }, (payload: any) => onEvent('rematch_rejected', payload))
+            .on('broadcast', { event: 'match_abandoned' }, (payload: any) => onEvent('match_abandoned', payload))
             .subscribe();
 
         return channel;
@@ -367,6 +368,18 @@ export const matchService = {
                     type: 'broadcast',
                     event: 'rematch_rejected',
                     payload: { rejected: true }
+                });
+            }
+        });
+    },
+    async sendAbandonment(matchId: string, fromUserId: string) {
+        const channel = (supabase as any).channel(`match_${matchId}_rematch`);
+        await channel.subscribe(async (status: string) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.send({
+                    type: 'broadcast',
+                    event: 'match_abandoned',
+                    payload: { fromUserId }
                 });
             }
         });

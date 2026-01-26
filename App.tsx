@@ -234,6 +234,7 @@ const App: React.FC = () => {
 
       if (!someoneWon) {
         // Se esco durante un duello ATTIVO, dichiaro l'avversario vincitore (Abbandono)
+        matchService.sendAbandonment(activeMatch.id, currentUser.id);
         await matchService.declareWinner(activeMatch.id, activeMatch.opponentId);
         showToast("Sfida abbandonata.");
       }
@@ -661,6 +662,14 @@ const App: React.FC = () => {
         }
         if (event === 'rematch_rejected') {
           showToast("La richiesta di rivincita è stata rifiutata.");
+        }
+
+        if (event === 'match_abandoned' && payload.fromUserId !== currentUser?.id) {
+          // L'avversario è uscito
+          if (timerRef.current) window.clearInterval(timerRef.current);
+          setGameState(prev => ({ ...prev, status: 'idle' }));
+          showToast("Sfida interrotta: l'avversario ha abbandonato.");
+          // Opzionalmente chiudi duel recap o lascia aperto con messaggio
         }
       });
       return () => { if (channel) (supabase as any).removeChannel(channel); };
