@@ -1237,7 +1237,7 @@ const App: React.FC = () => {
               </div>
 
               {/* TOP RIGHT: Audio (Fixed at the very top) */}
-              <div className="fixed top-1 right-6 z-[3000] flex gap-3 items-center" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+              <div className="fixed top-9 right-6 z-[3000] flex gap-3 items-center">
                 <button
                   onPointerDown={toggleMute}
                   className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
