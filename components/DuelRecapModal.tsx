@@ -30,6 +30,11 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
 
     const amIP1 = matchData?.player1_id === currentUser.id;
     const isWinner = matchData?.winner_id === currentUser.id;
+    const isAbandonment = matchData?.status === 'finished' &&
+        matchData?.winner_id &&
+        (matchData.mode === 'standard' ?
+            (myScore < 5 && opponentScore < 5) : // Standard requires 5 targets
+            (matchData.p1_rounds < 3 && matchData.p2_rounds < 3)); // Blitz rounds
 
     // Determine Round Winner (local logic for display if not in DB yet)
     // For Blitz: Round Winner is implied by who triggered the round end? 
@@ -69,7 +74,7 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                     </h2>
                     {isFinal && (
                         <p className={`text-sm font-bold uppercase tracking-widest mt-2 ${isWinner ? 'text-green-400' : 'text-red-400'}`}>
-                            {isWinner ? "VITTORIA ASSOLUTA" : "SCOPE ALLIANCE"}
+                            {isWinner ? (isAbandonment ? "VITTORIA PER ABBANDONO" : "VITTORIA ASSOLUTA") : (isAbandonment ? "SCONFITTA PER ABBANDONO" : "SCOPE ALLIANCE")}
                         </p>
                     )}
                 </div>

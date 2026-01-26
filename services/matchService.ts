@@ -129,12 +129,12 @@ export const matchService = {
     async getOpenMatches(mode: 'standard' | 'blitz'): Promise<any[]> {
         console.log("Fetching matches for mode:", mode);
 
-        // Prendiamo sia le 'pending' (In Attesa) che le 'active' (In Sfida)
-        // DEBUG: Fetch raw matches first to see if they exist at all
+        // Prendiamo SOLO le 'pending' (In Attesa) e le 'active' (In Sfida)
+        // Escludiamo le 'finished' per tenere la lobby pulita
         const { data: rawMatches, error: rawError } = await (supabase as any)
             .from('matches')
             .select('*')
-            .in('status', ['pending', 'active', 'finished'])
+            .in('status', ['pending', 'active'])
             .eq('mode', mode)
             .order('created_at', { ascending: false })
             .limit(30);
@@ -146,7 +146,7 @@ export const matchService = {
 
         console.log(`LOBBY: Raw matches found for ${mode}:`, rawMatches?.length || 0);
 
-        // Now attempt to hydrate with profiles but don't fail if join fails
+        // Now attempt to hydrate with profiles
         const { data, error } = await (supabase as any)
             .from('matches')
             .select(`
@@ -154,7 +154,7 @@ export const matchService = {
                 player1:profiles!player1_id (*),
                 player2:profiles!player2_id (*)
             `)
-            .in('status', ['pending', 'active', 'finished'])
+            .in('status', ['pending', 'active'])
             .eq('mode', mode)
             .order('created_at', { ascending: false })
             .limit(30);
@@ -165,12 +165,55 @@ export const matchService = {
             return rawMatches || [];
         }
 
+        // REPLENISH NAMES FALLBACK: If join query failed to return profiles (e.g. relation missing), try manual hydration
+        if (data.length > 0) {
+            const needsHydration = data.some(m => !m.player1?.username || (m.player2_id && !m.player2?.username));
+            if (needsHydration) {
+                console.log("LOBBY: Manual hydration required for names.");
+                const userIds = new Set<string>();
+                data.forEach(m => {
+                    if (m.player1_id) userIds.add(m.player1_id);
+                    if (m.player2_id) userIds.add(m.player2_id);
+                });
+
+                const { data: profiles } = await (supabase as any)
+                    .from('profiles')
+                    .select('id, username')
+                    .in('id', Array.from(userIds));
+
+                if (profiles) {
+                    data.forEach(m => {
+                        if (!m.player1?.username) {
+                            m.player1 = profiles.find(p => p.id === m.player1_id) || m.player1;
+                        }
+                        if (!m.player2?.username && m.player2_id) {
+                            m.player2 = profiles.find(p => p.id === m.player2_id) || m.player2;
+                        }
+                    });
+                }
+            }
+        }
+
         if (data.length === 0 && rawMatches.length > 0) {
             console.warn("LOBBY: Join query returned 0 rows but raw query had data. Possible profile mismatch. Using raw data.");
+            // Even here, we can try to hydrate rawMatches
+            const userIds = new Set<string>();
+            rawMatches.forEach(m => {
+                if (m.player1_id) userIds.add(m.player1_id);
+                if (m.player2_id) userIds.add(m.player2_id);
+            });
+
+            const { data: profiles } = await (supabase as any).from('profiles').select('id, username').in('id', Array.from(userIds));
+            if (profiles) {
+                rawMatches.forEach(m => {
+                    m.player1 = profiles.find(p => p.id === m.player1_id);
+                    m.player2 = profiles.find(p => p.id === m.player2_id);
+                });
+            }
             return rawMatches;
         }
 
-        return data || rawMatches || [];
+        return (data.length > 0) ? data : rawMatches;
     },
 
     // Cancella una richiesta di partita (se mi stanco di aspettare)

@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Backups
+*.backup.*
+*.STABLE_*
+OFFICIAL_DEPLOY_INSTRUCTIONS.md
+SUPABASE_FIX_PERMISSIONS.sql

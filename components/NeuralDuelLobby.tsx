@@ -10,9 +10,10 @@ interface NeuralDuelProps {
     onMatchStart: (seed: string, matchId: string, opponentId: string, isP1: boolean) => void;
     mode: 'standard' | 'blitz';
     showToast: (msg: string) => void;
+    userProfile?: any;
 }
 
-const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMatchStart, mode, showToast }) => {
+const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMatchStart, mode, showToast, userProfile }) => {
     const [matches, setMatches] = useState<any[]>([]);
     const [onlinePlayers, setOnlinePlayers] = useState<any[]>([]);
     const [myHostedMatch, setMyHostedMatch] = useState<Match | null>(null);
@@ -67,8 +68,8 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                 if (status === 'SUBSCRIBED') {
                     await lobbyChannel.track({
                         id: currentUser.id,
-                        username: currentUser.user_metadata?.username || 'Guerriero',
-                        level: currentUser.user_metadata?.max_level || 1,
+                        username: userProfile?.username || currentUser.user_metadata?.username || 'Guerriero',
+                        level: userProfile?.max_level || currentUser.user_metadata?.max_level || 1,
                         joined_at: new Date().toISOString()
                     });
                 }

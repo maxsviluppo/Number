@@ -561,6 +561,15 @@ const App: React.FC = () => {
 
         // Check Victory/Defeat (Final) - INTERRUPT GAME FOR LOSER
         if (newData.status === 'finished') {
+          // SYNC PROFILE ONLY FOR THE WINNER AT THE END
+          const amIWinner = newData.winner_id === currentUser?.id;
+          if (amIWinner) {
+            // Use current match score (gameState.score) to update profile
+            // We use the local state 'gameState.score' which tracks match points
+            profileService.syncProgress(currentUser!.id, gameState.score, gameState.level, gameState.estimatedIQ);
+            loadProfile(currentUser!.id);
+          }
+
           setGameState(prev => ({ ...prev, status: 'idle' }));
           setShowDuelRecap(true);
         }
@@ -735,8 +744,8 @@ const App: React.FC = () => {
     if (activeMatch?.isDuel && currentUser) {
       const myTargetsFound = newTargets.filter(t => t.completed).length;
 
-      // Update Match Stats on Server
-      matchService.updateScore(activeMatch.id, currentUser.id, gameState.totalScore + currentPoints, activeMatch.isP1);
+      // Update Match Stats on Server - USE LOCAL SCORE (MATCH POINTS)
+      matchService.updateScore(activeMatch.id, currentUser.id, gameState.score + currentPoints, activeMatch.isP1);
       matchService.updateTargets(activeMatch.id, activeMatch.isP1, myTargetsFound);
 
       // BLITZ LOGIC: Check Round Win (3 Targets)
@@ -757,8 +766,8 @@ const App: React.FC = () => {
       }
     }
 
-    // 5. GLOBAL SYNC: Always update career stats on every success
-    if (currentUser) {
+    // 5. GLOBAL SYNC: Always update career stats on every success (EXCEPT IN DUEL MODE)
+    if (currentUser && !activeMatch?.isDuel) {
       profileService.syncProgress(currentUser.id, currentPoints, gameState.level, gameState.estimatedIQ);
     }
 
@@ -775,6 +784,8 @@ const App: React.FC = () => {
           status: 'idle'
         }));
 
+        // SYNC PROFILE FOR WINNER (MATCH ENDED BY ALL TARGETS)
+        profileService.syncProgress(currentUser.id, gameState.score + currentPoints, gameState.level, gameState.estimatedIQ);
         loadProfile(currentUser.id); // Reload badge after sync finishes (sync was called above)
 
         setShowDuelRecap(true);
@@ -1256,11 +1267,11 @@ const App: React.FC = () => {
                     </div>
                   ) : null}
 
-                  {/* Duel Dashboard circle: Shows Player Points */}
+                  {/* Duel Dashboard circle: Shows Match Points, not global */}
                   <div className="w-14 h-14 rounded-full bg-white border-[3px] border-slate-900 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
                     <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
                     <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
-                      {gameState.totalScore}
+                      {gameState.score}
                     </span>
                   </div>
                 </div>
@@ -1534,6 +1545,12 @@ const App: React.FC = () => {
               >
                 NUOVA PARTITA (CANCELLA)
               </button>
+              <button
+                onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
+                className="w-full py-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-white transition-colors"
+              >
+                INDIETRO
+              </button>
             </div>
           </div>
         </div>
@@ -1578,6 +1595,7 @@ const App: React.FC = () => {
       {activeModal === 'duel' && currentUser && (
         <NeuralDuelLobby
           currentUser={currentUser}
+          userProfile={userProfile}
           mode={duelMode}
           showToast={showToast}
           onClose={() => setActiveModal('duel_selection')}
