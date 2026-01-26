@@ -540,7 +540,13 @@ const App: React.FC = () => {
         const newData = payload.new;
         if (!newData) return;
 
-        setLatestMatchData(newData); // SAVE FULL DATA FOR MODAL
+        // PROTECT LOCAL WIN STATUS: Do not overwrite a finished match with an active one from a late broadcast
+        setLatestMatchData(prev => {
+          if (prev?.id === newData.id && prev.status === 'finished' && newData.status !== 'finished') {
+            return { ...newData, status: 'finished', winner_id: prev.winner_id };
+          }
+          return newData;
+        });
 
         const amIP1 = newData.player1_id === currentUser?.id;
 
@@ -1902,7 +1908,7 @@ const App: React.FC = () => {
         <DuelRecapModal
           matchData={latestMatchData}
           currentUser={currentUser}
-          isWinnerProp={latestMatchData.winner_id === currentUser.id}
+          isWinnerProp={latestMatchData.winner_id === currentUser?.id || processedWinRef.current === latestMatchData.id}
           myScore={gameState.totalScore}
           opponentScore={opponentScore}
           isFinal={latestMatchData.status === 'finished'}
