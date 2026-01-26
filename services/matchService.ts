@@ -346,14 +346,14 @@ export const matchService = {
         });
     },
 
-    async sendRematchAccept(matchId: string, newMatchId: string) {
+    async sendRematchAccept(matchId: string, newMatchId: string, seed: string) {
         const channel = (supabase as any).channel(`match_${matchId}_rematch`);
         await channel.subscribe(async (status: string) => {
             if (status === 'SUBSCRIBED') {
                 await channel.send({
                     type: 'broadcast',
                     event: 'rematch_accepted',
-                    payload: { newMatchId }
+                    payload: { newMatchId, seed }
                 });
             }
         });

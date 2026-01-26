@@ -618,7 +618,7 @@ const App: React.FC = () => {
         }
       });
 
-      if (latestMatchData?.status === 'finished' && gameStateRef.current.status === 'playing') {
+      if (latestMatchData?.id === activeMatch.id && latestMatchData?.status === 'finished' && gameStateRef.current.status === 'playing') {
         setGameState(prev => ({ ...prev, status: 'idle' }));
         setIsDragging(false);
         setSelectedPath([]);
@@ -655,7 +655,7 @@ const App: React.FC = () => {
         }
         if (event === 'rematch_accepted' && payload.newMatchId) {
           soundService.playSuccess();
-          joinRematch(payload.newMatchId);
+          joinRematch(payload.newMatchId, payload.seed);
         }
         if (event === 'rematch_rejected') {
           showToast("La richiesta di rivincita è stata rifiutata.");
@@ -674,10 +674,10 @@ const App: React.FC = () => {
       const seed = Math.floor(Math.random() * 99999).toString();
       const newMatch = await matchService.createMatch(currentUser.id, seed, duelMode);
       if (newMatch) {
-        // 2. Broadcast Accept with new ID
-        await matchService.sendRematchAccept(oldMatchId, newMatch.id);
+        // 2. Broadcast Accept with new ID and Seed
+        await matchService.sendRematchAccept(oldMatchId, newMatch.id, seed);
         // 3. Join myself
-        joinRematch(newMatch.id);
+        joinRematch(newMatch.id, seed);
       }
     } catch (e) {
       console.error("Rematch create failed", e);
@@ -685,25 +685,14 @@ const App: React.FC = () => {
     }
   };
 
-  const joinRematch = async (newMatchId: string) => {
+  const joinRematch = async (newMatchId: string, seed?: string) => {
     // Reset State
     setShowDuelRecap(false);
 
     // Determine Opponent ID (Old Match Opponent)
-    const oldOpponentId = activeMatch?.opponentId; // Might need more robust way if activeMatch is cleared? 
-    // activeMatch is NOT cleared yet.
+    const oldOpponentId = activeMatch?.opponentId;
 
-    // Join
-    const seed = Math.floor(Math.random() * 100000); // Wait, Host generates seed? 
-    // Actually `createMatch` makes me ready. Opponent needs to join. 
-    // But for `joinRematch` (logic similar to `onMatchStart` in Lobby):
-
-    // If I created it (Winner), I am P1. If I am Loser, I join as P2?
-    // Wait, `createMatch` makes an empty match pending P2.
-    // So Winner (Acceptor) -> Creates -> Is P1.
-    // Loser (Requestor) -> Receives ID -> joins -> Is P2.
-
-    const amICreator = latestMatchData?.winner_id === currentUser?.id; // Assuming winner accepts.
+    const amICreator = latestMatchData?.winner_id === currentUser?.id;
 
     if (!amICreator) {
       // I am the Joiner
@@ -732,17 +721,8 @@ const App: React.FC = () => {
     setOpponentScore(0);
     setDuelRounds({ p1: 0, p2: 0, current: 1 });
 
-    // Need Seed sync! 
-    // `createMatch` doesn't strictly set seed in DB in current implementation? 
-    // Usually Lobby handles seed broadcast.
-    // We should probably rely on `startGame` or `generateGrid` defaults if seed not synced, 
-    // BUT for fairness we need same seed.
-    // Let's assume Random for now or assume `NeuralDuelLobby` logic handles seed.
-    // FIX: Use simple random seed locally synced via DB? 
-    // In Lobby, P1 sends seed. 
-    // Let's just generate a shared seed or random. 
-    // For now: local random. (Improvement: Sync Seed).
-    generateGrid(1);
+    // SYNCED SEED
+    generateGrid(1, seed);
   };
 
   const startGame = async () => {
