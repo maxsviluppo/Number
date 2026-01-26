@@ -332,55 +332,68 @@ export const matchService = {
 
     async sendRematchRequest(matchId: string, fromUserId: string) {
         const channel = (supabase as any).channel(`match_${matchId}_rematch`);
-        // Ensure subscribed or just send? Send requires subscription usually.
-        // Assuming App keeps this subscription open or we open briefly.
-        // Better: App subscribes once. Here we just get the channel and send.
-        // We will make App subscribe.
-        await channel.subscribe(async (status: string) => {
+        channel.subscribe(async (status: string) => {
             if (status === 'SUBSCRIBED') {
-                await channel.send({
-                    type: 'broadcast',
-                    event: 'rematch_request',
-                    payload: { fromUserId }
-                });
+                try {
+                    await channel.send({
+                        type: 'broadcast',
+                        event: 'rematch_request',
+                        payload: { fromUserId }
+                    });
+                } catch (e) {
+                    console.error("Broadcast send failed:", e);
+                }
             }
         });
     },
 
     async sendRematchAccept(matchId: string, newMatchId: string, seed: string) {
         const channel = (supabase as any).channel(`match_${matchId}_rematch`);
-        await channel.subscribe(async (status: string) => {
+        channel.subscribe(async (status: string) => {
             if (status === 'SUBSCRIBED') {
-                await channel.send({
-                    type: 'broadcast',
-                    event: 'rematch_accepted',
-                    payload: { newMatchId, seed }
-                });
+                try {
+                    await channel.send({
+                        type: 'broadcast',
+                        event: 'rematch_accepted',
+                        payload: { newMatchId, seed }
+                    });
+                } catch (e) {
+                    console.error("Broadcast send failed:", e);
+                }
             }
         });
     },
 
     async sendRematchReject(matchId: string) {
         const channel = (supabase as any).channel(`match_${matchId}_rematch`);
-        await channel.subscribe(async (status: string) => {
+        channel.subscribe(async (status: string) => {
             if (status === 'SUBSCRIBED') {
-                await channel.send({
-                    type: 'broadcast',
-                    event: 'rematch_rejected',
-                    payload: { rejected: true }
-                });
+                try {
+                    await channel.send({
+                        type: 'broadcast',
+                        event: 'rematch_rejected',
+                        payload: { rejected: true }
+                    });
+                } catch (e) {
+                    console.error("Broadcast send failed:", e);
+                }
             }
         });
     },
+
     async sendAbandonment(matchId: string, fromUserId: string) {
         const channel = (supabase as any).channel(`match_${matchId}_rematch`);
-        await channel.subscribe(async (status: string) => {
+        channel.subscribe(async (status: string) => {
             if (status === 'SUBSCRIBED') {
-                await channel.send({
-                    type: 'broadcast',
-                    event: 'match_abandoned',
-                    payload: { fromUserId }
-                });
+                try {
+                    await channel.send({
+                        type: 'broadcast',
+                        event: 'match_abandoned',
+                        payload: { fromUserId }
+                    });
+                } catch (e) {
+                    console.error("Broadcast send failed:", e);
+                }
             }
         });
     },
