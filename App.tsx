@@ -74,7 +74,7 @@ const App: React.FC = () => {
   const [scoreAnimKey, setScoreAnimKey] = useState(0);
   const [isVictoryAnimating, setIsVictoryAnimating] = useState(false);
   const [triggerParticles, setTriggerParticles] = useState(false);
-  const [toast, setToast] = useState<{ message: string, visible: boolean, action?: { label: string, onClick: () => void } }>({ message: '', visible: false });
+  const [toast, setToast] = useState<{ message: string, visible: boolean, actions?: { label: string, onClick: () => void, variant?: 'primary' | 'secondary' }[] }>({ message: '', visible: false });
   const [isMuted, setIsMuted] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [showLostVideo, setShowLostVideo] = useState(false);
@@ -102,13 +102,13 @@ const App: React.FC = () => {
     await soundService.init();
   }, []);
 
-  const showToast = useCallback((message: string, action?: { label: string, onClick: () => void }) => {
+  const showToast = useCallback((message: string, actions?: { label: string, onClick: () => void, variant?: 'primary' | 'secondary' }[]) => {
     if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
-    setToast({ message, visible: true, action });
-    // If action exists, stay longer or indefinitely? Let's say 5s.
+    setToast({ message, visible: true, actions });
+    // Se ci sono azioni, il toast rimane visibile più a lungo o finché non si clicca
     toastTimeoutRef.current = window.setTimeout(() => {
       setToast(prev => ({ ...prev, visible: false }));
-    }, action ? 6000 : 2500);
+    }, actions ? 8000 : 2500);
   }, []);
 
   const loadProfile = useCallback(async (userId: string) => {
@@ -227,9 +227,16 @@ const App: React.FC = () => {
 
     // SFIDA LOGIC (ABBANDONO)
     if (activeMatch && currentUser && latestMatchData?.status !== 'finished') {
-      // Se esco durante un duello, dichiaro l'avversario vincitore (Abbandono)
-      await matchService.declareWinner(activeMatch.id, activeMatch.opponentId);
-      showToast("Sfida abbandonata.");
+      const targetToWin = duelMode === 'blitz' ? 3 : 5;
+      const someoneWon = latestMatchData?.winner_id ||
+        (latestMatchData?.p1_rounds >= targetToWin) ||
+        (latestMatchData?.p2_rounds >= targetToWin);
+
+      if (!someoneWon) {
+        // Se esco durante un duello ATTIVO, dichiaro l'avversario vincitore (Abbandono)
+        await matchService.declareWinner(activeMatch.id, activeMatch.opponentId);
+        showToast("Sfida abbandonata.");
+      }
     }
 
     setGameState(prev => ({ ...prev, status: 'idle' }));
@@ -244,6 +251,21 @@ const App: React.FC = () => {
     setSelectedPath([]);
     if (timerRef.current) window.clearInterval(timerRef.current);
     if (currentUser) loadProfile(currentUser.id);
+  };
+
+  const goToDuelLobby = async () => {
+    soundService.playReset();
+    setGameState(prev => ({ ...prev, status: 'idle' }));
+    setActiveModal('duel_selection'); // Torna alla lobby dei duelli
+    setActiveMatch(null);
+    setShowDuelRecap(false);
+    setShowVideo(false);
+    setShowLostVideo(false);
+    setIsVictoryAnimating(false);
+    setTriggerParticles(false);
+    setPreviewResult(null);
+    setSelectedPath([]);
+    if (timerRef.current) window.clearInterval(timerRef.current);
   };
 
   // DETERMINISTIC RNG HELPERS
@@ -641,10 +663,21 @@ const App: React.FC = () => {
         // WINNER RECEIVING REQUEST
         if (event === 'rematch_request' && payload.fromUserId !== currentUser?.id) {
           soundService.playTick();
-          showToast("SFIDA: L'avversario vuole la RIVINCITA!", {
-            label: 'ACCETTA',
-            onClick: () => acceptRematch(activeMatch.id)
-          });
+          showToast("SFIDA: L'avversario vuole la RIVINCITA!", [
+            {
+              label: 'ACCETTA',
+              variant: 'primary',
+              onClick: () => acceptRematch(activeMatch.id)
+            },
+            {
+              label: 'RIFIUTA',
+              variant: 'secondary',
+              onClick: () => {
+                setToast(prev => ({ ...prev, visible: false }));
+                showToast("Rivincita rifiutata.");
+              }
+            }
+          ]);
         }
         // LOSER RECEIVING ACCEPT
         if (event === 'rematch_accepted') {
@@ -1207,17 +1240,25 @@ const App: React.FC = () => {
 
       <div className={`fixed top-12 left-1/2 -translate-x-1/2 z-[3000] transition-all duration-500 pointer-events-none
         ${toast.visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-16 opacity-0 scale-95'}`}>
-        <div className={`glass-panel px-8 py-4 rounded-[1.5rem] border ${toast.action ? 'border-[#FF8800] bg-slate-900/90' : 'border-cyan-400/60'} shadow-[0_0_40px_rgba(34,211,238,0.4)] flex items-center gap-5 backdrop-blur-2xl pointer-events-auto`}>
+        <div className={`glass-panel px-8 py-4 rounded-[1.5rem] border ${toast.actions ? 'border-[#FF8800] bg-slate-900/95' : 'border-cyan-400/60'} shadow-[0_0_40px_rgba(34,211,238,0.4)] flex items-center gap-5 backdrop-blur-2xl pointer-events-auto`}>
           <div className="flex flex-col text-center">
             <span className="font-orbitron text-[10px] font-black text-cyan-400 uppercase tracking-[0.2em] mb-0.5">Sistema</span>
             <span className="font-orbitron text-sm font-black text-white tracking-widest uppercase mb-1">{toast.message}</span>
-            {toast.action && (
-              <button
-                onPointerDown={(e) => { e.stopPropagation(); toast.action?.onClick(); setToast(p => ({ ...p, visible: false })); }}
-                className="mt-2 bg-[#FF8800] text-white px-6 py-2 rounded-lg font-black uppercase text-xs animate-pulse hover:scale-105 active:scale-95 transition-all shadow-lg"
-              >
-                {toast.action.label}
-              </button>
+            {toast.actions && (
+              <div className="flex gap-3 mt-3 justify-center">
+                {toast.actions.map((act, i) => (
+                  <button
+                    key={i}
+                    onPointerDown={(e) => { e.stopPropagation(); act.onClick(); setToast(p => ({ ...p, visible: false })); }}
+                    className={`px-6 py-2 rounded-lg font-black uppercase text-[10px] transition-all shadow-lg active:scale-95
+                                ${act.variant === 'secondary'
+                        ? 'bg-slate-800 text-slate-400 border border-slate-600 hover:text-white'
+                        : 'bg-[#FF8800] text-white animate-pulse-slow hover:scale-105'}`}
+                  >
+                    {act.label}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </div>
@@ -1916,7 +1957,7 @@ const App: React.FC = () => {
           onRematchRequest={() => {
             if (activeMatch?.id) matchService.sendRematchRequest(activeMatch.id, currentUser.id);
           }}
-          onExit={goToHome}
+          onExit={goToDuelLobby}
         />
       )}
 
