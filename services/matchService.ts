@@ -143,9 +143,16 @@ export const matchService = {
             .limit(30);
 
         if (error) {
-            console.error('GET MATCHES ERROR:', error);
+            console.error('LOBBY ERROR: Impossibile caricare i tavoli:', error);
             return [];
         }
+
+        if (data.length === 0) {
+            console.log(`LOBBY: Nessun tavolo trovato per la modalita' ${mode}. Verifico presenza record generici...`);
+            const { count } = await supabase.from('matches').select('*', { count: 'exact', head: true });
+            console.log(`LOBBY: Totale record in tabella matches: ${count}`);
+        }
+
         return data || [];
     },
 

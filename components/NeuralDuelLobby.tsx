@@ -21,11 +21,25 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     const channelRef = useRef<any>(null);
 
     const fetchMatches = useCallback(async () => {
-        setLoading(true);
-        const data = await matchService.getOpenMatches(mode);
-        setMatches(data);
-        setLoading(false);
-    }, [mode]);
+        try {
+            setLoading(true);
+            const data = await matchService.getOpenMatches(mode);
+            console.log(`LOBBY: Trovati ${data.length} tavoli per modalita' ${mode}`);
+            if (data.length > 0) console.log("LOBBY DATA:", data.map(m => ({ id: m.id, p1: m.player1_id, status: m.status })));
+            setMatches(data);
+
+            // Auto-detect if I have a hosted match
+            const myMatch = data.find((m: any) => m.player1_id === currentUser.id && m.status === 'pending');
+            if (myMatch && !myHostedMatch) {
+                console.log("LOBBY: Rilevato mio tavolo ospitato automaticamente");
+                setMyHostedMatch(myMatch);
+            }
+        } catch (err) {
+            console.error("LOBBY: Errore nel caricamento partite:", err);
+        } finally {
+            setLoading(false);
+        }
+    }, [mode, currentUser.id, myHostedMatch]);
 
     const cleanupMyMatch = useCallback(async () => {
         if (myHostedMatch) {
@@ -44,10 +58,12 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                 const players = Object.values(state).map((presence: any) => presence[0]);
                 setOnlinePlayers(players);
             })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, (payload: any) => {
+                console.log("MATCH CHANGE DETECTED:", payload.eventType, payload.new?.id);
                 fetchMatches();
             })
             .subscribe(async (status: string) => {
+                console.log("LOBBY CHANNEL STATUS:", status);
                 if (status === 'SUBSCRIBED') {
                     await lobbyChannel.track({
                         id: currentUser.id,
@@ -233,13 +249,29 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Spettatori in Lobby</span>
                                 </div>
 
-                                {onlinePlayers.filter(p => !matches.some(m => m.player1_id === p.id || m.player2_id === p.id) && p.id !== currentUser.id).length === 0 && (
-                                    <p className="text-[10px] text-slate-600 italic text-center py-2 uppercase">Nessun osservatore attivo</p>
-                                )}
+                                {(() => {
+                                    const observers = onlinePlayers.filter(p => {
+                                        const isInMatch = matches.some(m => m.player1_id === p.id || m.player2_id === p.id);
+                                        const isMe = p.id === currentUser.id;
+                                        if (isMe) return false;
+                                        // LOG PER DIAGNOSTICA
+                                        if (isInMatch) {
+                                            console.log(`LOBBY: Nascondo ${p.username} dagli osservatori.`);
+                                        } else {
+                                            // Debug comparison
+                                            const firstMatch = matches[0];
+                                            if (firstMatch) {
+                                                console.log(`DEBUG VISIBILITY: Controllo ${p.username} (${p.id}) contro Match P1 (${firstMatch.player1_id}) -> Match? ${p.id === firstMatch.player1_id}`);
+                                            }
+                                        }
+                                        return !isInMatch;
+                                    });
 
-                                {onlinePlayers.map((player) => {
-                                    if (matches.some(m => m.player1_id === player.id || m.player2_id === player.id) || player.id === currentUser.id) return null;
-                                    return (
+                                    if (observers.length === 0) {
+                                        return <p className="text-[10px] text-slate-600 italic text-center py-2 uppercase">Nessun osservatore attivo</p>;
+                                    }
+
+                                    return observers.map((player) => (
                                         <div key={player.id} className="p-3 bg-white/[0.03] border border-white/5 rounded-xl flex items-center justify-between opacity-70">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-9 h-9 rounded-full bg-slate-800 border border-cyan-500/30 flex items-center justify-center">
@@ -252,8 +284,8 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                             </div>
                                             <div className="text-[8px] text-slate-600 font-mono">CONNESSO</div>
                                         </div>
-                                    );
-                                })}
+                                    ));
+                                })()}
                             </div>
                         </>
                     )}
