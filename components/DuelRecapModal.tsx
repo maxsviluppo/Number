@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Swords, CheckCircle2, Clock, Trophy, XCircle, RotateCw, Home, User } from 'lucide-react';
+import { Swords, CheckCircle2, Clock, Trophy, XCircle, RotateCw, Home, User, Play } from 'lucide-react';
 import { matchService } from '../services/matchService';
 import { soundService } from '../services/soundService';
 
@@ -25,84 +25,136 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
     onExit,
     isWinnerProp
 }) => {
-    // Determine status: Use explicit prop if available, else derive
+    const [isLocalReady, setIsLocalReady] = useState(false);
+
+    // Determine status
     const amIP1 = matchData?.player1_id === currentUser.id;
     const derivedWinner = matchData?.winner_id === currentUser.id;
-    // Fix: If isWinnerProp is provided (true/false), use it. otherwise use derived.
     const isWinner = isWinnerProp !== undefined ? isWinnerProp : derivedWinner;
 
-    const myRounds = amIP1 ? matchData.p1_rounds : matchData.p2_rounds;
-    const oppRounds = amIP1 ? matchData.p2_rounds : matchData.p1_rounds;
+    const myRounds = amIP1 ? (matchData.p1_rounds || 0) : (matchData.p2_rounds || 0);
+    const oppRounds = amIP1 ? (matchData.p2_rounds || 0) : (matchData.p1_rounds || 0);
+
+    // Sync Ready State from Match Data (if someone else sets it)
+    const remoteReady = amIP1 ? matchData.p1_ready : matchData.p2_ready;
+    const otherReady = amIP1 ? matchData.p2_ready : matchData.p1_ready;
+
+    useEffect(() => {
+        if (remoteReady) setIsLocalReady(true);
+        else setIsLocalReady(false);
+    }, [remoteReady]);
+
+    const handleReadyClick = async () => {
+        if (isLocalReady) return;
+        setIsLocalReady(true);
+        soundService.playSuccess();
+        // Update DB
+        await matchService.setPlayerReady(matchData.id, amIP1, true);
+    };
 
     const isAbandonment = matchData?.status === 'finished' &&
         matchData?.winner_id &&
-        (matchData.mode === 'standard' ?
-            (myRounds < 5 && oppRounds < 5) : // Check Rounds/Targets (5 for Standard)
-            (myRounds < 3 && oppRounds < 3)); // 3 for Blitz
-
+        !isFinal &&
+        (myRounds < 3 && oppRounds < 3);
 
     return (
         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 modal-overlay bg-black/95 backdrop-blur-xl animate-fadeIn">
-            <div className="bg-slate-900 border-[3px] border-[#FF8800] w-full max-w-2xl rounded-[2.5rem] shadow-[0_0_60px_rgba(255,136,0,0.3)] flex flex-col relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+            <div className="bg-slate-900/80 border border-white/10 w-full max-w-[550px] rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_40px_rgba(255,136,0,0.1)] flex flex-col relative overflow-hidden">
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
 
-                {/* HEADER */}
-                <div className="relative z-10 bg-slate-950/50 p-6 border-b border-white/10 text-center">
-                    <h2 className="text-3xl font-black font-orbitron text-white uppercase tracking-wider flex items-center justify-center gap-3">
-                        <Swords className="text-[#FF8800] animate-pulse" size={32} />
+                {/* HEADER COMPATTO */}
+                <div className="relative z-10 bg-black/40 p-5 border-b border-white/5 text-center">
+                    <h2 className="text-2xl font-black font-orbitron text-white uppercase tracking-wider flex items-center justify-center gap-3">
+                        <Swords className="text-[#FF8800]" size={24} />
                         {isWinner ? "VITTORIA" : "SCONFITTA"}
                     </h2>
-                    <p className={`text-sm font-bold uppercase tracking-widest mt-2 ${isWinner ? 'text-green-400' : 'text-red-400'}`}>
+                    <p className={`text-[10px] font-black uppercase tracking-[0.3em] mt-1 ${isWinner ? 'text-green-400' : 'text-red-400'}`}>
                         {isAbandonment ? "PER ABBANDONO" : (isWinner ? "DOMINIO TOTALE" : "BATTO IN RITIRATA")}
                     </p>
                 </div>
 
-                {/* SCORES AREA */}
-                <div className="relative z-10 flex-1 p-8 flex flex-col sm:flex-row items-center justify-between gap-8">
+                {/* AREA CONTENUTI */}
+                <div className="relative z-10 p-8 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
 
-                    {/* ME */}
-                    <div className={`flex flex-col items-center gap-3 transition-all duration-500 ${isWinner ? 'scale-110' : 'opacity-80 scale-95'}`}>
-                        <div className={`w-32 h-32 rounded-full border-[6px] flex flex-col items-center justify-center shadow-2xl relative
-                            ${isWinner ? 'border-[#FF8800] bg-[#FF8800]/10' : 'border-slate-800 bg-slate-900/50'}`}>
-                            <span className="text-[10px] font-black text-slate-500 uppercase leading-none mb-1">PUNTI TUOI</span>
-                            <span className={`font-orbitron font-black text-5xl ${isWinner ? 'text-[#FF8800]' : 'text-slate-400'}`}>{myScore}</span>
+                    {/* TU */}
+                    <div className={`flex flex-col items-center gap-3 transition-all duration-300 ${isWinner ? 'scale-105' : 'opacity-70'}`}>
+                        <div className={`w-28 h-28 rounded-2xl border-2 flex flex-col items-center justify-center shadow-xl relative transition-all
+                            ${isWinner ? 'border-[#FF8800] bg-[#FF8800]/5' : 'border-white/10 bg-white/5'}`}>
+                            <span className="text-[9px] font-black text-white/30 uppercase absolute top-2">PUNTI</span>
+                            <span className={`font-orbitron font-black text-4xl ${isWinner ? 'text-[#FF8800]' : 'text-white'}`}>{myScore}</span>
                         </div>
-                        <h3 className="text-white font-black uppercase text-sm tracking-wider">TU</h3>
-                        {isFinal && isWinner && (
-                            <div className="flex flex-col items-center mt-2 animate-bounce">
-                                <span className="text-[#FF8800] font-black uppercase text-xs bg-[#FF8800]/20 px-3 py-1 rounded-full border border-[#FF8800]/30">
-                                    +{myScore} XP
-                                </span>
-                            </div>
-                        )}
+                        <div className="flex flex-col items-center">
+                            <span className="text-white font-black uppercase text-[11px] tracking-wider">TU</span>
+                            <span className="text-[#FF8800] font-bold text-[9px] mt-0.5">+{myScore} XP</span>
+                        </div>
                     </div>
 
                     {/* VS */}
-                    <div className="flex flex-col items-center">
-                        <span className="font-black font-orbitron text-6xl text-white/5 italic">VS</span>
+                    <div className="flex flex-col items-center gap-2 px-2">
+                        <div className="h-12 w-[1px] bg-gradient-to-b from-transparent via-white/20 to-transparent"></div>
+                        <span className="font-black font-orbitron text-2xl text-white/10 italic">VS</span>
+                        <div className="h-12 w-[1px] bg-gradient-to-b from-transparent via-white/20 to-transparent"></div>
                     </div>
 
-                    {/* OPPONENT */}
-                    <div className={`flex flex-col items-center gap-3 transition-all duration-500 ${!isWinner ? 'scale-110' : 'opacity-60 scale-95'}`}>
-                        <div className={`w-32 h-32 rounded-full border-[6px] flex flex-col items-center justify-center shadow-2xl relative
-                            ${!isWinner ? 'border-green-500 bg-green-500/10' : 'border-slate-700 bg-slate-800/50'}`}>
-                            <span className="text-[10px] font-black text-slate-500 uppercase leading-none mb-1">PUNTI AVV</span>
-                            <span className={`font-orbitron font-black text-5xl ${!isWinner ? 'text-green-500' : 'text-slate-500'}`}>{opponentScore}</span>
+                    {/* AVVERSARIO */}
+                    <div className={`flex flex-col items-center gap-3 transition-all duration-300 ${!isWinner ? 'scale-105' : 'opacity-50'}`}>
+                        <div className={`w-28 h-28 rounded-2xl border-2 flex flex-col items-center justify-center shadow-xl relative transition-all
+                            ${!isWinner ? 'border-green-500 bg-green-500/5' : 'border-white/10 bg-white/5'}`}>
+                            <span className="text-[9px] font-black text-white/30 uppercase absolute top-2">PUNTI</span>
+                            <span className={`font-orbitron font-black text-4xl ${!isWinner ? 'text-green-500' : 'text-white/60'}`}>{opponentScore}</span>
                         </div>
-                        <h3 className="text-white font-black uppercase text-sm tracking-wider">{amIP1 ? matchData.player2?.username : matchData.player1?.username || 'Avversario'}</h3>
+                        <div className="flex flex-col items-center text-center">
+                            <span className="text-white/70 font-black uppercase text-[11px] tracking-wider truncate max-w-[100px]">
+                                {amIP1 ? matchData.player2?.username : matchData.player1?.username || 'Avversario'}
+                            </span>
+                            <span className="text-white/20 font-bold text-[9px] mt-0.5">LIVELLO {amIP1 ? matchData.player2?.max_level || 1 : matchData.player1?.max_level || 1}</span>
+                        </div>
                     </div>
 
                 </div>
 
                 {/* FOOTER ACTIONS */}
-                <div className="relative z-10 bg-slate-950 p-6 flex flex-col sm:flex-row gap-4 border-t border-white/10">
-                    <button onClick={onExit} className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-orbitron font-black uppercase tracking-widest transition-all active:scale-95 border-2 border-slate-600 flex items-center justify-center gap-2">
-                        <Home size={18} /> TORNA ALLA LOBBY
+                <div className="relative z-10 bg-black/40 p-6 flex gap-3 border-t border-white/5">
+                    <button
+                        onClick={() => { soundService.playUIClick(); onExit(); }}
+                        className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-orbitron font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 border border-white/10 flex items-center justify-center gap-2"
+                    >
+                        <Home size={16} /> LOBBY
+                    </button>
+
+                    <button
+                        onClick={handleReadyClick}
+                        disabled={isLocalReady || isFinal}
+                        className={`flex-[1.5] py-4 rounded-xl font-orbitron font-black text-[11px] uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg
+                            ${isLocalReady
+                                ? 'bg-green-500/20 text-green-400 border border-green-500/30 cursor-default'
+                                : isFinal
+                                    ? 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed'
+                                    : 'bg-[#FF8800] text-white hover:bg-[#FF9900] shadow-[#FF8800]/20'
+                            }`}
+                    >
+                        {isLocalReady ? (
+                            <>
+                                <CheckCircle2 size={16} className="animate-pulse" />
+                                {otherReady ? "IN PARTENZA..." : "ATTESA SFIDANTE..."}
+                            </>
+                        ) : isFinal ? (
+                            <>
+                                <RotateCw size={16} className="opacity-50" />
+                                SFIDA CONCLUSA
+                            </>
+                        ) : (
+                            <>
+                                <Play size={16} />
+                                PROSSIMO ROUND
+                            </>
+                        )}
                     </button>
                 </div>
             </div>
         </div>
     );
 };
+
 
 export default DuelRecapModal;

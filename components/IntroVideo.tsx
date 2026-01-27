@@ -62,7 +62,7 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
             {/* Audio Toggle (Always visible) */}
             <button
                 onPointerDown={toggleAudio}
-                className={`absolute top-6 right-6 z-[100010] p-3 rounded-full border transition-all active:scale-95 shadow-lg
+                className={`absolute top-12 right-6 z-[100010] p-3 rounded-full border transition-all active:scale-95 shadow-lg
                     ${!isMuted
                         ? 'bg-[#FF8800] border-[#FF8800] text-white shadow-[0_0_20px_rgba(255,136,0,0.4)]'
                         : 'bg-black/40 backdrop-blur-md border-white/10 text-slate-400 hover:text-white hover:bg-white/10'

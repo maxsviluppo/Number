@@ -597,7 +597,17 @@ const App: React.FC = () => {
       levelTargets: [],
       status: 'playing'
     }));
-    generateGrid(gameState.level);
+
+    if (activeMatch?.isDuel) {
+      // Deterministic seed based on match ID and total rounds played
+      // This ensures both players get the same board for each round
+      const roundSum = (matchData.p1_rounds || 0) + (matchData.p2_rounds || 0);
+      const deterministicSeed = `${matchData.id}_round_${roundSum}`;
+      generateGrid(1, deterministicSeed);
+    } else {
+      generateGrid(gameState.level);
+    }
+
     if (currentUser?.id === matchData.player1_id) {
       matchService.resetRoundStatus(matchData.id);
     }
@@ -630,7 +640,7 @@ const App: React.FC = () => {
           setActiveMatch(prev => prev ? { ...prev, isP1: amIP1 } : null);
         }
 
-        if (newData.p1_ready && newData.p2_ready && showDuelRecap) {
+        if (newData.p1_ready && newData.p2_ready && showDuelRecap && newData.status !== 'finished') {
           handleDuelRoundStart(newData);
         }
 
@@ -1237,7 +1247,7 @@ const App: React.FC = () => {
               </div>
 
               {/* TOP RIGHT: Audio (Fixed at the very top) */}
-              <div className="fixed top-9 right-6 z-[3000] flex gap-3 items-center">
+              <div className="fixed top-12 right-6 z-[3000] flex gap-3 items-center">
                 <button
                   onPointerDown={toggleMute}
                   className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
@@ -1808,6 +1818,8 @@ const App: React.FC = () => {
               generateGrid(1, seed);
               // Reset Opponent Score
               setOpponentScore(0);
+              // Clean ready status just in case
+              matchService.resetRoundStatus(matchId);
             }}
           />
         )}

@@ -100,7 +100,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             console.log('Attempting delete via RPC for:', userToDelete);
 
             // Try using the secure RPC function first (Bypasses RLS)
-            const { error: rpcError } = await supabase.rpc('admin_delete_user', {
+            const { error: rpcError } = await (supabase as any).rpc('admin_delete_user', {
                 target_user_id: userToDelete,
                 admin_secret: 'accessometti'
             });
@@ -109,7 +109,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 console.warn('RPC Delete failed, trying standard delete...', rpcError);
 
                 // Fallback to standard delete (Works if RLS is open or user is admin)
-                const { error: deleteError } = await supabase
+                const { error: deleteError } = await (supabase as any)
                     .from('profiles')
                     .delete()
                     .eq('id', userToDelete);
@@ -135,7 +135,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <div className="bg-[#1a1a1a] p-8 rounded-2xl border border-[#333] w-full max-w-md shadow-2xl relative">
                     <button
                         onClick={onClose}
-                        className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+                        className="absolute top-10 right-4 text-gray-500 hover:text-white transition-colors p-2"
                     >
                         <X size={24} />
                     </button>
@@ -213,7 +213,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             </div>
 
             {/* Mobile Header */}
-            <div className="md:hidden bg-[#111] border-b border-[#222] p-4 flex items-center justify-between">
+            <div className="md:hidden bg-[#111] border-b border-[#222] p-4 pt-10 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-[#FF8800] rounded-lg flex items-center justify-center text-black font-bold">
                         <Shield size={18} />
