@@ -141,7 +141,7 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                         ) : isFinal ? (
                             <>
                                 <RotateCw size={16} />
-                                RIVINCITA
+                                {isWinner ? "ACCETTA SFIDA" : "RIVINCITA"}
                             </>
                         ) : (
                             <>

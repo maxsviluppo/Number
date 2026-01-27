@@ -717,18 +717,41 @@ const App: React.FC = () => {
         if (event === 'rematch_started') {
           const { newMatchId, seed } = payload;
           console.log("REMATCH DETECTED:", newMatchId);
-          setActiveMatch(prev => prev ? { ...prev, id: newMatchId } : null);
+          // IMPORTANT: Update active match completely to avoid stale readiness state
+          setActiveMatch(prev => prev ? {
+            ...prev,
+            id: newMatchId,
+            status: 'active',
+            p1_ready: false,
+            p2_ready: false,
+            p1_rounds: 0,
+            p2_rounds: 0,
+            current_round: 1,
+            player1_score: 0,
+            player2_score: 0
+          } : null);
+
           setShowDuelRecap(false);
+
           setGameState(prev => ({
             ...prev,
-            score: 0,
             status: 'playing',
-            levelTargets: []
+            score: 0,
+            totalScore: prev.totalScore, // Keep total score or reset? Usually reset for new match
+            levelTargets: [],
+            level: 1, // Reset level too
+            timeLeft: INITIAL_TIME
           }));
+
           setOpponentScore(0);
           setOpponentTargets(0);
           setDuelRounds({ p1: 0, p2: 0, current: 1 });
           generateGrid(1, seed);
+
+          // Force match channel reset by briefly clearing active match ID if needed, 
+          // or rely on useEffect [activeMatch] dependency which we just updated.
+          // Because we updated ID in setActiveMatch, the useEffect will re-run automatically.
+
           soundService.playSuccess();
         }
       });
