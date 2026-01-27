@@ -122,34 +122,29 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                         <Home size={16} /> LOBBY
                     </button>
 
-                    <button
-                        onClick={handleReadyClick}
-                        disabled={isLocalReady || isFinal}
-                        className={`flex-[1.5] py-4 rounded-xl font-orbitron font-black text-[11px] uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg
-                            ${isLocalReady
-                                ? 'bg-green-500/20 text-green-400 border border-green-500/30 cursor-default'
-                                : isFinal
-                                    ? 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed'
+                    {!isFinal && (
+                        <button
+                            onClick={handleReadyClick}
+                            disabled={isLocalReady}
+                            className={`flex-[1.5] py-4 rounded-xl font-orbitron font-black text-[11px] uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg
+                                ${isLocalReady
+                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30 cursor-default'
                                     : 'bg-[#FF8800] text-white hover:bg-[#FF9900] shadow-[#FF8800]/20'
-                            }`}
-                    >
-                        {isLocalReady ? (
-                            <>
-                                <CheckCircle2 size={16} className="animate-pulse" />
-                                {otherReady ? "IN PARTENZA..." : "ATTESA SFIDANTE..."}
-                            </>
-                        ) : isFinal ? (
-                            <>
-                                <RotateCw size={16} className="opacity-50" />
-                                SFIDA CONCLUSA
-                            </>
-                        ) : (
-                            <>
-                                <Play size={16} />
-                                PROSSIMO ROUND
-                            </>
-                        )}
-                    </button>
+                                }`}
+                        >
+                            {isLocalReady ? (
+                                <>
+                                    <CheckCircle2 size={16} className="animate-pulse" />
+                                    {otherReady ? "IN PARTENZA..." : "ATTESA SFIDANTE..."}
+                                </>
+                            ) : (
+                                <>
+                                    <Play size={16} />
+                                    PROSSIMO ROUND
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
