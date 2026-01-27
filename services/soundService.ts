@@ -4,6 +4,8 @@ class SoundService {
   private masterGain: GainNode | null = null;
   public isMuted: boolean = false;
   private initialized: boolean = false;
+  private clickBuffer: AudioBuffer | null = null;
+  private successBuffer: AudioBuffer | null = null;
 
   /**
    * Inizializza l'AudioContext e sblocca l'hardware con un buffer silente.
@@ -36,8 +38,25 @@ class SoundService {
 
       this.initialized = true;
       console.log("Audio Engine Energized:", this.ctx.state);
+
+      this.loadSounds();
     } catch (e) {
       console.warn("Audio Context struggle:", e);
+    }
+  }
+
+  async loadSounds() {
+    if (!this.ctx) return;
+    try {
+      const clickRes = await fetch('/Clicpulsnati.mp3');
+      const clickArr = await clickRes.arrayBuffer();
+      this.clickBuffer = await this.ctx.decodeAudioData(clickArr);
+
+      const successRes = await fetch('/combinazione.wav');
+      const successArr = await successRes.arrayBuffer();
+      this.successBuffer = await this.ctx.decodeAudioData(successArr);
+    } catch (e) {
+      console.warn("Failed to load sounds:", e);
     }
   }
 
@@ -101,15 +120,35 @@ class SoundService {
   }
 
   playUIClick() {
-    this.playFMSound(440, 880, 50, 0.08, 0.15, 'square');
+    if (this.isMuted) return;
+
+    if (this.clickBuffer && this.ctx && this.masterGain) {
+      // High performance buffer playback
+      const source = this.ctx.createBufferSource();
+      source.buffer = this.clickBuffer;
+      source.connect(this.masterGain);
+      source.start(0);
+    } else {
+      // Fallback to FM synthesis if mp3 not loaded
+      this.playFMSound(440, 880, 50, 0.08, 0.15, 'square');
+    }
   }
 
   playSuccess() {
     if (this.isMuted) return;
-    const freqs = [523.25, 659.25, 783.99, 1046.50];
-    freqs.forEach((f, i) => {
-      setTimeout(() => this.playFMSound(f, f * 1.5, 300, 0.6, 0.1, 'sine'), i * 80);
-    });
+
+    if (this.successBuffer && this.ctx && this.masterGain) {
+      const source = this.ctx.createBufferSource();
+      source.buffer = this.successBuffer;
+      source.connect(this.masterGain);
+      source.start(0);
+    } else {
+      // Fallback
+      const freqs = [523.25, 659.25, 783.99, 1046.50];
+      freqs.forEach((f, i) => {
+        setTimeout(() => this.playFMSound(f, f * 1.5, 300, 0.6, 0.1, 'sine'), i * 80);
+      });
+    }
   }
 
   playError() {
