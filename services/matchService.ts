@@ -321,7 +321,8 @@ export const matchService = {
         const channel = (supabase as any).channel(`match_${matchId}_events`);
 
         channel
-            .on('broadcast', { event: 'match_abandoned' }, (payload: any) => onEvent('match_abandoned', payload))
+            .on('broadcast', { event: 'match_abandoned' }, (payload: any) => onEvent('match_abandoned', payload.payload))
+            .on('broadcast', { event: 'rematch_started' }, (payload: any) => onEvent('rematch_started', payload.payload))
             .subscribe();
 
         return channel;
@@ -342,6 +343,49 @@ export const matchService = {
                 }
             }
         });
+    },
+
+    async sendRematchEvent(matchId: string, newMatchId: string, seed: string) {
+        const channel = (supabase as any).channel(`match_${matchId}_events`);
+        channel.subscribe(async (status: string) => {
+            if (status === 'SUBSCRIBED') {
+                try {
+                    await channel.send({
+                        type: 'broadcast',
+                        event: 'rematch_started',
+                        payload: { newMatchId, seed }
+                    });
+                } catch (e) {
+                    console.error("Rematch broadcast failed:", e);
+                }
+            }
+        });
+    },
+
+    async startRematch(oldMatch: any, newSeed: string) {
+        const { data, error } = await (supabase as any)
+            .from('matches')
+            .insert([
+                {
+                    player1_id: oldMatch.player1_id,
+                    player2_id: oldMatch.player2_id,
+                    grid_seed: newSeed,
+                    mode: oldMatch.mode,
+                    status: 'active',
+                    target_score: oldMatch.target_score,
+                    p1_rounds: 0,
+                    p2_rounds: 0,
+                    current_round: 1
+                }
+            ])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error creating rematch:', error);
+            return null;
+        }
+        return data;
     },
     // Iscriviti agli aggiornamenti di una partita specifica
     subscribeToMatch(matchId: string, callback: (payload: any) => void) {
