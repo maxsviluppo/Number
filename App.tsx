@@ -640,17 +640,8 @@ const App: React.FC = () => {
           setActiveMatch(prev => prev ? { ...prev, isP1: amIP1 } : null);
         }
 
-        if (newData.p1_ready && newData.p2_ready && showDuelRecap) {
-          if (newData.status === 'finished') {
-            if (amIP1) {
-              const newSeed = Math.random().toString(36).substring(7);
-              matchService.startRematch(newData, newSeed).then(rm => {
-                if (rm) matchService.sendRematchEvent(newData.id, rm.id, newSeed);
-              });
-            }
-          } else {
-            handleDuelRoundStart(newData);
-          }
+        if (newData.p1_ready && newData.p2_ready && showDuelRecap && newData.status !== 'finished') {
+          handleDuelRoundStart(newData);
         }
 
         setOpponentScore(amIP1 ? newData.player2_score : newData.player1_score);
@@ -713,46 +704,6 @@ const App: React.FC = () => {
           if (timerRef.current) window.clearInterval(timerRef.current);
           setGameState(prev => ({ ...prev, status: 'idle' }));
           showToast("Sfida interrotta: l'avversario ha abbandonato.");
-        }
-        if (event === 'rematch_started') {
-          const { newMatchId, seed } = payload;
-          console.log("REMATCH DETECTED:", newMatchId);
-          // IMPORTANT: Update active match completely to avoid stale readiness state
-          setActiveMatch(prev => prev ? {
-            ...prev,
-            id: newMatchId,
-            status: 'active',
-            p1_ready: false,
-            p2_ready: false,
-            p1_rounds: 0,
-            p2_rounds: 0,
-            current_round: 1,
-            player1_score: 0,
-            player2_score: 0
-          } : null);
-
-          setShowDuelRecap(false);
-
-          setGameState(prev => ({
-            ...prev,
-            status: 'playing',
-            score: 0,
-            totalScore: prev.totalScore, // Keep total score or reset? Usually reset for new match
-            levelTargets: [],
-            level: 1, // Reset level too
-            timeLeft: INITIAL_TIME
-          }));
-
-          setOpponentScore(0);
-          setOpponentTargets(0);
-          setDuelRounds({ p1: 0, p2: 0, current: 1 });
-          generateGrid(1, seed);
-
-          // Force match channel reset by briefly clearing active match ID if needed, 
-          // or rely on useEffect [activeMatch] dependency which we just updated.
-          // Because we updated ID in setActiveMatch, the useEffect will re-run automatically.
-
-          soundService.playSuccess();
         }
       });
       return () => { if (channel) (supabase as any).removeChannel(channel); };
