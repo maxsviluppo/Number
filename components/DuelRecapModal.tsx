@@ -44,6 +44,13 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
         else setIsLocalReady(false);
     }, [remoteReady]);
 
+    // Play Win Sound for whole match
+    useEffect(() => {
+        if (isFinal && isWinner) {
+            soundService.playExternalSound('Fine_partita_win.mp3');
+        }
+    }, [isFinal, isWinner]);
+
     const handleReadyClick = async () => {
         if (isLocalReady) return;
         setIsLocalReady(true);
