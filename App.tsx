@@ -69,7 +69,11 @@ const App: React.FC = () => {
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
 
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | null>(
+    (typeof window !== 'undefined' && (window.location.hash.includes('type=signup') || window.location.hash.includes('type=recovery')))
+      ? 'registration_success'
+      : null
+  );
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean, isP1: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0);
@@ -115,7 +119,10 @@ const App: React.FC = () => {
   const [latestMatchData, setLatestMatchData] = useState<any>(null); // NEW: Full Match Object Store
 
   // NEW: Video Intro State
-  const [showIntro, setShowIntro] = useState(true);
+  // NEW: Video Intro State - Check URL hash immediately to SKIP intro if confirming email
+  const isHashConfirm = typeof window !== 'undefined' && (window.location.hash.includes('type=signup') || window.location.hash.includes('type=recovery'));
+  const [showIntro, setShowIntro] = useState(!isHashConfirm); // Skip intro if confirming
+
 
 
 
