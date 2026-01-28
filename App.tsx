@@ -1764,6 +1764,9 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
+        {activeModal === 'registration_success' && (
+          <RegistrationSuccess onEnter={() => setActiveModal(null)} />
+        )}
 
         {activeModal === 'resume_confirm' && (
           <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => setActiveModal(null)}>
