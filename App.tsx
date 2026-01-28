@@ -16,6 +16,7 @@ import DuelRecapModal from './components/DuelRecapModal';
 import IntroVideo from './components/IntroVideo';
 import ComicTutorial, { TutorialStep } from './components/ComicTutorial';
 import UserProfileModal, { getRank } from './components/UserProfileModal'; // Updated import
+import RegistrationSuccess from './components/RegistrationSuccess';
 import { BADGES } from './constants/badges';
 import { authService, profileService, leaderboardService, supabase, UserProfile } from './services/supabaseClient'; // Moved this import here
 
@@ -68,7 +69,7 @@ const App: React.FC = () => {
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
 
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean, isP1: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0);
@@ -179,17 +180,65 @@ const App: React.FC = () => {
     }
   }, [checkAndUnlockBadges]);
 
-  // Initialize Session
+  // Initialize Session & Handle Auth Redirects (Email Config etc.)
   useEffect(() => {
-    const initSession = async () => {
-      const session = await authService.getCurrentSession();
+    // 1. Check current session immediately
+    authService.getCurrentSession().then(session => {
       if (session?.user) {
         setCurrentUser(session.user);
         loadProfile(session.user.id);
       }
+    });
+
+    // 2. Listen for Auth Changes (Login, Logout, Email Confirmation Redirects)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔔 Auth Event:', event);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        setCurrentUser(session.user);
+        loadProfile(session.user.id);
+
+
+        // Show Welcome Message
+        const username = session.user.user_metadata?.username || 'Giocatore';
+
+        // CHECK IF IT IS A NEW REGISTRATION CONFIRMATION (Heuristic: Just signed in, created_at is very recent, and URL contains 'access_token')
+        // Or simply check if we have a specific hash, BUT since hash is stripped by Supabase client often, we rely on event.
+        // Let's enable the Welcome Screen if the URL contained 'type=signup' before Supabase strip, OR if we force it via user flow.
+        // For now, we will assume standard login updates toast, but if we detect it's a "fresh" login we might want to show it.
+        // Since we cannot easily distinguish a "link click" from a "cookie restore" purely by event without hash check (which might be gone),
+        // we will check if the URL *had* a hash.
+        if (window.location.hash && (window.location.hash.includes('type=signup') || window.location.hash.includes('type=recovery'))) {
+          setActiveModal('registration_success');
+        } else {
+          showToast(`Benvenuto, ${username}! Accesso effettuato.`, [{ label: 'Profilo', onClick: () => setActiveModal('profile') }]);
+        }
+
+        // Close modals if open
+        setShowAuthModal(false);
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        setUserProfile(null);
+        setSavedGame(null);
+        setGameState(prev => ({ ...prev, status: 'intro' }));
+        showToast("Disconnessione completata.");
+      }
+
+      if (event === 'USER_UPDATED') {
+        // Handle password recovery or profile update events
+        if (session?.user) {
+          setCurrentUser(session.user);
+          loadProfile(session.user.id);
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
     };
-    initSession();
-  }, [loadProfile]);
+  }, [loadProfile, showToast]);
 
   // NEW: Game Over Trigger on Time Left reaching zero
   useEffect(() => {
@@ -842,8 +891,6 @@ const App: React.FC = () => {
     // RACE CONDITION FIX: Do not process win if game is already over
     if (gameStateRef.current.status !== 'playing') return;
 
-    soundService.playSuccess();
-
     // NEW SCORING: Linear Progression based on streak (USE REF)
     const currentLevel = gameStateRef.current.level;
     const currentStreak = gameStateRef.current.streak;
@@ -861,6 +908,12 @@ const App: React.FC = () => {
       t.value === matchedValue ? { ...t, completed: true } : t
     );
     const allDone = newTargets.every(t => t.completed);
+
+    if (allDone) {
+      soundService.playExternalSound('Fine_partita_win.mp3');
+    } else {
+      soundService.playSuccess();
+    }
 
     // 4. DUEL LOGIC
     if (activeMatch?.isDuel && currentUser) {
@@ -1136,10 +1189,9 @@ const App: React.FC = () => {
         {showVideo && !showLostVideo && (
           <div className="absolute inset-0 z-[5000] bg-black flex items-center justify-center animate-fadeIn" onPointerDown={(e) => e.stopPropagation()}>
             <video
-              src="/win.mp4"
+              src="/win_partita_video_1.mp4"
               autoPlay
               playsInline
-              muted
               loop={false}
               onEnded={() => {
                 setShowVideo(false);
@@ -1148,6 +1200,7 @@ const App: React.FC = () => {
                 setGameState(prev => ({ ...prev, status: 'level-complete' }));
               }}
               className="w-full h-full object-cover"
+              ref={(el) => { if (el) el.volume = 0.6; }}
             />
           </div>
         )}

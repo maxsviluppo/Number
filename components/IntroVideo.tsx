@@ -46,7 +46,10 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
                 audioRef.current.play().catch(e => console.warn("Audio play blocked", e));
 
                 // Avviamo il video
-                await videoRef.current.play();
+                await videoRef.current.play().catch(e => {
+                    console.warn("Video play blocked", e);
+                    // If video fails completely for some reason, maybe proceed or just log
+                });
                 console.log("Intro Video: Playback started successfully");
             } catch (err) {
                 console.error("Intro Video: Playback failed", err);
