@@ -186,7 +186,7 @@ class SoundService {
     try {
       const audio = new Audio(`/${filename}`);
       audio.volume = 0.5; // Volume moderato
-      await audio.play();
+      audio.play().catch(e => console.warn("Auto-play stopped:", e));
     } catch (e) {
       console.warn("External sound playback failed:", e);
     }
