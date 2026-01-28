@@ -201,16 +201,14 @@ const App: React.FC = () => {
         loadProfile(session.user.id);
 
 
-        // Show Welcome Message
-        const username = session.user.user_metadata?.username || 'Giocatore';
+        // Show Welcome Message ONLY if it's a new registration or recovery
+        const isSignup = window.location.hash && (window.location.hash.includes('type=signup') || window.location.hash.includes('type=recovery'));
 
-        // Always use standard toast but make it informative
-        const isSignup = window.location.hash && window.location.hash.includes('type=signup');
-        const welcomeMsg = isSignup
-          ? `🎉 Account Confermato! Benvenuto in Number, ${username}!`
-          : `Benvenuto, ${username}! Accesso effettuato.`;
-
-        showToast(welcomeMsg, [{ label: 'Profilo', onClick: () => setActiveModal('profile') }]);
+        if (isSignup) {
+          const welcomeMsg = `🎉 Account Confermato! Benvenuto in Number, ${username}!`;
+          showToast(welcomeMsg, [{ label: 'Profilo', onClick: () => setActiveModal('profile') }]);
+        }
+        // Else: Standard login, silent entry (no toast)
 
         // Close modals if open
         setShowAuthModal(false);
@@ -889,14 +887,12 @@ const App: React.FC = () => {
     // RACE CONDITION FIX: Do not process win if game is already over
     if (gameStateRef.current.status !== 'playing') return;
 
-    // NEW SCORING: Linear Progression based on streak (USE REF)
-    const currentLevel = gameStateRef.current.level;
-    const currentStreak = gameStateRef.current.streak;
-
-    // Formula: Base(Level) * (Streak + 1)
-    const baseForLevel = Math.pow(2, currentLevel - 1);
-    const multiplier = currentStreak + 1;
-    const currentPoints = baseForLevel * multiplier;
+    // NEW SCORING: ARCADE SCALABLE
+    // 10 points base + (Streak * 1) per correct answer
+    // Keeps scores manageable (e.g., Level 100 ~ 10-15k total)
+    const basePoints = 10;
+    const streakBonus = gameStateRef.current.streak * 1; // +1 point for each consecutive hit
+    const currentPoints = basePoints + streakBonus;
 
     setScoreAnimKey(k => k + 1);
 
@@ -1645,7 +1641,8 @@ const App: React.FC = () => {
                       <span className="text-xs font-bold text-slate-300">Punti Ottenuti</span>
                       {/* Calcolo approssimativo o reale se salvato nello stato precedente */}
                       <span className="text-lg font-orbitron font-black text-[#FF8800] animate-pulse">
-                        +{Math.pow(2, gameState.level - 2) * Math.pow(2, gameState.streak > 0 ? gameState.streak - 1 : 0) * 5}
+                        {/* Display approximated points earned this level */}
+                        +{gameState.score > 0 ? (gameState.timeLeft * 2) + 50 + (10 * 5) : '...'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center border-b border-white/10 pb-2">
