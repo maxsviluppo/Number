@@ -1446,13 +1446,13 @@ const App: React.FC = () => {
             setShowVideo(false);
           }}>
             <video
-              src="/winner1.mp4?v=new"
+              src="/winner.mp4"
               className="w-full h-full object-contain"
               autoPlay
               playsInline
               muted
               onPlay={() => {
-                console.log("WINNER VIDEO STARTED: winner1.mp4"); // DEBUG LOG
+                console.log("WINNER VIDEO STARTED: winner.mp4"); // DEBUG LOG
                 // Try to play audio when video starts
                 if (winAudioRef.current) {
                   winAudioRef.current.volume = 1.0;
@@ -1469,7 +1469,7 @@ const App: React.FC = () => {
               }}
             />
             {/* Hidden Audio Element for synced playback */}
-            <audio ref={winAudioRef} src="/winner1.mp3?v=new" preload="auto" />
+            <audio ref={winAudioRef} src="/winner.mp3" preload="auto" />
 
             <button
               className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
