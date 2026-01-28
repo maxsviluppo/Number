@@ -202,6 +202,7 @@ const App: React.FC = () => {
 
 
         // Show Welcome Message ONLY if it's a new registration or recovery
+        const username = session.user.user_metadata?.username || 'Giocatore';
         const isSignup = window.location.hash && (window.location.hash.includes('type=signup') || window.location.hash.includes('type=recovery'));
 
         if (isSignup) {
@@ -983,6 +984,9 @@ const App: React.FC = () => {
       setIsVictoryAnimating(true);
       setTriggerParticles(true);
 
+      // SHOW WIN VIDEO
+      setShowVideo(true); // <--- Restore Video Trigger
+
       const nextLevelScore = gameStateRef.current.totalScore + currentPoints;
 
       setGameState(prev => ({
@@ -1429,6 +1433,28 @@ const App: React.FC = () => {
               </div>
             </div>
           </>
+        )}
+
+        {showVideo && (
+          <div className="fixed inset-0 z-[2000] bg-black flex items-center justify-center animate-fadeIn" onPointerDown={() => setShowVideo(false)}>
+            <video
+              src="/win.mp4"
+              className="w-full h-full object-contain"
+              autoPlay
+              playsInline
+              onEnded={() => {
+                setShowVideo(false);
+                setGameState(prev => ({
+                  ...prev,
+                  status: 'level-complete'
+                }));
+              }}
+            />
+            <button className="absolute top-8 right-8 text-white/50 hover:text-white uppercase font-black tracking-widest text-sm z-50"
+              onPointerDown={(e) => { e.stopPropagation(); setShowVideo(false); setGameState(prev => ({ ...prev, status: 'level-complete' })); }}>
+              Salta
+            </button>
+          </div>
         )}
 
         {gameState.status !== 'idle' && (
