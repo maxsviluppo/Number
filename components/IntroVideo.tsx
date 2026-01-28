@@ -7,7 +7,7 @@ interface IntroVideoProps {
 
 const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const audioRef = useRef<HTMLAudioElement>(null);
+    // Removed audioRef as video now has embedded audio
     const [started, setStarted] = useState(false);
     const [hasFired, setHasFired] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -16,9 +16,7 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
         e.stopPropagation();
         const newMuted = !isMuted;
         setIsMuted(newMuted);
-        if (audioRef.current) {
-            audioRef.current.muted = newMuted;
-        }
+        // Removed audioRef logic
         if (videoRef.current) {
             videoRef.current.muted = newMuted; // Mute video track too just in case
         }
@@ -37,15 +35,12 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
         if (started) return;
         setStarted(true);
 
-        if (videoRef.current && audioRef.current) {
+        if (videoRef.current) {
             try {
                 videoRef.current.load();
-                audioRef.current.load();
+                // Removed audioRef load
 
-                // Avviamo l'audio
-                audioRef.current.play().catch(e => console.warn("Audio play blocked", e));
-
-                // Avviamo il video
+                // Avviamo il video (che ora ha l'audio)
                 await videoRef.current.play().catch(e => {
                     console.warn("Video play blocked", e);
                     // If video fails completely for some reason, maybe proceed or just log
@@ -77,15 +72,12 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
             {/* Background Video */}
             <video
                 ref={videoRef}
-                src="/intro_present.MP4"
+                src="/Intro_breve_1.mp4"
                 className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${started ? 'opacity-100' : 'opacity-0'}`}
                 playsInline
                 preload="auto"
                 onEnded={triggerHome}
             />
-
-            {/* Separate Audio */}
-            <audio ref={audioRef} src="/number_intro_audio.mp3" preload="auto" />
 
             {/* UI INITIAL: Logo and Button */}
             {!started && (

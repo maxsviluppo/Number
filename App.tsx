@@ -69,11 +69,7 @@ const App: React.FC = () => {
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
 
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | null>(
-    (typeof window !== 'undefined' && (window.location.hash.includes('type=signup') || window.location.hash.includes('type=recovery')))
-      ? 'registration_success'
-      : null
-  );
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean, isP1: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0);
@@ -119,9 +115,8 @@ const App: React.FC = () => {
   const [latestMatchData, setLatestMatchData] = useState<any>(null); // NEW: Full Match Object Store
 
   // NEW: Video Intro State
-  // NEW: Video Intro State - Check URL hash immediately to SKIP intro if confirming email
-  const isHashConfirm = typeof window !== 'undefined' && (window.location.hash.includes('type=signup') || window.location.hash.includes('type=recovery'));
-  const [showIntro, setShowIntro] = useState(!isHashConfirm); // Skip intro if confirming
+  // NEW: Video Intro State
+  const [showIntro, setShowIntro] = useState(true);
 
 
 
@@ -209,17 +204,13 @@ const App: React.FC = () => {
         // Show Welcome Message
         const username = session.user.user_metadata?.username || 'Giocatore';
 
-        // CHECK IF IT IS A NEW REGISTRATION CONFIRMATION (Heuristic: Just signed in, created_at is very recent, and URL contains 'access_token')
-        // Or simply check if we have a specific hash, BUT since hash is stripped by Supabase client often, we rely on event.
-        // Let's enable the Welcome Screen if the URL contained 'type=signup' before Supabase strip, OR if we force it via user flow.
-        // For now, we will assume standard login updates toast, but if we detect it's a "fresh" login we might want to show it.
-        // Since we cannot easily distinguish a "link click" from a "cookie restore" purely by event without hash check (which might be gone),
-        // we will check if the URL *had* a hash.
-        if (window.location.hash && (window.location.hash.includes('type=signup') || window.location.hash.includes('type=recovery'))) {
-          setActiveModal('registration_success');
-        } else {
-          showToast(`Benvenuto, ${username}! Accesso effettuato.`, [{ label: 'Profilo', onClick: () => setActiveModal('profile') }]);
-        }
+        // Always use standard toast but make it informative
+        const isSignup = window.location.hash && window.location.hash.includes('type=signup');
+        const welcomeMsg = isSignup
+          ? `🎉 Account Confermato! Benvenuto in Number, ${username}!`
+          : `Benvenuto, ${username}! Accesso effettuato.`;
+
+        showToast(welcomeMsg, [{ label: 'Profilo', onClick: () => setActiveModal('profile') }]);
 
         // Close modals if open
         setShowAuthModal(false);
@@ -1240,31 +1231,30 @@ const App: React.FC = () => {
           <path d="M800 -100 Q 600 300 900 600" stroke="white" strokeWidth="30" fill="none" />
         </svg>
 
-        <div className={`fixed top-12 left-1/2 -translate-x-1/2 z-[9999] transition-all duration-500 pointer-events-none
-        ${toast.visible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-16 opacity-0 scale-95'}`}>
-          <div className={`glass-panel px-8 py-4 rounded-[1.5rem] border ${toast.actions ? 'border-[#FF8800] bg-slate-900/95' : 'border-cyan-400/60'} shadow-[0_0_40px_rgba(34,211,238,0.4)] flex items-center gap-5 backdrop-blur-2xl pointer-events-auto`}>
-            <div className="flex flex-col text-center">
-              <span className="font-orbitron text-[10px] font-black text-cyan-400 uppercase tracking-[0.2em] mb-0.5">Sistema</span>
-              <span className="font-orbitron text-sm font-black text-white tracking-widest uppercase mb-1">{toast.message}</span>
+        {toast.visible && (
+          <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[10000] animate-toast-in w-[90%] max-w-md">
+            <div className="bg-slate-900/95 text-white px-8 py-5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.6)] flex flex-col items-center gap-4 border-[3px] border-[#FF8800] backdrop-blur-xl">
+              <span className="font-bold text-center text-lg leading-snug drop-shadow-md">{toast.message}</span>
               {toast.actions && (
-                <div className="flex gap-3 mt-3 justify-center">
-                  {toast.actions.map((act, i) => (
+                <div className="flex gap-3 w-full justify-center">
+                  {toast.actions.map((action, i) => (
                     <button
                       key={i}
-                      onPointerDown={(e) => { e.stopPropagation(); act.onClick(); setToast(p => ({ ...p, visible: false })); }}
-                      className={`px-6 py-2 rounded-lg font-black uppercase text-[10px] transition-all shadow-lg active:scale-95
-                                ${act.variant === 'secondary'
-                          ? 'bg-slate-800 text-slate-400 border border-slate-600 hover:text-white'
-                          : 'bg-[#FF8800] text-white animate-pulse-slow hover:scale-105'}`}
+                      onPointerDown={(e) => { e.stopPropagation(); action.onClick(); }}
+                      className={`px-6 py-2.5 rounded-xl font-black uppercase text-sm tracking-wider transition-all active:scale-95 shadow-lg border-2
+                                ${action.variant === 'secondary'
+                          ? 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'
+                          : 'bg-[#FF8800] text-white border-white hover:bg-[#FF9900]'
+                        }`}
                     >
-                      {act.label}
+                      {action.label}
                     </button>
                   ))}
                 </div>
               )}
             </div>
           </div>
-        </div>
+        )}
 
 
 
