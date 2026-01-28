@@ -8,7 +8,7 @@ import CharacterHelper from './components/CharacterHelper';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { matchService } from './services/matchService';
-import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle } from 'lucide-react';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward } from 'lucide-react';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
 import NeuralDuelLobby from './components/NeuralDuelLobby';
@@ -90,6 +90,7 @@ const App: React.FC = () => {
   const [levelBuffer, setLevelBuffer] = useState<{ grid: HexCellData[], targets: number[] }[]>([]);
   const timerRef = useRef<number | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
+  const winAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Supabase Integration
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -1436,13 +1437,24 @@ const App: React.FC = () => {
         )}
 
         {showVideo && (
-          <div className="fixed inset-0 z-[2000] bg-black flex items-center justify-center animate-fadeIn" onPointerDown={() => setShowVideo(false)}>
+          <div className="fixed inset-0 z-[2000] bg-black flex items-center justify-center animate-fadeIn" onPointerDown={() => {
+            if (winAudioRef.current) { winAudioRef.current.pause(); winAudioRef.current.currentTime = 0; }
+            setShowVideo(false);
+          }}>
             <video
-              src="/win.mp4"
+              src="/winner1.mp4"
               className="w-full h-full object-contain"
               autoPlay
               playsInline
+              onPlay={() => {
+                // Try to play audio when video starts
+                if (winAudioRef.current) {
+                  winAudioRef.current.volume = 1.0;
+                  winAudioRef.current.play().catch(e => console.warn("Win audio autoplay play blocked", e));
+                }
+              }}
               onEnded={() => {
+                if (winAudioRef.current) { winAudioRef.current.pause(); winAudioRef.current.currentTime = 0; }
                 setShowVideo(false);
                 setGameState(prev => ({
                   ...prev,
@@ -1450,9 +1462,19 @@ const App: React.FC = () => {
                 }));
               }}
             />
-            <button className="absolute top-8 right-8 text-white/50 hover:text-white uppercase font-black tracking-widest text-sm z-50"
-              onPointerDown={(e) => { e.stopPropagation(); setShowVideo(false); setGameState(prev => ({ ...prev, status: 'level-complete' })); }}>
-              Salta
+            {/* Hidden Audio Element for synced playback */}
+            <audio ref={winAudioRef} src="/winner1.mp3" preload="auto" />
+
+            <button
+              className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                if (winAudioRef.current) { winAudioRef.current.pause(); winAudioRef.current.currentTime = 0; }
+                setShowVideo(false);
+                setGameState(prev => ({ ...prev, status: 'level-complete' }));
+              }}>
+              <span>SKIP</span>
+              <FastForward size={14} className="text-[#FF8800]" />
             </button>
           </div>
         )}
