@@ -769,6 +769,8 @@ const App: React.FC = () => {
     setIsVictoryAnimating(false);
     setTriggerParticles(false);
     setPreviewResult(null);
+    setShowVideo(false);
+    setShowLostVideo(false);
 
     // Explicitly reset Main State for NEW GAME
     setGameState({
@@ -1052,15 +1054,17 @@ const App: React.FC = () => {
 
   const nextLevel = () => {
     soundService.playUIClick();
+    const nextLvl = gameState.level + 1;
     setGameState(prev => ({
       ...prev,
-      level: prev.level + 1,
+      level: nextLvl,
       status: 'playing',
-      streak: 0, // Reset streak on new level? Rule says "combinazioni del livello successiva" - implies standard streak rules reset per level usually, or it carries? Assuming reset per level is standard for "Level 1 has range X".
+      streak: 0,
       // CARRY OVER: Add 60s to whatever is left
       timeLeft: prev.timeLeft + 60,
     }));
-    generateGrid();
+    // Pass explicit level to avoid stale state
+    generateGrid(nextLvl);
   };
 
 
@@ -1446,6 +1450,7 @@ const App: React.FC = () => {
               className="w-full h-full object-contain"
               autoPlay
               playsInline
+              muted
               onPlay={() => {
                 // Try to play audio when video starts
                 if (winAudioRef.current) {
