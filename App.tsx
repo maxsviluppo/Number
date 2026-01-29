@@ -575,7 +575,7 @@ const App: React.FC = () => {
           // Play badge sound
           soundService.playBadge();
           // Show toast with action - Updated to DIRECT ACCEPT
-          showToast(`🎮 Nuova Sfida Ricevuta! Modalità: ${newMatch.mode.toUpperCase().replace('_', ' ')}`, [
+          showToast(`🎮 Nuova Sfida Ricevuta! Modalità: ${newMatch.mode}`, [
             {
               label: 'Accetta',
               onClick: () => {
@@ -1391,24 +1391,16 @@ const App: React.FC = () => {
       if (activeMatch && activeMatch.mode === 'time_attack') {
         soundService.playSuccess();
         const allSolutions = Array.from(findAllSolutions(grid));
-
-        // Shuffle solutions
         for (let i = allSolutions.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [allSolutions[i], allSolutions[j]] = [allSolutions[j], allSolutions[i]];
         }
-
-        // Take next batch, different from current if possible
         const nextBatch = allSolutions.slice(0, 5);
-
-        // Reset targets for next wave
         setGameState(prev => ({
           ...prev,
           levelTargets: nextBatch.map(t => ({ value: t, completed: false }))
         }));
-
         showToast("NUOVI TARGET! CONTINUA!", [], 'secondary');
-        setSelectedPath([]);
         return;
       }
 
@@ -2072,7 +2064,7 @@ const App: React.FC = () => {
                           strokeDasharray="283"
                           strokeDashoffset={activeMatch?.isDuel && activeMatch.mode !== 'time_attack'
                             ? 283 - (283 * (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5))
-                            : (283 * (1 - gameState.timeLeft / (activeMatch?.mode === 'time_attack' ? 60 : INITIAL_TIME)))
+                            : 283 - (283 * gameState.timeLeft / (activeMatch?.mode === 'time_attack' ? 60 : INITIAL_TIME))
                           }
                           strokeLinecap="round"
                           className="transition-all duration-1000"
@@ -2083,13 +2075,10 @@ const App: React.FC = () => {
                       <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
                     ) : (
                       <>
-                        <>
-                          {activeMatch?.isDuel && activeMatch.mode !== 'time_attack' && <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>}
-                          {activeMatch?.mode === 'time_attack' && <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">SEC</span>}
-                          <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
-                            {activeMatch?.isDuel && activeMatch.mode !== 'time_attack' ? opponentTargets : gameState.timeLeft}
-                          </span>
-                        </>
+                        {activeMatch?.isDuel && activeMatch.mode !== 'time_attack' && <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>}
+                        <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
+                          {activeMatch?.isDuel && activeMatch.mode !== 'time_attack' ? opponentTargets : gameState.timeLeft}
+                        </span>
                       </>
                     )}
                   </div>
@@ -2107,7 +2096,7 @@ const App: React.FC = () => {
                     ) : null}
 
                     {/* Duel Dashboard circle: Shows Match Points, not global */}
-                    <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
+                    <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-slate-900 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
                       <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
                       <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
                         {gameState.score}
