@@ -1816,19 +1816,8 @@ const App: React.FC = () => {
           {(showVideo || showLostVideo || showSurrenderVideo) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 z-50 pointer-events-none">
               {/* FAIL-SAFE TAP TO PLAY (Only visible if video stuck/not visible) */}
-              {!isVideoVisible && (
-                <button
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    if (videoRef.current) {
-                      videoRef.current.play().catch(console.error);
-                    }
-                  }}
-                  className="pointer-events-auto px-10 py-5 bg-[#FF8800] text-white rounded-full font-orbitron font-black text-lg uppercase tracking-widest shadow-[0_0_50px_rgba(255,136,0,0.6)] animate-bounce border-4 border-white"
-                >
-                  GUARDA VIDEO
-                </button>
-              )}
+              {/* FAIL-SAFE TAP TO PLAY REMOVED - AUTOMATIC ONLY */}
+
 
               <button
                 className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group pointer-events-auto"
