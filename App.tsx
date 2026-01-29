@@ -1285,7 +1285,7 @@ const App: React.FC = () => {
     const newTargets = currentTargets.map(t =>
       t.value === matchedValue ? { ...t, completed: true } : t
     );
-    const allDone = newTargets.every(t => t.completed);
+    const allDone = newTargets.every(t => t.completed) && activeMatch?.mode !== 'time_attack';
 
     if (allDone) {
       soundService.playExternalSound('Fine_partita_win.mp3');
@@ -1401,30 +1401,6 @@ const App: React.FC = () => {
         levelTargets: newTargets,
       }));
 
-      // TIME ATTACK LOGIC: REFILL, DON'T END
-      if (activeMatch && activeMatch.mode === 'time_attack') {
-        soundService.playSuccess();
-        const allSolutions = Array.from(findAllSolutions(grid));
-
-        // Shuffle solutions
-        for (let i = allSolutions.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [allSolutions[i], allSolutions[j]] = [allSolutions[j], allSolutions[i]];
-        }
-
-        // Take next batch, different from current if possible
-        const nextBatch = allSolutions.slice(0, 5);
-
-        // Reset targets for next wave
-        setGameState(prev => ({
-          ...prev,
-          levelTargets: nextBatch.map(t => ({ value: t, completed: false }))
-        }));
-
-        showToast("NUOVI TARGET! CONTINUA!", [], 'secondary');
-        setSelectedPath([]);
-        return;
-      }
 
       // STANDARD LEVEL COMPLETE LOGIC
       if (currentUser) {
@@ -1456,12 +1432,33 @@ const App: React.FC = () => {
       // Level Continues
       setGameState(prev => ({
         ...prev,
-        score: prev.score + currentPoints,
-        totalScore: prev.totalScore + currentPoints,
         streak: prev.streak + 1,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 0.5),
         levelTargets: newTargets
       }));
+
+      // TIME ATTACK: Individual Target Refill
+      if (activeMatch?.mode === 'time_attack') {
+        setTimeout(() => {
+          const currentGrid = gameStateRef.current.grid;
+          const currentRefTargets = gameStateRef.current.levelTargets;
+          const allSols = Array.from(findAllSolutions(currentGrid));
+          const activeValues = currentRefTargets.filter(t => !t.completed).map(t => t.value);
+          const candidates = allSols.filter(v => !activeValues.includes(v));
+
+          if (candidates.length > 0) {
+            const nextVal = candidates[Math.floor(Math.random() * candidates.length)];
+            setGameState(prev => {
+              const updated = [...prev.levelTargets];
+              const idx = updated.findIndex(t => t.value === matchedValue && t.completed);
+              if (idx !== -1) updated[idx] = { value: nextVal, completed: false };
+              return { ...prev, levelTargets: updated };
+            });
+            // Optional: Subtle sound
+            // soundService.playPop(); 
+          }
+        }, 2500);
+      }
     }
     setSelectedPath([]);
   };
