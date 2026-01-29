@@ -617,9 +617,15 @@ const App: React.FC = () => {
         setShowLostVideo(true);
         setIsVideoVisible(false);
         if (videoRef.current) {
-          videoRef.current.src = loseVideoSrc;
           videoRef.current.muted = false;
-          videoRef.current.play().catch(e => console.warn("Loss video blocked:", e));
+          videoRef.current.src = loseVideoSrc;
+          const playPromise = videoRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(e => {
+              console.warn("Loss video blocked:", e);
+              setIsVideoVisible(false);
+            });
+          }
         }
       }
     }
@@ -984,7 +990,15 @@ const App: React.FC = () => {
           const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
           setSurrenderVideoSrc(randomSurrender);
           setShowSurrenderVideo(true);
-          setIsVideoVisible(true);
+          setIsVideoVisible(false);
+          if (videoRef.current) {
+            videoRef.current.muted = false;
+            videoRef.current.src = randomSurrender;
+            videoRef.current.play().catch(e => {
+              console.warn("Surrender video blocked:", e);
+              setIsVideoVisible(false);
+            });
+          }
         }
       });
 
@@ -1014,7 +1028,16 @@ const App: React.FC = () => {
           const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
           setSurrenderVideoSrc(randomSurrender);
           setShowSurrenderVideo(true);
-          setIsVideoVisible(true); // Forced Visible immediately
+          setIsVideoVisible(false);
+
+          if (videoRef.current) {
+            videoRef.current.muted = false;
+            videoRef.current.src = randomSurrender;
+            videoRef.current.play().catch(e => {
+              console.warn("Surrender (abandon) video blocked:", e);
+              setIsVideoVisible(false);
+            });
+          }
 
           // 2. Add Points (Optional logic, using current score)
           // The recap will show current score + bonus if handled there.
@@ -1050,7 +1073,16 @@ const App: React.FC = () => {
             const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
             setSurrenderVideoSrc(randomSurrender);
             setShowSurrenderVideo(true);
-            setIsVideoVisible(true);
+            setIsVideoVisible(false);
+
+            if (videoRef.current) {
+              videoRef.current.muted = false;
+              videoRef.current.src = randomSurrender;
+              videoRef.current.play().catch(e => {
+                console.warn("Surrender (watchdog) video blocked:", e);
+                setIsVideoVisible(false);
+              });
+            }
           }
         }
         // CASE 2: NORMAL END (SYNC LAG)
@@ -1311,55 +1343,30 @@ const App: React.FC = () => {
     const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
     if (allDone) {
-      soundService.playExternalSound('Fine_partita_win.mp3');
-    } else {
-      soundService.playSuccess();
-    }
+      // 1. MOBILE SYNC UNLOCK: Start playing IMMEDIATELY before any 'await' or complex logic
+      const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
+      setWinVideoSrc(randomVid);
+      setShowVideo(true);
+      setIsVideoVisible(false);
 
-    // CALCULATE FINAL POINTS (including bonuses if allDone)
-    let totalPointsToAdd = currentPoints;
-    let finalTimeBonus = 0;
-    let finalVictoryBonus = 0;
-
-    if (allDone && !isTimeAttack) {
-      finalTimeBonus = Math.max(0, gameStateRef.current.timeLeft * 2);
-      finalVictoryBonus = 50;
-      totalPointsToAdd += finalTimeBonus + finalVictoryBonus;
-    }
-
-    // 4. DUEL LOGIC
-    if (activeMatch?.isDuel && currentUser) {
-      const myTargetsFound = newTargets.filter(t => t.completed).length;
-
-      // ATOMIC UPDATE: Send Score AND Targets together
-      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameStateRef.current.score + totalPointsToAdd, myTargetsFound)
-        .catch(e => console.error("Error updating match stats:", e));
-
-      // BLITZ LOGIC: Check Round Win (3 Targets)
-      if (duelMode === 'blitz' && myTargetsFound >= 3) {
-        soundService.playSuccess();
-        showToast(`ROUND ${duelRounds.current} VINTO!`);
-
-        setTimeout(() => {
-          generateGrid(gameStateRef.current.level);
-          setGameState(prev => ({
-            ...prev,
-            levelTargets: prev.levelTargets.map(t2 => ({ ...t2, completed: false })),
-            status: 'playing'
-          }));
-        }, 2000);
-        setSelectedPath([]);
-        return;
+      if (videoRef.current) {
+        // Prepare video
+        videoRef.current.muted = false;
+        videoRef.current.src = randomVid;
+        // Try playing
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(e => {
+            console.warn("Video play blocked by browser policy:", e);
+            setIsVideoVisible(false);
+          });
+        }
       }
-    }
 
-    // 5. GLOBAL SYNC: Always update career stats on every success (EXCEPT IN DUEL MODE)
-    if (currentUser && !activeMatch?.isDuel) {
-      profileService.syncProgress(currentUser.id, totalPointsToAdd, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
-        .catch(e => console.error("Error syncing progress:", e));
-    }
+      setTriggerParticles(false);
+      soundService.playExternalSound('Fine_partita_win.mp3');
 
-    if (allDone) {
+      // 2. CONTINUE WITH ASYNC/LOGIC 
       if (activeMatch?.isDuel && duelMode === 'standard') {
         try {
           // Match Ends Immediately
@@ -1401,8 +1408,6 @@ const App: React.FC = () => {
 
         } catch (error: any) {
           console.error("Error finishing duel:", error);
-          // If error is just network glitch, user might still have won locally. 
-          // Show recap anyway but warn? No, better to retry or just show recap.
           showToast(`Partita conclusa. Sincronizzazione...`);
           setShowDuelRecap(true);
         }
@@ -1412,31 +1417,18 @@ const App: React.FC = () => {
 
       // STOP TIMER IMMEDIATELY
       if (timerRef.current) window.clearInterval(timerRef.current);
-
       setIsVictoryAnimating(true);
 
-      // UNLOCK AUDIO FOR MOBILE
-      if (winAudioRef.current) {
-        winAudioRef.current.volume = 0;
-        winAudioRef.current.play().then(() => {
-          if (winAudioRef.current) {
-            winAudioRef.current.pause();
-            winAudioRef.current.currentTime = 0;
-          }
-        }).catch(e => console.log("Audio unlock failed", e));
-      }
-
-      const nextLevelScore = gameStateRef.current.totalScore + currentPoints;
+      const nextLevelScore = gameStateRef.current.totalScore + totalPointsToAdd;
 
       setGameState(prev => ({
         ...prev,
-        score: prev.score + currentPoints,
+        score: prev.score + totalPointsToAdd,
         totalScore: nextLevelScore,
         streak: 0,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
         levelTargets: newTargets,
       }));
-
 
       // STANDARD LEVEL COMPLETE LOGIC
       if (currentUser) {
@@ -1454,21 +1446,6 @@ const App: React.FC = () => {
 
         setSavedGame(saveState);
       }
-
-      const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
-      setWinVideoSrc(randomVid);
-      setShowVideo(true);
-      setIsVideoVisible(false);
-
-      // MOBILE SYNC UNLOCK: Start playing immediately during the finishing click event
-      if (videoRef.current) {
-        videoRef.current.src = randomVid;
-        // Ensure muted is false before playing to allow audio
-        videoRef.current.muted = false;
-        videoRef.current.play().catch(e => console.warn("Video play blocked:", e));
-      }
-
-      setTriggerParticles(false);
     } else {
       // Level Continues
       setGameState(prev => ({
@@ -1802,7 +1779,7 @@ const App: React.FC = () => {
         {/* UNIFIED VIDEO OVERLAY - Always in DOM for Mobile Unlock */}
         <div
           className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out 
-            ${(showVideo || showLostVideo || showSurrenderVideo) && isVideoVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+            ${(showVideo || showLostVideo || showSurrenderVideo) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
           onPointerDown={() => {
             if (showVideo) handleVideoClose();
             else if (showLostVideo) handleLostVideoClose();
@@ -1817,7 +1794,7 @@ const App: React.FC = () => {
             autoPlay
             onPlay={() => {
               if (videoRef.current) videoRef.current.volume = 0.7;
-              setIsVideoVisible(true); // ONLY SHOW WHEN IT ACTUALLY PLAYS
+              setIsVideoVisible(true);
             }}
             onEnded={() => {
               if (showVideo) handleVideoClose();
@@ -1831,18 +1808,35 @@ const App: React.FC = () => {
           {showSurrenderVideo && <div className="absolute inset-0 bg-blue-900/10 mix-blend-overlay pointer-events-none"></div>}
 
           {(showVideo || showLostVideo || showSurrenderVideo) && (
-            <button
-              className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                if (showVideo) handleVideoClose();
-                else if (showLostVideo) handleLostVideoClose();
-                else if (showSurrenderVideo) handleSurrenderVideoClose();
-              }}
-            >
-              <span>SKIP</span>
-              <FastForward size={14} className={showLostVideo ? "text-red-500" : (showSurrenderVideo ? "text-blue-500" : "text-[#FF8800]")} />
-            </button>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 z-50 pointer-events-none">
+              {/* FAIL-SAFE TAP TO PLAY (Only visible if video stuck/not visible) */}
+              {!isVideoVisible && (
+                <button
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    if (videoRef.current) {
+                      videoRef.current.play().catch(console.error);
+                    }
+                  }}
+                  className="pointer-events-auto px-10 py-5 bg-[#FF8800] text-white rounded-full font-orbitron font-black text-lg uppercase tracking-widest shadow-[0_0_50px_rgba(255,136,0,0.6)] animate-bounce border-4 border-white"
+                >
+                  GUARDA VIDEO
+                </button>
+              )}
+
+              <button
+                className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group pointer-events-auto"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  if (showVideo) handleVideoClose();
+                  else if (showLostVideo) handleLostVideoClose();
+                  else if (showSurrenderVideo) handleSurrenderVideoClose();
+                }}
+              >
+                <span>SKIP</span>
+                <FastForward size={14} className={showLostVideo ? "text-red-500" : (showSurrenderVideo ? "text-blue-500" : "text-[#FF8800]")} />
+              </button>
+            </div>
           )}
         </div>
 

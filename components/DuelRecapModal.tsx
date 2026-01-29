@@ -93,10 +93,22 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                             <span className="text-white font-black uppercase text-[11px] tracking-wider">TU</span>
                             <div className="flex flex-col items-center">
                                 <span className="text-[#FF8800] font-bold text-[9px] mt-0.5">+{myScore} XP</span>
-                                {isWinner && matchData?.mode === 'standard' && myScore > 100 && (
-                                    <span className="text-[7px] text-white/40 uppercase font-black tracking-tighter animate-pulse">
-                                        INC. BONUS TEMPO & VITTORIA
-                                    </span>
+
+                                {isWinner && (matchData?.last_time_bonus > 0 || matchData?.last_victory_bonus > 0) && (
+                                    <div className="mt-2 space-y-0.5 bg-black/20 p-2 rounded-lg border border-white/5 w-full min-w-[120px]">
+                                        {matchData.last_victory_bonus > 0 && (
+                                            <div className="flex justify-between items-center text-[7px] font-black tracking-tighter uppercase">
+                                                <span className="text-white/40">BONUS VITTORIA</span>
+                                                <span className="text-green-400">+{matchData.last_victory_bonus}</span>
+                                            </div>
+                                        )}
+                                        {matchData.last_time_bonus > 0 && (
+                                            <div className="flex justify-between items-center text-[7px] font-black tracking-tighter uppercase">
+                                                <span className="text-white/40">BONUS TEMPO</span>
+                                                <span className="text-green-400">+{matchData.last_time_bonus}</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </div>
