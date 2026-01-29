@@ -1220,25 +1220,7 @@ const App: React.FC = () => {
 
 
 
-        {/* WIN VIDEO OVERLAY */}
-        {showVideo && !showLostVideo && (
-          <div className="absolute inset-0 z-[5000] bg-black flex items-center justify-center animate-fadeIn" onPointerDown={(e) => e.stopPropagation()}>
-            <video
-              src="/win_partita_video_1.mp4"
-              autoPlay
-              playsInline
-              loop={false}
-              onEnded={() => {
-                setShowVideo(false);
-                setIsVictoryAnimating(false);
-                // Show Level Complete Modal ONLY after video ends
-                setGameState(prev => ({ ...prev, status: 'level-complete' }));
-              }}
-              className="w-full h-full object-cover"
-              ref={(el) => { if (el) el.volume = 0.6; }}
-            />
-          </div>
-        )}
+        {/* WIN VIDEO OVERLAY REMOVED (Duplicate/Legacy) */}
 
         {/* LOST VIDEO OVERLAY */}
         {showLostVideo && !showVideo && (
@@ -1478,7 +1460,7 @@ const App: React.FC = () => {
             setShowVideo(false);
           }}>
             <video
-              src="/winner1.mp4"
+              src="/winnermp4.mp4"
               className="w-full h-full object-contain"
               autoPlay
               playsInline
