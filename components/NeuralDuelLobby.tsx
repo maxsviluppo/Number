@@ -8,7 +8,7 @@ interface NeuralDuelProps {
     currentUser: any;
     onClose: () => void;
     onMatchStart: (seed: string, matchId: string, opponentId: string, isP1: boolean) => void;
-    mode: 'standard' | 'blitz';
+    mode: 'standard' | 'blitz' | 'time_attack';
     showToast: (msg: string) => void;
     userProfile?: any;
 }
@@ -141,7 +141,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                         </div>
                         <div>
                             <h2 className="text-2xl font-black font-orbitron text-white uppercase tracking-wider leading-none mb-1">
-                                {mode === 'blitz' ? 'BLITZ ARENA' : 'NEURAL LOBBY'}
+                                {mode === 'blitz' ? 'BLITZ ARENA' : mode === 'time_attack' ? 'CHRONO CLASH' : 'NEURAL LOBBY'}
                             </h2>
                             <div className="flex gap-2 items-center">
                                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded">MODE: {mode}</span>

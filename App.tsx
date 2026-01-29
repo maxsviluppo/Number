@@ -8,7 +8,7 @@ import CharacterHelper from './components/CharacterHelper';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { matchService } from './services/matchService';
-import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward } from 'lucide-react';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward, Clock } from 'lucide-react';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
 import NeuralDuelLobby from './components/NeuralDuelLobby';
@@ -240,14 +240,23 @@ const App: React.FC = () => {
 
   // NEW: Game Over Trigger on Time Left reaching zero
   useEffect(() => {
-    if (gameState.status === 'playing' && gameState.timeLeft === 0 && !activeMatch?.isDuel && !isVictoryAnimating) {
-      soundService.playExternalSound('lost.mp3');
-      setShowLostVideo(true);
-      setGameState(prev => ({ ...prev, status: 'game-over' }));
+    if (gameState.status === 'playing' && gameState.timeLeft === 0 && !isVictoryAnimating) {
+      // TIME ATTACK END (Duel)
+      if (activeMatch?.mode === 'time_attack') {
+        soundService.playSuccess();
+        setGameState(prev => ({ ...prev, status: 'game-over' })); // Use Game Over screen to show final score
+        return;
+      }
 
-      if (currentUser) {
-        profileService.clearSavedGame(currentUser.id);
-        loadProfile(currentUser.id);
+      // STANDARD GAME OVER (Single Player)
+      if (!activeMatch?.isDuel) {
+        soundService.playExternalSound('lost.mp3');
+        setShowLostVideo(true);
+        setGameState(prev => ({ ...prev, status: 'game-over' }));
+        if (currentUser) {
+          profileService.clearSavedGame(currentUser.id);
+          loadProfile(currentUser.id);
+        }
       }
     }
   }, [gameState.timeLeft, gameState.status, activeMatch, currentUser, isVictoryAnimating, loadProfile]);
@@ -284,8 +293,9 @@ const App: React.FC = () => {
 
   // Timer: Dedicated Loop for decrementing time only
   useEffect(() => {
-    // MODIFIED: Timer disabled for DUEL mode
-    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && !activeMatch?.isDuel) {
+    // MODIFIED: Timer disabled for Standard/Blitz Duel, ENABLED for Time Attack
+    const isTimeDuel = activeMatch?.mode === 'time_attack';
+    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && (!activeMatch?.isDuel || isTimeDuel)) {
       timerRef.current = window.setInterval(() => {
         setGameState(prev => {
           if (prev.timeLeft <= 0) return prev;
@@ -1000,6 +1010,28 @@ const App: React.FC = () => {
         estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
         levelTargets: newTargets,
       }));
+
+      // TIME ATTACK LOGIC: REFILL, DON'T END
+      if (activeMatch && activeMatch.mode === 'time_attack') {
+        soundService.playSuccess(); // Short success sound
+        // Generate NEW targets for the CURRENT grid
+        const allSolutions = Array.from(findAllSolutions(grid));
+        // Shuffle and pick 5
+        for (let i = allSolutions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allSolutions[i], allSolutions[j]] = [allSolutions[j], allSolutions[i]];
+        }
+        const nextBatch = allSolutions.slice(0, 5);
+        setGameState(prev => ({
+          ...prev,
+          levelTargets: nextBatch.map(t => ({ value: t, completed: false }))
+        }));
+        // Show a brief toast or effect?
+        showToast("NUOVI TARGET! CONTINUA!", [], 'secondary');
+        return; // EXIT HERE so we don't trigger level complete modal
+      }
+
+      // STANDARD LEVEL COMPLETE LOGIC (for Standard/Blitz/Single)
 
       // AUTO SAVE HERE (Level Completed -> State for STARTING next level)
       if (currentUser) {
@@ -1770,39 +1802,57 @@ const App: React.FC = () => {
               </h2>
               <p className="text-slate-400 text-center text-sm mb-8 font-mono relative z-10">Scegli il tuo stile di combattimento</p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-10">
+              <div className="flex flex-col gap-3 relative z-10 w-full">
                 {/* Option 1: STANDARD */}
                 <button
-                  className="bg-gradient-to-br from-red-600 to-rose-700 border-[3px] border-white shadow-lg relative overflow-hidden p-6 rounded-2xl flex flex-col items-center text-center transition-all duration-300 group active:scale-95 hover:scale-105"
+                  className="w-full bg-gradient-to-r from-red-600 to-rose-700 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
                   onPointerDown={() => { soundService.playUIClick(); setDuelMode('standard'); setActiveModal('duel'); }}
                 >
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-                  <div className="w-16 h-16 rounded-full bg-white/10 border-2 border-white/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg relative z-10 backdrop-blur-sm">
-                    <Swords size={32} className="text-yellow-300 drop-shadow-md" />
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
+                    <Swords size={22} className="text-yellow-300 drop-shadow-sm" />
                   </div>
-                  <h3 className="font-orbitron font-black text-white text-xl mb-2 relative z-10 tracking-wider italic">STANDARD</h3>
-                  <p className="text-xs text-white/90 leading-tight relative z-10 font-bold">
-                    <strong className="text-yellow-300 block mb-1 uppercase tracking-wide">Velocità Pura</strong>
-                    Trova 5 combinazioni prima dell'avversario. Partita secca.
-                  </p>
+                  <div className="text-left flex-1 relative z-10">
+                    <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">STANDARD</h3>
+                    <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Velocità Pura • Partita Secca</p>
+                  </div>
+                  <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
                 </button>
 
                 {/* Option 2: BLITZ */}
                 <button
-                  className="bg-gradient-to-br from-orange-500 to-amber-600 border-[3px] border-white shadow-lg relative overflow-hidden p-6 rounded-2xl flex flex-col items-center text-center transition-all duration-300 group active:scale-95 hover:scale-105"
+                  className="w-full bg-gradient-to-r from-orange-500 to-amber-600 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
                   onPointerDown={() => { soundService.playUIClick(); setDuelMode('blitz'); setActiveModal('duel'); }}
                 >
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-                  <div className="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-black px-2 py-1 rounded-bl-lg border-l border-b border-white/20 z-20 shadow-sm animate-pulse">NEW</div>
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                  <div className="absolute top-0 right-12 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20">NEW</div>
 
-                  <div className="w-16 h-16 rounded-full bg-white/10 border-2 border-white/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg relative z-10 backdrop-blur-sm">
-                    <Zap size={32} className="text-white drop-shadow-md" />
+                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
+                    <Zap size={22} className="text-white drop-shadow-sm" />
                   </div>
-                  <h3 className="font-orbitron font-black text-white text-xl mb-2 relative z-10 tracking-wider italic">BLITZ</h3>
-                  <p className="text-xs text-white/90 leading-tight relative z-10 font-bold">
-                    <strong className="text-yellow-300 block mb-1 uppercase tracking-wide">Guerra Tattica</strong>
-                    Vinci 3 Round su 5. Ogni round richiede 3 target.
-                  </p>
+                  <div className="text-left flex-1 relative z-10">
+                    <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">BLITZ</h3>
+                    <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Tattica • 3 Round su 5</p>
+                  </div>
+                  <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
+                </button>
+
+                {/* Option 3: TIME ATTACK */}
+                <button
+                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
+                  onPointerDown={() => { soundService.playUIClick(); setDuelMode('time_attack'); setActiveModal('duel'); }}
+                >
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                  <div className="absolute top-0 right-12 bg-yellow-400 text-black text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20 animate-pulse">HOT</div>
+
+                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
+                    <Clock size={22} className="text-white drop-shadow-sm" />
+                  </div>
+                  <div className="text-left flex-1 relative z-10">
+                    <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">TIME ATTACK</h3>
+                    <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">60 Secondi • Target Infiniti</p>
+                  </div>
+                  <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
                 </button>
               </div>
 
@@ -1910,7 +1960,7 @@ const App: React.FC = () => {
                 totalScore: prev.totalScore, // Preserve points during duel
                 streak: 0,
                 level: 1,
-                timeLeft: INITIAL_TIME,
+                timeLeft: duelMode === 'time_attack' ? 60 : INITIAL_TIME,
                 targetResult: 0,
                 status: 'playing',
                 estimatedIQ: prev.estimatedIQ,
