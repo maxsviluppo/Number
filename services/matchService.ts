@@ -279,7 +279,10 @@ export const matchService = {
             .update(updateData)
             .eq('id', matchId);
 
-        if (error) console.error('Error updating score:', error);
+        if (error) {
+            console.error('Error updating score:', error);
+            throw error;
+        }
     },
 
     // Aggiorna il numero di target trovati
@@ -293,7 +296,10 @@ export const matchService = {
             .update(updateData)
             .eq('id', matchId);
 
-        if (error) console.error('Error updating targets:', error);
+        if (error) {
+            console.error('Error updating targets:', error);
+            throw error;
+        }
     },
 
     // ATOMIC UPDATE: Punteggio + Target insieme per evitare race conditions/glitch di sync
@@ -307,7 +313,10 @@ export const matchService = {
             .update(updateData)
             .eq('id', matchId);
 
-        if (error) console.error('Error updating match stats:', error);
+        if (error) {
+            console.error('Error updating match stats:', error);
+            throw error;
+        }
     },
 
     // Incrementa i round vinti (Blitz Mode)
@@ -339,7 +348,10 @@ export const matchService = {
             })
             .eq('id', matchId);
 
-        if (error) console.error('Error declaring winner:', error);
+        if (error) {
+            console.error('Error declaring winner:', error);
+            throw error;
+        }
     },
 
     // Imposta lo stato "Pronto" per il round successivo

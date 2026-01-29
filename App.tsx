@@ -897,8 +897,10 @@ const App: React.FC = () => {
           const amIWinner = newData.winner_id === currentUser?.id;
           if (amIWinner && processedWinRef.current !== newData.id) {
             processedWinRef.current = newData.id;
-            profileService.syncProgress(currentUser!.id, gameStateRef.current.score, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
-            loadProfile(currentUser!.id);
+            profileService.syncProgress(currentUser!.id, gameStateRef.current.score, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
+              .catch(e => console.error("Realtime sync progress error:", e));
+            loadProfile(currentUser!.id)
+              .catch(e => console.error("Realtime load profile error:", e));
           }
 
           if (!amIWinner) soundService.playExternalSound('lost.mp3');
@@ -1218,20 +1220,18 @@ const App: React.FC = () => {
   };
 
   /* HANDLE SUCCESS - FULLY REF BASED */
-  const handleSuccess = (matchedValue: number) => {
+  const handleSuccess = async (matchedValue: number) => {
     // RACE CONDITION FIX: Do not process win if game is already over
     if (gameStateRef.current.status !== 'playing') return;
 
     // NEW SCORING: ARCADE SCALABLE
-    // 10 points base + (Streak * 1) per correct answer
-    // Keeps scores manageable (e.g., Level 100 ~ 10-15k total)
     const basePoints = 10;
-    const streakBonus = gameStateRef.current.streak * 1; // +1 point for each consecutive hit
+    const streakBonus = gameStateRef.current.streak * 1;
     const currentPoints = basePoints + streakBonus;
 
     setScoreAnimKey(k => k + 1);
 
-    // Update targets state (USE REF)
+    // Update targets state
     const currentTargets = gameStateRef.current.levelTargets;
     const newTargets = currentTargets.map(t =>
       t.value === matchedValue ? { ...t, completed: true } : t
@@ -1248,8 +1248,9 @@ const App: React.FC = () => {
     if (activeMatch?.isDuel && currentUser) {
       const myTargetsFound = newTargets.filter(t => t.completed).length;
 
-      // ATOMIC UPDATE: Send Score AND Targets together (Use REF score + currentPoints)
-      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameStateRef.current.score + currentPoints, myTargetsFound);
+      // ATOMIC UPDATE: Send Score AND Targets together
+      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameStateRef.current.score + currentPoints, myTargetsFound)
+        .catch(e => console.error("Error updating match stats:", e));
 
       // BLITZ LOGIC: Check Round Win (3 Targets)
       if (duelMode === 'blitz' && myTargetsFound >= 3) {
@@ -1257,7 +1258,7 @@ const App: React.FC = () => {
         showToast(`ROUND ${duelRounds.current} VINTO!`);
 
         setTimeout(() => {
-          generateGrid(gameStateRef.current.level); // Usare ref level
+          generateGrid(gameStateRef.current.level);
           setGameState(prev => ({
             ...prev,
             levelTargets: prev.levelTargets.map(t2 => ({ ...t2, completed: false })),
@@ -1271,43 +1272,48 @@ const App: React.FC = () => {
 
     // 5. GLOBAL SYNC: Always update career stats on every success (EXCEPT IN DUEL MODE)
     if (currentUser && !activeMatch?.isDuel) {
-      profileService.syncProgress(currentUser.id, currentPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+      profileService.syncProgress(currentUser.id, currentPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
+        .catch(e => console.error("Error syncing progress:", e));
     }
 
     if (allDone) {
       if (activeMatch?.isDuel && duelMode === 'standard') {
-        // Match Ends Immediately
-        matchService.declareWinner(activeMatch.id, currentUser.id);
+        try {
+          // Match Ends Immediately
+          await matchService.declareWinner(activeMatch.id, currentUser.id);
 
-        // FLAG AS PROCESSED LOCALLY TO AVOID DOUBLE SYNC IN SUBSCRIPTION
-        processedWinRef.current = activeMatch.id;
+          // FLAG AS PROCESSED LOCALLY
+          processedWinRef.current = activeMatch.id;
 
-        // OPTIMISTICALLY UPDATE MATCH DATA FOR RECAP
-        setLatestMatchData(prev => ({
-          ...prev,
-          status: 'finished',
-          winner_id: currentUser!.id,
-          player1_score: activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player1_score,
-          player2_score: !activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player2_score,
-          // Update Rounds for Abandonment Check
-          p1_rounds: activeMatch.isP1 ? (duelMode === 'blitz' ? 3 : 5) : prev?.p1_rounds,
-          p2_rounds: !activeMatch.isP1 ? (duelMode === 'blitz' ? 3 : 5) : prev?.p2_rounds
-        }));
+          // OPTIMISTICALLY UPDATE MATCH DATA FOR RECAP
+          setLatestMatchData(prev => ({
+            ...prev,
+            status: 'finished',
+            winner_id: currentUser!.id,
+            player1_score: activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player1_score,
+            player2_score: !activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player2_score,
+            p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
+            p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds
+          }));
 
-        // Update Local State but skip video/standard recap
-        setGameState(prev => ({
-          ...prev,
-          score: prev.score + currentPoints,
-          totalScore: prev.totalScore + currentPoints,
-          status: 'idle',
-          levelTargets: newTargets
-        }));
+          // Local State Update
+          setGameState(prev => ({
+            ...prev,
+            score: prev.score + currentPoints,
+            totalScore: prev.totalScore + currentPoints,
+            status: 'idle',
+            levelTargets: newTargets
+          }));
 
-        // SYNC PROFILE FOR WINNER (MATCH ENDED BY ALL TARGETS)
-        profileService.syncProgress(currentUser.id, gameStateRef.current.score + currentPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
-        loadProfile(currentUser.id);
+          // SYNC PROFILE FOR WINNER
+          await profileService.syncProgress(currentUser.id, gameStateRef.current.score + currentPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+          await loadProfile(currentUser.id);
 
-        setShowDuelRecap(true);
+          setShowDuelRecap(true);
+        } catch (error: any) {
+          console.error("Error finishing duel:", error);
+          showToast(`Errore durante il salvataggio della vittoria: ${error?.message || 'Errore Sconosciuto'}`);
+        }
         setSelectedPath([]);
         return;
       }
@@ -1316,9 +1322,8 @@ const App: React.FC = () => {
       if (timerRef.current) window.clearInterval(timerRef.current);
 
       setIsVictoryAnimating(true);
-      // setTriggerParticles(true); // PARTICLES REMOVED AS REQUESTED
 
-      // UNLOCK AUDIO FOR MOBILE (User Interaction Context)
+      // UNLOCK AUDIO FOR MOBILE
       if (winAudioRef.current) {
         winAudioRef.current.volume = 0;
         winAudioRef.current.play().then(() => {
@@ -1328,9 +1333,6 @@ const App: React.FC = () => {
           }
         }).catch(e => console.log("Audio unlock failed", e));
       }
-
-      // SHOW WIN VIDEO REMOVED
-      // setShowVideo(true);
 
       const nextLevelScore = gameStateRef.current.totalScore + currentPoints;
 
@@ -1345,10 +1347,8 @@ const App: React.FC = () => {
 
       // TIME ATTACK LOGIC: REFILL, DON'T END
       if (activeMatch && activeMatch.mode === 'time_attack') {
-        soundService.playSuccess(); // Short success sound
-        // Generate NEW targets for the CURRENT grid
+        soundService.playSuccess();
         const allSolutions = Array.from(findAllSolutions(grid));
-        // Shuffle and pick 5
         for (let i = allSolutions.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [allSolutions[i], allSolutions[j]] = [allSolutions[j], allSolutions[i]];
@@ -1358,48 +1358,38 @@ const App: React.FC = () => {
           ...prev,
           levelTargets: nextBatch.map(t => ({ value: t, completed: false }))
         }));
-        // Show a brief toast or effect?
         showToast("NUOVI TARGET! CONTINUA!", [], 'secondary');
-        return; // EXIT HERE so we don't trigger level complete modal
+        return;
       }
 
-      // STANDARD LEVEL COMPLETE LOGIC (for Standard/Blitz/Single)
-
-      // AUTO SAVE HERE (Level Completed -> State for STARTING next level)
+      // STANDARD LEVEL COMPLETE LOGIC
       if (currentUser) {
         const saveState = {
           totalScore: nextLevelScore,
           streak: 0,
-          level: gameState.level + 1, // Ready for next level
-          timeLeft: gameState.timeLeft + 60, // Anticipate the +60s bonus
+          level: gameState.level + 1,
+          timeLeft: gameState.timeLeft + 60,
           estimatedIQ: Math.min(200, gameState.estimatedIQ + 4)
         };
 
-        // Save active run state (snapshot) - syncProgress was already called for the last target
         profileService.saveGameState(currentUser.id, saveState)
-          .then(() => loadProfile(currentUser.id)); // Reload badge when both finish
+          .then(() => loadProfile(currentUser.id))
+          .catch(e => console.error("Error saving game state:", e));
 
         setSavedGame(saveState);
       }
 
-      // Delay to show particles before video
-      // SHOW WIN VIDEO:
-      // Strategy for Mobile Audio:
-      // 1. Mount Video IMMEDIATELY (in this event loop) to capture user gesture for autoplay.
-      // 2. Start it invisible (opacity 0).
-      // 3. Fade in after particles (1s).
       const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
       setWinVideoSrc(randomVid);
       setShowVideo(true);
       setIsVideoVisible(false);
 
-      // Delay visual appearance
       setTimeout(() => {
         setTriggerParticles(false);
         setIsVideoVisible(true);
       }, 1000);
     } else {
-      // Level Continues (NOT all targets completed yet)
+      // Level Continues
       setGameState(prev => ({
         ...prev,
         score: prev.score + currentPoints,

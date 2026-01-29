@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Swords, Loader2, XCircle, User, Play, Eye, Radio, Search, Send, Mail } from 'lucide-react';
+import { Swords, Loader2, XCircle, User, Play, Eye, Radio, Search, Send, Share2 } from 'lucide-react';
 import { matchService, Match } from '../services/matchService';
 import { soundService } from '../services/soundService';
 import { supabase, profileService } from '../services/supabaseClient';
@@ -79,13 +79,36 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
         return null;
     };
 
-    const handleEmailInvite = async (user: any) => {
+    const handleShareInvite = async (user: any) => {
+        // REUSE handleInvite to ensure match is created/synced correctly
+        // Check if I'm already hosting against this user? 
+        // handleInvite cleans up previous matches, so it creates a FRESH one.
         const match = await handleInvite(user);
+
         if (match) {
             const joinUrl = `${window.location.origin}${window.location.pathname}?joinMatch=${match.id}`;
-            const subject = encodeURIComponent(`Sfida a Neural Duel!`);
-            const body = encodeURIComponent(`Ciao ${user.username}, ti sfido a una partita su Neural Duel!\n\nClicca qui per accettare la sfida:\n${joinUrl}\n\nSe non sei registrato, potrai farlo in pochi istanti e sfidarmi subito!`);
-            window.location.href = `mailto:${user.email}?subject=${subject}&body=${body}`;
+            const title = `Sfida a Neural Duel!`;
+            const text = `Ciao ${user.username}, ti sfido a Neural Duel! 🧠⚔️\nAccetta la sfida qui e DOVEVINCERE! 👇\n${joinUrl}`;
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: title,
+                        text: text,
+                        url: joinUrl
+                    });
+                    showToast("Link sfida condiviso!");
+                } catch (err) {
+                    console.log('Share cancelled or failed', err);
+                }
+            } else {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showToast("Link copiato negli appunti! Incollalo dove vuoi.");
+                } catch (err) {
+                    showToast("Impossibile condividere automaticamente.");
+                }
+            }
         }
     };
 
@@ -302,7 +325,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                     {myInvites.length > 0 && (
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2 mb-2">
-                                                <Mail className="w-3 h-3 text-green-500 animate-pulse" />
+                                                <Send className="w-3 h-3 text-green-500 animate-pulse rotate-180" />
                                                 <span className="text-[10px] font-black text-green-500 uppercase tracking-[0.2em]">Inviti Ricevuti</span>
                                             </div>
                                             {myInvites.map(match => (
@@ -369,13 +392,13 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                             {/* Online Status Dot */}
                                                             <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${onlinePlayers.some(p => p.id === match.player1_id) ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500/50'}`}></div>
                                                         </div>
-                                                        <div>
-                                                            <div className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 group-hover:text-cyan-400 transition-colors">
-                                                                {player?.username || match.player1_id?.slice(0, 8) || 'Sconosciuto'}
-                                                                {isBusy && <span className="text-red-500 mx-1 text-[8px]">VS</span>}
-                                                                {isBusy && (match.player2?.username || match.player2_id?.slice(0, 8) || 'Sconosciuto')}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 group-hover:text-cyan-400 transition-colors truncate">
+                                                                <span className="truncate">{player?.username || match.player1_id?.slice(0, 8) || 'Sconosciuto'}</span>
+                                                                {isBusy && <span className="text-red-500 mx-1 text-[8px] shrink-0">VS</span>}
+                                                                {isBusy && <span className="truncate">{match.player2?.username || match.player2_id?.slice(0, 8) || 'Sconosciuto'}</span>}
                                                             </div>
-                                                            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">
+                                                            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-tight truncate">
                                                                 LVL {player?.max_level || 1} • {isBusy ? "In Sfida" : "Pronto a combattere"}
                                                             </div>
                                                         </div>
@@ -428,8 +451,8 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                         <div className="w-9 h-9 rounded-full bg-slate-800 border border-cyan-500/30 flex items-center justify-center">
                                                             <Eye className="text-cyan-500/50" size={16} />
                                                         </div>
-                                                        <div>
-                                                            <div className="text-xs font-bold text-slate-300 uppercase">{player.username}</div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-xs font-bold text-slate-300 uppercase truncate">{player.username}</div>
                                                             <span className="text-[8px] text-cyan-500/60 font-black uppercase tracking-tighter">OSSERVATORE</span>
                                                         </div>
                                                     </div>
@@ -492,32 +515,35 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                                 title={onlinePlayers.some(p => p.id === user.id) ? "Online nel Gioco" : "Offline"}
                                                             ></div>
                                                         </div>
-                                                        <div>
-                                                            <div className="text-white font-bold uppercase tracking-wider text-sm">{user.username}</div>
-                                                            <div className="text-[10px] text-slate-500 font-black uppercase">Lv. {user.max_level || 1} • {user.total_score || 0} Pts</div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-white font-bold uppercase tracking-wider text-sm truncate">{user.username}</div>
+                                                            <div className="text-[10px] text-slate-500 font-black uppercase truncate">Lv. {user.max_level || 1} • {user.total_score || 0} Pts</div>
                                                         </div>
                                                     </div>
-                                                    <div className="flex gap-2">
-                                                        {/* EMAIL BUTTON */}
-                                                        {user.email && (
-                                                            <button
-                                                                onClick={() => handleEmailInvite(user)}
-                                                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition-all active:scale-95"
-                                                                title="Invia Email di Avviso"
-                                                            >
-                                                                <Mail size={14} />
-                                                            </button>
-                                                        )}
+                                                    <div className="flex gap-2 shrink-0">
+                                                        {/* SHARE BUTTON (Replaces Email) */}
+                                                        <button
+                                                            onClick={() => handleShareInvite(user)}
+                                                            disabled={myHostedMatch !== null && myHostedMatch.player2_id !== user.id}
+                                                            className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all active:scale-95
+                                                                    ${(myHostedMatch !== null && myHostedMatch.player2_id !== user.id)
+                                                                    ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
+                                                                    : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/30 hover:text-white'}`}
+                                                            title="Condividi Link Sfida (WhatsApp, Telegram, etc.)"
+                                                        >
+                                                            <Share2 size={14} />
+                                                        </button>
 
                                                         <button
                                                             onClick={() => handleInvite(user)}
                                                             disabled={myHostedMatch !== null} // Disable if already hosting
-                                                            className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest border transition-all active:scale-95 flex items-center gap-2
+                                                            className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all active:scale-95
                                                                         ${myHostedMatch
                                                                     ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
-                                                                    : 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30 hover:border-green-500'}`}
+                                                                    : 'bg-green-500 text-white border-green-400 shadow-[0_0_10px_rgba(34,197,94,0.3)] hover:scale-105 hover:bg-green-400'}`}
+                                                            title={myHostedMatch ? "Sei già occupato" : "Invita a Giocare"}
                                                         >
-                                                            {myHostedMatch ? 'Occupato' : 'Invita'} <Send className="w-3 h-3" />
+                                                            <Send size={14} />
                                                         </button>
                                                     </div>
                                                 </div>
