@@ -794,7 +794,10 @@ const App: React.FC = () => {
       syncInterval = setInterval(async () => {
         const status = await matchService.verifyMatchStatus(activeMatch.id);
 
-        const isMatchGone = !status;
+        // SAFETY CHECK: If transient error, skip this cycle
+        if (status && status.status === 'ERROR') return;
+
+        const isMatchGone = status === null;
         const isCancelled = status && status.status === 'cancelled';
         const isFinished = status && status.status === 'finished';
 

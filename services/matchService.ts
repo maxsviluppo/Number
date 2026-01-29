@@ -400,6 +400,10 @@ export const matchService = {
     },
 
     // VERIFY MATCH STATUS (Fallback check)
+    // Returns:
+    // - Data object: Match exists
+    // - null: Match definitively missing (PGRST116)
+    // - { status: 'ERROR' }: Transient error, ignore this check
     async verifyMatchStatus(matchId: string) {
         const { data, error } = await (supabase as any)
             .from('matches')
@@ -407,7 +411,11 @@ export const matchService = {
             .eq('id', matchId)
             .single();
 
-        if (error) return null;
+        if (error) {
+            if (error.code === 'PGRST116') return null; // Row missing
+            console.warn("Sync Watchdog Transient Error:", error.message);
+            return { status: 'ERROR' };
+        }
         return data;
     }
 };
