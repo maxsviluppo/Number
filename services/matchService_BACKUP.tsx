@@ -86,35 +86,6 @@ export const matchService = {
         return data;
     },
 
-    // CREA SFIDA SU INVITO (Diretta)
-    async createInviteMatch(playerId: string, opponentId: string, seed: string, mode: 'standard' | 'blitz' | 'time_attack' = 'standard'): Promise<Match | null> {
-        await this.cleanupUserMatches(playerId);
-
-        const { data, error } = await (supabase as any)
-            .from('matches')
-            .insert([
-                {
-                    player1_id: playerId,
-                    player2_id: opponentId, // Set opponent immediately
-                    grid_seed: seed,
-                    mode: mode,
-                    status: 'invite_pending', // Special status
-                    target_score: mode === 'blitz' ? 3 : 5,
-                    p1_rounds: 0,
-                    p2_rounds: 0,
-                    current_round: 1
-                }
-            ])
-            .select()
-            .single();
-
-        if (error) {
-            console.error('CREATE INVITE MATCH ERROR:', error);
-            throw new Error("Impossibile creare l'invito. Riprova.");
-        }
-        return data;
-    },
-
     // Partecipa a una partita esistente
     async joinMatch(matchId: string, playerId: string): Promise<boolean> {
         // [IMPORTANT] Prima di unirci, puliamo le nostre vecchie sessioni
@@ -131,27 +102,6 @@ export const matchService = {
 
         if (error) {
             console.error('Error joining match:', error);
-            return false;
-        }
-        return true;
-    },
-
-    // Accetta un invito diretto
-    async acceptInvite(matchId: string, playerId: string): Promise<boolean> {
-        // [IMPORTANT] Prima di unirci, puliamo le nostre vecchie sessioni
-        await this.cleanupUserMatches(playerId);
-
-        const { error } = await (supabase as any)
-            .from('matches')
-            .update({
-                status: 'active'
-            })
-            .eq('id', matchId)
-            .eq('player2_id', playerId) // Security check: must be the invitee
-            .eq('status', 'invite_pending');
-
-        if (error) {
-            console.error('Error accepting invite:', error);
             return false;
         }
         return true;

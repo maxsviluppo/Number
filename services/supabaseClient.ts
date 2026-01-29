@@ -174,6 +174,28 @@ export const profileService = {
         return data;
     },
 
+    // SEARCH FOR USERS (Case Insensitive)
+    async searchUsers(query: string) {
+        let queryBuilder = supabase
+            .from('profiles')
+            .select('id, username, total_score, max_level, avatar_url');
+
+        if (query) {
+            queryBuilder = queryBuilder.ilike('username', `%${query}%`);
+        } else {
+            // If no query, return recently active users
+            queryBuilder = queryBuilder.order('updated_at', { ascending: false });
+        }
+
+        const { data, error } = await queryBuilder.limit(20);
+
+        if (error) {
+            console.error('Error searching users:', error);
+            return [];
+        }
+        return data || [];
+    },
+
     async updateProfile(profile: Partial<UserProfile> & { id: string }) {
         const { data, error } = await supabase
             .from('profiles')
