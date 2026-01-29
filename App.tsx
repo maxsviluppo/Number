@@ -1738,7 +1738,13 @@ const App: React.FC = () => {
                     </button>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <button onPointerDown={(e) => { e.stopPropagation(); generateGrid(gameState.level - 1); setGameState(p => ({ ...p, status: 'playing', streak: 0 })); }}
+                      <button onPointerDown={(e) => {
+                        e.stopPropagation();
+                        soundService.playUIClick();
+                        setShowVideo(false); // Safety check
+                        generateGrid(gameState.level); // Replay CURRENT level
+                        setGameState(p => ({ ...p, status: 'playing', streak: 0 }));
+                      }}
                         className="bg-slate-700 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-600">
                         Rigioca
                       </button>
