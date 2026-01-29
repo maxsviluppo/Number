@@ -48,6 +48,8 @@ const TUTORIAL_STEPS = [
   }
 ];
 
+const WIN_VIDEOS = ['/win29audio.mp4', '/win291.mp4', '/win292.mp4'];
+
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
@@ -110,6 +112,7 @@ const App: React.FC = () => {
 
   const [savedGame, setSavedGame] = useState<any>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [winVideoSrc, setWinVideoSrc] = useState(WIN_VIDEOS[0]);
 
   // NEW STATE FOR DUEL RECAP
   const [showDuelRecap, setShowDuelRecap] = useState(false);
@@ -1064,7 +1067,9 @@ const App: React.FC = () => {
       // Delay to show particles before video
       setTimeout(() => {
         setTriggerParticles(false);
-        // soundService.playSuccess(); // Handled by video audio now
+        // Randomize Video
+        const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
+        setWinVideoSrc(randomVid);
         setShowVideo(true);
       }, 1000);
     } else {
@@ -1471,12 +1476,12 @@ const App: React.FC = () => {
             setShowVideo(false);
           }}>
             <video
-              src="/win29audio.mp4"
+              src={winVideoSrc}
               className="w-full h-full object-cover"
               autoPlay
               playsInline
               onPlay={() => {
-                console.log("WINNER VIDEO STARTED: win29audio.mp4");
+                console.log("WINNER VIDEO STARTED:", winVideoSrc);
                 // Audio is now embedded in the video file
               }}
               onEnded={() => {
