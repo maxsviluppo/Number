@@ -1327,8 +1327,8 @@ const App: React.FC = () => {
           if (playPromise !== undefined) {
             playPromise.catch(e => console.warn("Mobile Autoplay restricted:", e));
           }
-          // Play separate audio track immediately
-          soundService.playExternalSound('winnermp4noaudio.mp3');
+          // Play preloaded buffer for instant sync and mobile compatibility
+          soundService.playWinner();
         }
 
         handleSuccess(result!);
