@@ -112,7 +112,22 @@ class SoundService {
   }
 
   playSelect() {
-    this.playFMSound(880, 440, 200, 0.15, 0.15, 'triangle');
+    if (this.isMuted) return;
+    // Feedback "cristallino" ultra-rapido per un feeling premium
+    if (this.clickBuffer && this.ctx && this.masterGain) {
+      const source = this.ctx.createBufferSource();
+      source.buffer = this.clickBuffer;
+      const selectGain = this.ctx.createGain();
+      // Volume basso e pitch molto alto per un "ping" leggero
+      selectGain.gain.setValueAtTime(0.07, this.ctx.currentTime);
+      source.connect(selectGain);
+      selectGain.connect(this.masterGain);
+      source.playbackRate.setValueAtTime(2.2, this.ctx.currentTime);
+      source.start(0);
+    } else {
+      // FM Sine sweep ultra-veloce (700Hz -> 1400Hz)
+      this.playFMSound(700, 1400, 20, 0.04, 0.08, 'sine');
+    }
   }
 
 

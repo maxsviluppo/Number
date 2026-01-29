@@ -1306,6 +1306,19 @@ const App: React.FC = () => {
     const matchedTarget = currentTargets.find(t => t.value === result && !t.completed);
 
     if (matchedTarget) {
+      // SYNC VIDEO TRIGGER FOR MOBILE - Call play() directly in user gesture stack
+      const isLastTarget = currentTargets.filter(t => !t.completed).length === 1;
+      const isTimeAttack = !!activeMatch && (activeMatch.mode === 'time_attack' || duelMode === 'time_attack');
+
+      if (isLastTarget && !isTimeAttack && videoRef.current) {
+        const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
+        setWinVideoSrc(randomVid);
+        setShowVideo(true);
+        setIsVideoVisible(true);
+        videoRef.current.src = randomVid;
+        videoRef.current.muted = false;
+        videoRef.current.play().catch(e => console.warn("Immediate Sync Play block:", e));
+      }
       handleSuccess(result!);
     } else {
       handleError();
@@ -1350,25 +1363,6 @@ const App: React.FC = () => {
     const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
     if (allDone) {
-      // 1. MOBILE SYNC UNLOCK: Start playing IMMEDIATELY before any 'await' or complex logic
-      const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
-      setWinVideoSrc(randomVid);
-      setShowVideo(true);
-      setIsVideoVisible(true); // Forza visibilità immediata per evitare blocco con pulsante
-
-      if (videoRef.current) {
-        // Prepare video
-        videoRef.current.muted = false;
-        videoRef.current.src = randomVid;
-        // Try playing
-        videoRef.current.play().catch(e => {
-          console.warn("Video play blocked by browser policy:", e);
-          // Non impostiamo più isVideoVisible(false) qui perché vogliamo che resti visibile 
-          // per permettere al video di avviarsi appena possibile o tramite l'autoPlay del componente
-        });
-      }
-
-
       setTriggerParticles(false);
       soundService.playExternalSound('Fine_partita_win.mp3');
 
