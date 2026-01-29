@@ -397,5 +397,17 @@ export const matchService = {
                 (payload: any) => callback(payload)
             )
             .subscribe();
+    },
+
+    // VERIFY MATCH STATUS (Fallback check)
+    async verifyMatchStatus(matchId: string) {
+        const { data, error } = await (supabase as any)
+            .from('matches')
+            .select('status, winner_id')
+            .eq('id', matchId)
+            .single();
+
+        if (error) return null;
+        return data;
     }
 };

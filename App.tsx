@@ -49,6 +49,8 @@ const TUTORIAL_STEPS = [
 ];
 
 const WIN_VIDEOS = ['/win29audio.mp4', '/win291.mp4', '/win292.mp4'];
+const LOSE_VIDEOS = ['/lose.mp4', '/lose2.mp4', '/lose2.mp4'];
+const SURRENDER_VIDEOS = ['/ritirata.mp4', '/ritirata1.mp4', '/ritirata2.mp4'];
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -114,6 +116,9 @@ const App: React.FC = () => {
   const [savedGame, setSavedGame] = useState<any>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [winVideoSrc, setWinVideoSrc] = useState(WIN_VIDEOS[0]);
+  const [loseVideoSrc, setLoseVideoSrc] = useState(LOSE_VIDEOS[0]);
+  const [surrenderVideoSrc, setSurrenderVideoSrc] = useState(SURRENDER_VIDEOS[0]);
+  const [showSurrenderVideo, setShowSurrenderVideo] = useState(false);
   const [isVideoVisible, setIsVideoVisible] = useState(false);
 
   // NEW STATE FOR DUEL RECAP
@@ -764,13 +769,57 @@ const App: React.FC = () => {
       const channel = matchService.subscribeToMatchEvents(activeMatch.id, (event, payload) => {
         if (event === 'match_abandoned' && payload.fromUserId !== currentUser?.id) {
           if (timerRef.current) window.clearInterval(timerRef.current);
-          setGameState(prev => ({ ...prev, status: 'idle' }));
-          showToast("Sfida interrotta: l'avversario ha abbandonato.");
+          setGameState(prev => ({ ...prev, status: 'idle' })); // Temporarily idle before recap
+
+          // SURRENDER FLOW:
+          // 1. Random Video
+          const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
+          setSurrenderVideoSrc(randomSurrender);
+          setShowSurrenderVideo(true);
+          setIsVideoVisible(true); // Forced Visible immediately
+
+          // 2. Add Points (Optional logic, using current score)
+          // The recap will show current score + bonus if handled there.
         }
       });
       return () => { if (channel) (supabase as any).removeChannel(channel); };
     }
   }, [activeMatch, currentUser]);
+
+  // SYNC WATCHDOG (Fallback for missed events)
+  useEffect(() => {
+    let syncInterval: NodeJS.Timeout;
+
+    if (activeMatch?.id && gameStateRef.current.status === 'playing') {
+      syncInterval = setInterval(async () => {
+        const status = await matchService.verifyMatchStatus(activeMatch.id);
+        if (status) {
+          // If match is finished/cancelled but we are still playing:
+          // Check if I am NOT the winner (if I was, normal flow finishes it)
+          // Or if it was simply cancelled/abandoned
+          if ((status.status === 'finished' && status.winner_id !== currentUser?.id) || status.status === 'cancelled') {
+
+            // If we haven't already processed a win/loss locally
+            if (gameStateRef.current.status === 'playing') {
+              console.warn("SYNC WATCHDOG: Match ended remotely. Forcing surrender flow.");
+              if (timerRef.current) window.clearInterval(timerRef.current);
+              setGameState(prev => ({ ...prev, status: 'idle' }));
+
+              // Trigger Surrender Flow
+              const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
+              setSurrenderVideoSrc(randomSurrender);
+              setShowSurrenderVideo(true);
+              setIsVideoVisible(true);
+            }
+          }
+        }
+      }, 3000); // Check every 3 seconds
+    }
+
+    return () => {
+      if (syncInterval) clearInterval(syncInterval);
+    };
+  }, [activeMatch, currentUser, gameState.status]);
 
 
   const startGame = async (startLevel: number = 1) => {
@@ -1246,13 +1295,12 @@ const App: React.FC = () => {
         // Exponential fade out formula: v = start * (1 - t)^2  (or similar)
         // Simple linear interpolation is often okay, but let's try a softer curve
         const progress = currentStep / steps; // 0.0 to 1.0
-        const newVolume = startVolume * (1 - progress);
+        // Use quadratic curve for faster drop
+        const newVolume = startVolume * (1 - progress) * (1 - progress);
 
         if (newVolume > 0.01) {
           vid.volume = newVolume;
         } else {
-          vid.volume = 0;
-          clearInterval(fadeInterval);
         }
       }, intervalTime);
     }
@@ -1265,6 +1313,67 @@ const App: React.FC = () => {
         status: 'level-complete'
       }));
     }, 2000);
+  };
+
+  const handleLostVideoClose = () => {
+    // 1. Visual Fade Out
+    setIsVideoVisible(false);
+
+    // 2. Audio Fade Out
+    if (videoRef.current) {
+      const vid = videoRef.current;
+      const startVolume = vid.volume;
+      const fadeDuration = 800;
+      const intervalTime = 40;
+      const steps = fadeDuration / intervalTime;
+      let currentStep = 0;
+
+      const fadeInterval = setInterval(() => {
+        currentStep++;
+        const progress = currentStep / steps;
+        const newVolume = startVolume * (1 - progress) * (1 - progress);
+
+        if (newVolume > 0.01) {
+          vid.volume = newVolume;
+        } else {
+          vid.volume = 0;
+          clearInterval(fadeInterval);
+        }
+      }, intervalTime);
+    }
+
+    // 3. Unmount after fade
+    setTimeout(() => {
+      setShowLostVideo(false);
+    }, 800);
+  };
+
+  const handleSurrenderVideoClose = () => {
+    setIsVideoVisible(false);
+    if (videoRef.current) {
+      const vid = videoRef.current;
+      const startVolume = vid.volume;
+      const fadeDuration = 800;
+      const intervalTime = 40;
+      const steps = fadeDuration / intervalTime;
+      let currentStep = 0;
+
+      const fadeInterval = setInterval(() => {
+        currentStep++;
+        const progress = currentStep / steps;
+        const newVolume = startVolume * (1 - progress) * (1 - progress);
+        if (newVolume > 0.01) vid.volume = newVolume;
+        else {
+          vid.volume = 0;
+          clearInterval(fadeInterval);
+        }
+      }, intervalTime);
+    }
+
+    setTimeout(() => {
+      setShowSurrenderVideo(false);
+      setGameState(prev => ({ ...prev, status: 'opponent-surrendered' })); // Custom Status
+    }, 800);
   };
 
   return (
@@ -1288,20 +1397,66 @@ const App: React.FC = () => {
 
         {/* WIN VIDEO OVERLAY REMOVED (Duplicate/Legacy) */}
 
-        {/* LOST VIDEO OVERLAY */}
-        {showLostVideo && !showVideo && (
-          <div className="absolute inset-0 z-[5000] bg-black flex items-center justify-center animate-fadeIn" onPointerDown={(e) => e.stopPropagation()}>
+        {/* LOST Game Video Overlay - UPDATED */}
+        {showLostVideo && (
+          <div className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out ${isVideoVisible ? 'opacity-100' : 'opacity-100'}`} onPointerDown={() => {
+            handleLostVideoClose();
+          }}>
             <video
-              src="/lost.mp4"
+              ref={videoRef}
+              src={loseVideoSrc}
+              className="w-full h-full object-cover"
               autoPlay
               playsInline
-              muted
-              loop={false}
-              onEnded={() => {
-                setShowLostVideo(false);
+              onPlay={() => {
+                if (videoRef.current) videoRef.current.volume = 0.7; // Start quieter
               }}
-              className="w-full h-full object-cover"
+              onEnded={() => {
+                handleLostVideoClose();
+              }}
             />
+            <div className="absolute inset-0 bg-red-900/10 mix-blend-overlay pointer-events-none"></div>
+
+            <button
+              className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                handleLostVideoClose();
+              }}>
+              <span>SKIP</span>
+              <FastForward size={14} className="text-red-500" />
+            </button>
+          </div>
+        )}
+
+        {/* SURRENDER Video Overlay */}
+        {showSurrenderVideo && (
+          <div className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out ${isVideoVisible ? 'opacity-100' : 'opacity-100'}`} onPointerDown={() => {
+            handleSurrenderVideoClose();
+          }}>
+            <video
+              ref={videoRef}
+              src={surrenderVideoSrc}
+              className="w-full h-full object-cover"
+              autoPlay
+              playsInline
+              onPlay={() => {
+                if (videoRef.current) videoRef.current.volume = 0.7;
+              }}
+              onEnded={() => {
+                handleSurrenderVideoClose();
+              }}
+            />
+            <div className="absolute inset-0 bg-blue-900/10 mix-blend-overlay pointer-events-none"></div>
+            <button
+              className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                handleSurrenderVideoClose();
+              }}>
+              <span>SKIP</span>
+              <FastForward size={14} className="text-blue-500" />
+            </button>
           </div>
         )}
 
@@ -1532,6 +1687,7 @@ const App: React.FC = () => {
               autoPlay
               playsInline
               onPlay={() => {
+                if (videoRef.current) videoRef.current.volume = 0.7; // Start quieter
                 console.log("WINNER VIDEO STARTED:", winVideoSrc);
                 // Audio is now embedded in the video file
               }}
@@ -1711,40 +1867,52 @@ const App: React.FC = () => {
               )}
 
               {gameState.status === 'game-over' && (
-                <div className="glass-panel p-8 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md mt-12 relative overflow-hidden border-[3px] border-red-500/30 shadow-[0_0_50px_rgba(220,38,38,0.2)]">
+                <div className="glass-panel p-6 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-sm mt-12 relative overflow-hidden border-[3px] border-[#FF8800]/30 shadow-[0_0_50px_rgba(255,136,0,0.2)]">
                   {/* Background Texture */}
                   <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
 
-                  <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-2 animate-pulse" />
-                  <h2 className="text-4xl font-black font-orbitron mb-1 text-red-500 tracking-wider">GAME OVER</h2>
-                  <div className="text-xs font-bold text-slate-400 mb-6 uppercase tracking-[0.2em]">Livello Non Superato</div>
-
-                  <div className="bg-slate-900/50 p-6 rounded-2xl mb-6 border border-white/10 relative">
-                    <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest absolute top-3 left-0 right-0">Punteggio Finale</span>
-                    <div className="text-5xl font-black font-orbitron text-white glitch-text mt-4" data-text={gameState.totalScore}>{gameState.totalScore}</div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mb-8">
-                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col items-center">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Livello</span>
-                      <span className="text-xl font-orbitron font-black text-white">{gameState.level}</span>
-                    </div>
-                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col items-center">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">QI Stimato</span>
-                      <span className="text-xl font-orbitron font-black text-cyan-400">{Math.round(gameState.estimatedIQ)}</span>
-                    </div>
-                  </div>
+                  <AlertTriangle className="w-12 h-12 text-[#FF8800] mx-auto mb-2 animate-pulse" />
+                  <h2 className="text-3xl font-black font-orbitron mb-1 text-[#FF8800] tracking-wider">HAI PERSO</h2>
+                  <div className="text-[10px] font-bold text-slate-400 mb-6 uppercase tracking-[0.2em]">Livello Non Superato</div>
 
                   <div className="space-y-3 relative z-10">
                     <button onPointerDown={(e) => { e.stopPropagation(); startGame(); }}
-                      className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border-2 border-slate-200">
-                      RIGIOCA
+                      className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all border-2 border-slate-200">
+                      RIGIOCA LIVELLO {gameState.level}
                     </button>
                     <button onPointerDown={goToHome}
-                      className="w-full bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm border border-slate-700 active:scale-95 transition-all hover:bg-slate-700 hover:text-white">
+                      className="w-full bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border border-slate-700 active:scale-95 transition-all hover:bg-slate-700 hover:text-white">
                       TORNA ALLA HOME
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* SURRENDER RECAP SCREEN */}
+              {gameState.status === 'opponent-surrendered' && (
+                <div className="glass-panel p-8 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-sm mt-12 relative overflow-hidden border-[3px] border-cyan-500 shadow-[0_0_60px_rgba(6,182,212,0.4)]">
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+
+                  <Trophy className="w-16 h-16 text-cyan-400 mx-auto mb-4 animate-[bounce_2s_infinite]" />
+                  <h2 className="text-3xl font-black font-orbitron mb-2 text-cyan-400 tracking-wider drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]">HAI VINTO</h2>
+                  <div className="text-xs font-bold text-white mb-6 uppercase tracking-[0.1em] bg-cyan-500/10 py-1 rounded">Vittoria per Ritiro</div>
+
+                  <div className="bg-slate-900/60 p-5 rounded-2xl mb-6 border border-cyan-500/20">
+                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block mb-2">Punteggio Ottenuto</span>
+                    <div className="text-4xl font-black font-orbitron text-white text-shadow-neon-cyan">
+                      +{gameState.score + (duelMode === 'blitz' ? 50 : 100)} {/* Bonus for win */}
+                    </div>
+                    <span className="text-[8px] text-slate-500 uppercase font-bold mt-1 block">Accumulati nel Profilo Globale</span>
+                  </div>
+
+                  <button onPointerDown={(e) => {
+                    e.stopPropagation();
+                    setActiveModal('duel_selection');
+                    setGameState(prev => ({ ...prev, status: 'idle' }));
+                  }}
+                    className="w-full bg-cyan-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border border-cyan-400 hover:bg-cyan-500">
+                    TORNA ALLA LOBBY
+                  </button>
                 </div>
               )}
 
