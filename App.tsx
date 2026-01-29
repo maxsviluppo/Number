@@ -1741,9 +1741,12 @@ const App: React.FC = () => {
                       <button onPointerDown={(e) => {
                         e.stopPropagation();
                         soundService.playUIClick();
-                        setShowVideo(false); // Safety check
-                        generateGrid(gameState.level); // Replay CURRENT level
-                        setGameState(p => ({ ...p, status: 'playing', streak: 0 }));
+                        setShowVideo(false);
+                        setLevelBuffer([]); // FORCE BUFFER RESET
+                        setTimeout(() => {
+                          generateGrid(gameState.level);
+                          setGameState(p => ({ ...p, status: 'playing', streak: 0, levelTargets: [] }));
+                        }, 50);
                       }}
                         className="bg-slate-700 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-600">
                         Rigioca
