@@ -607,11 +607,19 @@ const App: React.FC = () => {
       // STANDARD GAME OVER (Single Player)
       if (!activeMatch?.isDuel) {
         soundService.playExternalSound('lost.mp3');
-        setShowLostVideo(true);
         setGameState(prev => ({ ...prev, status: 'game-over' }));
         if (currentUser) {
           profileService.clearSavedGame(currentUser.id);
           loadProfile(currentUser.id);
+        }
+
+        // VIDEO UNLOCK
+        setShowLostVideo(true);
+        setIsVideoVisible(false);
+        if (videoRef.current) {
+          videoRef.current.src = loseVideoSrc;
+          videoRef.current.muted = false;
+          videoRef.current.play().catch(e => console.warn("Loss video blocked:", e));
         }
       }
     }
@@ -1452,7 +1460,7 @@ const App: React.FC = () => {
       setShowVideo(true);
       setIsVideoVisible(false);
 
-      // MOBILE SYNC UNLOCK: Play immediately in the interaction stack
+      // MOBILE SYNC UNLOCK: Start playing immediately during the finishing click event
       if (videoRef.current) {
         videoRef.current.src = randomVid;
         // Ensure muted is false before playing to allow audio
@@ -1460,10 +1468,7 @@ const App: React.FC = () => {
         videoRef.current.play().catch(e => console.warn("Video play blocked:", e));
       }
 
-      setTimeout(() => {
-        setTriggerParticles(false);
-        setIsVideoVisible(true);
-      }, 1000);
+      setTriggerParticles(false);
     } else {
       // Level Continues
       setGameState(prev => ({
@@ -1809,8 +1814,10 @@ const App: React.FC = () => {
             src={showVideo ? winVideoSrc : (showLostVideo ? loseVideoSrc : (showSurrenderVideo ? surrenderVideoSrc : ''))}
             className="w-full h-full object-cover"
             playsInline
+            autoPlay
             onPlay={() => {
               if (videoRef.current) videoRef.current.volume = 0.7;
+              setIsVideoVisible(true); // ONLY SHOW WHEN IT ACTUALLY PLAYS
             }}
             onEnded={() => {
               if (showVideo) handleVideoClose();
