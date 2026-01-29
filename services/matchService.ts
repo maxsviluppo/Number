@@ -373,8 +373,7 @@ export const matchService = {
             .from('matches')
             .update({
                 status: 'finished',
-                winner_id: winnerId,
-                finished_at: new Date().toISOString()
+                winner_id: winnerId
             })
             .eq('id', matchId);
 
