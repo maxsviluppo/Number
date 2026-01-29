@@ -48,7 +48,7 @@ const TUTORIAL_STEPS = [
   }
 ];
 
-const WIN_VIDEOS = ['/win29audio.mp4'];
+const WIN_VIDEOS = ['/win29audio.mp4', '/win291.mp4', '/win292.mp4'];
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -99,6 +99,7 @@ const App: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [logoAnim, setLogoAnim] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Logo Animation Effect
   useEffect(() => {
@@ -113,6 +114,7 @@ const App: React.FC = () => {
   const [savedGame, setSavedGame] = useState<any>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [winVideoSrc, setWinVideoSrc] = useState(WIN_VIDEOS[0]);
+  const [isVideoVisible, setIsVideoVisible] = useState(false);
 
   // NEW STATE FOR DUEL RECAP
   const [showDuelRecap, setShowDuelRecap] = useState(false);
@@ -1065,12 +1067,20 @@ const App: React.FC = () => {
       }
 
       // Delay to show particles before video
+      // SHOW WIN VIDEO:
+      // Strategy for Mobile Audio:
+      // 1. Mount Video IMMEDIATELY (in this event loop) to capture user gesture for autoplay.
+      // 2. Start it invisible (opacity 0).
+      // 3. Fade in after particles (1s).
+      const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
+      setWinVideoSrc(randomVid);
+      setShowVideo(true);
+      setIsVideoVisible(false);
+
+      // Delay visual appearance
       setTimeout(() => {
         setTriggerParticles(false);
-        // Randomize Video
-        const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
-        setWinVideoSrc(randomVid);
-        setShowVideo(true);
+        setIsVideoVisible(true);
       }, 1000);
     } else {
       // Level Continues (NOT all targets completed yet)
@@ -1216,6 +1226,40 @@ const App: React.FC = () => {
 
 
 
+
+
+  const handleVideoClose = () => {
+    // 1. Visual Fade Out
+    setIsVideoVisible(false);
+
+    // 2. Audio Fade Out
+    if (videoRef.current) {
+      const vid = videoRef.current;
+      const startVolume = vid.volume;
+      const fadeDuration = 1500; // 1.5s
+      const steps = 30;
+      const stepTime = fadeDuration / steps;
+      const volStep = startVolume / steps;
+
+      const fadeInterval = setInterval(() => {
+        if (vid.volume > volStep) {
+          vid.volume -= volStep;
+        } else {
+          vid.volume = 0;
+          clearInterval(fadeInterval);
+        }
+      }, stepTime);
+    }
+
+    // 3. Unmount after fade
+    setTimeout(() => {
+      setShowVideo(false);
+      setGameState(prev => ({
+        ...prev,
+        status: 'level-complete'
+      }));
+    }, 1500);
+  };
 
   return (
     <>
@@ -1471,11 +1515,12 @@ const App: React.FC = () => {
         )}
 
         {showVideo && (
-          <div className="fixed inset-0 z-[2000] bg-black flex items-center justify-center animate-fadeIn" onPointerDown={() => {
-            if (winAudioRef.current) { winAudioRef.current.pause(); winAudioRef.current.currentTime = 0; }
-            setShowVideo(false);
+          <div className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[1500ms] ease-out ${isVideoVisible ? 'opacity-100' : 'opacity-0'}`} onPointerDown={() => {
+            // User click to dismiss -> Trigger fade out
+            handleVideoClose();
           }}>
             <video
+              ref={videoRef}
               src={winVideoSrc}
               className="w-full h-full object-cover"
               autoPlay
@@ -1485,12 +1530,8 @@ const App: React.FC = () => {
                 // Audio is now embedded in the video file
               }}
               onEnded={() => {
-                if (winAudioRef.current) { winAudioRef.current.pause(); winAudioRef.current.currentTime = 0; }
-                setShowVideo(false);
-                setGameState(prev => ({
-                  ...prev,
-                  status: 'level-complete'
-                }));
+                // Video ended naturally -> Trigger fade out
+                handleVideoClose();
               }}
             />
 
@@ -1498,8 +1539,7 @@ const App: React.FC = () => {
               className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
               onPointerDown={(e) => {
                 e.stopPropagation();
-                setShowVideo(false);
-                setGameState(prev => ({ ...prev, status: 'level-complete' }));
+                handleVideoClose();
               }}>
               <span>SKIP</span>
               <FastForward size={14} className="text-[#FF8800]" />
