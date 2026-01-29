@@ -316,6 +316,32 @@ export const matchService = {
         if (error) console.error('Error resetting round status:', error);
     },
 
+    // ABBANDONA PARTITA (Gestione Ritiro)
+    async abandonMatch(matchId: string, playerId: string) {
+        // 1. Notify Opponent immediately (Fast path)
+        await this.sendAbandonment(matchId, playerId);
+
+        // 2. Update DB status
+        // If pending, just delete. If active, mark cancelled/finished.
+        const { data: match } = await (supabase as any).from('matches').select('status, player1_id, player2_id').eq('id', matchId).single();
+
+        if (match) {
+            if (match.status === 'pending') {
+                await this.cancelMatch(matchId);
+            } else if (match.status === 'active') {
+                const winnerId = (match.player1_id === playerId) ? match.player2_id : match.player1_id;
+                await (supabase as any)
+                    .from('matches')
+                    .update({
+                        status: 'cancelled',
+                        winner_id: winnerId, // Declare the other player as winner
+                        finished_at: new Date().toISOString()
+                    })
+                    .eq('id', matchId);
+            }
+        }
+    },
+
     // --- MATCH SIGNALING (BROADCAST) ---
     subscribeToMatchEvents(matchId: string, onEvent: (event: string, payload: any) => void) {
         const channel = (supabase as any).channel(`match_${matchId}_events`);
