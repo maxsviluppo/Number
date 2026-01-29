@@ -1235,20 +1235,26 @@ const App: React.FC = () => {
     // 2. Audio Fade Out
     if (videoRef.current) {
       const vid = videoRef.current;
-      const startVolume = vid.volume;
-      const fadeDuration = 1500; // 1.5s
-      const steps = 30;
-      const stepTime = fadeDuration / steps;
-      const volStep = startVolume / steps;
+      const startVolume = vid.volume; // usually 1.0
+      const fadeDuration = 2000;
+      const intervalTime = 50; // run every 50ms
+      const steps = fadeDuration / intervalTime; // 40 steps
+      let currentStep = 0;
 
       const fadeInterval = setInterval(() => {
-        if (vid.volume > volStep) {
-          vid.volume -= volStep;
+        currentStep++;
+        // Exponential fade out formula: v = start * (1 - t)^2  (or similar)
+        // Simple linear interpolation is often okay, but let's try a softer curve
+        const progress = currentStep / steps; // 0.0 to 1.0
+        const newVolume = startVolume * (1 - progress);
+
+        if (newVolume > 0.01) {
+          vid.volume = newVolume;
         } else {
           vid.volume = 0;
           clearInterval(fadeInterval);
         }
-      }, stepTime);
+      }, intervalTime);
     }
 
     // 3. Unmount after fade
@@ -1258,7 +1264,7 @@ const App: React.FC = () => {
         ...prev,
         status: 'level-complete'
       }));
-    }, 1500);
+    }, 2000);
   };
 
   return (
@@ -1515,7 +1521,7 @@ const App: React.FC = () => {
         )}
 
         {showVideo && (
-          <div className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[1500ms] ease-out ${isVideoVisible ? 'opacity-100' : 'opacity-0'}`} onPointerDown={() => {
+          <div className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[2000ms] ease-out ${isVideoVisible ? 'opacity-100' : 'opacity-0'}`} onPointerDown={() => {
             // User click to dismiss -> Trigger fade out
             handleVideoClose();
           }}>
@@ -1705,29 +1711,33 @@ const App: React.FC = () => {
               )}
 
               {gameState.status === 'game-over' && (
-                <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-md">
-                  <h2 className="text-4xl font-black font-orbitron mb-2 text-red-500">FINE</h2>
-                  <div className="text-xl font-bold text-white mb-6 uppercase tracking-wider">Livello Non Superato</div>
+                <div className="glass-panel p-8 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md mt-12 relative overflow-hidden border-[3px] border-red-500/30 shadow-[0_0_50px_rgba(220,38,38,0.2)]">
+                  {/* Background Texture */}
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
 
-                  <div className="mb-8">
-                    <span className="text-[10px] text-slate-500 uppercase font-black">Punteggio Finale</span>
-                    <div className="text-6xl font-black font-orbitron text-white glitch-text" data-text={gameState.totalScore}>{gameState.totalScore}</div>
+                  <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-2 animate-pulse" />
+                  <h2 className="text-4xl font-black font-orbitron mb-1 text-red-500 tracking-wider">GAME OVER</h2>
+                  <div className="text-xs font-bold text-slate-400 mb-6 uppercase tracking-[0.2em]">Livello Non Superato</div>
+
+                  <div className="bg-slate-900/50 p-6 rounded-2xl mb-6 border border-white/10 relative">
+                    <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest absolute top-3 left-0 right-0">Punteggio Finale</span>
+                    <div className="text-5xl font-black font-orbitron text-white glitch-text mt-4" data-text={gameState.totalScore}>{gameState.totalScore}</div>
                   </div>
 
-                  <div className="bg-white/5 p-4 rounded-2xl mb-8 flex flex-col gap-2">
-                    <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                      <span className="text-xs font-bold text-slate-300">Livello Raggiunto</span>
-                      <span className="text-lg font-orbitron font-black text-white">{gameState.level}</span>
+                  <div className="grid grid-cols-2 gap-3 mb-8">
+                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col items-center">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Livello</span>
+                      <span className="text-xl font-orbitron font-black text-white">{gameState.level}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-slate-300">QI Stimato</span>
-                      <span className="text-lg font-orbitron font-black text-cyan-400">{Math.round(gameState.estimatedIQ)}</span>
+                    <div className="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col items-center">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">QI Stimato</span>
+                      <span className="text-xl font-orbitron font-black text-cyan-400">{Math.round(gameState.estimatedIQ)}</span>
                     </div>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-3 relative z-10">
                     <button onPointerDown={(e) => { e.stopPropagation(); startGame(); }}
-                      className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all">
+                      className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border-2 border-slate-200">
                       RIGIOCA
                     </button>
                     <button onPointerDown={goToHome}
@@ -1739,63 +1749,70 @@ const App: React.FC = () => {
               )}
 
               {gameState.status === 'level-complete' && (
-                <div className="glass-panel p-8 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-md">
-                  <div className="flex justify-center items-center gap-4 mb-6">
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] uppercase font-black text-slate-400">Livello</span>
-                      <span className="text-3xl font-black font-orbitron text-white">{gameState.level}</span>
-                    </div>
-                    <ChevronRight className="w-8 h-8 text-[#FF8800] animate-pulse" />
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] uppercase font-black text-[#FF8800]">Prossimo</span>
-                      <span className="text-4xl font-black font-orbitron text-[#FF8800]">{gameState.level + 1}</span>
-                    </div>
-                  </div>
+                <div className="glass-panel p-8 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md mt-12 relative overflow-hidden border-[3px] border-[#FF8800]/50 shadow-[0_0_60px_rgba(255,136,0,0.3)]">
+                  {/* Background Texture */}
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
 
-                  <div className="bg-white/5 p-4 rounded-2xl mb-6 flex flex-col gap-2">
-                    <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                      <span className="text-xs font-bold text-slate-300">Punti Ottenuti</span>
-                      {/* Calcolo approssimativo o reale se salvato nello stato precedente */}
-                      <span className="text-lg font-orbitron font-black text-[#FF8800] animate-pulse">
-                        {/* Display approximated points earned this level */}
-                        +{gameState.score > 0 ? (gameState.timeLeft * 2) + 50 + (10 * 5) : '...'}
-                      </span>
+                  <div className="relative z-10">
+                    <div className="flex justify-center items-center gap-6 mb-6">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Livello</span>
+                        <span className="text-3xl font-black font-orbitron text-white">{gameState.level}</span>
+                      </div>
+                      <ChevronRight className="w-8 h-8 text-[#FF8800] animate-pulse" strokeWidth={3} />
+                      <div className="flex flex-col items-center">
+                        <span className="text-[9px] uppercase font-black text-[#FF8800] tracking-wider">Prossimo</span>
+                        <span className="text-4xl font-black font-orbitron text-[#FF8800] drop-shadow-[0_0_10px_rgba(255,136,0,0.5)]">{gameState.level + 1}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                      <span className="text-xs font-bold text-slate-300">Punteggio Totale</span>
-                      <span className="text-lg font-orbitron font-black text-white">{gameState.totalScore}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-green-400">Tempo Residuo</span>
-                      <span className="text-lg font-orbitron font-black text-green-400">{gameState.timeLeft}s</span>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-white/10 flex justify-between items-center bg-green-500/10 p-2 rounded-lg">
-                      <span className="text-xs font-black uppercase tracking-wider text-green-300">Tempo Totale</span>
-                      <span className="text-xl font-orbitron font-black text-white">{gameState.timeLeft + 60}s</span>
-                    </div>
-                  </div>
 
-                  <div className="space-y-3">
-                    <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }}
-                      className="w-full bg-[#FF8800] text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 border-2 border-white">
-                      <Play className="w-5 h-5 fill-current" />
-                      Prossimo Livello
-                    </button>
+                    <div className="bg-slate-900/50 p-5 rounded-2xl mb-6 border border-white/10 space-y-3">
+                      <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Punti Livello</span>
+                        <span className="text-lg font-orbitron font-black text-[#FF8800] animate-pulse">
+                          +{gameState.score > 0 ? (gameState.timeLeft * 2) + 50 + (10 * 5) : '...'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Punteggio Totale</span>
+                        <span className="text-lg font-orbitron font-black text-white">{gameState.totalScore}</span>
+                      </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <button onPointerDown={(e) => { e.stopPropagation(); startGame(gameState.level); }}
-                        className="bg-slate-700 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-600">
-                        Rigioca
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div className="bg-green-500/10 rounded-lg p-2 flex flex-col items-center">
+                          <span className="text-[8px] font-black uppercase text-green-400 tracking-wider">Residuo</span>
+                          <span className="text-sm font-orbitron font-black text-green-300">{gameState.timeLeft}s</span>
+                        </div>
+                        <div className="bg-green-500/20 rounded-lg p-2 flex flex-col items-center border border-green-500/30">
+                          <span className="text-[8px] font-black uppercase text-green-300 tracking-wider">Totale</span>
+                          <span className="text-sm font-orbitron font-black text-white">{gameState.timeLeft + 60}s</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }}
+                        className="w-full bg-gradient-to-r from-[#FF8800] to-[#FF5500] text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-lg shadow-[0_8px_20px_rgba(255,136,0,0.4)] active:scale-95 transition-all flex items-center justify-center gap-2 border-[3px] border-white group relative overflow-hidden">
+                        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                        <Play className="w-5 h-5 fill-current" />
+                        <span className="relative z-10">Prossimo Livello</span>
                       </button>
-                      <button onPointerDown={(e) => { e.stopPropagation(); /* Save logic here if needed, currently valid */ goToHome(e); }}
-                        className="bg-slate-700 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-600">
-                        Home
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <button onPointerDown={(e) => { e.stopPropagation(); startGame(gameState.level); }}
+                          className="bg-slate-800 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-700 hover:text-white hover:bg-slate-700">
+                          Rigioca
+                        </button>
+                        <button onPointerDown={(e) => { e.stopPropagation(); goToHome(e); }}
+                          className="bg-slate-800 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-700 hover:text-white hover:bg-slate-700">
+                          Home
+                        </button>
+                      </div>
+
+                      <button className="text-[9px] text-cyan-500/40 uppercase font-black tracking-[0.2em] hover:text-cyan-400 transition-colors pt-1 animate-pulse">
+                        Salvataggio Automatico Attivo
                       </button>
                     </div>
-
-                    <button className="text-[10px] text-cyan-500/50 uppercase font-black tracking-widest hover:text-cyan-400 transition-colors pt-2">
-                      Salvataggio Automatico Attivo
-                    </button>
                   </div>
                 </div>
               )}
