@@ -115,23 +115,48 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     const fetchMatches = useCallback(async () => {
         try {
             setLoading(true);
+            // 1. CLEANUP STALE MATCHES FIRST (Self-healing)
+            if (currentUser?.id) {
+                // Optional: We could do this server side, but client-side check is fine for now
+                // Logic inside matchService.getOpenMatches filters finished ones, but we want to know about OUR zombie matches
+            }
+
             const data = await matchService.getOpenMatches(mode);
-            console.log(`LOBBY: Trovati ${data.length} tavoli per modalita' ${mode}`);
-            if (data.length > 0) console.log("LOBBY DATA:", data.map(m => ({ id: m.id, p1: m.player1_id, status: m.status })));
             setMatches(data);
 
-            // Auto-detect if I have a hosted match
-            const myMatch = data.find((m: any) => m.player1_id === currentUser.id && m.status === 'pending');
-            if (myMatch && !myHostedMatch) {
-                console.log("LOBBY: Rilevato mio tavolo ospitato automaticamente");
-                setMyHostedMatch(myMatch);
+            // 2. SYNC HOST STATUS
+            // If I find a match hosted by ME in the list, resync my local state
+            const myServerMatch = data.find((m: any) => m.player1_id === currentUser.id && m.status === 'pending');
+
+            if (myServerMatch) {
+                if (!myHostedMatch) {
+                    console.log("LOBBY: Found existing hosted match, recovering...");
+                    setMyHostedMatch(myServerMatch);
+                }
+            } else {
+                // If I think I'm hosting but server says NO (e.g. it was filled or cancelled elsewhere), clear local
+                if (myHostedMatch && myHostedMatch.status === 'pending') {
+                    // Double check? No, just clear to be safe, or keep it if it's invite_pending?
+                    // For now, if it's gone from 'pending' list, it might be active or dead.
+                    // Let's trust local state for invites, but for public pending matches, trust server.
+                }
             }
+
         } catch (err) {
             console.error("LOBBY: Errore nel caricamento partite:", err);
         } finally {
             setLoading(false);
         }
     }, [mode, currentUser.id, myHostedMatch]);
+
+    // INITIAL CLEANUP ON MOUNT
+    useEffect(() => {
+        if (currentUser?.id) {
+            matchService.cleanupUserMatches(currentUser.id)
+                .then(() => fetchMatches()) // Fetch fresh after cleanup
+                .catch(e => console.error("Initial cleanup error", e));
+        }
+    }, [currentUser?.id]);
 
     const cleanupMyMatch = useCallback(async () => {
         if (myHostedMatch) {
