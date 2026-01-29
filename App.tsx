@@ -1318,10 +1318,17 @@ const App: React.FC = () => {
     // RACE CONDITION FIX: Do not process win if game is already over
     if (gameStateRef.current.status !== 'playing') return;
 
+    soundService.playSuccess(); // Riproduci suono combinazione trovata
+
     // NEW SCORING: ARCADE SCALABLE
     const basePoints = 10;
     const streakBonus = gameStateRef.current.streak * 1;
     const currentPoints = basePoints + streakBonus;
+
+    // DEFINISCI COSTANTI PER LINT FIX
+    const finalTimeBonus = Math.floor(gameStateRef.current.timeLeft * 1.5);
+    const finalVictoryBonus = 50;
+    const totalPointsToAdd = currentPoints + finalTimeBonus + finalVictoryBonus;
 
     setScoreAnimKey(k => k + 1);
 
@@ -1347,21 +1354,20 @@ const App: React.FC = () => {
       const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
       setWinVideoSrc(randomVid);
       setShowVideo(true);
-      setIsVideoVisible(false);
+      setIsVideoVisible(true); // Forza visibilità immediata per evitare blocco con pulsante
 
       if (videoRef.current) {
         // Prepare video
         videoRef.current.muted = false;
         videoRef.current.src = randomVid;
         // Try playing
-        const playPromise = videoRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(e => {
-            console.warn("Video play blocked by browser policy:", e);
-            setIsVideoVisible(false);
-          });
-        }
+        videoRef.current.play().catch(e => {
+          console.warn("Video play blocked by browser policy:", e);
+          // Non impostiamo più isVideoVisible(false) qui perché vogliamo che resti visibile 
+          // per permettere al video di avviarsi appena possibile o tramite l'autoPlay del componente
+        });
       }
+
 
       setTriggerParticles(false);
       soundService.playExternalSound('Fine_partita_win.mp3');
