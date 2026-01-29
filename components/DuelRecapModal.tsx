@@ -59,10 +59,9 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
         await matchService.setPlayerReady(matchData.id, amIP1, true);
     };
 
-    const isAbandonment = matchData?.status === 'finished' &&
+    const isAbandonment = (matchData?.status === 'finished' || matchData?.status === 'cancelled') &&
         matchData?.winner_id &&
-        !isFinal &&
-        (myRounds < 3 && oppRounds < 3);
+        (!isFinal || matchData?.status === 'cancelled');
 
     return (
         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 modal-overlay bg-black/95 backdrop-blur-xl animate-fadeIn">

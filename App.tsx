@@ -904,6 +904,13 @@ const App: React.FC = () => {
           setActiveMatch(prev => prev ? { ...prev, isP1: amIP1 } : null);
         }
 
+        // TIME ATTACK SYNC START
+        // If match becomes ACTIVE and it's Time Attack, start immediately if not playing
+        if (newData.status === 'active' && newData.mode === 'time_attack' && gameStateRef.current.status !== 'playing') {
+          console.log("⚡ Time Attack START SYNC");
+          startGame(1); // Force start
+        }
+
         if (newData.p1_ready && newData.p2_ready && showDuelRecap && newData.status !== 'finished') {
           handleDuelRoundStart(newData);
         }
