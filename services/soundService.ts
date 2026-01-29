@@ -72,9 +72,9 @@ class SoundService {
   private async playFMSound(carrierFreq: number, modFreq: number, modIndex: number, duration: number, volume: number, type: OscillatorType = 'sine') {
     if (this.isMuted) return;
 
-    // Check critico: Se l'audio si è sospeso (es. tab cambiata), riprendilo prima di suonare
-    if (this.ctx && this.ctx.state === 'suspended') {
-      await this.ctx.resume();
+    // Aggressive State Check & Resume
+    if (this.ctx && (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted')) {
+      await this.ctx.resume().catch(e => console.warn("Context resume failed", e));
     }
 
     if (!this.initialized || !this.ctx || !this.masterGain) return;
@@ -179,8 +179,8 @@ class SoundService {
   async playExternalSound(filename: string) {
     if (this.isMuted) return;
 
-    if (this.ctx && this.ctx.state === 'suspended') {
-      await this.ctx.resume();
+    if (this.ctx && (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted')) {
+      await this.ctx.resume().catch(e => console.warn("External sound resume failed", e));
     }
 
     try {

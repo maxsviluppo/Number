@@ -998,7 +998,7 @@ const App: React.FC = () => {
       if (timerRef.current) window.clearInterval(timerRef.current);
 
       setIsVictoryAnimating(true);
-      setTriggerParticles(true);
+      // setTriggerParticles(true); // PARTICLES REMOVED AS REQUESTED
 
       // UNLOCK AUDIO FOR MOBILE (User Interaction Context)
       if (winAudioRef.current) {
@@ -1746,12 +1746,8 @@ const App: React.FC = () => {
                       <button onPointerDown={(e) => {
                         e.stopPropagation();
                         soundService.playUIClick();
-                        setShowVideo(false);
-                        setLevelBuffer([]); // FORCE BUFFER RESET
-                        setTimeout(() => {
-                          generateGrid(gameState.level);
-                          setGameState(p => ({ ...p, status: 'playing', streak: 0, levelTargets: [] }));
-                        }, 50);
+                        // HARD REFRESH: Ensures clean state, audio engine restart, and UI unblock
+                        window.location.reload();
                       }}
                         className="bg-slate-700 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-600">
                         Rigioca
