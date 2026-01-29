@@ -794,27 +794,39 @@ const App: React.FC = () => {
       syncInterval = setInterval(async () => {
         const status = await matchService.verifyMatchStatus(activeMatch.id);
 
-        // Condition 1: Match row missing (null) -> It was deleted/cancelled
-        // Condition 2: Match exists but status is finished (and not my win) or cancelled
         const isMatchGone = !status;
-        const isMatchEndedRemotely = status && (
-          (status.status === 'finished' && status.winner_id !== currentUser?.id) ||
-          status.status === 'cancelled'
-        );
+        const isCancelled = status && status.status === 'cancelled';
+        const isFinished = status && status.status === 'finished';
 
-        if (isMatchGone || isMatchEndedRemotely) {
-
-          // If we haven't already processed a win/loss locally
+        // CASE 1: SURRENDER / ABNORMAL END
+        // Match deleted or explicitly cancelled -> Force Surrender Win
+        if (isMatchGone || isCancelled) {
           if (gameStateRef.current.status === 'playing') {
-            console.warn("SYNC WATCHDOG: Match ended/missing remotely. Forcing surrender flow.");
+            console.warn("SYNC WATCHDOG: Match abandoned/missing. Triggering Surrender Win.");
             if (timerRef.current) window.clearInterval(timerRef.current);
             setGameState(prev => ({ ...prev, status: 'idle' }));
 
-            // Trigger Surrender Flow
             const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
             setSurrenderVideoSrc(randomSurrender);
             setShowSurrenderVideo(true);
             setIsVideoVisible(true);
+          }
+        }
+        // CASE 2: NORMAL END (SYNC LAG)
+        // Match finished but I am still playing -> Force Normal End
+        else if (isFinished) {
+          if (gameStateRef.current.status === 'playing') {
+            console.log("SYNC WATCHDOG: Match finished normally. Syncing state.");
+            if (timerRef.current) window.clearInterval(timerRef.current);
+
+            // Determine if I won or lost based on DB
+            const amIWinner = status.winner_id === currentUser?.id;
+
+            // If I lost, show Lost Sound/Flow. If I won, handle Win.
+            // Since we are lagging, easiest is to go to idle and let DuelRecap component show result.
+            setGameState(prev => ({ ...prev, status: 'idle' }));
+            if (!amIWinner) soundService.playExternalSound('lost.mp3');
+            setShowDuelRecap(true);
           }
         }
       }, 3000); // Check every 3 seconds
