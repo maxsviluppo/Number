@@ -574,9 +574,15 @@ const App: React.FC = () => {
         if (newMatch.status === 'invite_pending') {
           // Play badge sound
           soundService.playBadge();
-          // Show toast with action
-          showToast(`🎮 Nuova Sfida Ricevuta! modalita': ${newMatch.mode}`, [
-            { label: 'Entra in Lobby', onClick: () => setActiveModal('duel_selection'), variant: 'primary' }
+          // Show toast with action - Updated to DIRECT ACCEPT
+          showToast(`🎮 Nuova Sfida Ricevuta! Modalità: ${newMatch.mode}`, [
+            {
+              label: 'Accetta',
+              onClick: () => {
+                setPendingMatchInvite(newMatch.id);
+              },
+              variant: 'primary'
+            }
           ]);
         }
       })
@@ -609,6 +615,35 @@ const App: React.FC = () => {
       }
     }
   }, [gameState.timeLeft, gameState.status, activeMatch, currentUser, isVictoryAnimating, loadProfile]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // CHECK FOR PENDING INVITES ON LOAD
+    matchService.getPendingInvitesForUser(currentUser.id).then(invites => {
+      if (invites.length > 0) {
+        invites.forEach(inv => {
+          showToast(`⚔️ Invito in attesa di ${inv.player1?.username || 'Sconosciuto'}!`, [
+            {
+              label: 'Accetta',
+              onClick: () => {
+                setPendingMatchInvite(inv.id);
+              },
+              variant: 'primary'
+            },
+            {
+              label: 'Rifiuta',
+              onClick: async () => {
+                await matchService.declineInvite(inv.id, currentUser.id);
+                showToast("Invito rifiutato.");
+              },
+              variant: 'secondary'
+            }
+          ]);
+        });
+      }
+    });
+  }, [currentUser, showToast]);
 
   // 4. URL DEEP LINKING (Invitation Handling)
   useEffect(() => {

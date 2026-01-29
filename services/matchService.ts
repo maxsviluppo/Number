@@ -157,6 +157,34 @@ export const matchService = {
         return true;
     },
 
+    async getPendingInvitesForUser(userId: string): Promise<Match[]> {
+        const { data, error } = await (supabase as any)
+            .from('matches')
+            .select(`
+                *,
+                player1:player1_id (username, avatar_url, max_level)
+            `)
+            .eq('player2_id', userId)
+            .eq('status', 'invite_pending');
+
+        if (error) {
+            console.error('Error fetching pending invites:', error);
+            return [];
+        }
+        return data || [];
+    },
+
+    // RIFIUTA INVITO (Cancella la partita)
+    async declineInvite(matchId: string, playerId: string) {
+        const { error } = await (supabase as any)
+            .from('matches')
+            .update({ status: 'cancelled' })
+            .eq('id', matchId)
+            .eq('player2_id', playerId);
+
+        if (error) console.error('Error declining invite:', error);
+    },
+
     // Trova una partita aperta in attesa PER LA STESSA MODALITÀ
     async findOpenMatch(mode: 'standard' | 'blitz' = 'standard'): Promise<Match | null> {
         const { data, error } = await (supabase as any)
