@@ -1614,15 +1614,14 @@ const App: React.FC = () => {
 
       const fadeInterval = setInterval(() => {
         currentStep++;
-        // Exponential fade out formula: v = start * (1 - t)^2  (or similar)
-        // Simple linear interpolation is often okay, but let's try a softer curve
-        const progress = currentStep / steps; // 0.0 to 1.0
-        // Use quadratic curve for faster drop
-        const newVolume = startVolume * (1 - progress) * (1 - progress);
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
 
         if (newVolume > 0.01) {
           vid.volume = newVolume;
         } else {
+          vid.volume = 0;
+          clearInterval(fadeInterval);
         }
       }, intervalTime);
     }
@@ -1652,8 +1651,8 @@ const App: React.FC = () => {
 
       const fadeInterval = setInterval(() => {
         currentStep++;
-        const progress = currentStep / steps;
-        const newVolume = startVolume * (1 - progress) * (1 - progress);
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
 
         if (newVolume > 0.01) {
           vid.volume = newVolume;
@@ -1682,8 +1681,8 @@ const App: React.FC = () => {
 
       const fadeInterval = setInterval(() => {
         currentStep++;
-        const progress = currentStep / steps;
-        const newVolume = startVolume * (1 - progress) * (1 - progress);
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
         if (newVolume > 0.01) vid.volume = newVolume;
         else {
           vid.volume = 0;

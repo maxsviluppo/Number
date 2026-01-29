@@ -115,9 +115,6 @@ class SoundService {
     this.playFMSound(880, 440, 200, 0.15, 0.15, 'triangle');
   }
 
-  playTick() {
-    this.playFMSound(1760, 220, 100, 0.05, 0.12);
-  }
 
   playUIClick() {
     if (this.isMuted) return;
@@ -197,6 +194,14 @@ class SoundService {
     } catch (e) {
       console.warn("External sound playback failed:", e);
     }
+  }
+
+  playTick() {
+    this.playFMSound(600, 300, 200, 0.05, 0.3, 'square');
+  }
+
+  playPop() {
+    this.playFMSound(400, 200, 100, 0.1, 0.3, 'sine');
   }
 }
 

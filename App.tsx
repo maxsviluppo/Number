@@ -911,7 +911,11 @@ const App: React.FC = () => {
 
         // TIME ATTACK SYNC START
         // If match becomes ACTIVE and it's Time Attack, start immediately if not playing
-        if (newData.status === 'active' && newData.mode === 'time_attack' && gameStateRef.current.status !== 'playing') {
+        // AND ensuring we haven't already finished this match locally (prevent loop)
+        if (newData.status === 'active' &&
+          (newData.mode === 'time_attack' || activeMatch?.mode === 'time_attack') &&
+          gameStateRef.current.status !== 'playing' &&
+          processedWinRef.current !== newData.id) {
           console.log("⚡ Time Attack START SYNC");
           startGame(1); // Force start
         }
@@ -1158,7 +1162,7 @@ const App: React.FC = () => {
     // Explicitly reset Main State for NEW GAME
     setGameState({
       score: 0,
-      totalScore: userProfile?.total_score || 0,
+      totalScore: 0,
       streak: 0,
       level: startLevel,
       timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME, // FORCE 60s for Time Attack
@@ -1293,7 +1297,10 @@ const App: React.FC = () => {
     if (targetIndex !== -1) {
       newTargets[targetIndex] = { ...newTargets[targetIndex], completed: true };
     }
-    const allDone = newTargets.every(t => t.completed) && duelMode !== 'time_attack';
+
+    // Time Attack only applies if we are in an Active Duel
+    const isTimeAttack = !!activeMatch && (duelMode === 'time_attack' || activeMatch.mode === 'time_attack');
+    const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
     if (allDone) {
       soundService.playExternalSound('Fine_partita_win.mp3');
@@ -1440,13 +1447,16 @@ const App: React.FC = () => {
       // Level Continues
       setGameState(prev => ({
         ...prev,
+        score: prev.score + currentPoints,
+        totalScore: prev.totalScore + currentPoints,
         streak: prev.streak + 1,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 0.5),
         levelTargets: newTargets
       }));
 
       // TIME ATTACK: Individual Target Refill
-      if (duelMode === 'time_attack') {
+      // Use logical OR to catch mode even if state is slightly stale
+      if (duelMode === 'time_attack' || activeMatch?.mode === 'time_attack') {
         setTimeout(() => {
           const currentState = gameStateRef.current;
           if (!currentState || !currentState.grid) return;
@@ -1490,6 +1500,7 @@ const App: React.FC = () => {
     // 2. Final Score Update (ensure sync)
     // 2. Final Score Update and Finish Match to prevent loop
     if (activeMatch && currentUser) {
+      processedWinRef.current = activeMatch.id;
       const myScore = gameStateRef.current.score;
       const oppScore = opponentScore; // From state
 
@@ -1656,15 +1667,14 @@ const App: React.FC = () => {
 
       const fadeInterval = setInterval(() => {
         currentStep++;
-        // Exponential fade out formula: v = start * (1 - t)^2  (or similar)
-        // Simple linear interpolation is often okay, but let's try a softer curve
-        const progress = currentStep / steps; // 0.0 to 1.0
-        // Use quadratic curve for faster drop
-        const newVolume = startVolume * (1 - progress) * (1 - progress);
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
 
         if (newVolume > 0.01) {
           vid.volume = newVolume;
         } else {
+          vid.volume = 0;
+          clearInterval(fadeInterval);
         }
       }, intervalTime);
     }
@@ -1694,8 +1704,8 @@ const App: React.FC = () => {
 
       const fadeInterval = setInterval(() => {
         currentStep++;
-        const progress = currentStep / steps;
-        const newVolume = startVolume * (1 - progress) * (1 - progress);
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
 
         if (newVolume > 0.01) {
           vid.volume = newVolume;
@@ -1724,8 +1734,8 @@ const App: React.FC = () => {
 
       const fadeInterval = setInterval(() => {
         currentStep++;
-        const progress = currentStep / steps;
-        const newVolume = startVolume * (1 - progress) * (1 - progress);
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
         if (newVolume > 0.01) vid.volume = newVolume;
         else {
           vid.volume = 0;
@@ -2163,10 +2173,10 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 pl-20 sm:pl-0">
+                  <div className="flex items-center gap-3">
                     <div id="score-display-game" className="w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
                       <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
-                      <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.score}</span>
+                      <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
                     </div>
                     <div className="w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
                       <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">LV</span>
@@ -2687,8 +2697,8 @@ const App: React.FC = () => {
           <DuelRecapModal
             matchData={latestMatchData}
             currentUser={currentUser}
-            isWinnerProp={latestMatchData.winner_id === currentUser?.id || processedWinRef.current === latestMatchData.id}
-            myScore={gameState.totalScore}
+            isWinnerProp={latestMatchData.winner_id ? latestMatchData.winner_id === currentUser?.id : (gameState.score > opponentScore)}
+            myScore={gameState.score}
             opponentScore={opponentScore}
             isFinal={latestMatchData.status === 'finished'}
             onReady={() => { }}
