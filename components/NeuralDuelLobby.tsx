@@ -432,7 +432,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                         {isBusy ? (
                                                             <span className="text-[9px] bg-red-600 font-black text-white px-2 py-0.5 rounded uppercase tracking-widest border border-red-400/30">LOCKED</span>
                                                         ) : isJoinable ? (
-                                                            <span className="text-[9px] bg-cyan-500 font-black text-slate-950 px-2 py-0.5 rounded uppercase tracking-widest group-hover:animate-pulse">SFIDA</span>
+                                                            <span className="text-[9px] bg-[#FF8800] font-black text-white px-2 py-0.5 rounded uppercase tracking-widest group-hover:animate-pulse">SFIDA</span>
                                                         ) : (
                                                             <span className="text-[9px] bg-slate-700 font-black text-white px-2 py-0.5 rounded uppercase tracking-widest">PRIVATE</span>
                                                         )}
