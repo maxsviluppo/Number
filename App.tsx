@@ -1461,7 +1461,7 @@ const App: React.FC = () => {
           }}>
             <video
               src="/winnermp4.mp4"
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
               autoPlay
               playsInline
               muted
