@@ -1310,10 +1310,13 @@ const App: React.FC = () => {
 
     // CALCULATE FINAL POINTS (including bonuses if allDone)
     let totalPointsToAdd = currentPoints;
+    let finalTimeBonus = 0;
+    let finalVictoryBonus = 0;
+
     if (allDone && !isTimeAttack) {
-      const timeBonus = Math.max(0, gameStateRef.current.timeLeft * 2);
-      const completionBonus = 50;
-      totalPointsToAdd += timeBonus + completionBonus;
+      finalTimeBonus = Math.max(0, gameStateRef.current.timeLeft * 2);
+      finalVictoryBonus = 50;
+      totalPointsToAdd += finalTimeBonus + finalVictoryBonus;
     }
 
     // 4. DUEL LOGIC
@@ -1365,7 +1368,9 @@ const App: React.FC = () => {
             player1_score: activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player1_score,
             player2_score: !activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player2_score,
             p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
-            p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds
+            p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds,
+            last_time_bonus: finalTimeBonus,
+            last_victory_bonus: finalVictoryBonus
           }));
 
           // Local State Update
@@ -1446,6 +1451,14 @@ const App: React.FC = () => {
       setWinVideoSrc(randomVid);
       setShowVideo(true);
       setIsVideoVisible(false);
+
+      // MOBILE SYNC UNLOCK: Play immediately in the interaction stack
+      if (videoRef.current) {
+        videoRef.current.src = randomVid;
+        // Ensure muted is false before playing to allow audio
+        videoRef.current.muted = false;
+        videoRef.current.play().catch(e => console.warn("Video play blocked:", e));
+      }
 
       setTimeout(() => {
         setTriggerParticles(false);
@@ -1781,68 +1794,50 @@ const App: React.FC = () => {
 
         {/* WIN VIDEO OVERLAY REMOVED (Duplicate/Legacy) */}
 
-        {/* LOST Game Video Overlay - UPDATED */}
-        {showLostVideo && (
-          <div className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out ${isVideoVisible ? 'opacity-100' : 'opacity-100'}`} onPointerDown={() => {
-            handleLostVideoClose();
-          }}>
-            <video
-              ref={videoRef}
-              src={loseVideoSrc}
-              className="w-full h-full object-cover"
-              autoPlay
-              playsInline
-              onPlay={() => {
-                if (videoRef.current) videoRef.current.volume = 0.7; // Start quieter
-              }}
-              onEnded={() => {
-                handleLostVideoClose();
-              }}
-            />
-            <div className="absolute inset-0 bg-red-900/10 mix-blend-overlay pointer-events-none"></div>
+        {/* UNIFIED VIDEO OVERLAY - Always in DOM for Mobile Unlock */}
+        <div
+          className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out 
+            ${(showVideo || showLostVideo || showSurrenderVideo) && isVideoVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+          onPointerDown={() => {
+            if (showVideo) handleVideoClose();
+            else if (showLostVideo) handleLostVideoClose();
+            else if (showSurrenderVideo) handleSurrenderVideoClose();
+          }}
+        >
+          <video
+            ref={videoRef}
+            src={showVideo ? winVideoSrc : (showLostVideo ? loseVideoSrc : (showSurrenderVideo ? surrenderVideoSrc : ''))}
+            className="w-full h-full object-cover"
+            playsInline
+            onPlay={() => {
+              if (videoRef.current) videoRef.current.volume = 0.7;
+            }}
+            onEnded={() => {
+              if (showVideo) handleVideoClose();
+              else if (showLostVideo) handleLostVideoClose();
+              else if (showSurrenderVideo) handleSurrenderVideoClose();
+            }}
+          />
 
+          {/* Overlay color based on state */}
+          {showLostVideo && <div className="absolute inset-0 bg-red-900/10 mix-blend-overlay pointer-events-none"></div>}
+          {showSurrenderVideo && <div className="absolute inset-0 bg-blue-900/10 mix-blend-overlay pointer-events-none"></div>}
+
+          {(showVideo || showLostVideo || showSurrenderVideo) && (
             <button
               className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
               onPointerDown={(e) => {
                 e.stopPropagation();
-                handleLostVideoClose();
-              }}>
-              <span>SKIP</span>
-              <FastForward size={14} className="text-red-500" />
-            </button>
-          </div>
-        )}
-
-        {/* SURRENDER Video Overlay */}
-        {showSurrenderVideo && (
-          <div className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out ${isVideoVisible ? 'opacity-100' : 'opacity-100'}`} onPointerDown={() => {
-            handleSurrenderVideoClose();
-          }}>
-            <video
-              ref={videoRef}
-              src={surrenderVideoSrc}
-              className="w-full h-full object-cover"
-              autoPlay
-              playsInline
-              onPlay={() => {
-                if (videoRef.current) videoRef.current.volume = 0.7;
+                if (showVideo) handleVideoClose();
+                else if (showLostVideo) handleLostVideoClose();
+                else if (showSurrenderVideo) handleSurrenderVideoClose();
               }}
-              onEnded={() => {
-                handleSurrenderVideoClose();
-              }}
-            />
-            <div className="absolute inset-0 bg-blue-900/10 mix-blend-overlay pointer-events-none"></div>
-            <button
-              className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                handleSurrenderVideoClose();
-              }}>
+            >
               <span>SKIP</span>
-              <FastForward size={14} className="text-blue-500" />
+              <FastForward size={14} className={showLostVideo ? "text-red-500" : (showSurrenderVideo ? "text-blue-500" : "text-[#FF8800]")} />
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
 
         <ParticleEffect trigger={triggerParticles} />
@@ -2059,39 +2054,7 @@ const App: React.FC = () => {
           </>
         )}
 
-        {showVideo && (
-          <div className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[2000ms] ease-out ${isVideoVisible ? 'opacity-100' : 'opacity-0'}`} onPointerDown={() => {
-            // User click to dismiss -> Trigger fade out
-            handleVideoClose();
-          }}>
-            <video
-              ref={videoRef}
-              src={winVideoSrc}
-              className="w-full h-full object-cover"
-              autoPlay
-              playsInline
-              onPlay={() => {
-                if (videoRef.current) videoRef.current.volume = 0.7; // Start quieter
-                console.log("WINNER VIDEO STARTED:", winVideoSrc);
-                // Audio is now embedded in the video file
-              }}
-              onEnded={() => {
-                // Video ended naturally -> Trigger fade out
-                handleVideoClose();
-              }}
-            />
 
-            <button
-              className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                handleVideoClose();
-              }}>
-              <span>SKIP</span>
-              <FastForward size={14} className="text-[#FF8800]" />
-            </button>
-          </div>
-        )}
 
         {gameState.status !== 'idle' && (
           <div className="w-full h-full flex flex-col items-center z-10 p-4 max-w-4xl animate-screen-in">
