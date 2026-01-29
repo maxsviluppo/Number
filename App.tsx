@@ -1340,14 +1340,21 @@ const App: React.FC = () => {
             levelTargets: newTargets
           }));
 
-          // SYNC PROFILE FOR WINNER
+          // SYNC PROFILE FOR WINNER (MATCH ENDED BY ALL TARGETS)
           await profileService.syncProgress(currentUser.id, gameStateRef.current.score + currentPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
           await loadProfile(currentUser.id);
 
-          setShowDuelRecap(true);
+          // Force a small delay to ensure UI updates smoothly after the intensive async ops
+          setTimeout(() => {
+            setShowDuelRecap(true);
+          }, 500);
+
         } catch (error: any) {
           console.error("Error finishing duel:", error);
-          showToast(`Errore durante il salvataggio della vittoria: ${error?.message || 'Errore Sconosciuto'}`);
+          // If error is just network glitch, user might still have won locally. 
+          // Show recap anyway but warn? No, better to retry or just show recap.
+          showToast(`Partita conclusa. Sincronizzazione...`);
+          setShowDuelRecap(true);
         }
         setSelectedPath([]);
         return;

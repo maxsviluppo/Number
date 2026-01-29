@@ -15,6 +15,8 @@ export interface Match {
     p2_rounds: number;
     current_round: number;
     created_at: string;
+    player1?: { username: string; avatar_url: string };
+    player2?: { username: string; avatar_url: string };
 }
 
 export const matchService = {
