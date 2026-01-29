@@ -219,6 +219,7 @@ const App: React.FC = () => {
 
   // SOLVER: Find all valid paths and their results
   const findAllSolutions = (gridCells: HexCellData[]): Set<number> => {
+    if (!gridCells) return new Set();
     const solutions = new Set<number>();
     const maxPathLength = 7; // N-Op-N-Op-N-Op-N = 7 cells max
 
@@ -606,11 +607,25 @@ const App: React.FC = () => {
       // STANDARD GAME OVER (Single Player)
       if (!activeMatch?.isDuel) {
         soundService.playExternalSound('lost.mp3');
-        setShowLostVideo(true);
         setGameState(prev => ({ ...prev, status: 'game-over' }));
         if (currentUser) {
           profileService.clearSavedGame(currentUser.id);
           loadProfile(currentUser.id);
+        }
+
+        // VIDEO UNLOCK
+        setShowLostVideo(true);
+        setIsVideoVisible(false);
+        if (videoRef.current) {
+          videoRef.current.muted = false;
+          videoRef.current.src = loseVideoSrc;
+          const playPromise = videoRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(e => {
+              console.warn("Loss video blocked:", e);
+              setIsVideoVisible(false);
+            });
+          }
         }
       }
     }
@@ -623,7 +638,8 @@ const App: React.FC = () => {
     matchService.getPendingInvitesForUser(currentUser.id).then(invites => {
       if (invites.length > 0) {
         invites.forEach(inv => {
-          showToast(`⚔️ Invito in attesa di ${inv.player1?.username || 'Sconosciuto'}!`, [
+          const modeLabel = inv.mode ? inv.mode.toUpperCase().replace('_', ' ') : 'DUEL';
+          showToast(`⚔️ Invito per ${modeLabel} da ${inv.player1?.username || 'Sconosciuto'}!`, [
             {
               label: 'Accetta',
               onClick: () => {
@@ -697,7 +713,8 @@ const App: React.FC = () => {
               id: match.id,
               opponentId: match.player1_id === currentUser.id ? match.player2_id! : match.player1_id,
               isDuel: true,
-              isP1: match.player1_id === currentUser.id
+              isP1: match.player1_id === currentUser.id,
+              mode: match.mode // Capture mode explicitly
             });
 
             setGameState(prev => ({
@@ -899,8 +916,22 @@ const App: React.FC = () => {
 
         const amIP1 = newData.player1_id === currentUser?.id;
 
-        if (activeMatch && activeMatch.isP1 !== amIP1) {
+        // Ensure Active Match has critical data (Mode) for Host Timer
+        if (activeMatch && (!activeMatch.mode || activeMatch.mode !== newData.mode)) {
+          setActiveMatch(prev => prev ? { ...prev, isP1: amIP1, mode: newData.mode } : null);
+        } else if (activeMatch && activeMatch.isP1 !== amIP1) {
           setActiveMatch(prev => prev ? { ...prev, isP1: amIP1 } : null);
+        }
+
+        // TIME ATTACK SYNC START
+        // If match becomes ACTIVE and it's Time Attack, start immediately if not playing
+        // AND ensuring we haven't already finished this match locally (prevent loop)
+        if (newData.status === 'active' &&
+          (newData.mode === 'time_attack' || activeMatch?.mode === 'time_attack') &&
+          gameStateRef.current.status !== 'playing' &&
+          processedWinRef.current !== newData.id) {
+          console.log("⚡ Time Attack START SYNC");
+          startGame(1); // Force start
         }
 
         if (newData.p1_ready && newData.p2_ready && showDuelRecap && newData.status !== 'finished') {
@@ -917,9 +948,11 @@ const App: React.FC = () => {
         });
 
         const opponentTargetCount = amIP1 ? newData.p2_rounds : newData.p1_rounds;
-        const targetToWin = duelMode === 'blitz' ? 3 : 5;
+        const currentMode = newData.mode || duelMode;
+        const targetToWin = currentMode === 'blitz' ? 3 : 5;
 
-        if (opponentTargetCount >= targetToWin && newData.status !== 'finished') {
+        // Condition excludes Time Attack from finding a winner by rounds
+        if (currentMode !== 'time_attack' && opponentTargetCount >= targetToWin && newData.status !== 'finished') {
           if (timerRef.current) window.clearInterval(timerRef.current);
           setGameState(prev => ({ ...prev, status: 'idle' }));
           setIsDragging(false);
@@ -957,7 +990,15 @@ const App: React.FC = () => {
           const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
           setSurrenderVideoSrc(randomSurrender);
           setShowSurrenderVideo(true);
-          setIsVideoVisible(true);
+          setIsVideoVisible(false);
+          if (videoRef.current) {
+            videoRef.current.muted = false;
+            videoRef.current.src = randomSurrender;
+            videoRef.current.play().catch(e => {
+              console.warn("Surrender video blocked:", e);
+              setIsVideoVisible(false);
+            });
+          }
         }
       });
 
@@ -987,7 +1028,16 @@ const App: React.FC = () => {
           const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
           setSurrenderVideoSrc(randomSurrender);
           setShowSurrenderVideo(true);
-          setIsVideoVisible(true); // Forced Visible immediately
+          setIsVideoVisible(false);
+
+          if (videoRef.current) {
+            videoRef.current.muted = false;
+            videoRef.current.src = randomSurrender;
+            videoRef.current.play().catch(e => {
+              console.warn("Surrender (abandon) video blocked:", e);
+              setIsVideoVisible(false);
+            });
+          }
 
           // 2. Add Points (Optional logic, using current score)
           // The recap will show current score + bonus if handled there.
@@ -1023,7 +1073,16 @@ const App: React.FC = () => {
             const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
             setSurrenderVideoSrc(randomSurrender);
             setShowSurrenderVideo(true);
-            setIsVideoVisible(true);
+            setIsVideoVisible(false);
+
+            if (videoRef.current) {
+              videoRef.current.muted = false;
+              videoRef.current.src = randomSurrender;
+              videoRef.current.play().catch(e => {
+                console.warn("Surrender (watchdog) video blocked:", e);
+                setIsVideoVisible(false);
+              });
+            }
           }
         }
         // CASE 2: NORMAL END (SYNC LAG)
@@ -1078,7 +1137,7 @@ const App: React.FC = () => {
                     const seed = payload.new.grid_seed;
                     const mode = payload.new.mode;
 
-                    setActiveMatch({ id: payload.new.id, opponentId: payload.new.player1_id, isDuel: true, isP1: false });
+                    setActiveMatch({ id: payload.new.id, opponentId: payload.new.player1_id, isDuel: true, isP1: false, mode: mode });
                     setDuelMode(mode);
 
                     // Reset Game State for Duel
@@ -1143,7 +1202,7 @@ const App: React.FC = () => {
     // Explicitly reset Main State for NEW GAME
     setGameState({
       score: 0,
-      totalScore: userProfile?.total_score || 0,
+      totalScore: 0,
       streak: 0,
       level: startLevel,
       timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME, // FORCE 60s for Time Attack
@@ -1247,6 +1306,19 @@ const App: React.FC = () => {
     const matchedTarget = currentTargets.find(t => t.value === result && !t.completed);
 
     if (matchedTarget) {
+      // SYNC VIDEO TRIGGER FOR MOBILE - Call play() directly in user gesture stack
+      const isLastTarget = currentTargets.filter(t => !t.completed).length === 1;
+      const isTimeAttack = !!activeMatch && (activeMatch.mode === 'time_attack' || duelMode === 'time_attack');
+
+      if (isLastTarget && !isTimeAttack && videoRef.current) {
+        const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
+        setWinVideoSrc(randomVid);
+        setShowVideo(true);
+        setIsVideoVisible(true);
+        videoRef.current.src = randomVid;
+        videoRef.current.muted = false;
+        videoRef.current.play().catch(e => console.warn("Immediate Sync Play block:", e));
+      }
       handleSuccess(result!);
     } else {
       handleError();
@@ -1259,59 +1331,42 @@ const App: React.FC = () => {
     // RACE CONDITION FIX: Do not process win if game is already over
     if (gameStateRef.current.status !== 'playing') return;
 
+    soundService.playSuccess(); // Riproduci suono combinazione trovata
+
     // NEW SCORING: ARCADE SCALABLE
     const basePoints = 10;
     const streakBonus = gameStateRef.current.streak * 1;
     const currentPoints = basePoints + streakBonus;
 
+    // DEFINISCI COSTANTI PER LINT FIX
+    const finalTimeBonus = Math.floor(gameStateRef.current.timeLeft * 1.5);
+    const finalVictoryBonus = 50;
+    const totalPointsToAdd = currentPoints + finalTimeBonus + finalVictoryBonus;
+
     setScoreAnimKey(k => k + 1);
 
     // Update targets state
+    // Update targets state - Mark ONLY the first matching uncompleted target
     const currentTargets = gameStateRef.current.levelTargets;
-    const newTargets = currentTargets.map(t =>
-      t.value === matchedValue ? { ...t, completed: true } : t
-    );
-    const allDone = newTargets.every(t => t.completed);
+    const targetIndex = currentTargets.findIndex(t => t.value === matchedValue && !t.completed);
+
+    // If no target found (already all done?), exit or ignore
+    // But we are here so valid match.
+    // Copy array
+    const newTargets = [...currentTargets];
+    if (targetIndex !== -1) {
+      newTargets[targetIndex] = { ...newTargets[targetIndex], completed: true };
+    }
+
+    // Time Attack only applies if we are in an Active Duel
+    const isTimeAttack = !!activeMatch && (duelMode === 'time_attack' || activeMatch.mode === 'time_attack');
+    const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
     if (allDone) {
+      setTriggerParticles(false);
       soundService.playExternalSound('Fine_partita_win.mp3');
-    } else {
-      soundService.playSuccess();
-    }
 
-    // 4. DUEL LOGIC
-    if (activeMatch?.isDuel && currentUser) {
-      const myTargetsFound = newTargets.filter(t => t.completed).length;
-
-      // ATOMIC UPDATE: Send Score AND Targets together
-      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameStateRef.current.score + currentPoints, myTargetsFound)
-        .catch(e => console.error("Error updating match stats:", e));
-
-      // BLITZ LOGIC: Check Round Win (3 Targets)
-      if (duelMode === 'blitz' && myTargetsFound >= 3) {
-        soundService.playSuccess();
-        showToast(`ROUND ${duelRounds.current} VINTO!`);
-
-        setTimeout(() => {
-          generateGrid(gameStateRef.current.level);
-          setGameState(prev => ({
-            ...prev,
-            levelTargets: prev.levelTargets.map(t2 => ({ ...t2, completed: false })),
-            status: 'playing'
-          }));
-        }, 2000);
-        setSelectedPath([]);
-        return;
-      }
-    }
-
-    // 5. GLOBAL SYNC: Always update career stats on every success (EXCEPT IN DUEL MODE)
-    if (currentUser && !activeMatch?.isDuel) {
-      profileService.syncProgress(currentUser.id, currentPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
-        .catch(e => console.error("Error syncing progress:", e));
-    }
-
-    if (allDone) {
+      // 2. CONTINUE WITH ASYNC/LOGIC 
       if (activeMatch?.isDuel && duelMode === 'standard') {
         try {
           // Match Ends Immediately
@@ -1325,23 +1380,25 @@ const App: React.FC = () => {
             ...prev,
             status: 'finished',
             winner_id: currentUser!.id,
-            player1_score: activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player1_score,
-            player2_score: !activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player2_score,
+            player1_score: activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player1_score,
+            player2_score: !activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player2_score,
             p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
-            p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds
+            p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds,
+            last_time_bonus: finalTimeBonus,
+            last_victory_bonus: finalVictoryBonus
           }));
 
           // Local State Update
           setGameState(prev => ({
             ...prev,
-            score: prev.score + currentPoints,
-            totalScore: prev.totalScore + currentPoints,
+            score: prev.score + totalPointsToAdd,
+            totalScore: prev.totalScore + totalPointsToAdd,
             status: 'idle',
             levelTargets: newTargets
           }));
 
-          // SYNC PROFILE FOR WINNER (MATCH ENDED BY ALL TARGETS)
-          await profileService.syncProgress(currentUser.id, gameStateRef.current.score + currentPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+          // SYNC PROFILE FOR WINNER
+          await profileService.syncProgress(currentUser.id, totalPointsToAdd, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
           await loadProfile(currentUser.id);
 
           // Force a small delay to ensure UI updates smoothly after the intensive async ops
@@ -1351,8 +1408,6 @@ const App: React.FC = () => {
 
         } catch (error: any) {
           console.error("Error finishing duel:", error);
-          // If error is just network glitch, user might still have won locally. 
-          // Show recap anyway but warn? No, better to retry or just show recap.
           showToast(`Partita conclusa. Sincronizzazione...`);
           setShowDuelRecap(true);
         }
@@ -1362,55 +1417,18 @@ const App: React.FC = () => {
 
       // STOP TIMER IMMEDIATELY
       if (timerRef.current) window.clearInterval(timerRef.current);
-
       setIsVictoryAnimating(true);
 
-      // UNLOCK AUDIO FOR MOBILE
-      if (winAudioRef.current) {
-        winAudioRef.current.volume = 0;
-        winAudioRef.current.play().then(() => {
-          if (winAudioRef.current) {
-            winAudioRef.current.pause();
-            winAudioRef.current.currentTime = 0;
-          }
-        }).catch(e => console.log("Audio unlock failed", e));
-      }
-
-      const nextLevelScore = gameStateRef.current.totalScore + currentPoints;
+      const nextLevelScore = gameStateRef.current.totalScore + totalPointsToAdd;
 
       setGameState(prev => ({
         ...prev,
-        score: prev.score + currentPoints,
+        score: prev.score + totalPointsToAdd,
         totalScore: nextLevelScore,
         streak: 0,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
         levelTargets: newTargets,
       }));
-
-      // TIME ATTACK LOGIC: REFILL, DON'T END
-      if (activeMatch && activeMatch.mode === 'time_attack') {
-        soundService.playSuccess();
-        const allSolutions = Array.from(findAllSolutions(grid));
-
-        // Shuffle solutions
-        for (let i = allSolutions.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [allSolutions[i], allSolutions[j]] = [allSolutions[j], allSolutions[i]];
-        }
-
-        // Take next batch, different from current if possible
-        const nextBatch = allSolutions.slice(0, 5);
-
-        // Reset targets for next wave
-        setGameState(prev => ({
-          ...prev,
-          levelTargets: nextBatch.map(t => ({ value: t, completed: false }))
-        }));
-
-        showToast("NUOVI TARGET! CONTINUA!", [], 'secondary');
-        setSelectedPath([]);
-        return;
-      }
 
       // STANDARD LEVEL COMPLETE LOGIC
       if (currentUser) {
@@ -1428,16 +1446,6 @@ const App: React.FC = () => {
 
         setSavedGame(saveState);
       }
-
-      const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
-      setWinVideoSrc(randomVid);
-      setShowVideo(true);
-      setIsVideoVisible(false);
-
-      setTimeout(() => {
-        setTriggerParticles(false);
-        setIsVideoVisible(true);
-      }, 1000);
     } else {
       // Level Continues
       setGameState(prev => ({
@@ -1448,6 +1456,42 @@ const App: React.FC = () => {
         estimatedIQ: Math.min(200, prev.estimatedIQ + 0.5),
         levelTargets: newTargets
       }));
+
+      // TIME ATTACK: Individual Target Refill
+      // Use logical OR to catch mode even if state is slightly stale
+      if (duelMode === 'time_attack' || activeMatch?.mode === 'time_attack') {
+        setTimeout(() => {
+          const currentState = gameStateRef.current;
+          if (!currentState || !currentState.grid) return;
+
+          const currentGrid = currentState.grid;
+          const currentRefTargets = currentState.levelTargets || [];
+          const allSols = Array.from(findAllSolutions(currentGrid));
+          // Filter out uncompleted targets (active ones)
+          const activeValues = currentRefTargets.filter(t => !t.completed).map(t => t.value);
+          // Candidates are any solution NOT in the active set
+          const candidates = allSols.filter(v => !activeValues.includes(v));
+
+          if (candidates.length > 0) {
+            const nextVal = candidates[Math.floor(Math.random() * candidates.length)];
+            setGameState(prev => {
+              const updated = [...prev.levelTargets];
+              // Find the EXACT target slot that was completed (value match + completed status)
+              const idx = updated.findIndex(t => t.value === matchedValue && t.completed);
+              if (idx !== -1) {
+                console.log("REPLACING TARGET:", matchedValue, "WITH:", nextVal);
+                updated[idx] = { value: nextVal, completed: false };
+              } else {
+                console.warn("Target to replace not found:", matchedValue);
+              }
+              return { ...prev, levelTargets: updated };
+            });
+            soundService.playPop();
+          } else {
+            console.warn("No candidates for refill!");
+          }
+        }, 3000); // 3s delay as requested
+      }
     }
     setSelectedPath([]);
   };
@@ -1457,8 +1501,21 @@ const App: React.FC = () => {
     soundService.playExternalSound('Fine_partita_win.mp3');
 
     // 2. Final Score Update (ensure sync)
+    // 2. Final Score Update and Finish Match to prevent loop
     if (activeMatch && currentUser) {
-      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameStateRef.current.score, gameStateRef.current.levelTargets.filter(t => t.completed).length);
+      processedWinRef.current = activeMatch.id;
+      const myScore = gameStateRef.current.score;
+      const oppScore = opponentScore; // From state
+
+      // Determine winner immediately
+      let winnerId: string | null = null;
+      if (myScore > oppScore) winnerId = currentUser.id;
+      else if (oppScore > myScore) winnerId = activeMatch.opponentId;
+
+      // Force update final stats and close match
+      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, gameStateRef.current.levelTargets.filter(t => t.completed).length)
+        .then(() => matchService.declareWinner(activeMatch.id, winnerId))
+        .catch(e => console.error("Error ending time attack:", e));
     }
 
     // 3. Show Recap / Idle
@@ -1482,6 +1539,7 @@ const App: React.FC = () => {
 
   const nextLevel = () => {
     soundService.playUIClick();
+    setIsVictoryAnimating(false);
     const nextLvl = gameState.level + 1;
     setGameState(prev => ({
       ...prev,
@@ -1613,15 +1671,14 @@ const App: React.FC = () => {
 
       const fadeInterval = setInterval(() => {
         currentStep++;
-        // Exponential fade out formula: v = start * (1 - t)^2  (or similar)
-        // Simple linear interpolation is often okay, but let's try a softer curve
-        const progress = currentStep / steps; // 0.0 to 1.0
-        // Use quadratic curve for faster drop
-        const newVolume = startVolume * (1 - progress) * (1 - progress);
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
 
         if (newVolume > 0.01) {
           vid.volume = newVolume;
         } else {
+          vid.volume = 0;
+          clearInterval(fadeInterval);
         }
       }, intervalTime);
     }
@@ -1629,6 +1686,7 @@ const App: React.FC = () => {
     // 3. Unmount after fade
     setTimeout(() => {
       setShowVideo(false);
+      setIsVictoryAnimating(false);
       setGameState(prev => ({
         ...prev,
         status: 'level-complete'
@@ -1651,8 +1709,8 @@ const App: React.FC = () => {
 
       const fadeInterval = setInterval(() => {
         currentStep++;
-        const progress = currentStep / steps;
-        const newVolume = startVolume * (1 - progress) * (1 - progress);
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
 
         if (newVolume > 0.01) {
           vid.volume = newVolume;
@@ -1681,8 +1739,8 @@ const App: React.FC = () => {
 
       const fadeInterval = setInterval(() => {
         currentStep++;
-        const progress = currentStep / steps;
-        const newVolume = startVolume * (1 - progress) * (1 - progress);
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
         if (newVolume > 0.01) vid.volume = newVolume;
         else {
           vid.volume = 0;
@@ -1718,68 +1776,58 @@ const App: React.FC = () => {
 
         {/* WIN VIDEO OVERLAY REMOVED (Duplicate/Legacy) */}
 
-        {/* LOST Game Video Overlay - UPDATED */}
-        {showLostVideo && (
-          <div className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out ${isVideoVisible ? 'opacity-100' : 'opacity-100'}`} onPointerDown={() => {
-            handleLostVideoClose();
-          }}>
-            <video
-              ref={videoRef}
-              src={loseVideoSrc}
-              className="w-full h-full object-cover"
-              autoPlay
-              playsInline
-              onPlay={() => {
-                if (videoRef.current) videoRef.current.volume = 0.7; // Start quieter
-              }}
-              onEnded={() => {
-                handleLostVideoClose();
-              }}
-            />
-            <div className="absolute inset-0 bg-red-900/10 mix-blend-overlay pointer-events-none"></div>
+        {/* UNIFIED VIDEO OVERLAY - Always in DOM for Mobile Unlock */}
+        <div
+          className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out 
+            ${(showVideo || showLostVideo || showSurrenderVideo) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+          onPointerDown={() => {
+            if (showVideo) handleVideoClose();
+            else if (showLostVideo) handleLostVideoClose();
+            else if (showSurrenderVideo) handleSurrenderVideoClose();
+          }}
+        >
+          <video
+            ref={videoRef}
+            src={showVideo ? winVideoSrc : (showLostVideo ? loseVideoSrc : (showSurrenderVideo ? surrenderVideoSrc : ''))}
+            className="w-full h-full object-cover"
+            playsInline
+            autoPlay
+            onPlay={() => {
+              if (videoRef.current) videoRef.current.volume = 0.7;
+              setIsVideoVisible(true);
+            }}
+            onEnded={() => {
+              if (showVideo) handleVideoClose();
+              else if (showLostVideo) handleLostVideoClose();
+              else if (showSurrenderVideo) handleSurrenderVideoClose();
+            }}
+          />
 
-            <button
-              className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                handleLostVideoClose();
-              }}>
-              <span>SKIP</span>
-              <FastForward size={14} className="text-red-500" />
-            </button>
-          </div>
-        )}
+          {/* Overlay color based on state */}
+          {showLostVideo && <div className="absolute inset-0 bg-red-900/10 mix-blend-overlay pointer-events-none"></div>}
+          {showSurrenderVideo && <div className="absolute inset-0 bg-blue-900/10 mix-blend-overlay pointer-events-none"></div>}
 
-        {/* SURRENDER Video Overlay */}
-        {showSurrenderVideo && (
-          <div className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out ${isVideoVisible ? 'opacity-100' : 'opacity-100'}`} onPointerDown={() => {
-            handleSurrenderVideoClose();
-          }}>
-            <video
-              ref={videoRef}
-              src={surrenderVideoSrc}
-              className="w-full h-full object-cover"
-              autoPlay
-              playsInline
-              onPlay={() => {
-                if (videoRef.current) videoRef.current.volume = 0.7;
-              }}
-              onEnded={() => {
-                handleSurrenderVideoClose();
-              }}
-            />
-            <div className="absolute inset-0 bg-blue-900/10 mix-blend-overlay pointer-events-none"></div>
-            <button
-              className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                handleSurrenderVideoClose();
-              }}>
-              <span>SKIP</span>
-              <FastForward size={14} className="text-blue-500" />
-            </button>
-          </div>
-        )}
+          {(showVideo || showLostVideo || showSurrenderVideo) && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 z-50 pointer-events-none">
+              {/* FAIL-SAFE TAP TO PLAY (Only visible if video stuck/not visible) */}
+              {/* FAIL-SAFE TAP TO PLAY REMOVED - AUTOMATIC ONLY */}
+
+
+              <button
+                className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group pointer-events-auto"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  if (showVideo) handleVideoClose();
+                  else if (showLostVideo) handleLostVideoClose();
+                  else if (showSurrenderVideo) handleSurrenderVideoClose();
+                }}
+              >
+                <span>SKIP</span>
+                <FastForward size={14} className={showLostVideo ? "text-red-500" : (showSurrenderVideo ? "text-blue-500" : "text-[#FF8800]")} />
+              </button>
+            </div>
+          )}
+        </div>
 
 
         <ParticleEffect trigger={triggerParticles} />
@@ -1996,46 +2044,14 @@ const App: React.FC = () => {
           </>
         )}
 
-        {showVideo && (
-          <div className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[2000ms] ease-out ${isVideoVisible ? 'opacity-100' : 'opacity-0'}`} onPointerDown={() => {
-            // User click to dismiss -> Trigger fade out
-            handleVideoClose();
-          }}>
-            <video
-              ref={videoRef}
-              src={winVideoSrc}
-              className="w-full h-full object-cover"
-              autoPlay
-              playsInline
-              onPlay={() => {
-                if (videoRef.current) videoRef.current.volume = 0.7; // Start quieter
-                console.log("WINNER VIDEO STARTED:", winVideoSrc);
-                // Audio is now embedded in the video file
-              }}
-              onEnded={() => {
-                // Video ended naturally -> Trigger fade out
-                handleVideoClose();
-              }}
-            />
 
-            <button
-              className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                handleVideoClose();
-              }}>
-              <span>SKIP</span>
-              <FastForward size={14} className="text-[#FF8800]" />
-            </button>
-          </div>
-        )}
 
         {gameState.status !== 'idle' && (
           <div className="w-full h-full flex flex-col items-center z-10 p-4 max-w-4xl animate-screen-in">
             <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
               <div className="
               relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.15)]
-              bg-[#FF8800]
+              bg-gradient-to-r from-[#FF8800] to-[#FF5500]
               transition-all duration-300
             ">
                 {/* Left Group: Buttons */}
@@ -2058,21 +2074,21 @@ const App: React.FC = () => {
                 {/* Center: Floating Timer (Half-In/Half-Out) */}
                 {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
                 <div id="timer-display-game" className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
-                  <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${activeMatch?.isDuel ? 'border-red-500/50 grayscale-0 opacity-100 flex flex-col' : ''}`}>
+                  <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${(activeMatch?.isDuel && duelMode !== 'time_attack') ? 'border-red-500/50 grayscale-0 opacity-100 flex flex-col' : ''}`}>
                     <svg className="absolute inset-0 w-full h-full -rotate-90 scale-90">
                       <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
                       {!isPaused && (
                         <circle
                           cx="50%" cy="50%" r="45%"
-                          stroke={activeMatch?.isDuel && activeMatch.mode !== 'time_attack'
+                          stroke={activeMatch?.isDuel && duelMode !== 'time_attack'
                             ? `rgb(${Math.floor(((opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5)) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5)) * 129 + 68)}, 68)`
-                            : (gameState.timeLeft < 10 ? '#ef4444' : '#FF8800')}
+                            : (gameState.timeLeft <= 10 ? '#ef4444' : '#FF8800')}
                           strokeWidth="8"
                           fill="none"
                           strokeDasharray="283"
-                          strokeDashoffset={activeMatch?.isDuel && activeMatch.mode !== 'time_attack'
+                          strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack'
                             ? 283 - (283 * (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5))
-                            : (283 * (1 - gameState.timeLeft / (activeMatch?.mode === 'time_attack' ? 60 : INITIAL_TIME)))
+                            : (283 * (1 - gameState.timeLeft / 60)) // Force 60s denominator
                           }
                           strokeLinecap="round"
                           className="transition-all duration-1000"
@@ -2083,13 +2099,18 @@ const App: React.FC = () => {
                       <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
                     ) : (
                       <>
-                        <>
-                          {activeMatch?.isDuel && activeMatch.mode !== 'time_attack' && <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>}
-                          {activeMatch?.mode === 'time_attack' && <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">SEC</span>}
-                          <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
-                            {activeMatch?.isDuel && activeMatch.mode !== 'time_attack' ? opponentTargets : gameState.timeLeft}
-                          </span>
-                        </>
+                        {/* Label Logic */}
+                        {(() => {
+                          if (activeMatch?.isDuel && duelMode !== 'time_attack') return <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>;
+                          return null;
+                        })()}
+
+                        {/* Value Logic */}
+                        <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
+                          {duelMode === 'time_attack'
+                            ? gameState.timeLeft
+                            : (activeMatch?.isDuel ? opponentTargets : gameState.timeLeft)}
+                        </span>
                       </>
                     )}
                   </div>
@@ -2115,10 +2136,10 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 pl-20 sm:pl-0">
+                  <div className="flex items-center gap-3">
                     <div id="score-display-game" className="w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
                       <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
-                      <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.score}</span>
+                      <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
                     </div>
                     <div className="w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white text-[#FF8800]">
                       <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">LV</span>
@@ -2639,8 +2660,8 @@ const App: React.FC = () => {
           <DuelRecapModal
             matchData={latestMatchData}
             currentUser={currentUser}
-            isWinnerProp={latestMatchData.winner_id === currentUser?.id || processedWinRef.current === latestMatchData.id}
-            myScore={gameState.totalScore}
+            isWinnerProp={latestMatchData.winner_id ? latestMatchData.winner_id === currentUser?.id : (gameState.score > opponentScore)}
+            myScore={gameState.score}
             opponentScore={opponentScore}
             isFinal={latestMatchData.status === 'finished'}
             onReady={() => { }}
