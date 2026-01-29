@@ -1280,12 +1280,22 @@ const App: React.FC = () => {
       soundService.playSuccess();
     }
 
+    // CALCULATE FINAL POINTS (including bonuses if allDone)
+    let totalPointsToAdd = currentPoints;
+    const isTimeAttack = !!activeMatch && (duelMode === 'time_attack' || activeMatch.mode === 'time_attack');
+
+    if (allDone && !isTimeAttack) {
+      const timeBonus = Math.max(0, gameStateRef.current.timeLeft * 2);
+      const completionBonus = 50;
+      totalPointsToAdd += timeBonus + completionBonus;
+    }
+
     // 4. DUEL LOGIC
     if (activeMatch?.isDuel && currentUser) {
       const myTargetsFound = newTargets.filter(t => t.completed).length;
 
       // ATOMIC UPDATE: Send Score AND Targets together
-      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameStateRef.current.score + currentPoints, myTargetsFound)
+      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameStateRef.current.score + totalPointsToAdd, myTargetsFound)
         .catch(e => console.error("Error updating match stats:", e));
 
       // BLITZ LOGIC: Check Round Win (3 Targets)
@@ -1308,7 +1318,7 @@ const App: React.FC = () => {
 
     // 5. GLOBAL SYNC: Always update career stats on every success (EXCEPT IN DUEL MODE)
     if (currentUser && !activeMatch?.isDuel) {
-      profileService.syncProgress(currentUser.id, currentPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
+      profileService.syncProgress(currentUser.id, totalPointsToAdd, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
         .catch(e => console.error("Error syncing progress:", e));
     }
 
@@ -1326,8 +1336,8 @@ const App: React.FC = () => {
             ...prev,
             status: 'finished',
             winner_id: currentUser!.id,
-            player1_score: activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player1_score,
-            player2_score: !activeMatch.isP1 ? gameStateRef.current.score + currentPoints : prev?.player2_score,
+            player1_score: activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player1_score,
+            player2_score: !activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player2_score,
             p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
             p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds
           }));
@@ -1335,14 +1345,14 @@ const App: React.FC = () => {
           // Local State Update
           setGameState(prev => ({
             ...prev,
-            score: prev.score + currentPoints,
-            totalScore: prev.totalScore + currentPoints,
+            score: prev.score + totalPointsToAdd,
+            totalScore: prev.totalScore + totalPointsToAdd,
             status: 'idle',
             levelTargets: newTargets
           }));
 
-          // SYNC PROFILE FOR WINNER (MATCH ENDED BY ALL TARGETS)
-          await profileService.syncProgress(currentUser.id, gameStateRef.current.score + currentPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+          // SYNC PROFILE FOR WINNER
+          await profileService.syncProgress(currentUser.id, totalPointsToAdd, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
           await loadProfile(currentUser.id);
 
           // Force a small delay to ensure UI updates smoothly after the intensive async ops

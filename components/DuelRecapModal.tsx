@@ -91,7 +91,14 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                         </div>
                         <div className="flex flex-col items-center">
                             <span className="text-white font-black uppercase text-[11px] tracking-wider">TU</span>
-                            <span className="text-[#FF8800] font-bold text-[9px] mt-0.5">+{myScore} XP</span>
+                            <div className="flex flex-col items-center">
+                                <span className="text-[#FF8800] font-bold text-[9px] mt-0.5">+{myScore} XP</span>
+                                {isWinner && matchData?.mode === 'standard' && myScore > 100 && (
+                                    <span className="text-[7px] text-white/40 uppercase font-black tracking-tighter animate-pulse">
+                                        INC. BONUS TEMPO & VITTORIA
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
 
