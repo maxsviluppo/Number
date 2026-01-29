@@ -48,7 +48,7 @@ const TUTORIAL_STEPS = [
   }
 ];
 
-const WIN_VIDEOS = ['/win29audio.mp4', '/win291.mp4', '/win292.mp4'];
+const WIN_VIDEOS = ['/win29audio.mp4'];
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -771,7 +771,7 @@ const App: React.FC = () => {
   }, [activeMatch, currentUser]);
 
 
-  const startGame = async () => {
+  const startGame = async (startLevel: number = 1) => {
     await handleUserInteraction();
     soundService.playUIClick();
     try {
@@ -790,7 +790,7 @@ const App: React.FC = () => {
       score: 0,
       totalScore: userProfile?.total_score || 0,
       streak: 0,
-      level: 1,
+      level: startLevel,
       timeLeft: INITIAL_TIME,
       targetResult: 0,
       status: 'playing',
@@ -800,8 +800,8 @@ const App: React.FC = () => {
       levelTargets: [],
     });
 
-    // Reset Buffer and Grid with explicit Level 1
-    setTimeout(() => generateGrid(1), 0);
+    // Reset Buffer and Grid with explicit Level
+    setTimeout(() => generateGrid(startLevel), 0);
 
     // Clear save if starting new
     if (currentUser) {
@@ -1743,12 +1743,7 @@ const App: React.FC = () => {
                     </button>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <button onPointerDown={(e) => {
-                        e.stopPropagation();
-                        soundService.playUIClick();
-                        // HARD REFRESH: Ensures clean state, audio engine restart, and UI unblock
-                        window.location.reload();
-                      }}
+                      <button onPointerDown={(e) => { e.stopPropagation(); startGame(gameState.level); }}
                         className="bg-slate-700 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-600">
                         Rigioca
                       </button>
