@@ -681,6 +681,8 @@ const App: React.FC = () => {
     setGameState(prev => ({
       ...prev,
       levelTargets: [],
+      // FORCE 60s for Time Attack when round actually starts
+      timeLeft: (matchData.mode === 'time_attack') ? 60 : INITIAL_TIME,
       status: 'playing'
     }));
 
@@ -766,6 +768,19 @@ const App: React.FC = () => {
           setIsDragging(false);
           setSelectedPath([]);
           setShowDuelRecap(true);
+        }
+
+        // ADDITIONAL CHECK: Handle CANCELLED explicitly (Surrender/Abandon)
+        if (newData.status === 'cancelled') {
+          console.log("⚡ Realtime: Match Cancelled (Opponent Surrendered)");
+          if (timerRef.current) window.clearInterval(timerRef.current);
+          setGameState(prev => ({ ...prev, status: 'idle' }));
+
+          // Trigger Surrender Win Flow
+          const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
+          setSurrenderVideoSrc(randomSurrender);
+          setShowSurrenderVideo(true);
+          setIsVideoVisible(true);
         }
       });
 
