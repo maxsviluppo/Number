@@ -172,6 +172,13 @@ class SoundService {
     osc.stop(now + 0.15);
   }
 
+  playBadge() {
+    // A clean, high-pitched double chime for notifications
+    const now = this.ctx?.currentTime || 0;
+    this.playFMSound(880, 1760, 100, 0.1, 0.1, 'sine');
+    setTimeout(() => this.playFMSound(1320, 2640, 50, 0.2, 0.1, 'sine'), 100);
+  }
+
   /**
    * Riproduce un file audio esterno (es. MP3/WAV) dalla cartella public
    * @param filename Nome del file (es. 'win.mp3')

@@ -4,13 +4,13 @@ export interface Match {
     id: string;
     player1_id: string;
     player2_id: string | null;
-    status: 'pending' | 'active' | 'finished' | 'cancelled';
+    status: 'pending' | 'active' | 'finished' | 'cancelled' | 'invite_pending';
     winner_id: string | null;
     grid_seed: string;
     player1_score: number;
     player2_score: number;
     target_score: number;
-    mode: 'standard' | 'blitz';
+    mode: 'standard' | 'blitz' | 'time_attack';
     p1_rounds: number;
     p2_rounds: number;
     current_round: number;
@@ -184,7 +184,7 @@ export const matchService = {
         const { data: rawMatches, error: rawError } = await (supabase as any)
             .from('matches')
             .select('*')
-            .in('status', ['pending', 'active'])
+            .in('status', ['pending', 'active', 'invite_pending'])
             .eq('mode', mode)
             .order('created_at', { ascending: false })
             .limit(30);
@@ -204,7 +204,7 @@ export const matchService = {
                 player1:profiles!player1_id (*),
                 player2:profiles!player2_id (*)
             `)
-            .in('status', ['pending', 'active'])
+            .in('status', ['pending', 'active', 'invite_pending'])
             .eq('mode', mode)
             .order('created_at', { ascending: false })
             .limit(30);
@@ -491,6 +491,20 @@ export const matchService = {
             if (error.code === 'PGRST116') return null; // Row missing
             console.warn("Sync Watchdog Transient Error:", error.message);
             return { status: 'ERROR' };
+        }
+        return data;
+    },
+
+    async getMatchById(matchId: string): Promise<Match | null> {
+        const { data, error } = await (supabase as any)
+            .from('matches')
+            .select('*')
+            .eq('id', matchId)
+            .single();
+
+        if (error) {
+            console.error('Error fetching match by id:', error);
+            return null;
         }
         return data;
     }

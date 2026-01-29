@@ -11,7 +11,7 @@ const createDummyClient = () => ({
         signUp: async () => ({ data: { user: null, session: null }, error: { message: 'Offline Mode: Missing API Keys' } }),
         signInWithPassword: async () => ({ data: { user: null, session: null }, error: { message: 'Offline Mode: Missing API Keys' } }),
         signOut: async () => ({ error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
+        onAuthStateChange: (callback: any) => ({ data: { subscription: { unsubscribe: () => { } } } }),
         resetPasswordForEmail: async () => ({ data: null, error: { message: 'Offline Mode' } }),
     },
     from: () => ({
@@ -178,7 +178,7 @@ export const profileService = {
     async searchUsers(query: string) {
         let queryBuilder = supabase
             .from('profiles')
-            .select('id, username, total_score, max_level, avatar_url');
+            .select('id, username, total_score, max_level, avatar_url, email');
 
         if (query) {
             queryBuilder = queryBuilder.ilike('username', `%${query}%`);

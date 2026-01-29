@@ -126,8 +126,10 @@ const App: React.FC = () => {
   const [latestMatchData, setLatestMatchData] = useState<any>(null); // NEW: Full Match Object Store
 
   // NEW: Video Intro State
-  // NEW: Video Intro State
   const [showIntro, setShowIntro] = useState(true);
+  const [onlinePlayers, setOnlinePlayers] = useState<any[]>([]);
+  const [pendingMatchInvite, setPendingMatchInvite] = useState<string | null>(null);
+  const [isJoiningPending, setIsJoiningPending] = useState(false);
 
 
 
@@ -144,270 +146,6 @@ const App: React.FC = () => {
       setToast(prev => ({ ...prev, visible: false }));
     }, actions ? 8000 : 2500);
   }, []);
-
-  // BADGE CHECKER
-  const resetDuelState = async (matchId?: string, userId?: string) => {
-    // 1. If currently in a match, ABANDON it properly on DB
-    if (matchId && userId) {
-      console.log("🏳️ Abandoning Match:", matchId);
-      await matchService.abandonMatch(matchId, userId);
-    }
-
-    setActiveMatch(null);
-    setDuelRounds({ p1: 0, p2: 0, current: 0 });
-    setOpponentScore(0);
-    setOpponentTargets(0);
-    setShowDuelRecap(false);
-    setGameState(prev => ({ ...prev, status: 'idle' }));
-    setIsVideoVisible(false);
-    setShowSurrenderVideo(false);
-    setShowVideo(false);
-    setShowLostVideo(false);
-    if (timerRef.current) clearInterval(timerRef.current);
-  };
-
-  const checkAndUnlockBadges = useCallback(async (profile: any) => {
-    if (!profile) return;
-    const unlockedIds = profile.badges || [];
-    const newBadges: string[] = [];
-
-    BADGES.forEach(badge => {
-      if (!unlockedIds.includes(badge.id)) {
-        if (badge.condition(profile)) {
-          newBadges.push(badge.id);
-          // Toast Notification
-          showToast(`🏆 Medaglia Sbloccata: ${badge.title}!`);
-          soundService.playSuccess();
-        }
-      }
-    });
-
-    if (newBadges.length > 0) {
-      const updatedBadges = [...unlockedIds, ...newBadges];
-      // Update Local
-      setUserProfile(prev => prev ? ({ ...prev, badges: updatedBadges }) : null);
-      // Update Remote
-      await profileService.updateProfile({ id: profile.id, badges: updatedBadges });
-    }
-  }, [showToast]);
-
-  const loadProfile = useCallback(async (userId: string) => {
-    try {
-      const profile = await profileService.getProfile(userId);
-      const save = await profileService.loadGameState(userId);
-      if (save) setSavedGame(save);
-      if (profile) {
-        setUserProfile(profile);
-
-        // Check for Badges on Load (In case of missed updates or offline play sync)
-        checkAndUnlockBadges(profile);
-
-        setGameState(prev => ({
-          ...prev,
-          // Only update stats if they are better in DB (usually sync handles this, but just in case)
-          estimatedIQ: profile.estimated_iq || 100
-        }));
-      }
-    } catch (error) {
-      console.error("Error loading profile:", error);
-    }
-  }, [checkAndUnlockBadges]);
-
-  // Initialize Session & Handle Auth Redirects (Email Config etc.)
-  useEffect(() => {
-    // 1. Check current session immediately
-    authService.getCurrentSession().then(session => {
-      if (session?.user) {
-        setCurrentUser(session.user);
-        loadProfile(session.user.id);
-      }
-    });
-
-    // 2. Listen for Auth Changes (Login, Logout, Email Confirmation Redirects)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔔 Auth Event:', event);
-
-      if (event === 'SIGNED_IN' && session?.user) {
-        setCurrentUser(session.user);
-        loadProfile(session.user.id);
-
-
-        // Show Welcome Message ONLY if it's a new registration or recovery
-        const username = session.user.user_metadata?.username || 'Giocatore';
-        const isSignup = window.location.hash && (window.location.hash.includes('type=signup') || window.location.hash.includes('type=recovery'));
-
-        if (isSignup) {
-          const welcomeMsg = `🎉 Account Confermato! Benvenuto in Number, ${username}!`;
-          showToast(welcomeMsg, [{ label: 'Profilo', onClick: () => setActiveModal('profile') }]);
-        }
-        // Else: Standard login, silent entry (no toast)
-
-        // Close modals if open
-        setShowAuthModal(false);
-      }
-
-      if (event === 'SIGNED_OUT') {
-        setCurrentUser(null);
-        setUserProfile(null);
-        setSavedGame(null);
-        setGameState(prev => ({ ...prev, status: 'intro' }));
-        showToast("Disconnessione completata.");
-      }
-
-      if (event === 'USER_UPDATED') {
-        // Handle password recovery or profile update events
-        if (session?.user) {
-          setCurrentUser(session.user);
-          loadProfile(session.user.id);
-        }
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [loadProfile, showToast]);
-
-  // NEW: Game Over Trigger on Time Left reaching zero
-  useEffect(() => {
-    if (gameState.status === 'playing' && gameState.timeLeft === 0 && !isVictoryAnimating) {
-      // TIME ATTACK END (Duel)
-      if (activeMatch?.mode === 'time_attack') {
-        handleTimeAttackEnd();
-        return;
-      }
-
-      // STANDARD GAME OVER (Single Player)
-      if (!activeMatch?.isDuel) {
-        soundService.playExternalSound('lost.mp3');
-        setShowLostVideo(true);
-        setGameState(prev => ({ ...prev, status: 'game-over' }));
-        if (currentUser) {
-          profileService.clearSavedGame(currentUser.id);
-          loadProfile(currentUser.id);
-        }
-      }
-    }
-  }, [gameState.timeLeft, gameState.status, activeMatch, currentUser, isVictoryAnimating, loadProfile]);
-
-
-  // REF: Track GameState for Subscriptions (Avoid Stale Closures)
-  const gameStateRef = useRef(gameState);
-  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
-
-  // REF: Track Processed Wins (Avoid Double Sync)
-  const processedWinRef = useRef<string | null>(null);
-
-
-  const togglePause = async (e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await handleUserInteraction();
-    soundService.playUIClick();
-    setIsPaused(!isPaused);
-  };
-
-  // Fetch Leaderboard Data on Open
-  useEffect(() => {
-    if (activeModal === 'leaderboard') {
-      const fetchLeaderboard = async () => {
-        const data = await leaderboardService.getTopPlayers(10);
-        if (data) {
-          setLeaderboardData(data as any);
-        }
-      };
-      fetchLeaderboard();
-    }
-  }, [activeModal]);
-
-  // Timer: Dedicated Loop for decrementing time only
-  useEffect(() => {
-    // MODIFIED: Timer disabled for Standard/Blitz Duel, ENABLED for Time Attack
-    const isTimeDuel = activeMatch?.mode === 'time_attack';
-    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && (!activeMatch?.isDuel || isTimeDuel)) {
-      timerRef.current = window.setInterval(() => {
-        setGameState(prev => {
-          if (prev.timeLeft <= 0) return prev;
-          return { ...prev, timeLeft: prev.timeLeft - 1 };
-        });
-      }, 1000);
-    } else {
-      if (timerRef.current) window.clearInterval(timerRef.current);
-    }
-    return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
-  }, [gameState.status, isPaused, isVictoryAnimating, showVideo, activeMatch, gameState.timeLeft]);
-
-
-  const handleLoginSuccess = (user: any) => {
-    setCurrentUser(user);
-    loadProfile(user.id);
-    setShowAuthModal(false);
-    showToast(`Benvenuto, ${user.user_metadata?.username || 'Operatore'}`);
-  };
-
-  const toggleMute = async (e?: React.PointerEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    await handleUserInteraction();
-    const newMuted = !isMuted;
-    setIsMuted(newMuted);
-    soundService.setMuted(newMuted);
-    if (!newMuted) soundService.playUIClick();
-  };
-
-  const goToHome = async (e?: React.PointerEvent) => {
-    if (e) {
-      if (typeof e.preventDefault === 'function') e.preventDefault();
-      if (typeof e.stopPropagation === 'function') e.stopPropagation();
-    }
-    await handleUserInteraction();
-    soundService.playReset();
-
-    // SFIDA LOGIC (ABBANDONO)
-    if (activeMatch && currentUser && latestMatchData?.status !== 'finished') {
-      const targetToWin = duelMode === 'blitz' ? 3 : 5;
-      const someoneWon = latestMatchData?.winner_id ||
-        (latestMatchData?.p1_rounds >= targetToWin) ||
-        (latestMatchData?.p2_rounds >= targetToWin);
-
-      if (!someoneWon) {
-        // Se esco durante un duello ATTIVO, dichiaro l'avversario vincitore (Abbandono)
-        matchService.sendAbandonment(activeMatch.id, currentUser.id).catch(() => { });
-        matchService.declareWinner(activeMatch.id, activeMatch.opponentId).catch(() => { });
-        showToast("Sfida abbandonata.");
-      }
-    }
-
-    setGameState(prev => ({ ...prev, status: 'idle' }));
-    setActiveModal(null);
-    setActiveMatch(null);
-    setShowDuelRecap(false);
-    setShowVideo(false);
-    setShowLostVideo(false);
-    setIsVictoryAnimating(false);
-    setTriggerParticles(false);
-    setPreviewResult(null);
-    setSelectedPath([]);
-    if (timerRef.current) window.clearInterval(timerRef.current);
-    if (currentUser) loadProfile(currentUser.id);
-  };
-
-  const goToDuelLobby = async () => {
-    soundService.playReset();
-    setGameState(prev => ({ ...prev, status: 'idle' }));
-    setActiveModal('duel_selection'); // Torna alla lobby dei duelli
-    setActiveMatch(null);
-    setShowDuelRecap(false);
-    setShowVideo(false);
-    setShowLostVideo(false);
-    setIsVictoryAnimating(false);
-    setTriggerParticles(false);
-    setPreviewResult(null);
-    setSelectedPath([]);
-    if (timerRef.current) window.clearInterval(timerRef.current);
-  };
 
   // DETERMINISTIC RNG HELPERS
   const stringToSeed = (str: string) => {
@@ -657,10 +395,6 @@ const App: React.FC = () => {
       // Shift buffer (Normal progression)
       nextLevelData = newBuffer.shift()!;
       // Replenish buffer
-      // We start adding from: Current Level + Buffer Length (remaining) + 1
-      // Buffer length after shift is 4. Next level to generate is Level + 5.
-      // E.g. Level 1 playing. Buffer has [L2, L3, L4, L5, L6]. Shift -> Plays L2. Buffer has [L3..L6]. Gen L7.
-      // So logic: (gameState.level + 1) is the level we represent now. + buffer.length (4) + 1 = +6.
       newBuffer.push(createLevelData(gameState.level + 6));
     }
 
@@ -674,6 +408,412 @@ const App: React.FC = () => {
     }));
     setTargetAnimKey(k => k + 1);
   }, [levelBuffer, createLevelData, gameState.level]);
+
+  // BADGE CHECKER
+  const resetDuelState = async (matchId?: string, userId?: string) => {
+    // 1. If currently in a match, ABANDON it properly on DB
+    if (matchId && userId) {
+      console.log("🏳️ Abandoning Match:", matchId);
+      await matchService.abandonMatch(matchId, userId);
+    }
+
+    setActiveMatch(null);
+    setDuelRounds({ p1: 0, p2: 0, current: 0 });
+    setOpponentScore(0);
+    setOpponentTargets(0);
+    setShowDuelRecap(false);
+    setGameState(prev => ({ ...prev, status: 'idle' }));
+    setIsVideoVisible(false);
+    setShowSurrenderVideo(false);
+    setShowVideo(false);
+    setShowLostVideo(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const checkAndUnlockBadges = useCallback(async (profile: any) => {
+    if (!profile) return;
+    const unlockedIds = profile.badges || [];
+    const newBadges: string[] = [];
+
+    BADGES.forEach(badge => {
+      if (!unlockedIds.includes(badge.id)) {
+        if (badge.condition(profile)) {
+          newBadges.push(badge.id);
+          // Toast Notification
+          showToast(`🏆 Medaglia Sbloccata: ${badge.title}!`);
+          soundService.playSuccess();
+        }
+      }
+    });
+
+    if (newBadges.length > 0) {
+      const updatedBadges = [...unlockedIds, ...newBadges];
+      // Update Local
+      setUserProfile(prev => prev ? ({ ...prev, badges: updatedBadges }) : null);
+      // Update Remote
+      await profileService.updateProfile({ id: profile.id, badges: updatedBadges });
+    }
+  }, [showToast]);
+
+  const loadProfile = useCallback(async (userId: string) => {
+    try {
+      const profile = await profileService.getProfile(userId);
+      const save = await profileService.loadGameState(userId);
+      if (save) setSavedGame(save);
+      if (profile) {
+        setUserProfile(profile);
+
+        // Check for Badges on Load (In case of missed updates or offline play sync)
+        checkAndUnlockBadges(profile);
+
+        setGameState(prev => ({
+          ...prev,
+          // Only update stats if they are better in DB (usually sync handles this, but just in case)
+          estimatedIQ: profile.estimated_iq || 100
+        }));
+      }
+    } catch (error) {
+      console.error("Error loading profile:", error);
+    }
+  }, [checkAndUnlockBadges]);
+
+  // Initialize Session & Handle Auth Redirects (Email Config etc.)
+  useEffect(() => {
+    // 1. Check current session immediately
+    authService.getCurrentSession().then(session => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+        loadProfile(session.user.id);
+      }
+    });
+
+    // 2. Listen for Auth Changes (Login, Logout, Email Confirmation Redirects)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔔 Auth Event:', event);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        setCurrentUser(session.user);
+        loadProfile(session.user.id);
+
+
+        // Show Welcome Message ONLY if it's a new registration or recovery
+        const username = session.user.user_metadata?.username || 'Giocatore';
+        const isSignup = window.location.hash && (window.location.hash.includes('type=signup') || window.location.hash.includes('type=recovery'));
+
+        if (isSignup) {
+          const welcomeMsg = `🎉 Account Confermato! Benvenuto in Number, ${username}!`;
+          showToast(welcomeMsg, [{ label: 'Profilo', onClick: () => setActiveModal('profile') }]);
+        }
+        // Else: Standard login, silent entry (no toast)
+
+        // Close modals if open
+        setShowAuthModal(false);
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        setUserProfile(null);
+        setSavedGame(null);
+        setGameState(prev => ({ ...prev, status: 'intro' }));
+        showToast("Disconnessione completata.");
+      }
+
+      if (event === 'USER_UPDATED') {
+        // Handle password recovery or profile update events
+        if (session?.user) {
+          setCurrentUser(session.user);
+          loadProfile(session.user.id);
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [loadProfile, showToast]);
+
+  // GLOBAL PRESENCE & CHALLENGE NOTIFICATION
+  useEffect(() => {
+    if (!currentUser) {
+      setOnlinePlayers([]);
+      return;
+    }
+
+    // 1. GLOBAL PRESENCE TRACKING
+    const globalChannel = (supabase as any)
+      .channel('global_online_users', {
+        config: { presence: { key: currentUser.id } }
+      })
+      .on('presence', { event: 'sync' }, () => {
+        const state = globalChannel.presenceState();
+        const players = Object.values(state).map((presence: any) => presence[0]);
+        setOnlinePlayers(players);
+      })
+      .subscribe(async (status: string) => {
+        if (status === 'SUBSCRIBED') {
+          await globalChannel.track({
+            id: currentUser.id,
+            username: userProfile?.username || currentUser.user_metadata?.username || 'Guerriero',
+            avatar_url: userProfile?.avatar_url,
+            level: userProfile?.max_level || 1,
+            online_at: new Date().toISOString()
+          });
+        }
+      });
+
+    // 2. GLOBAL CHALLENGE LISTENER
+    const invitesChannel = (supabase as any)
+      .channel('global_invites')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'matches',
+        filter: `player2_id=eq.${currentUser.id}`
+      }, (payload: any) => {
+        const newMatch = payload.new;
+        if (newMatch.status === 'invite_pending') {
+          // Play badge sound
+          soundService.playBadge();
+          // Show toast with action
+          showToast(`🎮 Nuova Sfida Ricevuta! modalita': ${newMatch.mode}`, [
+            { label: 'Entra in Lobby', onClick: () => setActiveModal('duel_selection'), variant: 'primary' }
+          ]);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      (supabase as any).removeChannel(globalChannel);
+      (supabase as any).removeChannel(invitesChannel);
+    };
+  }, [currentUser, userProfile, showToast]);
+
+  // 3. Game Over Trigger on Time Left reaching zero
+  useEffect(() => {
+    if (gameState.status === 'playing' && gameState.timeLeft === 0 && !isVictoryAnimating) {
+      // TIME ATTACK END (Duel)
+      if (activeMatch?.mode === 'time_attack') {
+        handleTimeAttackEnd();
+        return;
+      }
+
+      // STANDARD GAME OVER (Single Player)
+      if (!activeMatch?.isDuel) {
+        soundService.playExternalSound('lost.mp3');
+        setShowLostVideo(true);
+        setGameState(prev => ({ ...prev, status: 'game-over' }));
+        if (currentUser) {
+          profileService.clearSavedGame(currentUser.id);
+          loadProfile(currentUser.id);
+        }
+      }
+    }
+  }, [gameState.timeLeft, gameState.status, activeMatch, currentUser, isVictoryAnimating, loadProfile]);
+
+  // 4. URL DEEP LINKING (Invitation Handling)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const joinId = params.get('joinMatch');
+    if (joinId) {
+      console.log("🔗 Detected Match Invite Link:", joinId);
+      setPendingMatchInvite(joinId);
+      // Clean URL
+      const newUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
+
+  // 5. AUTO-JOIN PENDING INVITE
+  useEffect(() => {
+    if (currentUser && pendingMatchInvite && !isJoiningPending) {
+      const autoJoin = async () => {
+        setIsJoiningPending(true);
+        showToast("Accesso alla sfida in corso...");
+        try {
+          const match = await matchService.getMatchById(pendingMatchInvite);
+          if (!match) {
+            showToast("Sfida scaduta o non trovata.");
+          } else if (match.status === 'finished' || match.status === 'cancelled') {
+            showToast("La sfida è già terminata o è stata annullata.");
+          } else {
+            // Check if I am already in the match or need to join
+            const isP1 = match.player1_id === currentUser.id;
+            const isP2 = match.player2_id === currentUser.id;
+
+            if (isP1 || isP2) {
+              // I'm part of it, just activate
+              if (match.status === 'invite_pending' && isP2) {
+                await matchService.acceptInvite(match.id, currentUser.id);
+              }
+            } else if (!match.player2_id) {
+              // Joinable public or invite without player2
+              await matchService.joinMatch(match.id, currentUser.id);
+            } else {
+              showToast("La sfida è già al completo.");
+              setIsJoiningPending(false);
+              setPendingMatchInvite(null);
+              return;
+            }
+
+            // Start the game logic (onMatchStart copy)
+            setActiveModal(null);
+            setDuelMode(match.mode as any);
+            setActiveMatch({
+              id: match.id,
+              opponentId: match.player1_id === currentUser.id ? match.player2_id! : match.player1_id,
+              isDuel: true,
+              isP1: match.player1_id === currentUser.id
+            });
+
+            setGameState(prev => ({
+              ...prev,
+              score: 0,
+              streak: 0,
+              level: 1,
+              timeLeft: match.mode === 'time_attack' ? 60 : INITIAL_TIME,
+              status: 'playing',
+              levelTargets: [],
+            }));
+            generateGrid(1, match.grid_seed);
+            setOpponentScore(0);
+            matchService.resetRoundStatus(match.id);
+            soundService.playSuccess();
+          }
+        } catch (e) {
+          console.error("Auto-join error:", e);
+          showToast("Impossibile caricare la sfida.");
+        } finally {
+          setIsJoiningPending(false);
+          setPendingMatchInvite(null);
+        }
+      };
+      autoJoin();
+    } else if (!currentUser && pendingMatchInvite && !showAuthModal) {
+      // Prompt for login if someone followed a link but isn't logged in
+      setShowAuthModal(true);
+      showToast("Accedi per accettare la sfida!");
+    }
+  }, [currentUser, pendingMatchInvite, isJoiningPending, showAuthModal, generateGrid, showToast]);
+
+
+  // REF: Track GameState for Subscriptions (Avoid Stale Closures)
+  const gameStateRef = useRef(gameState);
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
+  // REF: Track Processed Wins (Avoid Double Sync)
+  const processedWinRef = useRef<string | null>(null);
+
+
+  const togglePause = async (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await handleUserInteraction();
+    soundService.playUIClick();
+    setIsPaused(!isPaused);
+  };
+
+  // Fetch Leaderboard Data on Open
+  useEffect(() => {
+    if (activeModal === 'leaderboard') {
+      const fetchLeaderboard = async () => {
+        const data = await leaderboardService.getTopPlayers(10);
+        if (data) {
+          setLeaderboardData(data as any);
+        }
+      };
+      fetchLeaderboard();
+    }
+  }, [activeModal]);
+
+  // Timer: Dedicated Loop for decrementing time only
+  useEffect(() => {
+    // MODIFIED: Timer disabled for Standard/Blitz Duel, ENABLED for Time Attack
+    const isTimeDuel = activeMatch?.mode === 'time_attack';
+    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && (!activeMatch?.isDuel || isTimeDuel)) {
+      timerRef.current = window.setInterval(() => {
+        setGameState(prev => {
+          if (prev.timeLeft <= 0) return prev;
+          return { ...prev, timeLeft: prev.timeLeft - 1 };
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+    }
+    return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
+  }, [gameState.status, isPaused, isVictoryAnimating, showVideo, activeMatch, gameState.timeLeft]);
+
+
+  const handleLoginSuccess = (user: any) => {
+    setCurrentUser(user);
+    loadProfile(user.id);
+    setShowAuthModal(false);
+    showToast(`Benvenuto, ${user.user_metadata?.username || 'Operatore'}`);
+  };
+
+  const toggleMute = async (e?: React.PointerEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    await handleUserInteraction();
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    soundService.setMuted(newMuted);
+    if (!newMuted) soundService.playUIClick();
+  };
+
+  const goToHome = async (e?: React.PointerEvent) => {
+    if (e) {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
+    await handleUserInteraction();
+    soundService.playReset();
+
+    // SFIDA LOGIC (ABBANDONO)
+    if (activeMatch && currentUser && latestMatchData?.status !== 'finished') {
+      const targetToWin = duelMode === 'blitz' ? 3 : 5;
+      const someoneWon = latestMatchData?.winner_id ||
+        (latestMatchData?.p1_rounds >= targetToWin) ||
+        (latestMatchData?.p2_rounds >= targetToWin);
+
+      if (!someoneWon) {
+        // Se esco durante un duello ATTIVO, dichiaro l'avversario vincitore (Abbandono)
+        matchService.sendAbandonment(activeMatch.id, currentUser.id).catch(() => { });
+        matchService.declareWinner(activeMatch.id, activeMatch.opponentId).catch(() => { });
+        showToast("Sfida abbandonata.");
+      }
+    }
+
+    setGameState(prev => ({ ...prev, status: 'idle' }));
+    setActiveModal(null);
+    setActiveMatch(null);
+    setShowDuelRecap(false);
+    setShowVideo(false);
+    setShowLostVideo(false);
+    setIsVictoryAnimating(false);
+    setTriggerParticles(false);
+    setPreviewResult(null);
+    setSelectedPath([]);
+    if (timerRef.current) window.clearInterval(timerRef.current);
+    if (currentUser) loadProfile(currentUser.id);
+  };
+
+  const goToDuelLobby = async () => {
+    soundService.playReset();
+    setGameState(prev => ({ ...prev, status: 'idle' }));
+    setActiveModal('duel_selection'); // Torna alla lobby dei duelli
+    setActiveMatch(null);
+    setShowDuelRecap(false);
+    setShowVideo(false);
+    setShowLostVideo(false);
+    setIsVictoryAnimating(false);
+    setTriggerParticles(false);
+    setPreviewResult(null);
+    setSelectedPath([]);
+    if (timerRef.current) window.clearInterval(timerRef.current);
+  };
+
 
   const handleDuelRoundStart = (matchData: any) => {
     // Close Modal
@@ -2304,6 +2444,7 @@ const App: React.FC = () => {
             userProfile={userProfile}
             mode={duelMode}
             showToast={showToast}
+            onlinePlayers={onlinePlayers}
             onClose={() => setActiveModal('duel_selection')}
             onMatchStart={(seed, matchId, opponentId, isP1) => {
               setActiveModal(null);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Swords, Loader2, XCircle, User, Play, Eye, Radio, Search, Send } from 'lucide-react';
+import { Swords, Loader2, XCircle, User, Play, Eye, Radio, Search, Send, Mail } from 'lucide-react';
 import { matchService, Match } from '../services/matchService';
 import { soundService } from '../services/soundService';
 import { supabase, profileService } from '../services/supabaseClient';
@@ -11,11 +11,11 @@ interface NeuralDuelProps {
     mode: 'standard' | 'blitz' | 'time_attack';
     showToast: (msg: string) => void;
     userProfile?: any;
+    onlinePlayers: any[];
 }
 
-const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMatchStart, mode, showToast, userProfile }) => {
+const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMatchStart, mode, showToast, userProfile, onlinePlayers }) => {
     const [matches, setMatches] = useState<any[]>([]);
-    const [onlinePlayers, setOnlinePlayers] = useState<any[]>([]);
     const [myHostedMatch, setMyHostedMatch] = useState<Match | null>(null);
     const [loading, setLoading] = useState(false);
     const [pendingChallenge, setPendingChallenge] = useState<any | null>(null);
@@ -56,17 +56,12 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
         soundService.playUIClick();
         const seed = Math.random().toString(36).substring(7);
         try {
-            // Create a pending match but with a SPECIFIC player2 (Invite)
-            // Note: We need to update createMatch signature or use a new method to support invites.
-            // For now, I'll use createMatch and then update it immediately to 'invite_pending' with player2_id.
-            // Check matchService update below.
             const newMatch = await matchService.createInviteMatch(currentUser.id, userToInvite.id, seed, mode);
 
             if (newMatch) {
-                setMyHostedMatch(newMatch); // Show waiting screen
+                setMyHostedMatch(newMatch);
                 showToast(`Invito inviato a ${userToInvite.username}`);
 
-                // Subscribe to wait for acceptance
                 channelRef.current = matchService.subscribeToMatch(newMatch.id, (payload) => {
                     if (payload.new.status === 'active') {
                         onMatchStart(newMatch.grid_seed, newMatch.id, payload.new.player2_id, true);
@@ -75,10 +70,22 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                         setMyHostedMatch(null);
                     }
                 });
+                return newMatch;
             }
         } catch (e: any) {
             console.error('Invite error:', e);
             showToast("Errore invio invito");
+        }
+        return null;
+    };
+
+    const handleEmailInvite = async (user: any) => {
+        const match = await handleInvite(user);
+        if (match) {
+            const joinUrl = `${window.location.origin}${window.location.pathname}?joinMatch=${match.id}`;
+            const subject = encodeURIComponent(`Sfida a Neural Duel!`);
+            const body = encodeURIComponent(`Ciao ${user.username}, ti sfido a una partita su Neural Duel!\n\nClicca qui per accettare la sfida:\n${joinUrl}\n\nSe non sei registrato, potrai farlo in pochi istanti e sfidarmi subito!`);
+            window.location.href = `mailto:${user.email}?subject=${subject}&body=${body}`;
         }
     };
 
@@ -111,39 +118,25 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     }, [myHostedMatch]);
 
     useEffect(() => {
-        const lobbyChannel = (supabase as any)
-            .channel(`lobby_presence_${mode}`, {
-                config: { presence: { key: currentUser.id } }
-            })
-            .on('presence', { event: 'sync' }, () => {
-                const state = lobbyChannel.presenceState();
-                const players = Object.values(state).map((presence: any) => presence[0]);
-                setOnlinePlayers(players);
-            })
+        const matchesChannel = (supabase as any)
+            .channel(`lobby_matches_${mode}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, (payload: any) => {
                 console.log("MATCH CHANGE DETECTED:", payload.eventType, payload.new?.id);
                 fetchMatches();
             })
-            .subscribe(async (status: string) => {
-                console.log("LOBBY CHANNEL STATUS:", status);
-                if (status === 'SUBSCRIBED') {
-                    await lobbyChannel.track({
-                        id: currentUser.id,
-                        username: userProfile?.username || currentUser.user_metadata?.username || 'Guerriero',
-                        level: userProfile?.max_level || currentUser.user_metadata?.max_level || 1,
-                        joined_at: new Date().toISOString()
-                    });
-                }
-            });
+            .subscribe();
 
         fetchMatches();
         const intervalId = setInterval(fetchMatches, 5000);
 
         return () => {
             clearInterval(intervalId);
-            (supabase as any).removeChannel(lobbyChannel);
+            (supabase as any).removeChannel(matchesChannel);
         };
-    }, [mode, currentUser, fetchMatches]);
+    }, [mode, fetchMatches]);
+
+    const myInvites = matches.filter(m => m.status === 'invite_pending' && m.player2_id === currentUser.id);
+    const lobbyMatches = matches.filter(m => m.player1_id !== currentUser.id && m.status !== 'invite_pending');
 
     const hostMatch = async () => {
         if (myHostedMatch) return;
@@ -186,6 +179,23 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
             console.error('Join error:', e);
             showToast(e.message || "Impossibile unirsi alla sfida");
             fetchMatches();
+        }
+    };
+
+    const handleAcceptInvite = async (match: any) => {
+        soundService.playUIClick();
+        try {
+            const success = await matchService.acceptInvite(match.id, currentUser.id);
+            if (success) {
+                soundService.playSuccess();
+                onMatchStart(match.grid_seed, match.id, match.player1_id, false);
+            } else {
+                showToast("Invito non più valido.");
+                fetchMatches();
+            }
+        } catch (e) {
+            console.error('Accept invite error:', e);
+            showToast("Errore accettazione invito");
         }
     };
 
@@ -274,60 +284,116 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                         // NOT HOSTING -> SHOW LOBBY OR INVITE TABS
                         <>
                             {activeTab === 'lobby' && (
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Radio className="w-3 h-3 text-red-500 animate-pulse" />
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Partite in Corso</span>
-                                    </div>
-
-                                    {matches.filter(m => m.player1_id !== currentUser.id).length === 0 && (
-                                        <div className="py-4 text-center border border-dashed border-white/5 rounded-xl opacity-40 italic text-[10px] uppercase">Nessuna sfida attiva</div>
+                                <div className="space-y-6">
+                                    {/* HOST ACTION */}
+                                    {!myHostedMatch && (
+                                        <button
+                                            onClick={hostMatch}
+                                            className="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-2xl font-black font-orbitron uppercase tracking-widest text-xs border-2 border-white/20 shadow-[0_8px_20px_rgba(249,115,22,0.3)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 group"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:rotate-90 transition-transform">
+                                                <Swords size={18} />
+                                            </div>
+                                            APRI NUOVA SFIDA PUBBLICA
+                                        </button>
                                     )}
 
-                                    {matches.map((match) => {
-                                        const isBusy = match.status === 'active';
-                                        const isJoinable = match.status === 'pending' && !match.player2_id;
-
-                                        return (
-                                            <div
-                                                key={match.id}
-                                                onClick={() => isJoinable && setPendingChallenge(match)}
-                                                className={`p-4 rounded-2xl flex items-center justify-between transition-all border group
-                                                    ${isBusy ? 'bg-slate-900/40 border-slate-800 opacity-80 cursor-not-allowed' :
-                                                        isJoinable ? 'bg-green-500/5 border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.05)] cursor-pointer hover:border-green-500/50 hover:bg-green-500/10 active:scale-[0.98]' :
-                                                            'bg-slate-900/40 border-slate-800 opacity-50 cursor-not-allowed'}`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="relative">
-                                                        <div className={`w-11 h-11 rounded-full flex items-center justify-center border-2 ${isBusy ? 'bg-slate-800 border-red-500/30' : 'bg-green-500/10 border-green-500/50 group-hover:border-green-500'}`}>
-                                                            {isBusy ? <Swords className="text-red-500" size={20} /> : <Play className="text-green-500" size={20} />}
-                                                        </div>
-                                                        <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${isBusy ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`}></div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 group-hover:text-green-400 transition-colors">
-                                                            {match.player1?.username || match.player1_id?.slice(0, 8) || 'Sconosciuto'}
-                                                            {isBusy && <span className="text-red-500 mx-1">VS</span>}
-                                                            {isBusy && (match.player2?.username || match.player2_id?.slice(0, 8) || 'Sconosciuto')}
-                                                        </div>
-                                                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">
-                                                            LVL {match.player1?.max_level || 1} • {isBusy ? "Partita avviata" : "In attesa di sfidanti"}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-col items-end gap-1">
-                                                    {isBusy ? (
-                                                        <span className="text-[9px] bg-red-600 font-black text-white px-2 py-0.5 rounded uppercase tracking-widest border border-red-400/30">IN SFIDA</span>
-                                                    ) : isJoinable ? (
-                                                        <span className="text-[9px] bg-green-500 font-black text-slate-950 px-2 py-0.5 rounded uppercase tracking-widest animate-pulse">PRONTO</span>
-                                                    ) : (
-                                                        <span className="text-[9px] bg-slate-700 font-black text-white px-2 py-0.5 rounded uppercase tracking-widest">PULL</span>
-                                                    )}
-                                                    <div className="text-[8px] text-slate-600 font-bold uppercase">{isBusy ? "Occupato" : isJoinable ? "Sfida ora" : "In attesa"}</div>
-                                                </div>
+                                    {/* INCOMING INVITES SECTION */}
+                                    {myInvites.length > 0 && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Mail className="w-3 h-3 text-green-500 animate-pulse" />
+                                                <span className="text-[10px] font-black text-green-500 uppercase tracking-[0.2em]">Inviti Ricevuti</span>
                                             </div>
-                                        );
-                                    })}
+                                            {myInvites.map(match => (
+                                                <div key={match.id} className="p-4 bg-green-500/10 border border-green-500/30 rounded-2xl flex items-center justify-between animate-fadeIn translate-y-0 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="relative">
+                                                            <div className="w-11 h-11 rounded-full bg-slate-800 border-2 border-green-500/50 overflow-hidden">
+                                                                {match.player1?.avatar_url ? (
+                                                                    <img src={match.player1.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-green-500 font-bold uppercase">{match.player1?.username?.charAt(0) || 'S'}</div>
+                                                                )}
+                                                            </div>
+                                                            <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${onlinePlayers.some(p => p.id === match.player1_id) ? 'bg-green-500' : 'bg-red-500/50'}`}></div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-black text-white uppercase tracking-wider">{match.player1?.username || 'Sconosciuto'}</div>
+                                                            <div className="text-[10px] text-green-400 font-bold uppercase tracking-tighter">Ti ha sfidato!</div>
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={() => handleAcceptInvite(match)} className="px-5 py-2 bg-green-500 text-slate-950 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-green-400 transition-all active:scale-95 shadow-lg">ACCETTA</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* PUBLIC MATCHES SECTION */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Radio className="w-3 h-3 text-red-500 animate-pulse" />
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Partite in Corso</span>
+                                        </div>
+
+                                        {lobbyMatches.length === 0 && (
+                                            <div className="py-8 text-center border border-dashed border-white/5 rounded-xl opacity-40 italic text-[10px] uppercase flex flex-col items-center gap-2">
+                                                <Swords size={24} className="opacity-20" />
+                                                Nessuna sfida attiva in {mode}
+                                            </div>
+                                        )}
+
+                                        {lobbyMatches.map((match) => {
+                                            const isBusy = match.status === 'active';
+                                            const isJoinable = match.status === 'pending' && !match.player2_id;
+                                            const player = match.player1;
+
+                                            return (
+                                                <div
+                                                    key={match.id}
+                                                    onClick={() => isJoinable && setPendingChallenge(match)}
+                                                    className={`p-4 rounded-2xl flex items-center justify-between transition-all border group
+                                                        ${isBusy ? 'bg-slate-900/40 border-slate-800 opacity-80 cursor-not-allowed' :
+                                                            isJoinable ? 'bg-white/5 border-white/5 shadow-[0_0_20px_rgba(255,255,255,0.02)] cursor-pointer hover:border-cyan-500/30 hover:bg-white/[0.07] active:scale-[0.98]' :
+                                                                'bg-slate-900/40 border-slate-800 opacity-50 cursor-not-allowed'}`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="relative">
+                                                            <div className={`w-11 h-11 rounded-full overflow-hidden border-2 ${isBusy ? 'border-red-500/30' : 'border-white/10 group-hover:border-cyan-500/50'}`}>
+                                                                {player?.avatar_url ? (
+                                                                    <img src={player.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
+                                                                ) : (
+                                                                    <div className="w-full h-full bg-slate-800 flex items-center justify-center text-slate-500 font-bold uppercase text-xs">{player?.username?.charAt(0) || '?'}</div>
+                                                                )}
+                                                            </div>
+                                                            {/* Online Status Dot */}
+                                                            <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${onlinePlayers.some(p => p.id === match.player1_id) ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500/50'}`}></div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 group-hover:text-cyan-400 transition-colors">
+                                                                {player?.username || match.player1_id?.slice(0, 8) || 'Sconosciuto'}
+                                                                {isBusy && <span className="text-red-500 mx-1 text-[8px]">VS</span>}
+                                                                {isBusy && (match.player2?.username || match.player2_id?.slice(0, 8) || 'Sconosciuto')}
+                                                            </div>
+                                                            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">
+                                                                LVL {player?.max_level || 1} • {isBusy ? "In Sfida" : "Pronto a combattere"}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        {isBusy ? (
+                                                            <span className="text-[9px] bg-red-600 font-black text-white px-2 py-0.5 rounded uppercase tracking-widest border border-red-400/30">LOCKED</span>
+                                                        ) : isJoinable ? (
+                                                            <span className="text-[9px] bg-cyan-500 font-black text-slate-950 px-2 py-0.5 rounded uppercase tracking-widest group-hover:animate-pulse">SFIDA</span>
+                                                        ) : (
+                                                            <span className="text-[9px] bg-slate-700 font-black text-white px-2 py-0.5 rounded uppercase tracking-widest">PRIVATE</span>
+                                                        )}
+                                                        <div className="text-[8px] text-slate-600 font-bold uppercase">{isBusy ? "Occupato" : isJoinable ? "Libero" : "Invito"}</div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
 
                                     <div className="space-y-3 pt-4">
                                         <div className="flex items-center gap-2 mb-2">
@@ -409,28 +475,51 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                             searchResults.map((user) => (
                                                 <div key={user.id} className="bg-white/5 border border-white/5 p-4 rounded-2xl flex items-center justify-between group hover:border-cyan-500/30 transition-all">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white/10 overflow-hidden">
-                                                            {user.avatar_url ? (
-                                                                <img src={user.avatar_url} className="w-full h-full object-cover" alt={user.username} />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold">{user.username.charAt(0)}</div>
-                                                            )}
+                                                        <div className="relative">
+                                                            <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white/10 overflow-hidden">
+                                                                {user.avatar_url ? (
+                                                                    <img src={user.avatar_url} className="w-full h-full object-cover" alt={user.username} />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold">{user.username.charAt(0)}</div>
+                                                                )}
+                                                            </div>
+                                                            {/* Status Indicator */}
+                                                            <div
+                                                                className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${onlinePlayers.some(p => p.id === user.id)
+                                                                    ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]'
+                                                                    : 'bg-red-500/50'
+                                                                    }`}
+                                                                title={onlinePlayers.some(p => p.id === user.id) ? "Online nel Gioco" : "Offline"}
+                                                            ></div>
                                                         </div>
                                                         <div>
                                                             <div className="text-white font-bold uppercase tracking-wider text-sm">{user.username}</div>
                                                             <div className="text-[10px] text-slate-500 font-black uppercase">Lv. {user.max_level || 1} • {user.total_score || 0} Pts</div>
                                                         </div>
                                                     </div>
-                                                    <button
-                                                        onClick={() => handleInvite(user)}
-                                                        disabled={myHostedMatch !== null} // Disable if already hosting
-                                                        className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest border transition-all active:scale-95 flex items-center gap-2
-                                                            ${myHostedMatch
-                                                                ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
-                                                                : 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30 hover:border-green-500'}`}
-                                                    >
-                                                        {myHostedMatch ? 'Occupato' : 'Invita'} <Send className="w-3 h-3" />
-                                                    </button>
+                                                    <div className="flex gap-2">
+                                                        {/* EMAIL BUTTON */}
+                                                        {user.email && (
+                                                            <button
+                                                                onClick={() => handleEmailInvite(user)}
+                                                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition-all active:scale-95"
+                                                                title="Invia Email di Avviso"
+                                                            >
+                                                                <Mail size={14} />
+                                                            </button>
+                                                        )}
+
+                                                        <button
+                                                            onClick={() => handleInvite(user)}
+                                                            disabled={myHostedMatch !== null} // Disable if already hosting
+                                                            className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest border transition-all active:scale-95 flex items-center gap-2
+                                                                        ${myHostedMatch
+                                                                    ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
+                                                                    : 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30 hover:border-green-500'}`}
+                                                        >
+                                                            {myHostedMatch ? 'Occupato' : 'Invita'} <Send className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             ))
                                         ) : (
@@ -462,7 +551,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                     </div>
                 )}
             </div>
-        </div >
+        </div>
     );
 };
 
