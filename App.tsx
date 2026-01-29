@@ -1536,6 +1536,7 @@ const App: React.FC = () => {
 
   const nextLevel = () => {
     soundService.playUIClick();
+    setIsVictoryAnimating(false);
     const nextLvl = gameState.level + 1;
     setGameState(prev => ({
       ...prev,
@@ -1682,6 +1683,7 @@ const App: React.FC = () => {
     // 3. Unmount after fade
     setTimeout(() => {
       setShowVideo(false);
+      setIsVictoryAnimating(false);
       setGameState(prev => ({
         ...prev,
         status: 'level-complete'
