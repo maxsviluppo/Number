@@ -997,6 +997,17 @@ const App: React.FC = () => {
       setIsVictoryAnimating(true);
       setTriggerParticles(true);
 
+      // UNLOCK AUDIO FOR MOBILE (User Interaction Context)
+      if (winAudioRef.current) {
+        winAudioRef.current.volume = 0;
+        winAudioRef.current.play().then(() => {
+          if (winAudioRef.current) {
+            winAudioRef.current.pause();
+            winAudioRef.current.currentTime = 0;
+          }
+        }).catch(e => console.log("Audio unlock failed", e));
+      }
+
       // SHOW WIN VIDEO REMOVED
       // setShowVideo(true);
 
@@ -1460,18 +1471,13 @@ const App: React.FC = () => {
             setShowVideo(false);
           }}>
             <video
-              src="/winnermp4.mp4"
+              src="/win29audio.mp4"
               className="w-full h-full object-cover"
               autoPlay
               playsInline
-              muted
               onPlay={() => {
-                console.log("WINNER VIDEO STARTED: winner1.mp4");
-                // Try to play audio when video starts
-                if (winAudioRef.current) {
-                  winAudioRef.current.volume = 1.0;
-                  winAudioRef.current.play().catch(e => console.warn("Win audio autoplay play blocked", e));
-                }
+                console.log("WINNER VIDEO STARTED: win29audio.mp4");
+                // Audio is now embedded in the video file
               }}
               onEnded={() => {
                 if (winAudioRef.current) { winAudioRef.current.pause(); winAudioRef.current.currentTime = 0; }
@@ -1482,14 +1488,11 @@ const App: React.FC = () => {
                 }));
               }}
             />
-            {/* Hidden Audio Element for synced playback */}
-            <audio ref={winAudioRef} src="/winner1.mp3" preload="auto" />
 
             <button
               className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group"
               onPointerDown={(e) => {
                 e.stopPropagation();
-                if (winAudioRef.current) { winAudioRef.current.pause(); winAudioRef.current.currentTime = 0; }
                 setShowVideo(false);
                 setGameState(prev => ({ ...prev, status: 'level-complete' }));
               }}>
