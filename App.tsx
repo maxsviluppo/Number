@@ -146,7 +146,13 @@ const App: React.FC = () => {
   }, []);
 
   // BADGE CHECKER
-  const resetDuelState = () => {
+  const resetDuelState = async (matchId?: string, userId?: string) => {
+    // 1. If currently in a match, ABANDON it properly on DB
+    if (matchId && userId) {
+      console.log("🏳️ Abandoning Match:", matchId);
+      await matchService.abandonMatch(matchId, userId);
+    }
+
     setActiveMatch(null);
     setDuelRounds({ p1: 0, p2: 0, current: 0 });
     setOpponentScore(0);
@@ -267,8 +273,7 @@ const App: React.FC = () => {
     if (gameState.status === 'playing' && gameState.timeLeft === 0 && !isVictoryAnimating) {
       // TIME ATTACK END (Duel)
       if (activeMatch?.mode === 'time_attack') {
-        soundService.playSuccess();
-        setGameState(prev => ({ ...prev, status: 'game-over' })); // Use Game Over screen to show final score
+        handleTimeAttackEnd();
         return;
       }
 
@@ -878,7 +883,7 @@ const App: React.FC = () => {
       totalScore: userProfile?.total_score || 0,
       streak: 0,
       level: startLevel,
-      timeLeft: INITIAL_TIME,
+      timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME, // FORCE 60s for Time Attack
       targetResult: 0,
       status: 'playing',
       estimatedIQ: 100,
@@ -1179,6 +1184,20 @@ const App: React.FC = () => {
       }));
     }
     setSelectedPath([]);
+  };
+
+  const handleTimeAttackEnd = () => {
+    // 1. Play Sound (Finished)
+    soundService.playExternalSound('Fine_partita_win.mp3');
+
+    // 2. Final Score Update (ensure sync)
+    if (activeMatch && currentUser) {
+      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameStateRef.current.score, gameStateRef.current.levelTargets.filter(t => t.completed).length);
+    }
+
+    // 3. Show Recap / Idle
+    setGameState(prev => ({ ...prev, status: 'idle' }));
+    setShowDuelRecap(true);
   };
 
   const handleError = () => {
@@ -1916,7 +1935,11 @@ const App: React.FC = () => {
                       className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all border-2 border-slate-200">
                       RIGIOCA LIVELLO {gameState.level}
                     </button>
-                    <button onPointerDown={(e) => { e.stopPropagation(); resetDuelState(); goToHome(); }}
+                    <button onPointerDown={(e) => {
+                      e.stopPropagation();
+                      resetDuelState(activeMatch?.id, currentUser?.id);
+                      goToHome();
+                    }}
                       className="w-full bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm border border-slate-700 active:scale-95 transition-all hover:bg-slate-700 hover:text-white">
                       TORNA ALLA HOME
                     </button>
@@ -1943,6 +1966,7 @@ const App: React.FC = () => {
 
                   <button onPointerDown={(e) => {
                     e.stopPropagation();
+                    // Just reset local, match is already gone/cancelled if we are here (surrender screen)
                     resetDuelState();
                     setActiveModal('duel_selection');
                   }}
@@ -2007,7 +2031,7 @@ const App: React.FC = () => {
                           className="bg-slate-800 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-700 hover:text-white hover:bg-slate-700">
                           Rigioca
                         </button>
-                        <button onPointerDown={(e) => { e.stopPropagation(); goToHome(e); }}
+                        <button onPointerDown={(e) => { e.stopPropagation(); resetDuelState(activeMatch?.id, currentUser?.id); goToHome(e); }}
                           className="bg-slate-800 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-700 hover:text-white hover:bg-slate-700">
                           Home
                         </button>
