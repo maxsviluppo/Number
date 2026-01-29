@@ -2086,8 +2086,7 @@ const App: React.FC = () => {
                       <>
                         {/* Label Logic */}
                         {(() => {
-                          if (duelMode === 'time_attack') return <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">SEC</span>;
-                          if (activeMatch?.isDuel) return <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>;
+                          if (activeMatch?.isDuel && duelMode !== 'time_attack') return <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>;
                           return null;
                         })()}
 
