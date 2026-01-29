@@ -575,7 +575,7 @@ const App: React.FC = () => {
           // Play badge sound
           soundService.playBadge();
           // Show toast with action - Updated to DIRECT ACCEPT
-          showToast(`🎮 Nuova Sfida Ricevuta! Modalità: ${newMatch.mode}`, [
+          showToast(`🎮 Nuova Sfida Ricevuta! Modalità: ${newMatch.mode.toUpperCase().replace('_', ' ')}`, [
             {
               label: 'Accetta',
               onClick: () => {
@@ -1391,16 +1391,24 @@ const App: React.FC = () => {
       if (activeMatch && activeMatch.mode === 'time_attack') {
         soundService.playSuccess();
         const allSolutions = Array.from(findAllSolutions(grid));
+
+        // Shuffle solutions
         for (let i = allSolutions.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [allSolutions[i], allSolutions[j]] = [allSolutions[j], allSolutions[i]];
         }
+
+        // Take next batch, different from current if possible
         const nextBatch = allSolutions.slice(0, 5);
+
+        // Reset targets for next wave
         setGameState(prev => ({
           ...prev,
           levelTargets: nextBatch.map(t => ({ value: t, completed: false }))
         }));
+
         showToast("NUOVI TARGET! CONTINUA!", [], 'secondary');
+        setSelectedPath([]);
         return;
       }
 
