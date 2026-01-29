@@ -146,7 +146,21 @@ const App: React.FC = () => {
   }, []);
 
   // BADGE CHECKER
-  const checkAndUnlockBadges = useCallback(async (profile: UserProfile) => {
+  const resetDuelState = () => {
+    setActiveMatch(null);
+    setDuelRounds({ p1: 0, p2: 0, current: 0 });
+    setOpponentScore(0);
+    setOpponentTargets(0);
+    setShowDuelRecap(false);
+    setGameState(prev => ({ ...prev, status: 'idle' }));
+    setIsVideoVisible(false);
+    setShowSurrenderVideo(false);
+    setShowVideo(false);
+    setShowLostVideo(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const checkAndUnlockBadges = useCallback(async (profile: any) => {
     if (!profile) return;
     const unlockedIds = profile.badges || [];
     const newBadges: string[] = [];
@@ -853,7 +867,10 @@ const App: React.FC = () => {
     setTriggerParticles(false);
     setPreviewResult(null);
     setShowVideo(false);
+    setPreviewResult(null);
+    setShowVideo(false);
     setShowLostVideo(false);
+    setShowDuelRecap(false); // Reset recap state strictly
 
     // Explicitly reset Main State for NEW GAME
     setGameState({
@@ -1895,12 +1912,12 @@ const App: React.FC = () => {
                   <div className="text-[10px] font-bold text-slate-400 mb-6 uppercase tracking-[0.2em]">Livello Non Superato</div>
 
                   <div className="space-y-3 relative z-10">
-                    <button onPointerDown={(e) => { e.stopPropagation(); startGame(); }}
+                    <button onPointerDown={(e) => { e.stopPropagation(); resetDuelState(); startGame(); }}
                       className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all border-2 border-slate-200">
                       RIGIOCA LIVELLO {gameState.level}
                     </button>
-                    <button onPointerDown={goToHome}
-                      className="w-full bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border border-slate-700 active:scale-95 transition-all hover:bg-slate-700 hover:text-white">
+                    <button onPointerDown={(e) => { e.stopPropagation(); resetDuelState(); goToHome(); }}
+                      className="w-full bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm border border-slate-700 active:scale-95 transition-all hover:bg-slate-700 hover:text-white">
                       TORNA ALLA HOME
                     </button>
                   </div>
@@ -1926,8 +1943,8 @@ const App: React.FC = () => {
 
                   <button onPointerDown={(e) => {
                     e.stopPropagation();
+                    resetDuelState();
                     setActiveModal('duel_selection');
-                    setGameState(prev => ({ ...prev, status: 'idle' }));
                   }}
                     className="w-full bg-cyan-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border border-cyan-400 hover:bg-cyan-500">
                     TORNA ALLA LOBBY
