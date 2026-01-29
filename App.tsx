@@ -929,9 +929,11 @@ const App: React.FC = () => {
         });
 
         const opponentTargetCount = amIP1 ? newData.p2_rounds : newData.p1_rounds;
-        const targetToWin = duelMode === 'blitz' ? 3 : 5;
+        const currentMode = newData.mode || duelMode;
+        const targetToWin = currentMode === 'blitz' ? 3 : 5;
 
-        if (opponentTargetCount >= targetToWin && newData.status !== 'finished') {
+        // Condition excludes Time Attack from finding a winner by rounds
+        if (currentMode !== 'time_attack' && opponentTargetCount >= targetToWin && newData.status !== 'finished') {
           if (timerRef.current) window.clearInterval(timerRef.current);
           setGameState(prev => ({ ...prev, status: 'idle' }));
           setIsDragging(false);
