@@ -219,6 +219,7 @@ const App: React.FC = () => {
 
   // SOLVER: Find all valid paths and their results
   const findAllSolutions = (gridCells: HexCellData[]): Set<number> => {
+    if (!gridCells) return new Set();
     const solutions = new Set<number>();
     const maxPathLength = 7; // N-Op-N-Op-N-Op-N = 7 cells max
 
@@ -1281,11 +1282,18 @@ const App: React.FC = () => {
     setScoreAnimKey(k => k + 1);
 
     // Update targets state
+    // Update targets state - Mark ONLY the first matching uncompleted target
     const currentTargets = gameStateRef.current.levelTargets;
-    const newTargets = currentTargets.map(t =>
-      t.value === matchedValue ? { ...t, completed: true } : t
-    );
-    const allDone = newTargets.every(t => t.completed) && activeMatch?.mode !== 'time_attack';
+    const targetIndex = currentTargets.findIndex(t => t.value === matchedValue && !t.completed);
+
+    // If no target found (already all done?), exit or ignore
+    // But we are here so valid match.
+    // Copy array
+    const newTargets = [...currentTargets];
+    if (targetIndex !== -1) {
+      newTargets[targetIndex] = { ...newTargets[targetIndex], completed: true };
+    }
+    const allDone = newTargets.every(t => t.completed) && duelMode !== 'time_attack';
 
     if (allDone) {
       soundService.playExternalSound('Fine_partita_win.mp3');
@@ -1438,26 +1446,38 @@ const App: React.FC = () => {
       }));
 
       // TIME ATTACK: Individual Target Refill
-      if (activeMatch?.mode === 'time_attack') {
+      if (duelMode === 'time_attack') {
         setTimeout(() => {
-          const currentGrid = gameStateRef.current.grid;
-          const currentRefTargets = gameStateRef.current.levelTargets;
+          const currentState = gameStateRef.current;
+          if (!currentState || !currentState.grid) return;
+
+          const currentGrid = currentState.grid;
+          const currentRefTargets = currentState.levelTargets || [];
           const allSols = Array.from(findAllSolutions(currentGrid));
+          // Filter out uncompleted targets (active ones)
           const activeValues = currentRefTargets.filter(t => !t.completed).map(t => t.value);
+          // Candidates are any solution NOT in the active set
           const candidates = allSols.filter(v => !activeValues.includes(v));
 
           if (candidates.length > 0) {
             const nextVal = candidates[Math.floor(Math.random() * candidates.length)];
             setGameState(prev => {
               const updated = [...prev.levelTargets];
+              // Find the EXACT target slot that was completed (value match + completed status)
               const idx = updated.findIndex(t => t.value === matchedValue && t.completed);
-              if (idx !== -1) updated[idx] = { value: nextVal, completed: false };
+              if (idx !== -1) {
+                console.log("REPLACING TARGET:", matchedValue, "WITH:", nextVal);
+                updated[idx] = { value: nextVal, completed: false };
+              } else {
+                console.warn("Target to replace not found:", matchedValue);
+              }
               return { ...prev, levelTargets: updated };
             });
-            // Optional: Subtle sound
-            // soundService.playPop(); 
+            soundService.playPop();
+          } else {
+            console.warn("No candidates for refill!");
           }
-        }, 2500);
+        }, 3000); // 3s delay as requested
       }
     }
     setSelectedPath([]);
@@ -1468,8 +1488,20 @@ const App: React.FC = () => {
     soundService.playExternalSound('Fine_partita_win.mp3');
 
     // 2. Final Score Update (ensure sync)
+    // 2. Final Score Update and Finish Match to prevent loop
     if (activeMatch && currentUser) {
-      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, gameStateRef.current.score, gameStateRef.current.levelTargets.filter(t => t.completed).length);
+      const myScore = gameStateRef.current.score;
+      const oppScore = opponentScore; // From state
+
+      // Determine winner immediately
+      let winnerId: string | null = null;
+      if (myScore > oppScore) winnerId = currentUser.id;
+      else if (oppScore > myScore) winnerId = activeMatch.opponentId;
+
+      // Force update final stats and close match
+      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, gameStateRef.current.levelTargets.filter(t => t.completed).length)
+        .then(() => matchService.declareWinner(activeMatch.id, winnerId))
+        .catch(e => console.error("Error ending time attack:", e));
     }
 
     // 3. Show Recap / Idle
