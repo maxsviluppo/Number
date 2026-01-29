@@ -793,24 +793,28 @@ const App: React.FC = () => {
     if (activeMatch?.id && gameStateRef.current.status === 'playing') {
       syncInterval = setInterval(async () => {
         const status = await matchService.verifyMatchStatus(activeMatch.id);
-        if (status) {
-          // If match is finished/cancelled but we are still playing:
-          // Check if I am NOT the winner (if I was, normal flow finishes it)
-          // Or if it was simply cancelled/abandoned
-          if ((status.status === 'finished' && status.winner_id !== currentUser?.id) || status.status === 'cancelled') {
 
-            // If we haven't already processed a win/loss locally
-            if (gameStateRef.current.status === 'playing') {
-              console.warn("SYNC WATCHDOG: Match ended remotely. Forcing surrender flow.");
-              if (timerRef.current) window.clearInterval(timerRef.current);
-              setGameState(prev => ({ ...prev, status: 'idle' }));
+        // Condition 1: Match row missing (null) -> It was deleted/cancelled
+        // Condition 2: Match exists but status is finished (and not my win) or cancelled
+        const isMatchGone = !status;
+        const isMatchEndedRemotely = status && (
+          (status.status === 'finished' && status.winner_id !== currentUser?.id) ||
+          status.status === 'cancelled'
+        );
 
-              // Trigger Surrender Flow
-              const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
-              setSurrenderVideoSrc(randomSurrender);
-              setShowSurrenderVideo(true);
-              setIsVideoVisible(true);
-            }
+        if (isMatchGone || isMatchEndedRemotely) {
+
+          // If we haven't already processed a win/loss locally
+          if (gameStateRef.current.status === 'playing') {
+            console.warn("SYNC WATCHDOG: Match ended/missing remotely. Forcing surrender flow.");
+            if (timerRef.current) window.clearInterval(timerRef.current);
+            setGameState(prev => ({ ...prev, status: 'idle' }));
+
+            // Trigger Surrender Flow
+            const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
+            setSurrenderVideoSrc(randomSurrender);
+            setShowSurrenderVideo(true);
+            setIsVideoVisible(true);
           }
         }
       }, 3000); // Check every 3 seconds
