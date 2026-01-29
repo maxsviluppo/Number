@@ -48,7 +48,7 @@ const TUTORIAL_STEPS = [
   }
 ];
 
-const WIN_VIDEOS = ['/win29audio.mp4', '/win291.mp4', '/win292.mp4'];
+const WIN_VIDEOS = ['/winnermp4noaudio.mp4'];
 const LOSE_VIDEOS = ['/lose.mp4', '/lose2.mp4', '/lose2.mp4'];
 const SURRENDER_VIDEOS = ['/ritirata.mp4', '/ritirata1.mp4', '/ritirata2.mp4'];
 
@@ -1320,13 +1320,15 @@ const App: React.FC = () => {
 
           // Force direct DOM manipulation for instant feedback
           videoRef.current.src = randomVid;
-          videoRef.current.muted = false;
+          videoRef.current.muted = true; // Video must be muted for guaranteed autoplay
           videoRef.current.load(); // Ensure it's ready
 
           const playPromise = videoRef.current.play();
           if (playPromise !== undefined) {
             playPromise.catch(e => console.warn("Mobile Autoplay restricted:", e));
           }
+          // Play separate audio track immediately
+          soundService.playExternalSound('winnermp4noaudio.mp3');
         }
 
         handleSuccess(result!);
@@ -1376,7 +1378,8 @@ const App: React.FC = () => {
 
       if (allDone) {
         setTriggerParticles(false);
-        soundService.playExternalSound('Fine_partita_win.mp3');
+        // Sound is already played in evaluatePath for sync, or play here if needed as fallback
+        if (!videoRef.current) soundService.playExternalSound('winnermp4noaudio.mp3');
 
         // DUEL WIN LOGIC
         if (activeMatch?.isDuel && duelMode === 'standard') {
