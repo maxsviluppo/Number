@@ -1813,15 +1813,15 @@ const App: React.FC = () => {
                       {!isPaused && (
                         <circle
                           cx="50%" cy="50%" r="45%"
-                          stroke={activeMatch?.isDuel
+                          stroke={activeMatch?.isDuel && activeMatch.mode !== 'time_attack'
                             ? `rgb(${Math.floor(((opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5)) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5)) * 129 + 68)}, 68)`
                             : (gameState.timeLeft < 10 ? '#ef4444' : '#FF8800')}
                           strokeWidth="8"
                           fill="none"
                           strokeDasharray="283"
-                          strokeDashoffset={activeMatch?.isDuel
+                          strokeDashoffset={activeMatch?.isDuel && activeMatch.mode !== 'time_attack'
                             ? 283 - (283 * (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5))
-                            : 283 - (283 * gameState.timeLeft / INITIAL_TIME)
+                            : 283 - (283 * gameState.timeLeft / (activeMatch?.mode === 'time_attack' ? 60 : INITIAL_TIME))
                           }
                           strokeLinecap="round"
                           className="transition-all duration-1000"
@@ -1832,9 +1832,9 @@ const App: React.FC = () => {
                       <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
                     ) : (
                       <>
-                        {activeMatch?.isDuel && <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>}
+                        {activeMatch?.isDuel && activeMatch.mode !== 'time_attack' && <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>}
                         <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
-                          {activeMatch?.isDuel ? opponentTargets : gameState.timeLeft}
+                          {activeMatch?.isDuel && activeMatch.mode !== 'time_attack' ? opponentTargets : gameState.timeLeft}
                         </span>
                       </>
                     )}
