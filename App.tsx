@@ -623,7 +623,8 @@ const App: React.FC = () => {
     matchService.getPendingInvitesForUser(currentUser.id).then(invites => {
       if (invites.length > 0) {
         invites.forEach(inv => {
-          showToast(`⚔️ Invito in attesa di ${inv.player1?.username || 'Sconosciuto'}!`, [
+          const modeLabel = inv.mode ? inv.mode.toUpperCase().replace('_', ' ') : 'DUEL';
+          showToast(`⚔️ Invito per ${modeLabel} da ${inv.player1?.username || 'Sconosciuto'}!`, [
             {
               label: 'Accetta',
               onClick: () => {
@@ -900,7 +901,10 @@ const App: React.FC = () => {
 
         const amIP1 = newData.player1_id === currentUser?.id;
 
-        if (activeMatch && activeMatch.isP1 !== amIP1) {
+        // Ensure Active Match has critical data (Mode) for Host Timer
+        if (activeMatch && (!activeMatch.mode || activeMatch.mode !== newData.mode)) {
+          setActiveMatch(prev => prev ? { ...prev, isP1: amIP1, mode: newData.mode } : null);
+        } else if (activeMatch && activeMatch.isP1 !== amIP1) {
           setActiveMatch(prev => prev ? { ...prev, isP1: amIP1 } : null);
         }
 
