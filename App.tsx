@@ -1318,17 +1318,16 @@ const App: React.FC = () => {
           setShowVideo(true);      // Show overlay
           setIsVideoVisible(true);
 
-          // Force direct DOM manipulation for instant feedback
+          // STANDARD VIDEO PLAYBACK
+          // Direct play with audio - relying on user interaction event
           videoRef.current.src = randomVid;
-          videoRef.current.muted = true; // Video must be muted for guaranteed autoplay
-          videoRef.current.load(); // Ensure it's ready
+          videoRef.current.muted = false; // Enable audio
+          videoRef.current.load();
 
           const playPromise = videoRef.current.play();
           if (playPromise !== undefined) {
-            playPromise.catch(e => console.warn("Mobile Autoplay restricted:", e));
+            playPromise.catch(e => console.warn("Autoplay block possible:", e));
           }
-          // Play preloaded buffer for instant sync and mobile compatibility
-          soundService.playWinner();
         }
 
         handleSuccess(result!);
