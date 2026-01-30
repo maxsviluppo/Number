@@ -26,6 +26,17 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [h2hStats, setH2hStats] = useState<Record<string, { wins: number; losses: number }>>({});
+
+    const fetchH2H = async (opponentIds: string[]) => {
+        if (!currentUser?.id || opponentIds.length === 0) return;
+        try {
+            const stats = await matchService.getHeadToHeadStats(currentUser.id, opponentIds);
+            setH2hStats(prev => ({ ...prev, ...stats }));
+        } catch (e) {
+            console.error("Error fetching H2H stats:", e);
+        }
+    };
 
     // Live Search with Debounce
     useEffect(() => {
@@ -44,7 +55,12 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
         try {
             const results = await profileService.searchUsers(searchQuery);
             // Filter out myself
-            setSearchResults(results.filter((u: any) => u.id !== currentUser.id));
+            const filtered = results.filter((u: any) => u.id !== currentUser.id);
+            setSearchResults(filtered);
+
+            if (filtered.length > 0) {
+                fetchH2H(filtered.map((u: any) => u.id));
+            }
         } catch (e) {
             console.error("Search error", e);
         } finally {
@@ -140,6 +156,12 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                     // For now, if it's gone from 'pending' list, it might be active or dead.
                     // Let's trust local state for invites, but for public pending matches, trust server.
                 }
+            }
+
+            // Fetch H2H for lobby participants
+            const opponentIds = Array.from(new Set(data.map((m: any) => m.player1_id).filter((id: any) => id && id !== currentUser.id)));
+            if (opponentIds.length > 0) {
+                fetchH2H(opponentIds as string[]);
             }
 
         } catch (err) {
@@ -426,6 +448,12 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                             <div className="text-[10px] text-slate-500 uppercase font-bold tracking-tight truncate">
                                                                 LVL {player?.max_level || 1} • {isBusy ? "In Sfida" : "Pronto a combattere"}
                                                             </div>
+                                                            {h2hStats[player?.id || match.player1_id] && (
+                                                                <div className="flex gap-2 text-[9px] font-black uppercase mt-1">
+                                                                    <span className="text-green-500/80">Vinte: {h2hStats[player?.id || match.player1_id].wins}</span>
+                                                                    <span className="text-red-500/80">Perse: {h2hStats[player?.id || match.player1_id].losses}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col items-end gap-1">
@@ -543,6 +571,12 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                         <div className="flex-1 min-w-0">
                                                             <div className="text-white font-bold uppercase tracking-wider text-sm truncate">{user.username}</div>
                                                             <div className="text-[10px] text-slate-500 font-black uppercase truncate">Lv. {user.max_level || 1} • {user.total_score || 0} Pts</div>
+                                                            {h2hStats[user.id] && (
+                                                                <div className="flex gap-2 text-[9px] font-black uppercase mt-1">
+                                                                    <span className="text-green-500/80">Vinte: {h2hStats[user.id].wins}</span>
+                                                                    <span className="text-red-500/80">Perse: {h2hStats[user.id].losses}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-2 shrink-0">

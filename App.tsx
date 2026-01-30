@@ -48,7 +48,7 @@ const TUTORIAL_STEPS = [
   }
 ];
 
-const WIN_VIDEOS = ['/Win1noaudio.mp4', '/Win2noaudioe.mp4'];
+const WIN_VIDEOS = ['/Win1noaudio.mp4', '/Win2noaudioe.mp4', '/Win3noaudio.mp4'];
 const LOSE_VIDEOS = ['/Lose1noaudio.mp4'];
 const SURRENDER_VIDEOS = ['/ritirata.mp4', '/ritirata1.mp4', '/ritirata2.mp4'];
 
@@ -952,6 +952,7 @@ const App: React.FC = () => {
         const currentMode = newData.mode || duelMode;
         const targetToWin = currentMode === 'blitz' ? 3 : 5;
 
+        /* 
         // Condition excludes Time Attack from finding a winner by rounds
         if (currentMode !== 'time_attack' && opponentTargetCount >= targetToWin && newData.status !== 'finished') {
           if (timerRef.current) window.clearInterval(timerRef.current);
@@ -980,6 +981,7 @@ const App: React.FC = () => {
           setSelectedPath([]);
           setShowDuelRecap(true);
         }
+        */
 
         // ADDITIONAL CHECK: Handle CANCELLED explicitly (Surrender/Abandon)
         if (newData.status === 'cancelled') {
@@ -1048,7 +1050,8 @@ const App: React.FC = () => {
     }
   }, [activeMatch, currentUser]);
 
-  // SYNC WATCHDOG (Fallback for missed events)
+  /* 
+  // SYNC WATCHDOG (Fallback for missed events) - DISABLED temporarily as requested
   useEffect(() => {
     let syncInterval: NodeJS.Timeout;
 
@@ -1110,6 +1113,7 @@ const App: React.FC = () => {
       if (syncInterval) clearInterval(syncInterval);
     };
   }, [activeMatch, currentUser, gameState.status]);
+  */
 
   // NEW: Invite Listener (Global) - Properly placed after generateGrid
   useEffect(() => {
@@ -1455,6 +1459,9 @@ const App: React.FC = () => {
 
       } else {
         // NOT ALL DONE - CONTINUE PLAYING
+        const newScore = gameStateRef.current.score + currentPoints;
+        const completedCount = newTargets.filter(t => t.completed).length;
+
         setGameState(prev => ({
           ...prev,
           score: prev.score + currentPoints,
@@ -1463,6 +1470,12 @@ const App: React.FC = () => {
           estimatedIQ: Math.min(200, prev.estimatedIQ + 0.5),
           levelTargets: newTargets
         }));
+
+        // SYNC DUEL STATS
+        if (activeMatch?.isDuel) {
+          matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, completedCount)
+            .catch(e => console.error("Error syncing duel stats:", e));
+        }
 
         // TIME ATTACK: Individual Target Refill
         if (duelMode === 'time_attack' || activeMatch?.mode === 'time_attack') {
