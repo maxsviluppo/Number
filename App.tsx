@@ -1278,7 +1278,7 @@ const App: React.FC = () => {
 
   const nextTutorialStep = async () => {
     await handleUserInteraction();
-    soundService.playTick();
+    soundService.playSelect();
     if (tutorialStep < TUTORIAL_STEPS.length - 1) {
       setTutorialStep(prev => prev + 1);
     } else {
@@ -1313,21 +1313,19 @@ const App: React.FC = () => {
 
         // CRITICAL MOBILE FIX: Set source and play synchronously within the event handler
         if (isLastTarget && !isTimeAttack && videoRef.current) {
-          const randomVid = WIN_VIDEOS[Math.floor(Math.random() * WIN_VIDEOS.length)];
-          setWinVideoSrc(randomVid); // Prepare state
-          setShowVideo(true);      // Show overlay
-          setIsVideoVisible(true);
+          const vidSrc = WIN_VIDEOS[0]; // Force direct ref to win4.MP4
 
-          // STANDARD VIDEO PLAYBACK
-          // Direct play with audio - relying on user interaction event
-          videoRef.current.src = randomVid;
-          videoRef.current.muted = false; // Enable audio
+          // 1. Direct DOM Manipulation - HIGHEST PRIORITY
+          // This ensures the video command is attached to the USER GESTURE immediately
+          videoRef.current.src = vidSrc;
+          videoRef.current.muted = false;
           videoRef.current.load();
+          videoRef.current.play().catch(e => console.warn("Video play blocked:", e));
 
-          const playPromise = videoRef.current.play();
-          if (playPromise !== undefined) {
-            playPromise.catch(e => console.warn("Autoplay block possible:", e));
-          }
+          // 2. Update React State afterwards (UI Overlay)
+          setWinVideoSrc(vidSrc);
+          setShowVideo(true);
+          setIsVideoVisible(true);
         }
 
         handleSuccess(result!);
@@ -1610,7 +1608,7 @@ const App: React.FC = () => {
     // BACKTRACKING LOGIC
     // Se l'utente torna alla penultima casella selezionata, rimuovi l'ultima (backtrack)
     if (selectedPath.length > 1 && id === selectedPath[selectedPath.length - 2]) {
-      soundService.playTick(); // Suono feedback rimozione
+      soundService.playSelect(); // Suono feedback rimozione
       const newPath = selectedPath.slice(0, -1);
       setSelectedPath(newPath);
       setPreviewResult(calculateResultFromPath(newPath));
@@ -1631,7 +1629,7 @@ const App: React.FC = () => {
       const adjacencyCheck = isAdjacent(lastCell, currentCell);
 
       if (typeCheck && adjacencyCheck) {
-        soundService.playTick();
+        soundService.playSelect();
         const newPath = [...selectedPath, id];
         setSelectedPath(newPath);
         setPreviewResult(calculateResultFromPath(newPath));

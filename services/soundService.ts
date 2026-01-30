@@ -6,6 +6,7 @@ class SoundService {
   private initialized: boolean = false;
   private clickBuffer: AudioBuffer | null = null;
   private successBuffer: AudioBuffer | null = null;
+  private winnerBuffer: AudioBuffer | null = null;
 
   /**
    * Inizializza l'AudioContext e sblocca l'hardware con un buffer silente.
@@ -55,6 +56,10 @@ class SoundService {
       const successRes = await fetch('/combinazione.wav');
       const successArr = await successRes.arrayBuffer();
       this.successBuffer = await this.ctx.decodeAudioData(successArr);
+
+      const winnerRes = await fetch('/win4.MP4');
+      const winnerArr = await winnerRes.arrayBuffer();
+      this.winnerBuffer = await this.ctx.decodeAudioData(winnerArr);
     } catch (e) {
       console.warn("Failed to load sounds:", e);
     }
@@ -118,11 +123,11 @@ class SoundService {
       const source = this.ctx.createBufferSource();
       source.buffer = this.clickBuffer;
       const selectGain = this.ctx.createGain();
-      // Volume basso e pitch molto alto per un "ping" leggero
-      selectGain.gain.setValueAtTime(0.07, this.ctx.currentTime);
+      // Volume normale per sentire bene il "clic" del file
+      selectGain.gain.setValueAtTime(0.5, this.ctx.currentTime);
       source.connect(selectGain);
       selectGain.connect(this.masterGain);
-      source.playbackRate.setValueAtTime(2.2, this.ctx.currentTime);
+      source.playbackRate.setValueAtTime(1.0, this.ctx.currentTime);
       source.start(0);
     } else {
       // FM Sine sweep ultra-veloce (700Hz -> 1400Hz)
@@ -203,8 +208,9 @@ class SoundService {
     }
 
     try {
-      const audio = new Audio(`/${filename}`);
-      audio.volume = 0.5; // Volume moderato
+      const cleanName = filename.startsWith('/') ? filename.slice(1) : filename;
+      const audio = new Audio(`/${cleanName}`);
+      audio.volume = 0.7; // Volume più deciso
       audio.play().catch(e => console.warn("Auto-play stopped:", e));
     } catch (e) {
       console.warn("External sound playback failed:", e);
@@ -217,6 +223,14 @@ class SoundService {
 
   playPop() {
     this.playFMSound(400, 200, 100, 0.1, 0.3, 'sine');
+  }
+
+  playWinner() {
+    if (this.isMuted || !this.winnerBuffer || !this.ctx || !this.masterGain) return;
+    const source = this.ctx.createBufferSource();
+    source.buffer = this.winnerBuffer;
+    source.connect(this.masterGain);
+    source.start(0);
   }
 }
 
