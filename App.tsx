@@ -49,7 +49,7 @@ const TUTORIAL_STEPS = [
 ];
 
 const WIN_VIDEOS = ['/win4.MP4'];
-const LOSE_VIDEOS = ['/lose.mp4', '/lose2.mp4', '/lose2.mp4'];
+const LOSE_VIDEOS = ['/lose1.MP4'];
 const SURRENDER_VIDEOS = ['/ritirata.mp4', '/ritirata1.mp4', '/ritirata2.mp4'];
 
 const App: React.FC = () => {
@@ -614,18 +614,22 @@ const App: React.FC = () => {
         }
 
         // VIDEO UNLOCK
+        // VIDEO UNLOCK - AUTO PLAY MUTED ON TIMEOUT (Browser Policy)
+        // Since there is no user click here, we MUST start muted to guarantee video displays.
+        const loseVid = LOSE_VIDEOS[0];
+        setLoseVideoSrc(loseVid);
         setShowLostVideo(true);
-        setIsVideoVisible(false);
+        setIsVideoVisible(true);
+
         if (videoRef.current) {
-          videoRef.current.muted = false;
-          videoRef.current.src = loseVideoSrc;
-          const playPromise = videoRef.current.play();
-          if (playPromise !== undefined) {
-            playPromise.catch(e => {
-              console.warn("Loss video blocked:", e);
-              setIsVideoVisible(false);
-            });
-          }
+          videoRef.current.src = loseVid;
+          videoRef.current.muted = true; // REQUIRED for auto-play without click
+          videoRef.current.load();
+          videoRef.current.play().catch(e => {
+            console.warn("Loss video blocked (timeout):", e);
+          });
+          // Attempt to unmute if possible (some browsers strictness varies)
+          // or rely on user tap to unmute
         }
       }
     }
