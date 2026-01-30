@@ -48,8 +48,8 @@ const TUTORIAL_STEPS = [
   }
 ];
 
-const WIN_VIDEOS = ['/Win1.mp4'];
-const LOSE_VIDEOS = ['/lose1.MP4'];
+const WIN_VIDEOS = ['/Win1noaudio.mp4', '/Win2noaudioe.mp4'];
+const LOSE_VIDEOS = ['/Lose1noaudio.mp4'];
 const SURRENDER_VIDEOS = ['/ritirata.mp4', '/ritirata1.mp4', '/ritirata2.mp4'];
 
 const App: React.FC = () => {
@@ -102,6 +102,13 @@ const App: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [logoAnim, setLogoAnim] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const gameStateRef = useRef<GameState>(gameState);
+  const processedWinRef = useRef<string | null>(null);
+
+  // Keep gameStateRef in sync
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
 
   // Logo Animation Effect
   useEffect(() => {
@@ -606,16 +613,13 @@ const App: React.FC = () => {
 
       // STANDARD GAME OVER (Single Player)
       if (!activeMatch?.isDuel) {
-        soundService.playExternalSound('lost.mp3');
         setGameState(prev => ({ ...prev, status: 'game-over' }));
         if (currentUser) {
           profileService.clearSavedGame(currentUser.id);
           loadProfile(currentUser.id);
         }
 
-        // VIDEO UNLOCK
         // VIDEO UNLOCK - AUTO PLAY MUTED ON TIMEOUT (Browser Policy)
-        // Since there is no user click here, we MUST start muted to guarantee video displays.
         const loseVid = LOSE_VIDEOS[0];
         setLoseVideoSrc(loseVid);
         setShowLostVideo(true);
@@ -628,8 +632,9 @@ const App: React.FC = () => {
           videoRef.current.play().catch(e => {
             console.warn("Loss video blocked (timeout):", e);
           });
-          // Attempt to unmute if possible (some browsers strictness varies)
-          // or rely on user tap to unmute
+
+          // Play Synchronized Audio Track (Lose1.mp3)
+          soundService.playLose();
         }
       }
     }
@@ -750,14 +755,6 @@ const App: React.FC = () => {
       showToast("Accedi per accettare la sfida!");
     }
   }, [currentUser, pendingMatchInvite, isJoiningPending, showAuthModal, generateGrid, showToast]);
-
-
-  // REF: Track GameState for Subscriptions (Avoid Stale Closures)
-  const gameStateRef = useRef(gameState);
-  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
-
-  // REF: Track Processed Wins (Avoid Double Sync)
-  const processedWinRef = useRef<string | null>(null);
 
 
   const togglePause = async (e: React.PointerEvent) => {
@@ -1317,22 +1314,29 @@ const App: React.FC = () => {
 
         // CRITICAL MOBILE FIX: Set source and play synchronously within the event handler
         if (isLastTarget && !isTimeAttack && videoRef.current) {
-          const vidSrc = WIN_VIDEOS[0]; // Force direct ref to Win1.mp4
+          // 1. Play "Fine Partita" sound immediately on last click
+          soundService.playLevelComplete();
 
-          // 1. Direct DOM Manipulation - HIGHEST PRIORITY
-          // This ensures the video command is attached to the USER GESTURE immediately
-          videoRef.current.src = vidSrc;
-          videoRef.current.muted = true; // MUTE VIDEO to allow autoplay + AudioContext for sound
-          videoRef.current.load();
-          videoRef.current.play().catch(e => console.warn("Video play blocked:", e));
+          // 2. Delay the Victory Video (Win1/Win2) to let the first sound play
+          setTimeout(() => {
+            if (videoRef.current) {
+              // Randomly pick between Win1 and Win2
+              const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+              const vidSrc = WIN_VIDEOS[winIdx];
 
-          // 2. Play Synchronized Audio Track via Web Audio API
-          soundService.playWinner();
+              videoRef.current.src = vidSrc;
+              videoRef.current.muted = true;
+              videoRef.current.load();
+              videoRef.current.play().catch(e => console.warn("Video play blocked:", e));
 
-          // 3. Update React State afterwards (UI Overlay)
-          setWinVideoSrc(vidSrc);
-          setShowVideo(true);
-          setIsVideoVisible(true);
+              // Play Sync Win Audio (matching the video)
+              soundService.playWinner(winIdx);
+
+              setWinVideoSrc(vidSrc);
+              setShowVideo(true);
+              setIsVideoVisible(true);
+            }
+          }, 800); // 0.8 second delay
         }
 
         handleSuccess(result!);

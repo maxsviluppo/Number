@@ -6,7 +6,9 @@ class SoundService {
   private initialized: boolean = false;
   private clickBuffer: AudioBuffer | null = null;
   private successBuffer: AudioBuffer | null = null;
-  private winnerBuffer: AudioBuffer | null = null;
+  private winnerBuffers: AudioBuffer[] = [];
+  private levelCompleteBuffer: AudioBuffer | null = null;
+  private loseBuffer: AudioBuffer | null = null;
 
   /**
    * Inizializza l'AudioContext e sblocca l'hardware con un buffer silente.
@@ -57,9 +59,23 @@ class SoundService {
       const successArr = await successRes.arrayBuffer();
       this.successBuffer = await this.ctx.decodeAudioData(successArr);
 
-      const winnerRes = await fetch('/Win1.mp3');
-      const winnerArr = await winnerRes.arrayBuffer();
-      this.winnerBuffer = await this.ctx.decodeAudioData(winnerArr);
+      // Load multiple win sounds
+      const winFiles = ['/Win1.mp3', '/Win2.mp3'];
+      this.winnerBuffers = [];
+      for (const file of winFiles) {
+        const res = await fetch(file);
+        const arr = await res.arrayBuffer();
+        const buf = await this.ctx.decodeAudioData(arr);
+        this.winnerBuffers.push(buf);
+      }
+
+      const levelCompleteRes = await fetch('/Fine_partita_win.mp3');
+      const levelCompleteArr = await levelCompleteRes.arrayBuffer();
+      this.levelCompleteBuffer = await this.ctx.decodeAudioData(levelCompleteArr);
+
+      const loseRes = await fetch('/Lose1.mp3');
+      const loseArr = await loseRes.arrayBuffer();
+      this.loseBuffer = await this.ctx.decodeAudioData(loseArr);
     } catch (e) {
       console.warn("Failed to load sounds:", e);
     }
@@ -225,10 +241,35 @@ class SoundService {
     this.playFMSound(400, 200, 100, 0.1, 0.3, 'sine');
   }
 
-  playWinner() {
-    if (this.isMuted || !this.winnerBuffer || !this.ctx || !this.masterGain) return;
+  playWinner(index?: number) {
+    if (this.isMuted || this.winnerBuffers.length === 0 || !this.ctx || !this.masterGain) return;
+
+    // Use index if provided and valid, otherwise random
+    let bufferToPlay = this.winnerBuffers[0];
+    if (index !== undefined && index >= 0 && index < this.winnerBuffers.length) {
+      bufferToPlay = this.winnerBuffers[index];
+    } else if (index === undefined) {
+      bufferToPlay = this.winnerBuffers[Math.floor(Math.random() * this.winnerBuffers.length)];
+    }
+
     const source = this.ctx.createBufferSource();
-    source.buffer = this.winnerBuffer;
+    source.buffer = bufferToPlay;
+    source.connect(this.masterGain);
+    source.start(0);
+  }
+
+  playLevelComplete() {
+    if (this.isMuted || !this.levelCompleteBuffer || !this.ctx || !this.masterGain) return;
+    const source = this.ctx.createBufferSource();
+    source.buffer = this.levelCompleteBuffer;
+    source.connect(this.masterGain);
+    source.start(0);
+  }
+
+  playLose() {
+    if (this.isMuted || !this.loseBuffer || !this.ctx || !this.masterGain) return;
+    const source = this.ctx.createBufferSource();
+    source.buffer = this.loseBuffer;
     source.connect(this.masterGain);
     source.start(0);
   }
