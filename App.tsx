@@ -48,7 +48,7 @@ const TUTORIAL_STEPS = [
   }
 ];
 
-const WIN_VIDEOS = ['/winnermp4noaudio.mp4'];
+const WIN_VIDEOS = ['/win4.MP4'];
 const LOSE_VIDEOS = ['/lose.mp4', '/lose2.mp4', '/lose2.mp4'];
 const SURRENDER_VIDEOS = ['/ritirata.mp4', '/ritirata1.mp4', '/ritirata2.mp4'];
 
