@@ -20,6 +20,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     const [loading, setLoading] = useState(false);
     const [pendingChallenge, setPendingChallenge] = useState<any | null>(null);
     const channelRef = useRef<any>(null);
+    const isFetchingRef = useRef(false);
 
     // NEW: Invite System State
     const [activeTab, setActiveTab] = useState<'lobby' | 'invite'>('lobby');
@@ -27,14 +28,20 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [h2hStats, setH2hStats] = useState<Record<string, { wins: number; losses: number }>>({});
-
     const fetchH2H = async (opponentIds: string[]) => {
         if (!currentUser?.id || opponentIds.length === 0) return;
+
         try {
+            console.log("H2H: Fetching stats for IDs:", opponentIds);
             const stats = await matchService.getHeadToHeadStats(currentUser.id, opponentIds);
-            setH2hStats(prev => ({ ...prev, ...stats }));
-        } catch (e) {
-            console.error("Error fetching H2H stats:", e);
+            console.log("H2H: Received stats:", stats);
+            if (stats && Object.keys(stats).length > 0) {
+                setH2hStats(prev => ({ ...prev, ...stats }));
+            }
+        } catch (e: any) {
+            if (e.name !== 'AbortError' && e.message !== 'signal is aborted without reason') {
+                console.error("Error fetching H2H stats:", e);
+            }
         }
     };
 
@@ -54,15 +61,20 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
         setIsSearching(true);
         try {
             const results = await profileService.searchUsers(searchQuery);
+            if (!results) return;
+
             // Filter out myself
             const filtered = results.filter((u: any) => u.id !== currentUser.id);
             setSearchResults(filtered);
 
             if (filtered.length > 0) {
-                fetchH2H(filtered.map((u: any) => u.id));
+                const searchOpponentIds = filtered.map((u: any) => u.id);
+                fetchH2H(searchOpponentIds);
             }
-        } catch (e) {
-            console.error("Search error", e);
+        } catch (e: any) {
+            if (e.name !== 'AbortError' && e.message !== 'signal is aborted without reason') {
+                console.error("Search error", e);
+            }
         } finally {
             setIsSearching(false);
         }
@@ -129,7 +141,9 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     };
 
     const fetchMatches = useCallback(async () => {
+        if (isFetchingRef.current) return;
         try {
+            isFetchingRef.current = true;
             setLoading(true);
             // 1. CLEANUP STALE MATCHES FIRST (Self-healing)
             if (currentUser?.id) {
@@ -164,12 +178,15 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                 fetchH2H(opponentIds as string[]);
             }
 
-        } catch (err) {
-            console.error("LOBBY: Errore nel caricamento partite:", err);
+        } catch (err: any) {
+            if (err.name !== 'AbortError' && err.message !== 'signal is aborted without reason') {
+                console.error("LOBBY: Errore nel caricamento partite:", err);
+            }
         } finally {
             setLoading(false);
+            isFetchingRef.current = false;
         }
-    }, [mode, currentUser.id, myHostedMatch]);
+    }, [mode, currentUser?.id, myHostedMatch]);
 
     // INITIAL CLEANUP ON MOUNT
     useEffect(() => {
@@ -390,7 +407,13 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                         </div>
                                                         <div>
                                                             <div className="text-sm font-black text-white uppercase tracking-wider">{match.player1?.username || 'Sconosciuto'}</div>
-                                                            <div className="text-[10px] text-green-400 font-bold uppercase tracking-tighter">Ti ha sfidato!</div>
+                                                            <div className="text-[10px] text-green-400 font-bold uppercase tracking-tighter mb-1">Ti ha sfidato!</div>
+                                                            {h2hStats[match.player1_id] && (
+                                                                <div className="flex gap-2 text-[9px] font-black uppercase">
+                                                                    <span className="text-green-500/80">Vinte: {h2hStats[match.player1_id].wins}</span>
+                                                                    <span className="text-red-500/80">Perse: {h2hStats[match.player1_id].losses}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <button onClick={() => handleAcceptInvite(match)} className="px-5 py-2 bg-green-500 text-slate-950 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-green-400 transition-all active:scale-95 shadow-lg">ACCETTA</button>
@@ -448,10 +471,15 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                             <div className="text-[10px] text-slate-500 uppercase font-bold tracking-tight truncate">
                                                                 LVL {player?.max_level || 1} • {isBusy ? "In Sfida" : "Pronto a combattere"}
                                                             </div>
-                                                            {h2hStats[player?.id || match.player1_id] && (
+                                                            {h2hStats[player?.id || match.player1_id] ? (
                                                                 <div className="flex gap-2 text-[9px] font-black uppercase mt-1">
                                                                     <span className="text-green-500/80">Vinte: {h2hStats[player?.id || match.player1_id].wins}</span>
                                                                     <span className="text-red-500/80">Perse: {h2hStats[player?.id || match.player1_id].losses}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex gap-2 text-[9px] font-black uppercase mt-1 opacity-30">
+                                                                    <span>Vinte: 0</span>
+                                                                    <span>Perse: 0</span>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -571,10 +599,15 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                         <div className="flex-1 min-w-0">
                                                             <div className="text-white font-bold uppercase tracking-wider text-sm truncate">{user.username}</div>
                                                             <div className="text-[10px] text-slate-500 font-black uppercase truncate">Lv. {user.max_level || 1} • {user.total_score || 0} Pts</div>
-                                                            {h2hStats[user.id] && (
+                                                            {h2hStats[user.id] ? (
                                                                 <div className="flex gap-2 text-[9px] font-black uppercase mt-1">
                                                                     <span className="text-green-500/80">Vinte: {h2hStats[user.id].wins}</span>
                                                                     <span className="text-red-500/80">Perse: {h2hStats[user.id].losses}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex gap-2 text-[9px] font-black uppercase mt-1 opacity-30">
+                                                                    <span>Vinte: 0</span>
+                                                                    <span>Perse: 0</span>
                                                                 </div>
                                                             )}
                                                         </div>
