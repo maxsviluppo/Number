@@ -551,43 +551,44 @@ export const matchService = {
     },
 
     async getHeadToHeadStats(userId: string, opponentIds: string[]) {
-        if (!userId) return {};
+        if (!userId || !opponentIds.length) return {};
 
         try {
-            // Simplified Strategy: Fetch ALL finished matches for this user.
-            // This ensures we don't miss anything due to complex filter logic or pagination quirks on specific columns.
-            // Performance impact is negligible for < 1000 matches.
-            const { data: allMatches, error } = await (supabase as any)
+            // Fetch matches where user was Player 1
+            const { data: p1Matches, error: err1 } = await (supabase as any)
                 .from('matches')
                 .select('winner_id, player1_id, player2_id')
-                .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
-                .eq('status', 'finished');
+                .eq('player1_id', userId)
+                .eq('status', 'finished')
+                .in('player2_id', opponentIds);
 
-            if (error) {
-                console.error('Error fetching global H2H stats:', error);
+            // Fetch matches where user was Player 2
+            const { data: p2Matches, error: err2 } = await (supabase as any)
+                .from('matches')
+                .select('winner_id, player1_id, player2_id')
+                .eq('player2_id', userId)
+                .eq('status', 'finished')
+                .in('player1_id', opponentIds);
+
+            if (err1 || err2) {
+                console.error('Error fetching H2H stats:', err1 || err2);
                 return {};
             }
 
+            const allMatches = [...(p1Matches || []), ...(p2Matches || [])];
             const stats: Record<string, { wins: number; losses: number }> = {};
-            // Initialize for requested opponents
             opponentIds.forEach(id => stats[id] = { wins: 0, losses: 0 });
 
-            if (allMatches) {
-                allMatches.forEach((match: any) => {
-                    // Determine opponent ID
-                    const oppId = match.player1_id === userId ? match.player2_id : match.player1_id;
-
-                    // Only count if this opponent is in our requested list (or if we want to return all, but the UI asks for specific ones)
-                    // Currently the UI passes a list of visible opponents.
-                    if (oppId && stats[oppId]) {
-                        if (match.winner_id === userId) {
-                            stats[oppId].wins++;
-                        } else if (match.winner_id === oppId) {
-                            stats[oppId].losses++;
-                        }
+            allMatches.forEach(match => {
+                const oppId = match.player1_id === userId ? match.player2_id : match.player1_id;
+                if (opponentIds.includes(oppId)) {
+                    if (match.winner_id === userId) {
+                        stats[oppId].wins++;
+                    } else if (match.winner_id === oppId) {
+                        stats[oppId].losses++;
                     }
-                });
-            }
+                }
+            });
 
             return stats;
         } catch (e) {

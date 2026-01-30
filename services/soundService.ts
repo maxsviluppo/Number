@@ -60,7 +60,7 @@ class SoundService {
       this.successBuffer = await this.ctx.decodeAudioData(successArr);
 
       // Load multiple win sounds
-      const winFiles = ['/Win1.mp3', '/Win2.mp3', '/Win3.mp3'];
+      const winFiles = ['/Win1.mp3', '/Win2.mp3', '/Win3.mp3', '/Win4.mp3'];
       this.winnerBuffers = [];
       for (const file of winFiles) {
         const res = await fetch(file);
