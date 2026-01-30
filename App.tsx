@@ -1391,7 +1391,7 @@ const App: React.FC = () => {
       if (allDone) {
         setTriggerParticles(false);
         // Sound is already played in evaluatePath for sync, or play here if needed as fallback
-        if (!videoRef.current) soundService.playExternalSound('winnermp4noaudio.mp3');
+        if (!videoRef.current) soundService.playExternalSound('Fine_partita_win.mp3');
 
         // DUEL WIN LOGIC
         if (activeMatch?.isDuel && duelMode === 'standard') {
@@ -1416,9 +1416,29 @@ const App: React.FC = () => {
             await profileService.syncProgress(currentUser.id, totalPointsToAdd, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
             await loadProfile(currentUser.id);
 
+            // 1. Play "Fine Partita" sound
+            soundService.playLevelComplete();
+
+            // 2. Play Random Victory Video
+            setTimeout(() => {
+              if (videoRef.current) {
+                const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+                const vidSrc = WIN_VIDEOS[winIdx];
+                videoRef.current.src = vidSrc;
+                videoRef.current.muted = true;
+                videoRef.current.load();
+                videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                soundService.playWinner(winIdx);
+                setWinVideoSrc(vidSrc);
+                setShowVideo(true);
+                setIsVideoVisible(true);
+              }
+            }, 800);
+
+            // 3. Delay Recap to let video play
             setTimeout(() => {
               setShowDuelRecap(true);
-            }, 500);
+            }, 7500); // 7.5s (longer than video)
 
           } catch (error: any) {
             console.error("Error finishing duel safely:", error);
@@ -1516,27 +1536,63 @@ const App: React.FC = () => {
     // 1. Play Sound (Finished)
     soundService.playExternalSound('Fine_partita_win.mp3');
 
-    // 2. Final Score Update (ensure sync)
-    // 2. Final Score Update and Finish Match to prevent loop
+    // 2. Final Score Update and Finish Match
     if (activeMatch && currentUser) {
       processedWinRef.current = activeMatch.id;
       const myScore = gameStateRef.current.score;
-      const oppScore = opponentScore; // From state
+      const oppScore = opponentScore;
 
-      // Determine winner immediately
       let winnerId: string | null = null;
       if (myScore > oppScore) winnerId = currentUser.id;
       else if (oppScore > myScore) winnerId = activeMatch.opponentId;
 
-      // Force update final stats and close match
+      const iWon = winnerId === currentUser.id;
+
       matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, gameStateRef.current.levelTargets.filter(t => t.completed).length)
         .then(() => matchService.declareWinner(activeMatch.id, winnerId))
         .catch(e => console.error("Error ending time attack:", e));
-    }
 
-    // 3. Show Recap / Idle
-    setGameState(prev => ({ ...prev, status: 'idle' }));
-    setShowDuelRecap(true);
+      // 3. Play Video before Recap
+      if (iWon) {
+        setTimeout(() => {
+          if (videoRef.current) {
+            const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+            const vidSrc = WIN_VIDEOS[winIdx];
+            videoRef.current.src = vidSrc;
+            videoRef.current.muted = true;
+            videoRef.current.load();
+            videoRef.current.play().catch(e => console.warn("TimeAttack win video blocked:", e));
+            soundService.playWinner(winIdx);
+            setWinVideoSrc(vidSrc);
+            setShowVideo(true);
+            setIsVideoVisible(true);
+          }
+        }, 800);
+      } else {
+        setTimeout(() => {
+          if (videoRef.current) {
+            const loseVid = LOSE_VIDEOS[0];
+            videoRef.current.src = loseVid;
+            videoRef.current.muted = true;
+            videoRef.current.load();
+            videoRef.current.play().catch(e => console.warn("TimeAttack loss video blocked:", e));
+            soundService.playLose();
+            setLoseVideoSrc(loseVid);
+            setShowLostVideo(true);
+            setIsVideoVisible(true);
+          }
+        }, 800);
+      }
+
+      // 4. Show Recap after delay
+      setTimeout(() => {
+        setGameState(prev => ({ ...prev, status: 'idle' }));
+        setShowDuelRecap(true);
+      }, iWon ? 7500 : 4500);
+    } else {
+      setGameState(prev => ({ ...prev, status: 'idle' }));
+      setShowDuelRecap(true);
+    }
   };
 
   const handleError = () => {

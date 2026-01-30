@@ -410,8 +410,8 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                             <div className="text-[10px] text-green-400 font-bold uppercase tracking-tighter mb-1">Ti ha sfidato!</div>
                                                             {h2hStats[match.player1_id] && (
                                                                 <div className="flex gap-2 text-[9px] font-black uppercase">
-                                                                    <span className="text-green-500/80">Vinte: {h2hStats[match.player1_id].wins}</span>
-                                                                    <span className="text-red-500/80">Perse: {h2hStats[match.player1_id].losses}</span>
+                                                                    <span className="text-green-500 font-bold">Vinte: {h2hStats[match.player1_id].wins}</span>
+                                                                    <span className="text-red-500 font-bold">Perse: {h2hStats[match.player1_id].losses}</span>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -473,11 +473,11 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                             </div>
                                                             {h2hStats[player?.id || match.player1_id] ? (
                                                                 <div className="flex gap-2 text-[9px] font-black uppercase mt-1">
-                                                                    <span className="text-green-500/80">Vinte: {h2hStats[player?.id || match.player1_id].wins}</span>
-                                                                    <span className="text-red-500/80">Perse: {h2hStats[player?.id || match.player1_id].losses}</span>
+                                                                    <span className="text-green-500 font-bold">Vinte: {h2hStats[player?.id || match.player1_id].wins}</span>
+                                                                    <span className="text-red-500 font-bold">Perse: {h2hStats[player?.id || match.player1_id].losses}</span>
                                                                 </div>
                                                             ) : (
-                                                                <div className="flex gap-2 text-[9px] font-black uppercase mt-1 opacity-30">
+                                                                <div className="flex gap-2 text-[9px] font-black uppercase mt-1 opacity-20">
                                                                     <span>Vinte: 0</span>
                                                                     <span>Perse: 0</span>
                                                                 </div>
@@ -601,11 +601,11 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                             <div className="text-[10px] text-slate-500 font-black uppercase truncate">Lv. {user.max_level || 1} • {user.total_score || 0} Pts</div>
                                                             {h2hStats[user.id] ? (
                                                                 <div className="flex gap-2 text-[9px] font-black uppercase mt-1">
-                                                                    <span className="text-green-500/80">Vinte: {h2hStats[user.id].wins}</span>
-                                                                    <span className="text-red-500/80">Perse: {h2hStats[user.id].losses}</span>
+                                                                    <span className="text-green-500 font-bold">Vinte: {h2hStats[user.id].wins}</span>
+                                                                    <span className="text-red-500 font-bold">Perse: {h2hStats[user.id].losses}</span>
                                                                 </div>
                                                             ) : (
-                                                                <div className="flex gap-2 text-[9px] font-black uppercase mt-1 opacity-30">
+                                                                <div className="flex gap-2 text-[9px] font-black uppercase mt-1 opacity-20">
                                                                     <span>Vinte: 0</span>
                                                                     <span>Perse: 0</span>
                                                                 </div>
