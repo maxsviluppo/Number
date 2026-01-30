@@ -48,7 +48,7 @@ const TUTORIAL_STEPS = [
   }
 ];
 
-const WIN_VIDEOS = ['/win4.MP4'];
+const WIN_VIDEOS = ['/Win1.mp4'];
 const LOSE_VIDEOS = ['/lose1.MP4'];
 const SURRENDER_VIDEOS = ['/ritirata.mp4', '/ritirata1.mp4', '/ritirata2.mp4'];
 
@@ -1317,16 +1317,19 @@ const App: React.FC = () => {
 
         // CRITICAL MOBILE FIX: Set source and play synchronously within the event handler
         if (isLastTarget && !isTimeAttack && videoRef.current) {
-          const vidSrc = WIN_VIDEOS[0]; // Force direct ref to win4.MP4
+          const vidSrc = WIN_VIDEOS[0]; // Force direct ref to Win1.mp4
 
           // 1. Direct DOM Manipulation - HIGHEST PRIORITY
           // This ensures the video command is attached to the USER GESTURE immediately
           videoRef.current.src = vidSrc;
-          videoRef.current.muted = false;
+          videoRef.current.muted = true; // MUTE VIDEO to allow autoplay + AudioContext for sound
           videoRef.current.load();
           videoRef.current.play().catch(e => console.warn("Video play blocked:", e));
 
-          // 2. Update React State afterwards (UI Overlay)
+          // 2. Play Synchronized Audio Track via Web Audio API
+          soundService.playWinner();
+
+          // 3. Update React State afterwards (UI Overlay)
           setWinVideoSrc(vidSrc);
           setShowVideo(true);
           setIsVideoVisible(true);

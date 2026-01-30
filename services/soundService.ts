@@ -57,7 +57,7 @@ class SoundService {
       const successArr = await successRes.arrayBuffer();
       this.successBuffer = await this.ctx.decodeAudioData(successArr);
 
-      const winnerRes = await fetch('/win4.MP4');
+      const winnerRes = await fetch('/Win1.mp3');
       const winnerArr = await winnerRes.arrayBuffer();
       this.winnerBuffer = await this.ctx.decodeAudioData(winnerArr);
     } catch (e) {
