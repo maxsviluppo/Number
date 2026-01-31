@@ -81,7 +81,7 @@ const HexCell: React.FC<HexCellProps> = ({
     ? '' // Use image only, no container style
     : '';
   const orangeOperatorStyle = isOrangeTheme && !isNumber
-    ? 'bg-[#FF8800] border-[3px] border-white shadow-[0_2px_0_rgba(0,0,0,0.2)]'
+    ? 'bg-gradient-to-br from-[#E65100] to-[#B71C1C] border-[3px] border-white shadow-[0_2px_0_rgba(0,0,0,0.2)]'
     : '';
 
   // Gestione animazioni di selezione e deselezione

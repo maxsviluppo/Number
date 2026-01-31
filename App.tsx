@@ -1006,10 +1006,32 @@ const App: React.FC = () => {
       });
 
       if (latestMatchData?.id === activeMatch.id && latestMatchData?.status === 'finished' && gameStateRef.current.status === 'playing') {
+        const amIWinner = latestMatchData.winner_id === currentUser?.id;
+
+        if (!amIWinner) {
+          // Play Defeat Video
+          if (videoRef.current) {
+            const loseVid = LOSE_VIDEOS[0];
+            videoRef.current.src = loseVid;
+            videoRef.current.muted = true;
+            videoRef.current.load();
+            videoRef.current.play().catch(e => console.warn("Duel loss video blocked:", e));
+
+            soundService.playLose();
+            setLoseVideoSrc(loseVid);
+            setShowLostVideo(true);
+            setIsVideoVisible(true);
+          }
+        }
+
         setGameState(prev => ({ ...prev, status: 'idle' }));
         setIsDragging(false);
         setSelectedPath([]);
-        setShowDuelRecap(true);
+
+        // Delay Recap to let video play (longer delay if video shown)
+        setTimeout(() => {
+          setShowDuelRecap(true);
+        }, amIWinner ? 1000 : 4500); // If I won, I already saw video in handleSuccess. If I lost here, give time to see video.
       }
 
       return () => {
