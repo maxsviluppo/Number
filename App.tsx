@@ -2438,10 +2438,10 @@ const App: React.FC = () => {
                 {/* Center: Floating Timer (Half-In/Half-Out) */}
                 {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
                 <div id="timer-display-game" className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
-                  {/* Round Indicator - Positioned higher and larger */}
-                  {activeMatch?.isDuel && (
+                  {/* Round Indicator - Only for Blitz */}
+                  {activeMatch?.isDuel && duelMode === 'blitz' && (
                     <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-amber-400/50 text-amber-100 text-[11px] font-black font-orbitron px-5 py-1.5 rounded-full z-[110] whitespace-nowrap shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pulse-slow">
-                      {duelMode === 'blitz' ? `ROUND ${duelRounds.p1 + duelRounds.p2 + 1} / 5` : 'VS MODE'}
+                      ROUND {duelRounds.p1 + duelRounds.p2 + 1} / 5
                     </div>
                   )}
 
