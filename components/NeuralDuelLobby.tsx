@@ -437,7 +437,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
 
                         <button
                             onClick={handleInviteNewFriend}
-                            className="px-4 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg font-black font-orbitron uppercase tracking-wider text-[10px] border border-white/20 shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 mb-1"
+                            className="px-3 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg font-black font-orbitron uppercase tracking-wider text-[10px] border border-white/20 shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
                         >
                             <Send size={12} />
                             INVITA AMICO
