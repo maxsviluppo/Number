@@ -277,7 +277,7 @@ const App: React.FC = () => {
     return solutions;
   };
 
-  const createLevelData = useCallback((level: number, seedStr?: string, targetCount: number = 5) => {
+  const createLevelData = useCallback((level: number, seedStr?: string) => {
     const { min, max } = getDifficultyRange(level);
     let attempts = 0;
     const maxAttempts = 20;
@@ -369,7 +369,7 @@ const App: React.FC = () => {
           [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
 
-        const targets = shuffled.slice(0, targetCount);
+        const targets = shuffled.slice(0, 5);
 
         // Extra check: If low level, ensure targets aren't too close to each other? 
         // No, randomness is fine as long as they are distinct.
@@ -394,7 +394,7 @@ const App: React.FC = () => {
     }
     // Generate simple targets for fallback
     const targets = [];
-    for (let i = 0; i < targetCount; i++) targets.push(Math.floor(Math.random() * (max - min + 1)) + min);
+    for (let i = 0; i < 5; i++) targets.push(Math.floor(Math.random() * (max - min + 1)) + min);
 
     return { grid: newGrid, targets };
   }, []);
@@ -405,20 +405,18 @@ const App: React.FC = () => {
 
     const currentLevel = forceStartLevel !== undefined ? forceStartLevel : gameState.level;
 
-    const targetCount = (activeMatch?.isDuel && duelMode === 'blitz') ? 3 : 5;
-
     if (newBuffer.length === 0 || forceStartLevel !== undefined || forcedSeed) {
       // If we have a forced seed (DUEL MODE), generate exactly that board
       newBuffer = [];
-      nextLevelData = createLevelData(currentLevel, forcedSeed, targetCount);
+      nextLevelData = createLevelData(currentLevel, forcedSeed);
       for (let i = 1; i <= 5; i++) {
-        newBuffer.push(createLevelData(currentLevel + i, undefined, targetCount));
+        newBuffer.push(createLevelData(currentLevel + i));
       }
     } else {
       // Shift buffer (Normal progression)
       nextLevelData = newBuffer.shift()!;
       // Replenish buffer
-      newBuffer.push(createLevelData(gameState.level + 6, undefined, targetCount));
+      newBuffer.push(createLevelData(gameState.level + 6));
     }
 
     setGrid(nextLevelData.grid);
@@ -956,50 +954,40 @@ const App: React.FC = () => {
           handleDuelRoundStart(newData);
         }
 
-        const currentP1Rounds = newData.p1_rounds || 0;
-        const currentP2Rounds = newData.p2_rounds || 0;
-        const totalRoundsWon = currentP1Rounds + currentP2Rounds;
-
-        // TRACK ROUND CHANGES (Blitz Mode Auto-Reset)
-        if (currentMode === 'blitz' && newData.status === 'active' && totalRoundsWon > (duelRounds.p1 + duelRounds.p2)) {
-          console.log("🎲 BLITZ: Round finish detected. Resetting board...");
-          handleDuelRoundStart(newData);
-        }
-
         setOpponentScore(amIP1 ? newData.player2_score : newData.player1_score);
-        setOpponentTargets(amIP1 ? currentP2Rounds : currentP1Rounds);
+        setOpponentTargets(amIP1 ? newData.p2_rounds : newData.p1_rounds);
 
         setDuelRounds({
-          p1: currentP1Rounds,
-          p2: currentP2Rounds,
+          p1: newData.p1_rounds || 0,
+          p2: newData.p2_rounds || 0,
           current: newData.current_round || 1
         });
 
-        const opponentRoundCount = amIP1 ? currentP2Rounds : currentP1Rounds;
-        const opponentTargetCount = amIP1 ? newData.player2_score : newData.player1_score;
+        const opponentTargetCount = amIP1 ? newData.p2_rounds : newData.p1_rounds;
+        const currentMode = newData.mode || duelMode;
+        const targetToWin = currentMode === 'blitz' ? 3 : 5;
 
-        // LOSS DETECTION
-        const isStandardLoss = currentMode === 'standard' && opponentTargetCount >= 5;
-        const isBlitzLoss = currentMode === 'blitz' && opponentRoundCount >= 3;
-
-        if ((isStandardLoss || isBlitzLoss) && newData.status !== 'finished' && processedWinRef.current !== newData.id) {
-          console.log("💔 DEFEAT SEQUENCE TRIGGERED");
-          processedWinRef.current = newData.id;
+        // Check Standard Mode Loss (Opponent reached 5 points/targets)
+        if (currentMode === 'standard' && opponentTargetCount >= 5 && newData.status !== 'finished') {
+          console.log("⚡ DUEL: Opponent reached 5 points - DEFEAT SEQUENCE");
           if (timerRef.current) window.clearInterval(timerRef.current);
-          setGameState(prev => ({ ...prev, status: 'idle' }));
+          setGameState(prev => ({ ...prev, status: 'idle' })); // Stop Game
           setIsDragging(false);
           setSelectedPath([]);
 
+          // Trigger Lost Video
           if (videoRef.current) {
             const loseVid = LOSE_VIDEOS[Math.floor(Math.random() * LOSE_VIDEOS.length)];
             videoRef.current.src = loseVid;
-            videoRef.current.muted = false;
+            videoRef.current.muted = false; // Enable audio for defeat
             videoRef.current.load();
-            videoRef.current.play().catch(e => console.warn("Loss video blocked:", e));
+            videoRef.current.play().catch(e => console.warn("Duel loss video blocked:", e));
+
             setLoseVideoSrc(loseVid);
             setShowLostVideo(true);
             setIsVideoVisible(true);
           }
+          // Recap will be triggered by handleLostVideoClose
           return;
         }
 
@@ -1284,40 +1272,29 @@ const App: React.FC = () => {
     setShowLostVideo(false);
     setShowDuelRecap(false);
 
-    // FIXED: Session score (totalScore) now always starts at 0 for Single Player sittings
-    // to ensure a clean local run, while all-time points are safely kept in the global profile.
-    setGameState(prev => {
-      let nextTotalScore = prev.totalScore;
-
-      if (!activeMatch?.isDuel) {
-        // Single Player Logic: Every sitting starts at 0.
-        // It will accumulate points across levels (via nextLevel) as long as the session continues.
-        nextTotalScore = 0;
-      }
-
-      return {
-        ...prev,
-        score: 0,
-        totalScore: nextTotalScore,
-        streak: 0,
-        level: startLevel,
-        timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME,
-        targetResult: 0,
-        status: 'playing',
-        estimatedIQ: startLevel === 1 ? 100 : prev.estimatedIQ,
-        lastLevelPerfect: true,
-        basePoints: BASE_POINTS_START,
-        levelTargets: [],
-      };
-    });
+    // FIXED: Use functional update and reset totalScore only on level 1 (Single Player only)
+    setGameState(prev => ({
+      ...prev,
+      score: 0,
+      totalScore: (startLevel === 1 && !activeMatch?.isDuel) ? 0 : prev.totalScore,
+      streak: 0,
+      level: startLevel,
+      timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME,
+      targetResult: 0,
+      status: 'playing',
+      estimatedIQ: startLevel === 1 ? 100 : prev.estimatedIQ,
+      lastLevelPerfect: true,
+      basePoints: BASE_POINTS_START,
+      levelTargets: [],
+    }));
 
     // Reset Buffer and Grid with explicit Level
     setTimeout(() => generateGrid(startLevel), 0);
 
-    // Clear and re-save initial state for session
-    if (currentUser && !activeMatch?.isDuel) {
+    // Clear save if starting new
+    if (currentUser) {
       const initialSaveState = {
-        totalScore: startLevel === 1 ? 0 : (savedGame?.totalScore || 0),
+        totalScore: startLevel === 1 ? 0 : savedGame?.totalScore || 0,
         streak: 0,
         level: startLevel,
         timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME,
@@ -1342,13 +1319,17 @@ const App: React.FC = () => {
 
     setGameState(prev => ({
       ...prev, // Keep some defaults
-      score: 0,
-      totalScore: 0, // Reset session score to 0 on restore
+      score: savedGame.score || 0,
+      totalScore: savedGame.totalScore || 0,
       streak: savedGame.streak || 0,
       level: savedGame.level || 1,
       timeLeft: savedGame.timeLeft || INITIAL_TIME,
       status: 'playing',
       estimatedIQ: savedGame.estimatedIQ || 100,
+      // Re-hydrate targets from save if possible, or regenerate?
+      // Simplest is to regenerate level.
+      // This allows "save scumming" the grid layout but keeps points/time.
+      // Acceptable for this iteration.
       levelTargets: [],
     }));
 
@@ -1567,11 +1548,10 @@ const App: React.FC = () => {
             try {
               const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
               const nextRounds = currentRounds + 1;
-              const targetRoundsToWinMatch = 3;
+              const targetRounds = 3;
 
-              if (nextRounds >= targetRoundsToWinMatch) {
-                // MATCH WIN: Player reached 3 won rounds
-                console.log("🏆 BLITZ: Match Win reached 3 rounds!");
+              if (nextRounds >= targetRounds) {
+                // MATCH WIN
                 await matchService.declareWinner(activeMatch.id, currentUser.id);
                 processedWinRef.current = activeMatch.id;
 
@@ -1604,15 +1584,10 @@ const App: React.FC = () => {
                   }
                 }, 800);
               } else {
-                // ROUND WIN: Not yet 3 wins
-                console.log("🔔 BLITZ: Round Win (DB increment)");
-                await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, 3); // Finish round with 3 targets
+                // ROUND WIN
                 await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRounds);
-
-                showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
+                setToast({ message: `ROUND VINTO! (${nextRounds}/${targetRounds})`, visible: true });
                 setGameState(prev => ({ ...prev, status: 'round-won' }));
-
-                // The subscriber effect will detect the increment and trigger handleDuelRoundStart automatically
               }
             } catch (e) { console.error("Blitz Win Error", e); }
 
@@ -2451,13 +2426,10 @@ const App: React.FC = () => {
                 {activeMatch?.isDuel ? (
                   <div className="flex items-center gap-4 pl-20 sm:pl-0">
                     {duelMode === 'blitz' ? (
-                      <div className="flex flex-col items-center bg-white/10 px-4 py-1 rounded-2xl border border-white/20">
-                        <span className="text-[9px] font-black uppercase text-amber-200 tracking-widest">BLITZ SCORE</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl font-black font-orbitron text-white">TU: {activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2}</span>
-                          <span className="text-xl font-black font-orbitron text-white/40">|</span>
-                          <span className="text-xl font-black font-orbitron text-white">AVV: {activeMatch.isP1 ? duelRounds.p2 : duelRounds.p1}</span>
-                        </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] font-black uppercase text-amber-100">ROUND</span>
+                        <span className="text-2xl font-black font-orbitron text-white">{duelRounds.current}/5</span>
+                        {/* Opponent Mini Circle for Blitz too? */}
                       </div>
                     ) : null}
 
@@ -2539,22 +2511,6 @@ const App: React.FC = () => {
                       }`}>
                       {grid.map(cell => (
                         <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* BLITZ ROUND WON OVERLAY */}
-              {gameState.status === 'round-won' && (
-                <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn">
-                  <div className="text-center p-8 bg-slate-900 border-4 border-[#FF8800] rounded-[3rem] shadow-[0_0_50px_rgba(255,136,0,0.5)] animate-bounce-slow">
-                    <FastForward className="w-16 h-16 text-[#FF8800] mx-auto mb-4" />
-                    <h2 className="text-4xl font-black font-orbitron text-white uppercase tracking-widest leading-none mb-2">ROUND VINTO!</h2>
-                    <div className="text-lg font-black font-orbitron text-[#FF8800] uppercase tracking-tighter">Sincronizzazione in corso...</div>
-                    <div className="mt-4 flex gap-2 justify-center">
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="w-3 h-3 rounded-full bg-[#FF8800] animate-pulse" style={{ animationDelay: `${i * 0.2}s` }}></div>
                       ))}
                     </div>
                   </div>
