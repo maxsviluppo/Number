@@ -1272,29 +1272,40 @@ const App: React.FC = () => {
     setShowLostVideo(false);
     setShowDuelRecap(false);
 
-    // FIXED: Use functional update and reset totalScore only on level 1 (Single Player only)
-    setGameState(prev => ({
-      ...prev,
-      score: 0,
-      totalScore: (startLevel === 1 && !activeMatch?.isDuel) ? 0 : prev.totalScore,
-      streak: 0,
-      level: startLevel,
-      timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME,
-      targetResult: 0,
-      status: 'playing',
-      estimatedIQ: startLevel === 1 ? 100 : prev.estimatedIQ,
-      lastLevelPerfect: true,
-      basePoints: BASE_POINTS_START,
-      levelTargets: [],
-    }));
+    // FIXED: Session score (totalScore) now always starts at 0 for Single Player sittings
+    // to ensure a clean local run, while all-time points are safely kept in the global profile.
+    setGameState(prev => {
+      let nextTotalScore = prev.totalScore;
+
+      if (!activeMatch?.isDuel) {
+        // Single Player Logic: Every sitting starts at 0.
+        // It will accumulate points across levels (via nextLevel) as long as the session continues.
+        nextTotalScore = 0;
+      }
+
+      return {
+        ...prev,
+        score: 0,
+        totalScore: nextTotalScore,
+        streak: 0,
+        level: startLevel,
+        timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME,
+        targetResult: 0,
+        status: 'playing',
+        estimatedIQ: startLevel === 1 ? 100 : prev.estimatedIQ,
+        lastLevelPerfect: true,
+        basePoints: BASE_POINTS_START,
+        levelTargets: [],
+      };
+    });
 
     // Reset Buffer and Grid with explicit Level
     setTimeout(() => generateGrid(startLevel), 0);
 
-    // Clear save if starting new
-    if (currentUser) {
+    // Clear and re-save initial state for session
+    if (currentUser && !activeMatch?.isDuel) {
       const initialSaveState = {
-        totalScore: startLevel === 1 ? 0 : savedGame?.totalScore || 0,
+        totalScore: startLevel === 1 ? 0 : (savedGame?.totalScore || 0),
         streak: 0,
         level: startLevel,
         timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME,
@@ -1319,17 +1330,13 @@ const App: React.FC = () => {
 
     setGameState(prev => ({
       ...prev, // Keep some defaults
-      score: savedGame.score || 0,
-      totalScore: savedGame.totalScore || 0,
+      score: 0,
+      totalScore: 0, // Reset session score to 0 on restore
       streak: savedGame.streak || 0,
       level: savedGame.level || 1,
       timeLeft: savedGame.timeLeft || INITIAL_TIME,
       status: 'playing',
       estimatedIQ: savedGame.estimatedIQ || 100,
-      // Re-hydrate targets from save if possible, or regenerate?
-      // Simplest is to regenerate level.
-      // This allows "save scumming" the grid layout but keeps points/time.
-      // Acceptable for this iteration.
       levelTargets: [],
     }));
 
