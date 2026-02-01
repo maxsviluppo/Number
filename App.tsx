@@ -1911,7 +1911,7 @@ const App: React.FC = () => {
           }
           return prev;
         });
-      }, 1000);
+      }, 500);
     }
   };
 
