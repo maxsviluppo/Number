@@ -615,7 +615,8 @@ const App: React.FC = () => {
       if (!activeMatch?.isDuel) {
         setGameState(prev => ({ ...prev, status: 'game-over' }));
         if (currentUser) {
-          profileService.clearSavedGame(currentUser.id);
+          // MODIFIED: Keep saved game to allow Retry/Checkpoint behavior
+          // profileService.clearSavedGame(currentUser.id);
           loadProfile(currentUser.id);
         }
 
@@ -1028,10 +1029,14 @@ const App: React.FC = () => {
         setIsDragging(false);
         setSelectedPath([]);
 
-        // Delay Recap to let video play (longer delay if video shown)
-        setTimeout(() => {
+        // Delay Recap controlled by video end
+        if (!amIWinner && !videoRef.current) {
+          // Fallback if no video plays
           setShowDuelRecap(true);
-        }, amIWinner ? 1000 : 4500); // If I won, I already saw video in handleSuccess. If I lost here, give time to see video.
+        } else if (amIWinner && !videoRef.current) {
+          // If I won but no video (rare), show recap
+          setShowDuelRecap(true);
+        }
       }
 
       return () => {
@@ -1245,9 +1250,19 @@ const App: React.FC = () => {
     setTimeout(() => generateGrid(startLevel), 0);
 
     // Clear save if starting new
+    // Save initial state instead of clearing, so "Retry" persists the level
     if (currentUser) {
-      profileService.clearSavedGame(currentUser.id);
-      setSavedGame(null);
+      const initialSaveState = {
+        totalScore: 0,
+        streak: 0,
+        level: startLevel,
+        timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME,
+        estimatedIQ: 100
+      };
+
+      profileService.saveGameState(currentUser.id, initialSaveState)
+        .catch(e => console.error("Error saving initial game state:", e));
+      setSavedGame(initialSaveState);
     }
   };
 
@@ -1457,10 +1472,8 @@ const App: React.FC = () => {
               }
             }, 800);
 
-            // 3. Delay Recap to let video play
-            setTimeout(() => {
-              setShowDuelRecap(true);
-            }, 7500); // 7.5s (longer than video)
+            // 3. Recap will be triggered by handleVideoClose after fadeout
+            // setTimeout(() => { setShowDuelRecap(true); }, 7500);
 
           } catch (error: any) {
             console.error("Error finishing duel safely:", error);
@@ -1606,11 +1619,11 @@ const App: React.FC = () => {
         }, 800);
       }
 
-      // 4. Show Recap after delay
-      setTimeout(() => {
-        setGameState(prev => ({ ...prev, status: 'idle' }));
-        setShowDuelRecap(true);
-      }, iWon ? 7500 : 4500);
+      // 4. Show Recap trigger handles by Video Close
+      // Fallback only if no video
+      if (!iWon && !activeMatch?.isDuel) {
+        // Should not happen here given logic
+      }
     } else {
       setGameState(prev => ({ ...prev, status: 'idle' }));
       setShowDuelRecap(true);
@@ -1777,14 +1790,21 @@ const App: React.FC = () => {
       }, intervalTime);
     }
 
-    // 3. Unmount after fade
+    // 3. Unmount after fade and Show Recap if Duel
     setTimeout(() => {
       setShowVideo(false);
       setIsVictoryAnimating(false);
-      setGameState(prev => ({
-        ...prev,
-        status: 'level-complete'
-      }));
+
+      if (activeMatch?.isDuel) {
+        setShowDuelRecap(true);
+        // Ensure we are idle to stop game interaction
+        setGameState(prev => ({ ...prev, status: 'idle' }));
+      } else {
+        setGameState(prev => ({
+          ...prev,
+          status: 'level-complete'
+        }));
+      }
     }, 2000);
   };
 
@@ -1796,7 +1816,7 @@ const App: React.FC = () => {
     if (videoRef.current) {
       const vid = videoRef.current;
       const startVolume = vid.volume;
-      const fadeDuration = 800;
+      const fadeDuration = 2000;
       const intervalTime = 40;
       const steps = fadeDuration / intervalTime;
       let currentStep = 0;
@@ -1815,10 +1835,14 @@ const App: React.FC = () => {
       }, intervalTime);
     }
 
-    // 3. Unmount after fade
+    // 3. Unmount after fade and Show Recap if Duel
     setTimeout(() => {
       setShowLostVideo(false);
-    }, 800);
+      if (activeMatch?.isDuel) {
+        setShowDuelRecap(true);
+        setGameState(prev => ({ ...prev, status: 'idle' }));
+      }
+    }, 2000);
   };
 
   const handleSurrenderVideoClose = () => {
