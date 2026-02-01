@@ -956,6 +956,7 @@ const App: React.FC = () => {
           handleDuelRoundStart(newData);
         }
 
+        const currentMode = newData.mode || activeMatch?.mode || 'standard';
         const currentP1Rounds = newData.p1_rounds || 0;
         const currentP2Rounds = newData.p2_rounds || 0;
         const totalRoundsWon = currentP1Rounds + currentP2Rounds;
