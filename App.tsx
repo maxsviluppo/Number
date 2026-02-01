@@ -1020,6 +1020,9 @@ const App: React.FC = () => {
       if (latestMatchData?.id === activeMatch.id && latestMatchData?.status === 'finished' && gameStateRef.current.status === 'playing') {
         const amIWinner = latestMatchData.winner_id === currentUser?.id;
 
+        // Prevent duplicate handling if we already processed this win locally
+        if (amIWinner && processedWinRef.current === latestMatchData.id) return;
+
         if (!amIWinner) {
           // Play Defeat Video
           if (videoRef.current) {
@@ -1431,36 +1434,49 @@ const App: React.FC = () => {
     }
   };
 
-  /* HANDLE SUCCESS - FULLY REF BASED */
   const handleSuccess = async (matchedValue: number) => {
     try {
+      console.log("🎯 SUCCESS: Target Found:", matchedValue);
       // RACE CONDITION FIX: Do not process win if game is already over
       if (gameStateRef.current.status !== 'playing') return;
 
-      soundService.playSuccess(); // Riproduci suono combinazione trovata
+      soundService.playSuccess();
 
-      // NEW SCORING: ARCADE SCALABLE
+      // SCORED POINTS
       const basePoints = 10;
       const streakBonus = gameStateRef.current.streak * 1;
       const currentPoints = basePoints + streakBonus;
+      const newScore = gameStateRef.current.score + currentPoints;
 
-      // DEFINISCI COSTANTI PER LINT FIX
+      // Update targets state
+      const currentTargets = gameStateRef.current.levelTargets;
+      const targetIndex = currentTargets.findIndex(t => t.value === matchedValue && !t.completed);
+
+      if (targetIndex === -1) {
+        console.warn("⚠️ Target already completed or not found:", matchedValue);
+        return;
+      }
+
+      const newTargets = [...currentTargets];
+      newTargets[targetIndex] = { ...newTargets[targetIndex], completed: true };
+
+      // Update Local Game State right away for UI feedback
+      setGameState(prev => ({
+        ...prev,
+        score: newScore,
+        totalScore: prev.totalScore + currentPoints,
+        streak: prev.streak + 1,
+        estimatedIQ: Math.min(200, prev.estimatedIQ + 0.5),
+        levelTargets: newTargets
+      }));
+
+      // DEFINISCI COSTANTI PER LINT FIX (Winning bonuses)
       const finalTimeBonus = Math.floor(gameStateRef.current.timeLeft * 1.5);
       const finalVictoryBonus = 50;
       const totalPointsToAdd = currentPoints + finalTimeBonus + finalVictoryBonus;
 
       setScoreAnimKey(k => k + 1);
 
-      // Update targets state
-      const currentTargets = gameStateRef.current.levelTargets;
-      const targetIndex = currentTargets.findIndex(t => t.value === matchedValue && !t.completed);
-
-      const newTargets = [...currentTargets];
-      if (targetIndex !== -1) {
-        newTargets[targetIndex] = { ...newTargets[targetIndex], completed: true };
-      }
-
-      // Time Attack only applies if we are in an Active Duel
       const isTimeAttack = !!activeMatch && (duelMode === 'time_attack' || activeMatch.mode === 'time_attack');
       const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
@@ -1511,7 +1527,7 @@ const App: React.FC = () => {
                     const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
                     const vidSrc = WIN_VIDEOS[winIdx];
                     videoRef.current.src = vidSrc;
-                    videoRef.current.muted = true;
+                    videoRef.current.muted = false;
                     videoRef.current.load();
                     videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
                     soundService.playWinner(winIdx);
@@ -1609,70 +1625,41 @@ const App: React.FC = () => {
 
         } else {
           // NOT ALL DONE - CONTINUE PLAYING
-          const newScore = gameStateRef.current.score + currentPoints;
+          // setGameState was already called at the top of handleSuccess for consistent UI update
           const completedCount = newTargets.filter(t => t.completed).length;
 
-          setGameState(prev => ({
-            ...prev,
-            score: prev.score + currentPoints,
-            totalScore: prev.totalScore + currentPoints,
-            streak: prev.streak + 1,
-            estimatedIQ: Math.min(200, prev.estimatedIQ + 0.5),
-            levelTargets: newTargets
-          }));
 
           // SYNC DUEL STATS (Non-Winning Move)
           if (activeMatch?.isDuel) {
             if (duelMode === 'standard') {
-              // In Standard, we update stats in the "allDone" block if it's a win, 
-              // BUT we also need to update "Points/Targets" here if we just found one but didn't win yet.
-              // Wait... "allDone" implies Level Complete. In Standard, "5 Points" might mean 5 Levels? 
-              // OR 5 Targets found within a level? 
-              // User logic: "Logic of Standard Duel: 5 points to win".
-              // If points = targets, we must increment per target found.
-              // The "allDone" block above handles Level Completion (clearing the board).
-              // We need to track individual target completion.
+              // STANDARD MODE: Score = Targets Found (Points)
+              // We use the cumulative count of completed targets in the current level.
+              // Since Standard Duel is single-level (conceptually), or we just count total targets found.
+              // We rely on 'completedCount' from the current 'newTargets' state which is the source of truth for THIS client.
 
-              // Let's use `completedCount` of targets.
-              // Actually, `newTargets` has the updated state.
-              const targetsFoundTotal = newTargets.filter(t => t.completed).length;
-              // Wait, `targetsFoundTotal` is for THIS level. We need cumulative? 
-              // If Standard Duel resets levels, then we just need cumulative count.
-              // We rely on `matchService.updateMatchStats` to likely SET the value, not increment.
-              // So we need: Prev Round Count (from DB/Local) + Newly Found.
+              const localTargetsFound = newTargets.filter(t => t.completed).length;
 
-              // SIMPLIFICATION: User likely means 5 Rounds/Levels if "Points" usually resets? 
-              // OR 5 specific target solutions found? 
-              // Let's assume 5 "Correct Answers" (Targets Found).
-
-              const prevRounds = activeMatch.isP1 ? latestMatchData?.p1_rounds : latestMatchData?.p2_rounds;
-              const totalTargetsFound = (prevRounds || 0) + 1; // We just found one 'matchedValue'
-
-              matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, totalTargetsFound)
+              matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, localTargetsFound)
                 .catch(e => console.error("Error syncing duel stats:", e));
 
-              // CHECK WIN CONDITION HERE TOO (In case 5th point is not the 'allDone' point)
-              if (duelMode === 'standard' && totalTargetsFound >= 5) {
-                // Trigger Win Immediatley
-                // ... Copy Win Logic from above or refactor ...
-                // For safety, let's just let the 'updateMatchStats' happen, and trigger the win via a separate check? 
-                // No, strictly proactive.
-
-                // Tricky: The 'allDone' block above (Line 1469) handles CLEARING the level.
-                // But we might win by finding the 5th target BEFORE clearing the level.
-                // So we must check >= 5 here as well.
-
-                // winnerDeclared flag not needed in this flow as we return immediately
-
-
+              // CHECK WIN CONDITION HERE TOO (In case 5th point is found but level not cleared)
+              if (localTargetsFound >= 5) {
                 // EXECUTE WIN SEQUENCE
                 (async () => {
                   try {
                     await matchService.declareWinner(activeMatch.id, currentUser.id);
                     processedWinRef.current = activeMatch.id;
-                    setLatestMatchData(prev => ({ ...prev, status: 'finished', winner_id: currentUser!.id })); // Optimistic
+
+                    // Optimistic Data Update
+                    setLatestMatchData(prev => ({
+                      ...prev,
+                      status: 'finished',
+                      winner_id: currentUser!.id,
+                      [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: 5
+                    }));
 
                     soundService.playLevelComplete();
+
                     setTimeout(() => {
                       if (videoRef.current) {
                         const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
@@ -1918,6 +1905,11 @@ const App: React.FC = () => {
         setPreviewResult(calculateResultFromPath(newPath));
       }
     }
+  };
+
+  // Logic for First Selection (Click/Tap) - Removed selectionTimeoutRef logic
+  const onSelectionStart = (id: string) => {
+    // No timeout logic needed here anymore
   };
 
   const handleGlobalEnd = () => {
@@ -2942,7 +2934,7 @@ const App: React.FC = () => {
 
         {/* DUEL RECAP MODAL */}
         {/* DUEL RECAP MODAL */}
-        {showDuelRecap && latestMatchData && (
+        {showDuelRecap && latestMatchData && !showVideo && !showLostVideo && !showSurrenderVideo && (
           <DuelRecapModal
             matchData={latestMatchData}
             currentUser={currentUser}
