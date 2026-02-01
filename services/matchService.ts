@@ -62,7 +62,7 @@ export const matchService = {
                     grid_seed: seed,
                     mode: mode,
                     status: 'pending', // Explicitly set pending
-                    target_score: mode === 'blitz' ? 3 : 5, // Blitz rounds are shorter (3 targets), Standard match is 5 targets
+                    target_score: 5, // Always 5 targets per round/match
                     p1_rounds: 0,
                     p2_rounds: 0,
                     current_round: 1
@@ -352,13 +352,9 @@ export const matchService = {
     // Incrementa i round vinti (Blitz Mode)
     async incrementRound(matchId: string, isPlayer1: boolean, currentRounds: number) {
         const updateData = isPlayer1
-            ? { p1_rounds: currentRounds + 1, current_round: currentRounds + 1 } // Note: current_round should probably be handled carefully if both win simulatneously? 
-            // Better: just inc p1_rounds. The "current_round" is sum of rounds + 1? Or just cosmetic.
-            // Let's just update p1_rounds.
-            : { p2_rounds: currentRounds + 1 };
+            ? { p1_rounds: currentRounds + 1, current_round: currentRounds + 1, player1_score: 0, player2_score: 0 }
+            : { p2_rounds: currentRounds + 1, player1_score: 0, player2_score: 0 };
 
-        // For "current_round", purely display? Or actual logic?
-        // Let's just update the winner's round count.
         const { error } = await (supabase as any)
             .from('matches')
             .update(updateData)

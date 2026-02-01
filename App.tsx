@@ -405,7 +405,7 @@ const App: React.FC = () => {
 
     const currentLevel = forceStartLevel !== undefined ? forceStartLevel : gameState.level;
 
-    const targetCount = (activeMatch?.isDuel && duelMode === 'blitz') ? 3 : 5;
+    const targetCount = 5;
 
     if (newBuffer.length === 0 || forceStartLevel !== undefined || forcedSeed) {
       // If we have a forced seed (DUEL MODE), generate exactly that board
@@ -967,8 +967,12 @@ const App: React.FC = () => {
           handleDuelRoundStart(newData);
         }
 
-        setOpponentScore(amIP1 ? newData.player2_score : newData.player1_score);
-        setOpponentTargets(amIP1 ? currentP2Rounds : currentP1Rounds);
+        const opScore = amIP1 ? newData.player2_score : newData.player1_score;
+        const opRounds = amIP1 ? newData.p2_rounds : newData.p1_rounds;
+
+        setOpponentScore(opScore);
+        // In Blitz, targets = opScore (targets in round), in Standard targets = opRounds (total targets)
+        setOpponentTargets(currentMode === 'blitz' ? opScore : opRounds);
 
         setDuelRounds({
           p1: currentP1Rounds,
@@ -976,12 +980,12 @@ const App: React.FC = () => {
           current: newData.current_round || 1
         });
 
-        const opponentRoundCount = amIP1 ? currentP2Rounds : currentP1Rounds;
+        const opponentRoundWins = amIP1 ? currentP2Rounds : currentP1Rounds;
         const opponentTargetCount = amIP1 ? newData.player2_score : newData.player1_score;
 
         // LOSS DETECTION
-        const isStandardLoss = currentMode === 'standard' && opponentTargetCount >= 5;
-        const isBlitzLoss = currentMode === 'blitz' && opponentRoundCount >= 3;
+        const isStandardLoss = currentMode === 'standard' && opRounds >= 5;
+        const isBlitzLoss = currentMode === 'blitz' && opponentRoundWins >= 3;
 
         if ((isStandardLoss || isBlitzLoss) && newData.status !== 'finished' && processedWinRef.current !== newData.id) {
           console.log("💔 DEFEAT SEQUENCE TRIGGERED");
@@ -1504,6 +1508,12 @@ const App: React.FC = () => {
       const localTargetsFound = newTargets.filter(t => t.completed).length;
       const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
+      // [BLITZ] SYNC CURRENT ROUND PROGRESS (0-5 targets inside current round)
+      if (activeMatch?.isDuel && duelMode === 'blitz') {
+        const currentRoundWins = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
+        await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, localTargetsFound, currentRoundWins);
+      }
+
       if (allDone) {
         setTriggerParticles(false);
         if (!videoRef.current) soundService.playExternalSound('Fine_partita_win.mp3');
@@ -1607,7 +1617,6 @@ const App: React.FC = () => {
               } else {
                 // ROUND WIN: Not yet 3 wins
                 console.log("🔔 BLITZ: Round Win (DB increment)");
-                await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, 3); // Finish round with 3 targets
                 await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRounds);
 
                 showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
@@ -2406,6 +2415,13 @@ const App: React.FC = () => {
                 {/* Center: Floating Timer (Half-In/Half-Out) */}
                 {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
                 <div id="timer-display-game" className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
+                  {/* Round Indicator - Positioned higher and larger */}
+                  {activeMatch?.isDuel && (
+                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-amber-400/50 text-amber-100 text-[11px] font-black font-orbitron px-5 py-1.5 rounded-full z-[110] whitespace-nowrap shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pulse-slow">
+                      {duelMode === 'blitz' ? `ROUND ${duelRounds.p1 + duelRounds.p2 + 1} / 5` : 'VS MODE'}
+                    </div>
+                  )}
+
                   <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${(activeMatch?.isDuel && duelMode !== 'time_attack') ? 'border-red-500/50 grayscale-0 opacity-100 flex flex-col' : ''}`}>
                     <svg className="absolute inset-0 w-full h-full -rotate-90 scale-90">
                       <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
@@ -2413,14 +2429,14 @@ const App: React.FC = () => {
                         <circle
                           cx="50%" cy="50%" r="45%"
                           stroke={activeMatch?.isDuel && duelMode !== 'time_attack'
-                            ? `rgb(${Math.floor(((opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5)) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5)) * 129 + 68)}, 68)`
+                            ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
                             : (gameState.timeLeft <= 10 ? '#ef4444' : '#FF8800')}
                           strokeWidth="8"
                           fill="none"
                           strokeDasharray="283"
                           strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack'
-                            ? 283 - (283 * (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5))
-                            : (283 * (1 - gameState.timeLeft / 60)) // Force 60s denominator
+                            ? 283 - (283 * (opponentTargets || 0) / 5)
+                            : (283 * (1 - gameState.timeLeft / 60))
                           }
                           strokeLinecap="round"
                           className="transition-all duration-1000"
@@ -2431,13 +2447,7 @@ const App: React.FC = () => {
                       <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
                     ) : (
                       <>
-                        {/* Label Logic */}
-                        {(() => {
-                          if (activeMatch?.isDuel && duelMode !== 'time_attack') return <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>;
-                          return null;
-                        })()}
-
-                        {/* Value Logic */}
+                        <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>
                         <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
                           {duelMode === 'time_attack'
                             ? gameState.timeLeft
@@ -2448,21 +2458,10 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                {/* LEADERBOARD/STATS Header - ADAPTED FOR DUEL (WHITE CIRCLE VERSION) */}
+                {/* RIGHT SIDE: SCORE / ROUNDS */}
                 {activeMatch?.isDuel ? (
-                  <div className="flex items-center gap-4 pl-20 sm:pl-0">
-                    {duelMode === 'blitz' ? (
-                      <div className="flex flex-col items-center bg-white/10 px-4 py-1 rounded-2xl border border-white/20">
-                        <span className="text-[9px] font-black uppercase text-amber-200 tracking-widest">BLITZ SCORE</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl font-black font-orbitron text-white">TU: {activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2}</span>
-                          <span className="text-xl font-black font-orbitron text-white/40">|</span>
-                          <span className="text-xl font-black font-orbitron text-white">AVV: {activeMatch.isP1 ? duelRounds.p2 : duelRounds.p1}</span>
-                        </div>
-                      </div>
-                    ) : null}
+                  <div className="flex items-center gap-3 pl-20 sm:pl-0">
 
-                    {/* Duel Dashboard circle: Shows Match Points, not global */}
                     <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
                       <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
                       <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
