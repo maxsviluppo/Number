@@ -103,6 +103,7 @@ const App: React.FC = () => {
   const [logoAnim, setLogoAnim] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const gameStateRef = useRef<GameState>(gameState);
+  const prevRoundRef = useRef(1);
   const processedWinRef = useRef<string | null>(null);
 
   // Keep gameStateRef in sync
@@ -137,6 +138,18 @@ const App: React.FC = () => {
   const [onlinePlayers, setOnlinePlayers] = useState<any[]>([]);
   const [pendingMatchInvite, setPendingMatchInvite] = useState<string | null>(null);
   const [isJoiningPending, setIsJoiningPending] = useState(false);
+
+  // FAILSAFE: Force Intro End after timeout to prevent boot freeze
+  useEffect(() => {
+    if (showIntro) {
+      const timer = setTimeout(() => {
+        console.warn("⚠️ BOOT SYSTEM: Intro sequence timed out - Force entering app");
+        setShowIntro(false);
+        setGameState(prev => ({ ...prev, status: 'idle' }));
+      }, 45000);
+      return () => clearTimeout(timer);
+    }
+  }, [showIntro]);
 
 
 
@@ -1045,6 +1058,34 @@ const App: React.FC = () => {
     }
   }, [activeMatch, currentUser, showDuelRecap, latestMatchData]);
 
+  // BLITZ ROUND TRANSITION EFFECT
+  useEffect(() => {
+    if (activeMatch?.isDuel && duelMode === 'blitz') {
+      if (duelRounds.current > prevRoundRef.current) {
+        // New Round Detected
+        if (gameStateRef.current.status === 'playing') {
+          // If I was still playing, I lost the round
+          soundService.playError();
+          showToast(`ROUND PERSO!`, [{ label: "OK", onClick: () => { } }]);
+          setGameState(prev => ({ ...prev, status: 'round-lost' }));
+        } else if (gameStateRef.current.status === 'round-won') {
+          // I won, just confirm transition
+          showToast(`ROUND ${duelRounds.current} START!`);
+        }
+
+        // Restart Game for Next Round
+        setTimeout(() => {
+          startGame(1);
+        }, 1500);
+
+        prevRoundRef.current = duelRounds.current;
+      } else {
+        // Sync ref if we just loaded/joined
+        prevRoundRef.current = duelRounds.current;
+      }
+    }
+  }, [duelRounds, activeMatch, duelMode]);
+
   // MATCH BROADCAST LOGIC (Abandonment)
   useEffect(() => {
     if (activeMatch?.id) {
@@ -1431,57 +1472,103 @@ const App: React.FC = () => {
         if (!videoRef.current) soundService.playExternalSound('Fine_partita_win.mp3');
 
         // DUEL WIN LOGIC
-        if (activeMatch?.isDuel && duelMode === 'standard') {
-          try {
-            await matchService.declareWinner(activeMatch.id, currentUser.id);
-            processedWinRef.current = activeMatch.id;
+        if (activeMatch?.isDuel) {
 
-            // Optimistic Update
-            setLatestMatchData(prev => ({
-              ...prev,
-              status: 'finished',
-              winner_id: currentUser!.id,
-              player1_score: activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player1_score,
-              player2_score: !activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player2_score,
-              p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
-              p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds,
-              last_time_bonus: finalTimeBonus,
-              last_victory_bonus: finalVictoryBonus
-            }));
+          // STANDARD MODE
+          if (duelMode === 'standard') {
+            try {
+              await matchService.declareWinner(activeMatch.id, currentUser.id);
+              processedWinRef.current = activeMatch.id;
 
-            // Sync Profile
-            await profileService.syncProgress(currentUser.id, totalPointsToAdd, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
-            await loadProfile(currentUser.id);
+              // Optimistic Update
+              setLatestMatchData(prev => ({
+                ...prev,
+                status: 'finished',
+                winner_id: currentUser!.id,
+                player1_score: activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player1_score,
+                player2_score: !activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player2_score,
+                p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
+                p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds,
+                last_time_bonus: finalTimeBonus,
+                last_victory_bonus: finalVictoryBonus
+              }));
 
-            // 1. Play "Fine Partita" sound
-            soundService.playLevelComplete();
+              await profileService.syncProgress(currentUser.id, totalPointsToAdd, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+              await loadProfile(currentUser.id);
 
-            // 2. Play Random Victory Video
-            setTimeout(() => {
-              if (videoRef.current) {
-                const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-                const vidSrc = WIN_VIDEOS[winIdx];
-                videoRef.current.src = vidSrc;
-                videoRef.current.muted = true;
-                videoRef.current.load();
-                videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
-                soundService.playWinner(winIdx);
-                setWinVideoSrc(vidSrc);
-                setShowVideo(true);
-                setIsVideoVisible(true);
-              }
-            }, 800);
+              soundService.playLevelComplete();
 
-            // 3. Recap will be triggered by handleVideoClose after fadeout
-            // setTimeout(() => { setShowDuelRecap(true); }, 7500);
+              setTimeout(() => {
+                if (videoRef.current) {
+                  const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+                  const vidSrc = WIN_VIDEOS[winIdx];
+                  videoRef.current.src = vidSrc;
+                  videoRef.current.muted = true;
+                  videoRef.current.load();
+                  videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                  soundService.playWinner(winIdx);
+                  setWinVideoSrc(vidSrc);
+                  setShowVideo(true);
+                  setIsVideoVisible(true);
+                }
+              }, 800);
 
-          } catch (error: any) {
-            console.error("Error finishing duel safely:", error);
-            setGameState(prev => ({ ...prev, status: 'idle' }));
-            setShowDuelRecap(true);
+            } catch (error: any) {
+              console.error("Error finishing duel safely:", error);
+              setGameState(prev => ({ ...prev, status: 'idle' }));
+              setShowDuelRecap(true);
+            }
+            setSelectedPath([]);
+            return;
           }
-          setSelectedPath([]);
-          return;
+
+          // BLITZ MODE
+          if (duelMode === 'blitz') {
+            try {
+              const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
+              const nextRounds = currentRounds + 1;
+              const targetRounds = 3;
+
+              if (nextRounds >= targetRounds) {
+                // MATCH WIN
+                await matchService.declareWinner(activeMatch.id, currentUser.id);
+                processedWinRef.current = activeMatch.id;
+
+                setLatestMatchData(prev => ({
+                  ...prev,
+                  status: 'finished',
+                  winner_id: currentUser!.id,
+                  [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds
+                }));
+
+                soundService.playLevelComplete();
+
+                // WIN VIDEO SEQUENCE
+                setTimeout(() => {
+                  if (videoRef.current) {
+                    const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+                    const vidSrc = WIN_VIDEOS[winIdx];
+                    videoRef.current.src = vidSrc;
+                    videoRef.current.muted = true;
+                    videoRef.current.load();
+                    videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                    soundService.playWinner(winIdx);
+                    setWinVideoSrc(vidSrc);
+                    setShowVideo(true);
+                    setIsVideoVisible(true);
+                  }
+                }, 800);
+              } else {
+                // ROUND WIN
+                await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRounds);
+                setToast({ message: `ROUND VINTO! (${nextRounds}/${targetRounds})`, visible: true });
+                setGameState(prev => ({ ...prev, status: 'round-won' }));
+              }
+            } catch (e) { console.error("Blitz Win Error", e); }
+
+            setSelectedPath([]);
+            return;
+          }
         }
 
         // STANDARD LEVEL WIN LOGIC (Single Player)
@@ -2339,7 +2426,7 @@ const App: React.FC = () => {
                   <div className="text-[10px] font-bold text-slate-400 mb-6 uppercase tracking-[0.2em]">Livello Non Superato</div>
 
                   <div className="space-y-3 relative z-10">
-                    <button onPointerDown={(e) => { e.stopPropagation(); resetDuelState(); startGame(); }}
+                    <button onPointerDown={(e) => { e.stopPropagation(); resetDuelState(); startGame(gameState.level); }}
                       className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all border-2 border-slate-200">
                       RIGIOCA LIVELLO {gameState.level}
                     </button>

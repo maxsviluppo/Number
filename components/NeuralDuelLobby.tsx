@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Swords, Loader2, XCircle, User, Play, Eye, Radio, Search, Send, Share2 } from 'lucide-react';
+import { Swords, Loader2, XCircle, User, Play, Eye, Radio, Search, Send, Trophy } from 'lucide-react';
 import { matchService, Match } from '../services/matchService';
 import { soundService } from '../services/soundService';
 import { supabase, profileService } from '../services/supabaseClient';
@@ -23,7 +23,74 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
     const isFetchingRef = useRef(false);
 
     // NEW: Invite System State
-    const [activeTab, setActiveTab] = useState<'lobby' | 'invite'>('lobby');
+    const [activeTab, setActiveTab] = useState<'lobby' | 'invite' | 'new_friend'>('lobby');
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [sentInvites, setSentInvites] = useState<{ email: string, date: string, status: 'pending' | 'success', rewarded: boolean }[]>(() => {
+        try {
+            return JSON.parse(localStorage.getItem('neural_sent_invites') || '[]');
+        } catch { return []; }
+    });
+
+    // Check Invite Status
+    useEffect(() => {
+        const checkInvites = async () => {
+            if (activeTab === 'new_friend') {
+                const pending = sentInvites.filter(i => i.status === 'pending');
+                if (pending.length === 0) return;
+
+                const updatedInvites = [...sentInvites];
+                let pointsAwarded = 0;
+
+                for (const inv of pending) {
+                    const { data } = await supabase.from('profiles').select('id').eq('email', inv.email).maybeSingle();
+                    if (data) {
+                        // Found! Update status
+                        const idx = updatedInvites.findIndex(i => i.email === inv.email);
+                        if (idx !== -1) {
+                            updatedInvites[idx].status = 'success';
+                            updatedInvites[idx].rewarded = true;
+                            pointsAwarded += 100;
+                        }
+                    }
+                }
+
+                if (pointsAwarded > 0) {
+                    setSentInvites(updatedInvites);
+                    localStorage.setItem('neural_sent_invites', JSON.stringify(updatedInvites));
+
+                    // Award Points
+                    await profileService.syncProgress(currentUser.id, pointsAwarded, 0, 0);
+                    soundService.playSuccess();
+                    showToast(`AMICO TROVATO! +${pointsAwarded} Punti Bonus!`);
+                }
+            }
+        };
+        checkInvites();
+    }, [activeTab]);
+
+    const handleSendEmailInvite = async () => {
+        if (!inviteEmail.includes('@')) {
+            showToast("Indirizzo email non valido");
+            return;
+        }
+
+        soundService.playUIClick();
+
+        // Add to list
+        const newInvite = { email: inviteEmail, date: new Date().toLocaleDateString(), status: 'pending' as const, rewarded: false };
+        const newList = [newInvite, ...sentInvites];
+        setSentInvites(newList);
+        localStorage.setItem('neural_sent_invites', JSON.stringify(newList));
+
+        setInviteEmail('');
+
+        // Open Mail Client
+        const subject = "Sfida su Neural Duel!";
+        const body = `Ciao! Unisciti a me su Neural Duel e sfidami in battaglie di intelligenza. Scarica l'app qui: ${window.location.origin}`;
+        window.location.href = `mailto:${inviteEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+        showToast("Invito inviato! Controlla la lista.");
+    };
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -245,6 +312,39 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
         }
     };
 
+    const handleInviteNewFriend = async () => {
+        soundService.playUIClick();
+        const seed = Math.random().toString(36).substring(7);
+        try {
+            const newMatch = await matchService.createMatch(currentUser.id, seed, mode);
+            if (newMatch) {
+                setMyHostedMatch(newMatch);
+
+                channelRef.current = matchService.subscribeToMatch(newMatch.id, (payload) => {
+                    if (payload.new.status === 'active' && payload.new.player2_id) {
+                        onMatchStart(newMatch.grid_seed, newMatch.id, payload.new.player2_id, true);
+                    }
+                });
+
+                const joinUrl = `${window.location.origin}${window.location.pathname}?joinMatch=${newMatch.id}`;
+                const title = "Sfida a Neural Duel!";
+                const text = `Ti sfido a Neural Duel! 🧠\nClicca qui per accettare la sfida: ${joinUrl}`;
+
+                if (navigator.share) {
+                    try {
+                        await navigator.share({ title, text, url: joinUrl });
+                    } catch (err) { console.log('Share dismissed', err); }
+                } else {
+                    await navigator.clipboard.writeText(text);
+                    showToast("Link sfida copiato!");
+                }
+            }
+        } catch (e: any) {
+            console.error('Invite New error:', e);
+            showToast("Errore creazione invito");
+        }
+    };
+
     const joinMatch = async (matchId: string, seed: string, p1Id: string) => {
         setPendingChallenge(null);
         soundService.playUIClick();
@@ -319,18 +419,28 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                     </div>
 
                     {/* TABS */}
-                    <div className="flex gap-4 px-2">
+                    <div className="flex items-center justify-between px-2 mt-2">
+                        <div className="flex gap-8">
+                            <button
+                                onClick={() => setActiveTab('lobby')}
+                                className={`pb-2 text-xs font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'lobby' ? 'text-white border-[#FF8800]' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                            >
+                                Lobby Pubblica
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('invite')}
+                                className={`pb-2 text-xs font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'invite' ? 'text-white border-green-500' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                            >
+                                Sfida Amico
+                            </button>
+                        </div>
+
                         <button
-                            onClick={() => setActiveTab('lobby')}
-                            className={`pb-2 text-xs font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'lobby' ? 'text-white border-[#FF8800]' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                            onClick={handleInviteNewFriend}
+                            className="px-4 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg font-black font-orbitron uppercase tracking-wider text-[10px] border border-white/20 shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 mb-1"
                         >
-                            Lobby Pubblica
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('invite')}
-                            className={`pb-2 text-xs font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'invite' ? 'text-white border-green-500' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
-                        >
-                            Sfida Amico
+                            <Send size={12} />
+                            INVITA AMICO
                         </button>
                     </div>
                 </div>
@@ -384,6 +494,8 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                             APRI NUOVA SFIDA PUBBLICA
                                         </button>
                                     )}
+
+
 
                                     {/* INCOMING INVITES SECTION */}
                                     {myInvites.length > 0 && (
@@ -510,15 +622,6 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                 const isInMatch = matches.some(m => String(m.player1_id) === String(p.id) || String(m.player2_id) === String(p.id));
                                                 const isMe = String(p.id) === String(currentUser.id);
                                                 if (isMe) return false;
-                                                // LOG PER DIAGNOSTICA
-                                                if (isInMatch) {
-                                                    console.log(`LOBBY: Nascondo ${p.username} (${p.id}) dagli osservatori perche' e' in una partita.`);
-                                                } else {
-                                                    // Debug comparison for the first match if it exists
-                                                    if (matches.length > 0) {
-                                                        console.log(`DEBUG VISIBILITY: ${p.username} (${p.id}) NOT IN MATCH. First Match P1: ${matches[0].player1_id}`);
-                                                    }
-                                                }
                                                 return !isInMatch;
                                             });
 
@@ -575,7 +678,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                         {searchQuery.length > 0 ? 'Risultati Ricerca' : 'Giocatori Recenti'}
                                     </h3>
                                     <div className="space-y-3">
-                                        {searchResults.length > 0 ? (
+                                        {searchResults.length > 0 && (
                                             searchResults.map((user) => (
                                                 <div key={user.id} className="bg-white/5 border border-white/5 p-4 rounded-2xl flex items-center justify-between group hover:border-cyan-500/30 transition-all">
                                                     <div className="flex items-center gap-3">
@@ -623,7 +726,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                                     : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/30 hover:text-white'}`}
                                                             title="Condividi Link Sfida (WhatsApp, Telegram, etc.)"
                                                         >
-                                                            <Share2 size={14} />
+                                                            <Send size={14} />
                                                         </button>
 
                                                         <button
@@ -635,24 +738,29 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                                     : 'bg-green-500 text-white border-green-400 shadow-[0_0_10px_rgba(34,197,94,0.3)] hover:scale-105 hover:bg-green-400'}`}
                                                             title={myHostedMatch ? "Sei già occupato" : "Invita a Giocare"}
                                                         >
-                                                            <Send size={14} />
+                                                            <Swords size={14} />
                                                         </button>
                                                     </div>
                                                 </div>
-                                            ))
-                                        ) : (
-                                            !isSearching && searchQuery.length > 2 && (
-                                                <div className="text-center py-8 opacity-50 text-xs italic">Nessun giocatore trovato</div>
-                                            )
-                                        )}
+                                            )))}
                                     </div>
+                                    {!isSearching && searchQuery.length > 2 && searchResults.length === 0 && (
+                                        <div className="text-center py-8 opacity-50 text-xs italic">Nessun giocatore trovato</div>
+                                    )}
                                 </div>
                             )}
+
+                            {/* NEW FRIEND TAB Content */}
+                            {/* NEW FRIEND TAB REMOVED */}
+
                         </>
                     )}
                 </div>
+            </div>
 
-                {pendingChallenge && (
+            {/* PENDING CHALLENGE MODAL */}
+            {
+                pendingChallenge && (
                     <div className="absolute inset-0 z-50 flex items-end justify-center p-6 bg-black/40 backdrop-blur-sm animate-fadeIn">
                         <div className="bg-slate-900 border-2 border-green-500/50 p-6 rounded-[2rem] w-full max-w-sm shadow-2xl animate-slideUp">
                             <div className="flex flex-col items-center text-center gap-4">
@@ -667,9 +775,9 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                             </div>
                         </div>
                     </div>
-                )}
-            </div>
-        </div>
+                )
+            }
+        </div >
     );
 };
 

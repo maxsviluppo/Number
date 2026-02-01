@@ -16,7 +16,7 @@ export interface GameState {
   level: number;
   timeLeft: number;
   targetResult: number;
-  status: 'playing' | 'level-complete' | 'game-over' | 'idle';
+  status: 'playing' | 'level-complete' | 'game-over' | 'idle' | 'intro' | 'opponent-surrendered' | 'round-won' | 'round-lost';
   estimatedIQ: number;
   lastLevelPerfect: boolean;
   basePoints: number;
