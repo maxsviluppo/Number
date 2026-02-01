@@ -105,6 +105,7 @@ const App: React.FC = () => {
   const gameStateRef = useRef<GameState>(gameState);
   const prevRoundRef = useRef(1);
   const processedWinRef = useRef<string | null>(null);
+  const selectionTimeoutRef = useRef<number | null>(null);
 
   // Keep gameStateRef in sync
   useEffect(() => {
@@ -1899,6 +1900,18 @@ const App: React.FC = () => {
       setIsDragging(true);
       setSelectedPath([id]);
       setPreviewResult(parseInt(cell.value));
+
+      // [FIX] SELECTION AUTO-DESELECT (1 SECOND)
+      if (selectionTimeoutRef.current) window.clearTimeout(selectionTimeoutRef.current);
+      selectionTimeoutRef.current = window.setTimeout(() => {
+        setSelectedPath(prev => {
+          if (prev.length === 1 && prev[0] === id) {
+            setPreviewResult(null);
+            return [];
+          }
+          return prev;
+        });
+      }, 1000);
     }
   };
 
@@ -1958,6 +1971,12 @@ const App: React.FC = () => {
         const newPath = [...selectedPath, id];
         setSelectedPath(newPath);
         setPreviewResult(calculateResultFromPath(newPath));
+
+        // Clear selection timeout if we started a path
+        if (selectionTimeoutRef.current) {
+          window.clearTimeout(selectionTimeoutRef.current);
+          selectionTimeoutRef.current = null;
+        }
       }
     }
   };
@@ -1968,6 +1987,10 @@ const App: React.FC = () => {
   };
 
   const handleGlobalEnd = () => {
+    if (selectionTimeoutRef.current) {
+      window.clearTimeout(selectionTimeoutRef.current);
+      selectionTimeoutRef.current = null;
+    }
     if (isDragging) {
       setIsDragging(false);
       evaluatePath(selectedPath);
@@ -2447,11 +2470,13 @@ const App: React.FC = () => {
                       <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
                     ) : (
                       <>
-                        <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>
+                        {activeMatch?.isDuel && (
+                          <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>
+                        )}
                         <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
-                          {duelMode === 'time_attack'
-                            ? gameState.timeLeft
-                            : (activeMatch?.isDuel ? opponentTargets : gameState.timeLeft)}
+                          {activeMatch?.isDuel
+                            ? (duelMode === 'time_attack' ? gameState.timeLeft : opponentTargets)
+                            : gameState.timeLeft}
                         </span>
                       </>
                     )}
