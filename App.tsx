@@ -424,6 +424,7 @@ const App: React.FC = () => {
 
     setGameState(prev => ({
       ...prev,
+      score: 0, // CRITICAL: Reset level points when generating new grid
       targetResult: 0,
       levelTargets: nextLevelData.targets.map(t => ({ value: t, completed: false }))
     }));
@@ -1268,38 +1269,36 @@ const App: React.FC = () => {
     setTriggerParticles(false);
     setPreviewResult(null);
     setShowVideo(false);
-    setPreviewResult(null);
-    setShowVideo(false);
     setShowLostVideo(false);
-    setShowDuelRecap(false); // Reset recap state strictly
+    setShowDuelRecap(false);
 
-    // Explicitly reset Main State for NEW GAME
-    setGameState({
+    // FIXED: Use functional update and reset totalScore only on level 1 (Single Player only)
+    setGameState(prev => ({
+      ...prev,
       score: 0,
-      totalScore: 0,
+      totalScore: (startLevel === 1 && !activeMatch?.isDuel) ? 0 : prev.totalScore,
       streak: 0,
       level: startLevel,
-      timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME, // FORCE 60s for Time Attack
+      timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME,
       targetResult: 0,
       status: 'playing',
-      estimatedIQ: 100,
+      estimatedIQ: startLevel === 1 ? 100 : prev.estimatedIQ,
       lastLevelPerfect: true,
       basePoints: BASE_POINTS_START,
       levelTargets: [],
-    });
+    }));
 
     // Reset Buffer and Grid with explicit Level
     setTimeout(() => generateGrid(startLevel), 0);
 
     // Clear save if starting new
-    // Save initial state instead of clearing, so "Retry" persists the level
     if (currentUser) {
       const initialSaveState = {
-        totalScore: 0,
+        totalScore: startLevel === 1 ? 0 : savedGame?.totalScore || 0,
         streak: 0,
         level: startLevel,
         timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME,
-        estimatedIQ: 100
+        estimatedIQ: startLevel === 1 ? 100 : (userProfile?.estimated_iq || 100)
       };
 
       profileService.saveGameState(currentUser.id, initialSaveState)
@@ -1345,6 +1344,9 @@ const App: React.FC = () => {
       e.stopPropagation();
     }
     await handleUserInteraction();
+
+    // Clear any leftover duel state when starting single player
+    if (activeMatch) setActiveMatch(null);
 
     if (savedGame) {
       setActiveModal('resume_confirm');
@@ -1470,36 +1472,31 @@ const App: React.FC = () => {
         levelTargets: newTargets
       }));
 
-      // DEFINISCI COSTANTI PER LINT FIX (Winning bonuses)
+      // DEFINISCI COSTANTI (Winning bonuses)
       const finalTimeBonus = Math.floor(gameStateRef.current.timeLeft * 1.5);
       const finalVictoryBonus = 50;
-      const totalPointsToAdd = currentPoints + finalTimeBonus + finalVictoryBonus;
+      const totalWinBonuses = finalTimeBonus + finalVictoryBonus;
+      const finalPointsToSync = newScore + totalWinBonuses;
 
       setScoreAnimKey(k => k + 1);
 
       const isTimeAttack = !!activeMatch && (duelMode === 'time_attack' || activeMatch.mode === 'time_attack');
+      const localTargetsFound = newTargets.filter(t => t.completed).length;
       const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
       if (allDone) {
         setTriggerParticles(false);
-        // Sound is already played in evaluatePath for sync, or play here if needed as fallback
         if (!videoRef.current) soundService.playExternalSound('Fine_partita_win.mp3');
 
         // DUEL WIN LOGIC
         if (activeMatch?.isDuel) {
-
-
           // STANDARD MODE - WIN CONDITION: 5 TARGETS (POINTS)
           if (duelMode === 'standard') {
-            const currentTargetsFound = (activeMatch.isP1 ? latestMatchData?.p1_rounds : latestMatchData?.p2_rounds) || 0;
-            const newTargetsFound = currentTargetsFound + 1; // Increment locally to check
+            const finalScore = newScore;
+            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, finalScore, localTargetsFound)
+              .catch(e => console.error("Error syncing final duel stats:", e));
 
-            // Sync Stats immediately
-            // Note: We use 'rounds' column to store 'targets found' in Standard Mode for simplicity
-            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, newTargetsFound)
-              .catch(e => console.error("Error syncing duel stats:", e));
-
-            if (newTargetsFound >= 5) {
+            if (localTargetsFound >= 5) {
               try {
                 await matchService.declareWinner(activeMatch.id, currentUser.id);
                 processedWinRef.current = activeMatch.id;
@@ -1509,15 +1506,16 @@ const App: React.FC = () => {
                   ...prev,
                   status: 'finished',
                   winner_id: currentUser!.id,
-                  player1_score: activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player1_score,
-                  player2_score: !activeMatch.isP1 ? gameStateRef.current.score + totalPointsToAdd : prev?.player2_score,
+                  player1_score: activeMatch.isP1 ? finalScore : prev?.player1_score,
+                  player2_score: !activeMatch.isP1 ? finalScore : prev?.player2_score,
                   p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
                   p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds,
                   last_time_bonus: finalTimeBonus,
                   last_victory_bonus: finalVictoryBonus
                 }));
 
-                await profileService.syncProgress(currentUser.id, totalPointsToAdd, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+                // SYNC GLOBAL SCORE: Match Points + Bonuses
+                await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
                 await loadProfile(currentUser.id);
 
                 soundService.playLevelComplete();
@@ -1545,173 +1543,187 @@ const App: React.FC = () => {
               setSelectedPath([]);
               return;
             }
+          }
+          if (duelMode === 'blitz') {
+            try {
+              const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
+              const nextRounds = currentRounds + 1;
+              const targetRounds = 3;
 
-            // BLITZ MODE
-            if (duelMode === 'blitz') {
-              try {
-                const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
-                const nextRounds = currentRounds + 1;
-                const targetRounds = 3;
+              if (nextRounds >= targetRounds) {
+                // MATCH WIN
+                await matchService.declareWinner(activeMatch.id, currentUser.id);
+                processedWinRef.current = activeMatch.id;
 
-                if (nextRounds >= targetRounds) {
-                  // MATCH WIN
+                setLatestMatchData(prev => ({
+                  ...prev,
+                  status: 'finished',
+                  winner_id: currentUser!.id,
+                  [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds
+                }));
+
+                // SYNC GLOBAL SCORE: Round points + bonuses
+                await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+                await loadProfile(currentUser.id);
+
+                soundService.playLevelComplete();
+
+                // WIN VIDEO SEQUENCE
+                setTimeout(() => {
+                  if (videoRef.current) {
+                    const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+                    const vidSrc = WIN_VIDEOS[winIdx];
+                    videoRef.current.src = vidSrc;
+                    videoRef.current.muted = true;
+                    videoRef.current.load();
+                    videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                    soundService.playWinner(winIdx);
+                    setWinVideoSrc(vidSrc);
+                    setShowVideo(true);
+                    setIsVideoVisible(true);
+                  }
+                }, 800);
+              } else {
+                // ROUND WIN
+                await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRounds);
+                setToast({ message: `ROUND VINTO! (${nextRounds}/${targetRounds})`, visible: true });
+                setGameState(prev => ({ ...prev, status: 'round-won' }));
+              }
+            } catch (e) { console.error("Blitz Win Error", e); }
+
+            setSelectedPath([]);
+            return;
+          }
+        }
+
+        // STANDARD LEVEL WIN LOGIC (Single Player)
+        if (timerRef.current) window.clearInterval(timerRef.current);
+        setIsVictoryAnimating(true);
+
+        setGameState(prev => ({
+          ...prev,
+          score: prev.score + totalWinBonuses,
+          totalScore: prev.totalScore + totalWinBonuses,
+          streak: 0,
+          estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
+          levelTargets: newTargets,
+        }));
+
+        if (currentUser) {
+          const saveState = {
+            totalScore: gameStateRef.current.totalScore + currentPoints + totalWinBonuses,
+            streak: 0,
+            level: gameState.level + 1,
+            timeLeft: gameState.timeLeft + 60,
+            estimatedIQ: Math.min(200, gameState.estimatedIQ + 4)
+          };
+
+          // SYNC TO GLOBAL PROFILE
+          profileService.syncProgress(currentUser.id, finalPointsToSync, saveState.level, saveState.estimatedIQ)
+            .then(() => loadProfile(currentUser.id))
+            .catch(e => console.error("Error syncing progress:", e));
+
+          profileService.saveGameState(currentUser.id, saveState)
+            .catch(e => console.error("Error saving game state:", e));
+          setSavedGame(saveState);
+        }
+
+
+      } else {
+        // NOT ALL DONE - CONTINUE PLAYING
+        // setGameState was already called at the top of handleSuccess for consistent UI update
+        const completedCount = newTargets.filter(t => t.completed).length;
+
+
+        // SYNC DUEL STATS (Non-Winning Move)
+        if (activeMatch?.isDuel) {
+          if (duelMode === 'standard') {
+            // STANDARD MODE: Score = Targets Found (Points)
+            // We use the cumulative count of completed targets in the current level.
+            // Since Standard Duel is single-level (conceptually), or we just count total targets found.
+            // We rely on 'completedCount' from the current 'newTargets' state which is the source of truth for THIS client.
+
+            const localTargetsFound = newTargets.filter(t => t.completed).length;
+
+            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, localTargetsFound)
+              .catch(e => console.error("Error syncing duel stats:", e));
+
+            // CHECK WIN CONDITION HERE TOO (In case 5th point is found but level not cleared)
+            if (localTargetsFound >= 5) {
+              // EXECUTE WIN SEQUENCE
+              (async () => {
+                try {
                   await matchService.declareWinner(activeMatch.id, currentUser.id);
                   processedWinRef.current = activeMatch.id;
 
+                  // Optimistic Data Update
                   setLatestMatchData(prev => ({
                     ...prev,
                     status: 'finished',
                     winner_id: currentUser!.id,
-                    [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds
+                    player1_score: activeMatch.isP1 ? newScore : prev?.player1_score,
+                    player2_score: !activeMatch.isP1 ? newScore : prev?.player2_score,
+                    p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
+                    p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds,
                   }));
+
+                  // SYNC GLOBAL SCORE: Match total including target 5 + bonuses
+                  await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+                  await loadProfile(currentUser.id);
 
                   soundService.playLevelComplete();
 
-                  // WIN VIDEO SEQUENCE
                   setTimeout(() => {
                     if (videoRef.current) {
                       const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
                       const vidSrc = WIN_VIDEOS[winIdx];
                       videoRef.current.src = vidSrc;
-                      videoRef.current.muted = true;
+                      videoRef.current.muted = false; // Enable audio
                       videoRef.current.load();
                       videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
-                      soundService.playWinner(winIdx);
                       setWinVideoSrc(vidSrc);
                       setShowVideo(true);
                       setIsVideoVisible(true);
                     }
                   }, 800);
-                } else {
-                  // ROUND WIN
-                  await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRounds);
-                  setToast({ message: `ROUND VINTO! (${nextRounds}/${targetRounds})`, visible: true });
-                  setGameState(prev => ({ ...prev, status: 'round-won' }));
-                }
-              } catch (e) { console.error("Blitz Win Error", e); }
-
+                } catch (e) { console.error(e); }
+              })();
               setSelectedPath([]);
               return;
             }
+
+          } else {
+            // Blitz/Time Attack - just sync score
+            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, localTargetsFound)
+              .catch(e => console.error("Error syncing duel stats:", e));
           }
+        }
 
-          // STANDARD LEVEL WIN LOGIC (Single Player)
-          if (timerRef.current) window.clearInterval(timerRef.current);
-          setIsVictoryAnimating(true);
-          const nextLevelScore = gameStateRef.current.totalScore + totalPointsToAdd;
+        // TIME ATTACK: Individual Target Refill
+        if (duelMode === 'time_attack' || activeMatch?.mode === 'time_attack') {
+          setTimeout(() => {
+            const currentState = gameStateRef.current;
+            if (!currentState || !currentState.grid) return;
 
-          setGameState(prev => ({
-            ...prev,
-            score: prev.score + totalPointsToAdd,
-            totalScore: nextLevelScore,
-            streak: 0,
-            estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
-            levelTargets: newTargets,
-          }));
+            const currentGrid = currentState.grid;
+            const currentRefTargets = currentState.levelTargets || [];
+            const allSols = Array.from(findAllSolutions(currentGrid));
+            const activeValues = currentRefTargets.filter(t => !t.completed).map(t => t.value);
+            const candidates = allSols.filter(v => !activeValues.includes(v));
 
-          if (currentUser) {
-            const saveState = {
-              totalScore: nextLevelScore,
-              streak: 0,
-              level: gameState.level + 1,
-              timeLeft: gameState.timeLeft + 60,
-              estimatedIQ: Math.min(200, gameState.estimatedIQ + 4)
-            };
-            profileService.saveGameState(currentUser.id, saveState)
-              .then(() => loadProfile(currentUser.id))
-              .catch(e => console.error("Error saving game state:", e));
-            setSavedGame(saveState);
-          }
-
-        } else {
-          // NOT ALL DONE - CONTINUE PLAYING
-          // setGameState was already called at the top of handleSuccess for consistent UI update
-          const completedCount = newTargets.filter(t => t.completed).length;
-
-
-          // SYNC DUEL STATS (Non-Winning Move)
-          if (activeMatch?.isDuel) {
-            if (duelMode === 'standard') {
-              // STANDARD MODE: Score = Targets Found (Points)
-              // We use the cumulative count of completed targets in the current level.
-              // Since Standard Duel is single-level (conceptually), or we just count total targets found.
-              // We rely on 'completedCount' from the current 'newTargets' state which is the source of truth for THIS client.
-
-              const localTargetsFound = newTargets.filter(t => t.completed).length;
-
-              matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, localTargetsFound)
-                .catch(e => console.error("Error syncing duel stats:", e));
-
-              // CHECK WIN CONDITION HERE TOO (In case 5th point is found but level not cleared)
-              if (localTargetsFound >= 5) {
-                // EXECUTE WIN SEQUENCE
-                (async () => {
-                  try {
-                    await matchService.declareWinner(activeMatch.id, currentUser.id);
-                    processedWinRef.current = activeMatch.id;
-
-                    // Optimistic Data Update
-                    setLatestMatchData(prev => ({
-                      ...prev,
-                      status: 'finished',
-                      winner_id: currentUser!.id,
-                      [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: 5
-                    }));
-
-                    soundService.playLevelComplete();
-
-                    setTimeout(() => {
-                      if (videoRef.current) {
-                        const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-                        const vidSrc = WIN_VIDEOS[winIdx];
-                        videoRef.current.src = vidSrc;
-                        videoRef.current.muted = false; // Enable audio
-                        videoRef.current.load();
-                        videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
-                        setWinVideoSrc(vidSrc);
-                        setShowVideo(true);
-                        setIsVideoVisible(true);
-                      }
-                    }, 800);
-                  } catch (e) { console.error(e); }
-                })();
-                setSelectedPath([]);
-                return;
-              }
-
-            } else {
-              // Blitz/Time Attack - just sync score
-              matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, completedCount)
-                .catch(e => console.error("Error syncing duel stats:", e));
+            if (candidates.length > 0) {
+              const nextVal = candidates[Math.floor(Math.random() * candidates.length)];
+              setGameState(prev => {
+                const updated = [...prev.levelTargets];
+                const idx = updated.findIndex(t => t.value === matchedValue && t.completed);
+                if (idx !== -1) {
+                  updated[idx] = { value: nextVal, completed: false };
+                }
+                return { ...prev, levelTargets: updated };
+              });
+              soundService.playPop();
             }
-          }
-
-          // TIME ATTACK: Individual Target Refill
-          if (duelMode === 'time_attack' || activeMatch?.mode === 'time_attack') {
-            setTimeout(() => {
-              const currentState = gameStateRef.current;
-              if (!currentState || !currentState.grid) return;
-
-              const currentGrid = currentState.grid;
-              const currentRefTargets = currentState.levelTargets || [];
-              const allSols = Array.from(findAllSolutions(currentGrid));
-              const activeValues = currentRefTargets.filter(t => !t.completed).map(t => t.value);
-              const candidates = allSols.filter(v => !activeValues.includes(v));
-
-              if (candidates.length > 0) {
-                const nextVal = candidates[Math.floor(Math.random() * candidates.length)];
-                setGameState(prev => {
-                  const updated = [...prev.levelTargets];
-                  const idx = updated.findIndex(t => t.value === matchedValue && t.completed);
-                  if (idx !== -1) {
-                    updated[idx] = { value: nextVal, completed: false };
-                  }
-                  return { ...prev, levelTargets: updated };
-                });
-                soundService.playPop();
-              }
-            }, 3000);
-          }
+          }, 3000);
         }
       }
       setSelectedPath([]);
@@ -1740,6 +1752,14 @@ const App: React.FC = () => {
 
       matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, gameStateRef.current.levelTargets.filter(t => t.completed).length)
         .then(() => matchService.declareWinner(activeMatch.id, winnerId))
+        .then(() => {
+          if (iWon) {
+            // SYNC TO GLOBAL PROFILE - Score + Win Bonus
+            const pointsToAdd = myScore + 100;
+            profileService.syncProgress(currentUser.id, pointsToAdd, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
+              .then(() => loadProfile(currentUser.id));
+          }
+        })
         .catch(e => console.error("Error ending time attack:", e));
 
       // 3. Play Video before Recap
@@ -2029,7 +2049,15 @@ const App: React.FC = () => {
 
     setTimeout(() => {
       setShowSurrenderVideo(false);
-      setGameState(prev => ({ ...prev, status: 'opponent-surrendered' })); // Custom Status
+      setGameState(prev => {
+        // Bonus points for surrender win
+        const bonus = (duelMode === 'blitz' ? 50 : 100);
+        if (currentUser) {
+          profileService.syncProgress(currentUser.id, bonus, prev.level, prev.estimatedIQ)
+            .then(() => loadProfile(currentUser.id));
+        }
+        return { ...prev, status: 'opponent-surrendered' };
+      });
     }, 800);
   };
 
