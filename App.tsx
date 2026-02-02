@@ -981,7 +981,7 @@ const App: React.FC = () => {
 
         // Detect if DB has advanced beyond our local state
         // Detect if DB has advanced beyond our local state
-        if (false && currentMode === 'blitz' && newData.status === 'active' && totalRoundsWon > localTotal) {
+        if (currentMode === 'blitz' && newData.status === 'active' && totalRoundsWon > localTotal) {
           console.log(`🎲 BLITZ: New Round Detected! DB: ${totalRoundsWon} vs Local: ${localTotal}`);
 
           // LOGIC FIX: Check if I was the one who triggered this update (Optimistic)
@@ -1655,14 +1655,105 @@ const App: React.FC = () => {
               return { ...prev, levelTargets: updatedTargets };
             });
           }
-        }, 3000); // 3 Seconds delay (User asked for 5, but 3 feels better? Let's stick to user request: 5s)
+        }, 5000); // 5 Seconds delay (As requested)
       }
 
-      /*
       if (activeMatch?.isDuel && duelMode === 'blitz') {
-        // BLITZ LOGIC DISABLED
+        const currentRoundWins = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
+        await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, localTargetsFound, currentRoundWins);
+
+        // FINAL ROUND RULE: If I have 2 wins, I need 5 targets to win the Match Point.
+        // Otherwise, I need 3 targets to win the Round.
+        const isMatchPoint = currentRoundWins === 2;
+        const targetsForRoundWin = isMatchPoint ? 5 : 3;
+
+        console.log(`🔎 BLITZ CHECK: Targets Found: ${localTargetsFound} vs Needed: ${targetsForRoundWin} (Match Point: ${isMatchPoint})`);
+
+        if (localTargetsFound >= targetsForRoundWin) {
+          const nextRounds = currentRoundWins + 1;
+          const targetRoundsToWinMatch = 3;
+
+          if (nextRounds >= targetRoundsToWinMatch) {
+            // MATCH WIN: Player reached 3 won rounds
+            console.log("🏆 BLITZ: Match Win reached 3 rounds!");
+            try {
+              await matchService.declareWinner(activeMatch.id, currentUser.id);
+              processedWinRef.current = activeMatch.id;
+
+              setLatestMatchData(prev => ({
+                ...prev,
+                status: 'finished',
+                winner_id: currentUser!.id,
+                [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds
+              }));
+
+              // SYNC GLOBAL SCORE: Match Points + Bonuses
+              await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+              await loadProfile(currentUser.id);
+
+              soundService.playLevelComplete();
+
+              // WIN VIDEO SEQUENCE
+              setTimeout(() => {
+                if (videoRef.current) {
+                  const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+                  const vidSrc = WIN_VIDEOS[winIdx];
+                  videoRef.current.src = vidSrc;
+                  videoRef.current.muted = false; // Enable audio
+                  videoRef.current.load();
+                  videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                  soundService.playWinner(winIdx);
+                  setWinVideoSrc(vidSrc);
+                  setShowVideo(true);
+                  setIsVideoVisible(true);
+                }
+              }, 800);
+            } catch (e) { console.error("Blitz Match Win Error", e); }
+          } else {
+            // ROUND WIN: Optimistic Local Update (No blocking)
+            console.log(`🔔 BLITZ: Round Win (Optimistic) ${nextRounds}/${targetRoundsToWinMatch}`);
+
+            const totalRoundsPlayed = duelRounds.p1 + duelRounds.p2;
+            const nextGlobalRound = totalRoundsPlayed + 2; // +1 for current win, +1 for next 1-based index
+
+            // 1. Send Update to Server (Background)
+            matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRoundWins, nextGlobalRound)
+              .catch(e => console.error("Blitz increment failed", e));
+
+            // 2. IMMEDIATE Local Update (Don't wait for server)
+            showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
+
+            const optimisticMatchData = {
+              ...activeMatch,
+              // Increment MY rounds only
+              [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds,
+              current_round: nextGlobalRound,
+              mode: 'blitz'
+            };
+
+            // Update local rounds Ref/State immediately so we don't re-trigger on echo
+            setDuelRounds(prev => ({
+              ...prev,
+              [activeMatch.isP1 ? 'p1' : 'p2']: nextRounds,
+              current: nextGlobalRound
+            }));
+
+            // KEY FIX: Manually update Ref to block the subscription echo from triggering "Round Lost"
+            duelRoundsRef.current = {
+              ...duelRoundsRef.current,
+              [activeMatch.isP1 ? 'p1' : 'p2']: nextRounds,
+              current: nextGlobalRound
+            };
+
+            // Regenerate Grid & Reset Score
+            handleDuelRoundStart(optimisticMatchData);
+          }
+
+          // Clear selection immediately
+          setSelectedPath([]);
+          return;
+        }
       }
-      */
 
       if (allDone) {
         setTriggerParticles(false);
