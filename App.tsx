@@ -1000,6 +1000,15 @@ const App: React.FC = () => {
               if (t.value === stolenValue) {
                 return { ...t, completed: true, owner: newOwner };
               }
+              // PING PONG SCORING: 
+              // We update the owner. The scores are updated via the standard 'newData.playerX_score' update below.
+              // But we must visually update the owner immediately for the "Green/Red" feedback.
+              if (t.value === stolenValue) {
+                return { ...t, completed: true, owner: newOwner };
+              }
+
+              // CRITICAL: If I owned it, and now newOwner is NOT me, I lost it.
+              // The 'owner' property on the target is the source of truth for color.
               return t;
             });
             return { ...prev, levelTargets: updated };
@@ -1681,7 +1690,10 @@ const App: React.FC = () => {
               return;
             }
           }
-          // Blitz logic removed from here - moved up before allDone check
+          // BLITZ DOMINION LOGIC:
+          // We intentionally do NOT trigger a win here.
+          // Dominion mode ends strictly when the timer reaches zero (handled in handleTimeAttackEnd).
+          // Finding all targets (if that were possible/relevant) doesn't end the game early in Dominion.
         }
 
         // STANDARD LEVEL WIN LOGIC (Single Player)
@@ -2525,7 +2537,7 @@ const App: React.FC = () => {
                       <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
                     ) : (
                       <>
-                        {activeMatch?.isDuel && duelMode !== 'time_attack' && (
+                        {activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz' && (
                           <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">
                             AVV
                           </span>
