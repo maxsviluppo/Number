@@ -75,7 +75,7 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                         {isWinner ? "VITTORIA" : "SCONFITTA"}
                     </h2>
                     <p className={`text-[10px] font-black uppercase tracking-[0.3em] mt-1 ${isWinner ? 'text-green-400' : 'text-red-400'}`}>
-                        {isAbandonment ? "PER ABBANDONO" : (isWinner ? "DOMINIO TOTALE" : "BATTO IN RITIRATA")}
+                        {isAbandonment ? "PER ABBANDONO" : (isWinner ? "DOMINION" : "BATTO IN RITIRATA")}
                     </p>
                 </div>
 

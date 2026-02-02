@@ -2873,8 +2873,8 @@ const App: React.FC = () => {
                     <Zap size={22} className="text-white drop-shadow-sm" />
                   </div>
                   <div className="text-left flex-1 relative z-10">
-                    <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">BLITZ</h3>
-                    <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Tattica • 3 Round su 5</p>
+                    <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">BLITZ DOMINION</h3>
+                    <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Alta Strategia • Conquista</p>
                   </div>
                   <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
                 </button>
