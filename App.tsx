@@ -2624,8 +2624,8 @@ const App: React.FC = () => {
 
                         if (isDominion) {
                           // Dominion Styling
-                          const isMyTarget = (t.owner === 'p1' && amIP1) || (t.owner === 'p2' && !amIP1);
-                          const isEnemyTarget = (t.owner === 'p1' && !amIP1) || (t.owner === 'p2' && amIP1);
+                          const isMyTarget = (t.owner === 'p1' && activeMatch?.isP1) || (t.owner === 'p2' && !activeMatch?.isP1);
+                          const isEnemyTarget = (t.owner === 'p1' && !activeMatch?.isP1) || (t.owner === 'p2' && activeMatch?.isP1);
 
                           if (isMyTarget) bgClass = 'bg-emerald-500 border-white scale-110 shadow-[0_0_15px_rgba(16,185,129,0.6)] z-10';
                           else if (isEnemyTarget) bgClass = 'bg-rose-600 border-white/80 opacity-90 scale-95';
