@@ -1534,6 +1534,7 @@ const App: React.FC = () => {
         // DUEL WIN LOGIC
         if (activeMatch?.isDuel) {
           // STANDARD MODE - WIN CONDITION: 5 TARGETS (POINTS)
+          // CRITICAL FIX: Ensure this NEVER runs for Blitz mode
           if (duelMode === 'standard') {
             const finalScore = newScore;
             matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, finalScore, localTargetsFound)
@@ -1595,6 +1596,8 @@ const App: React.FC = () => {
               const targetsForRoundWin = 3; // Ensure this is 3
 
               // Check if we actually won the round (found enough targets)
+              console.log(`🔎 BLITZ CHECK: Targets Found: ${localTargetsFound} vs Needed: ${targetsForRoundWin}`);
+
               if (localTargetsFound >= targetsForRoundWin) {
 
                 if (nextRounds >= targetRoundsToWinMatch) {
