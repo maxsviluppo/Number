@@ -2524,14 +2524,14 @@ const App: React.FC = () => {
                       {!isPaused && (
                         <circle
                           cx="50%" cy="50%" r="45%"
-                          stroke={activeMatch?.isDuel && duelMode !== 'time_attack'
+                          stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
                             ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
                             : (gameState.timeLeft <= 10 ? '#ef4444' : '#FF8800')}
                           strokeWidth="8"
                           fill="none"
                           strokeDasharray="283"
-                          strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack'
-                            ? 283 - (283 * (opponentTargets || 0) / (duelMode === 'blitz' ? gameState.levelTargets.length : 5))
+                          strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                            ? 283 - (283 * (opponentTargets || 0) / 5)
                             : (283 * (1 - gameState.timeLeft / 60))
                           }
                           strokeLinecap="round"
@@ -2550,7 +2550,7 @@ const App: React.FC = () => {
                         )}
                         <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
                           {activeMatch?.isDuel
-                            ? (duelMode === 'time_attack' ? gameState.timeLeft : opponentTargets)
+                            ? ((duelMode === 'time_attack' || duelMode === 'blitz') ? gameState.timeLeft : opponentTargets)
                             : gameState.timeLeft}
                         </span>
                       </>
