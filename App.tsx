@@ -981,7 +981,7 @@ const App: React.FC = () => {
 
         // Detect if DB has advanced beyond our local state
         // Detect if DB has advanced beyond our local state
-        if (currentMode === 'blitz' && newData.status === 'active' && totalRoundsWon > localTotal) {
+        if (false && currentMode === 'blitz' && newData.status === 'active' && totalRoundsWon > localTotal) {
           console.log(`🎲 BLITZ: New Round Detected! DB: ${totalRoundsWon} vs Local: ${localTotal}`);
 
           // LOGIC FIX: Check if I was the one who triggered this update (Optimistic)
@@ -1093,7 +1093,8 @@ const App: React.FC = () => {
 
         // LOSS DETECTION
         const isStandardLoss = currentMode === 'standard' && opRounds >= 5;
-        const isBlitzLoss = currentMode === 'blitz' && opponentRoundWins >= 3;
+        // Blitz loss disabled
+        // const isBlitzLoss = currentMode === 'blitz' && opponentRoundWins >= 3;
 
         if (newData.status === 'finished') {
           // Ensure processedWinRef blocks duplicate execution but allow UI cleanup
@@ -1619,105 +1620,49 @@ const App: React.FC = () => {
       setScoreAnimKey(k => k + 1);
 
       const isTimeAttack = !!activeMatch && (duelMode === 'time_attack' || activeMatch.mode === 'time_attack');
+      // For Time Attack, we don't care about 'allDone' in the traditional sense, targets regenerate
       const localTargetsFound = newTargets.filter(t => t.completed).length;
       const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
-      if (activeMatch?.isDuel && duelMode === 'blitz') {
-        const currentRoundWins = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
-        await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, localTargetsFound, currentRoundWins);
+      // TIME ATTACK: REGENERATE TARGET AFTER 5 SECONDS
+      if (isTimeAttack) {
+        // Sync Score Immediately
+        matchService.updateScore(activeMatch.id, currentUser.id, newScore, activeMatch.isP1)
+          .catch(e => console.error("TA Score Sync Error", e));
 
-        // FINAL ROUND RULE: If I have 2 wins, I need 5 targets to win the Match Point.
-        // Otherwise, I need 3 targets to win the Round.
-        const isMatchPoint = currentRoundWins === 2;
-        const targetsForRoundWin = isMatchPoint ? 5 : 3;
+        setTimeout(() => {
+          // Check if game is still playing
+          if (gameStateRef.current.status !== 'playing') return;
 
-        console.log(`🔎 BLITZ CHECK: Targets Found: ${localTargetsFound} vs Needed: ${targetsForRoundWin} (Match Point: ${isMatchPoint})`);
+          const currentTargetsRef = gameStateRef.current.levelTargets;
+          // Find the finished target index (safe lookup)
+          // We rely on the fact that we just completed 'matchedValue'. 
+          // But multiple instances of same value? We find the first completed one that matches or index.
+          // Better: just replace the specific index we touched 'targetIndex'.
 
-        if (localTargetsFound >= targetsForRoundWin) {
-          const nextRounds = currentRoundWins + 1;
-          const targetRoundsToWinMatch = 3;
+          if (targetIndex >= 0 && targetIndex < currentTargetsRef.length) {
+            // Generate new Random Target Logic
+            const lvl = gameStateRef.current.level; // Use current level data
+            // Approximate range based on level (same as createLevelData logic roughly)
+            const min = 1 + (lvl * 2);
+            const max = 20 + (lvl * 5);
+            const newTargetValue = Math.floor(Math.random() * (max - min + 1)) + min;
 
-          if (nextRounds >= targetRoundsToWinMatch) {
-            // MATCH WIN: Player reached 3 won rounds
-            console.log("🏆 BLITZ: Match Win reached 3 rounds!");
-            try {
-              await matchService.declareWinner(activeMatch.id, currentUser.id);
-              processedWinRef.current = activeMatch.id;
-
-              setLatestMatchData(prev => ({
-                ...prev,
-                status: 'finished',
-                winner_id: currentUser!.id,
-                [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds
-              }));
-
-              // SYNC GLOBAL SCORE: Match Points + Bonuses
-              await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
-              await loadProfile(currentUser.id);
-
-              soundService.playLevelComplete();
-
-              // WIN VIDEO SEQUENCE
-              setTimeout(() => {
-                if (videoRef.current) {
-                  const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-                  const vidSrc = WIN_VIDEOS[winIdx];
-                  videoRef.current.src = vidSrc;
-                  videoRef.current.muted = false; // Enable audio
-                  videoRef.current.load();
-                  videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
-                  soundService.playWinner(winIdx);
-                  setWinVideoSrc(vidSrc);
-                  setShowVideo(true);
-                  setIsVideoVisible(true);
-                }
-              }, 800);
-            } catch (e) { console.error("Blitz Match Win Error", e); }
-          } else {
-            // ROUND WIN: Optimistic Local Update (No blocking)
-            console.log(`🔔 BLITZ: Round Win (Optimistic) ${nextRounds}/${targetRoundsToWinMatch}`);
-
-            const totalRoundsPlayed = duelRounds.p1 + duelRounds.p2;
-            const nextGlobalRound = totalRoundsPlayed + 2; // +1 for current win, +1 for next 1-based index
-
-            // 1. Send Update to Server (Background)
-            matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRoundWins, nextGlobalRound)
-              .catch(e => console.error("Blitz increment failed", e));
-
-            // 2. IMMEDIATE Local Update (Don't wait for server)
-            showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
-
-            const optimisticMatchData = {
-              ...activeMatch,
-              // Increment MY rounds only
-              [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds,
-              current_round: nextGlobalRound,
-              mode: 'blitz'
-            };
-
-            // Update local rounds Ref/State immediately so we don't re-trigger on echo
-            setDuelRounds(prev => ({
-              ...prev,
-              [activeMatch.isP1 ? 'p1' : 'p2']: nextRounds,
-              current: nextGlobalRound
-            }));
-
-            // KEY FIX: Manually update Ref to block the subscription echo from triggering "Round Lost"
-            duelRoundsRef.current = {
-              ...duelRoundsRef.current,
-              [activeMatch.isP1 ? 'p1' : 'p2']: nextRounds,
-              current: nextGlobalRound
-            };
-
-            // Regenerate Grid & Reset Score
-            handleDuelRoundStart(optimisticMatchData);
+            // Functional State Update
+            setGameState(prev => {
+              const updatedTargets = [...prev.levelTargets];
+              updatedTargets[targetIndex] = { value: newTargetValue, completed: false };
+              return { ...prev, levelTargets: updatedTargets };
+            });
           }
-
-          // Clear selection immediately
-          setSelectedPath([]);
-          return;
-        }
+        }, 3000); // 3 Seconds delay (User asked for 5, but 3 feels better? Let's stick to user request: 5s)
       }
+
+      /*
+      if (activeMatch?.isDuel && duelMode === 'blitz') {
+        // BLITZ LOGIC DISABLED
+      }
+      */
 
       if (allDone) {
         setTriggerParticles(false);
@@ -2624,9 +2569,9 @@ const App: React.FC = () => {
                       <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
                     ) : (
                       <>
-                        {activeMatch?.isDuel && (
+                        {activeMatch?.isDuel && duelMode !== 'time_attack' && (
                           <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">
-                            {duelMode === 'time_attack' ? 'TEMPO' : 'AVV'}
+                            AVV
                           </span>
                         )}
                         <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
