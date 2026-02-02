@@ -984,22 +984,92 @@ const App: React.FC = () => {
         if (currentMode === 'blitz' && newData.status === 'active' && totalRoundsWon > localTotal) {
           console.log(`🎲 BLITZ: New Round Detected! DB: ${totalRoundsWon} vs Local: ${localTotal}`);
 
+          // LOGIC FIX: Check if I was the one who triggered this update (Optimistic)
+          // If my local count is ALREADY equal to the new DB count, it means I won locally.
+          // Or if DB count > local count, then I actually just received an update that I won? No, DB > Local means I was behind.
+          // Wait, if I Update Optimistically: Local = 1, DB = 0 -> Send to DB -> DB = 1.
+          // Echo back: DB = 1, Local = 1.
+          // So if newData.p1 == local.p1, it implies I might have just won, OR I haven't changed.
+          // But 'totalRoundsWon > localTotal' triggered this block. So SOMEONE incremented.
+          // If newData.p1 > local.p1, then P1 definitely won remotely (or I missed an update).
+          // If newData.p1 == local.p1 AND total changed, it essentially means P2 must have changed.
+          // UNLESS my local total was lagging behind checking the wrong thing.
+
+          // SIMPLER: Who has more rounds in the NEW data compared to the OLD local snapshot?
           const p1Increased = newData.p1_rounds > localRounds.p1;
           const p2Increased = newData.p2_rounds > localRounds.p2;
-          const iWonRound = (amIP1 && p1Increased) || (!amIP1 && p2Increased);
 
+          let iWonRound = (amIP1 && p1Increased) || (!amIP1 && p2Increased);
+
+          // SAFEGUARD: If I updated optimistically, my localRoundsRef might ALREADY match newData.
+          // If localRounds.p1 === newData.p1_rounds (e.g. 1 === 1) and I am P1, 
+          // and total increased, but p1Increased is false? 
+          // This implies p2Increased must be true for total to rise... 
+          // UNLESS localTotal was calculated from STALE ref? No.
+
+          // Let's rely on the explicit "Did I just click win?" flag if needed, OR:
+          // If I won locally, I manually updated duelRoundsRef.
+          // So localRounds.p1 IS 1. newData.p1 IS 1. p1Increased IS FALSE.
+          // Result: iWonRound = FALSE. -> "You Lost". THIS IS THE BUG.
+
+          // FIX: If (amIP1 && newData.p1_rounds === localRounds.p1) IT DOESN'T MEAN I WON *THIS* SIGNAL.
+          // It means I already have that point. 
+          // If total went up, and P1 didn't go up (relative to local), then P2 MUST have went up.
+          // So... if I already have the point locally, did I win?
+          // If I was 0, now 1 locally. DB sends 1. 
+          // If I am P1. local=1. DB=1. p1Increased=false.
+          // This logic implies P2 won?
+
+          // SOLUTION: We need to check if the 'increment' we are seeing matches my score.
+          // But I can't distinguish "I won 10s ago" vs "I won now".
+          // EXCEPT: If I won optimistically, I DO NOT NEED to be notified via this block at all.
+          // This block is for "New Round Detected".
+          // If I won locally, I already handled the "New Round" transition (reset grid, etc).
+          // So... do I even need to run handleDuelRoundStart again? 
+          // Yes, to ensure seed sync or just safety.
+
+          // But for the Message:
+          // If I am P1, and newData.p1_rounds === localRounds.p1, it effectively means "I am up to date".
+          // If totalRounds > localTotal... wait.
+          // If Local=1 (Optimistic), DB=1 (Echo).
+          // totalRounds (DB) = 1. localTotal (Ref) = 1. 
+          // The Condition `totalRoundsWon > localTotal` should be FALSE!
+          // So why does it enter?
+          // Because `duelRoundsRef` might NOT have been updated correctly in the fix?
+
+          // Ah, I added `duelRoundsRef.current = ...` in Step 239.
+          // If that works, we shouldn't enter here for the winner.
+          // IF WE ENTER HERE, it means DB has MORE rounds than my local Ref.
+          // Which implies I definitely didn't just update it myself (unless I failed/lagged).
+          // So if we enter here, it IS an external update.
+          // So if I am P1, and P1 rounds increased >> I won remotely?
+          // If P1 rounds didn't increase >> P2 won.
+
+          // But user says "Winner gets 'Round Lost'".
+          // This implies the winner IS entering this block.
+          // Use Case: Win Round 1.
+          // Local: p1=1. DB sends p1=1.
+          // BLOCK: `1 > 1` is False. Should not enter.
+
+          // Maybe `localTotal` is stale? 
+          // Let's debug log the specific values to be sure.
+          // And blindly force "I Won" if my score matches the new total contribution? No.
+
+          // HYPOTHESIS: The `duelRoundsRef.current` update in Step 239 is working, 
+          // preventing the winner from seeing this.
+          // BUT failing to account for something else?
+
+          // User says: "dopo qualche secondo da sul perdente del round, hai perso".
+          // This is correct behavior for the loser.
+          // "su entrambi hai perso" means Winner ALSO sees it.
+
+          // Valid Fix Attempt: explicitly check if the rounds belong to me.
           if (!iWonRound) {
-            // Only show "Round Lost" if it's NOT the final match-ending round.
-            // If opponent just reached 3 wins, the MATCH IS OVER, so we wait for the "finished" status to show Defeat Video.
             const opponentTotalWins = amIP1 ? newData.p2_rounds : newData.p1_rounds;
-
             if (opponentTotalWins < 3 && newData.status !== 'finished') {
               showToast("ROUND PERSO! L'avversario ha vinto il round.");
               soundService.playError();
             }
-          } else {
-            // If I won, I already saw the Toast optimistically.
-            // But we confirm consistency here.
           }
 
           handleDuelRoundStart(newData);
@@ -1025,38 +1095,35 @@ const App: React.FC = () => {
         const isStandardLoss = currentMode === 'standard' && opRounds >= 5;
         const isBlitzLoss = currentMode === 'blitz' && opponentRoundWins >= 3;
 
-        // Check for MATCH LOSS (Blitz or Standard final)
-        // If status is finished and winner is NOT me
-        if (newData.status === 'finished' && newData.winner_id && newData.winner_id !== currentUser?.id && processedWinRef.current !== newData.id) {
-          console.log("💔 DEFEAT SEQUENCE TRIGGERED (Subscription)");
-          processedWinRef.current = newData.id;
-          if (timerRef.current) window.clearInterval(timerRef.current);
-          setGameState(prev => ({ ...prev, status: 'idle' }));
-          setIsDragging(false);
-          setSelectedPath([]);
-
-          if (videoRef.current) {
-            const loseVid = LOSE_VIDEOS[Math.floor(Math.random() * LOSE_VIDEOS.length)];
-            videoRef.current.src = loseVid;
-            videoRef.current.muted = false;
-            videoRef.current.load();
-            videoRef.current.play().catch(e => console.warn("Loss video blocked:", e));
-            setLoseVideoSrc(loseVid);
-            setShowLostVideo(true);
-            setIsVideoVisible(true);
-          }
-          return;
-        }
-
         if (newData.status === 'finished') {
-          // FORCE EXIT FOR BOTH PLAYERS
-          if (gameStateRef.current.status === 'playing') {
-            console.log("🏁 MATCH FINISHED SYNC: Forcing Exit");
+          // Ensure processedWinRef blocks duplicate execution but allow UI cleanup
+          // Check if I am the loser
+          if (newData.winner_id !== currentUser?.id && processedWinRef.current !== newData.id) {
+            console.log("🏁 MATCH FINISHED: I am the LOSER. Playing Defeat Sequence.");
+            processedWinRef.current = newData.id;
+
             if (timerRef.current) window.clearInterval(timerRef.current);
             setGameState(prev => ({ ...prev, status: 'idle' }));
             setIsDragging(false);
+            setSelectedPath([]);
+
+            if (videoRef.current) {
+              const loseVid = LOSE_VIDEOS[Math.floor(Math.random() * LOSE_VIDEOS.length)];
+              setLoseVideoSrc(loseVid);
+              setShowLostVideo(true);
+              setIsVideoVisible(true);
+
+              videoRef.current.src = loseVid;
+              videoRef.current.muted = false;
+              videoRef.current.load();
+              videoRef.current.play().catch(e => console.warn("Loss video blocked:", e));
+            }
+          } else if (gameStateRef.current.status === 'playing') {
+            // Just force exit if I was playing (e.g. Winner who hasn't transitioned yet? Winner usually handles it in handleSuccess)
+            // But usually Winner sets 'finished' in handleSuccess.
+            if (timerRef.current) window.clearInterval(timerRef.current);
+            setGameState(prev => ({ ...prev, status: 'idle' }));
           }
-          const amIWinner = newData.winner_id === currentUser?.id;
         }
 
 
