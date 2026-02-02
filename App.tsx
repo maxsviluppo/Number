@@ -898,6 +898,7 @@ const App: React.FC = () => {
     setGameState(prev => ({
       ...prev,
       levelTargets: [],
+      score: 0, // Reset score (targets found) for new round
       // FORCE 60s for Time Attack when round actually starts
       timeLeft: (matchData.mode === 'time_attack') ? 60 : INITIAL_TIME,
       status: 'playing'
@@ -1570,26 +1571,39 @@ const App: React.FC = () => {
               }, 800);
             } catch (e) { console.error("Blitz Match Win Error", e); }
           } else {
-            // ROUND WIN: Not yet 3 wins
-            console.log(`🔔 BLITZ: Round Win (DB increment) ${nextRounds}/${targetRoundsToWinMatch}`); // FIXED LOG
+            // ROUND WIN: Optimistic Local Update (No blocking)
+            console.log(`🔔 BLITZ: Round Win (Optimistic) ${nextRounds}/${targetRoundsToWinMatch}`);
 
-            // Calculate correct next round number (current total + 1 for active round)
-            // But wait, if we just finished round 1 (total wins = 1), next round is 2.
-            // If total wins = 0 (before increment), next round is 2.
-            // Wait, roundSum includes CURRENT wins? No, duelRoundsRef updates via subscription.
-            // Safe logic: Total Rounds Ever Played = p1 + p2.
-            // If I just won, Total Rounds increases by 1. The NEW current_round = (OldTotal + 1) + 1.
             const totalRoundsPlayed = duelRounds.p1 + duelRounds.p2;
-            const nextGlobalRound = totalRoundsPlayed + 2;
+            const nextGlobalRound = totalRoundsPlayed + 2; // +1 for current win, +1 for next 1-based index
 
-            await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRoundWins, nextGlobalRound);
+            // 1. Send Update to Server (Background)
+            matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRoundWins, nextGlobalRound)
+              .catch(e => console.error("Blitz increment failed", e));
 
+            // 2. IMMEDIATE Local Update (Don't wait for server)
             showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
-            setGameState(prev => ({ ...prev, status: 'round-won' }));
 
-            // The subscriber effect will detect the increment and trigger handleDuelRoundStart automatically
+            const optimisticMatchData = {
+              ...activeMatch,
+              // Increment MY rounds only
+              [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds,
+              current_round: nextGlobalRound,
+              mode: 'blitz'
+            };
+
+            // Update local rounds Ref/State immediately so we don't re-trigger on echo
+            setDuelRounds(prev => ({
+              ...prev,
+              [activeMatch.isP1 ? 'p1' : 'p2']: nextRounds,
+              current: nextGlobalRound
+            }));
+
+            // Regenerate Grid & Reset Score
+            handleDuelRoundStart(optimisticMatchData);
           }
-          // Clear selection immediately to prevent further moves
+
+          // Clear selection immediately
           setSelectedPath([]);
           return;
         }
