@@ -3185,7 +3185,28 @@ const App: React.FC = () => {
           <DuelRecapModal
             matchData={latestMatchData}
             currentUser={currentUser}
-            isWinnerProp={latestMatchData.winner_id ? latestMatchData.winner_id === currentUser?.id : (gameState.score > opponentScore)}
+            isWinnerProp={
+              latestMatchData.winner_id
+                ? latestMatchData.winner_id === currentUser?.id
+                : (latestMatchData.mode === 'blitz'
+                  ? ( // BLITZ LOGIC: Targets > Points
+                    // Calculate my targets (pX_rounds) vs opp targets
+                    (() => {
+                      const isP1 = latestMatchData.player1_id === currentUser?.id;
+                      const myTargets = isP1 ? latestMatchData.p1_rounds : latestMatchData.p2_rounds;
+                      const oppTargets = isP1 ? latestMatchData.p2_rounds : latestMatchData.p1_rounds;
+                      const myPoints = gameState.score;
+                      const oppPoints = opponentScore;
+
+                      if (myTargets > oppTargets) return true;
+                      if (oppTargets > myTargets) return false;
+                      // Tie on Targets -> Check Points
+                      return myPoints > oppPoints;
+                    })()
+                  )
+                  : (gameState.score > opponentScore) // Standard/TimeAttack
+                )
+            }
             myScore={gameState.score}
             opponentScore={opponentScore}
             isFinal={latestMatchData.status === 'finished'}
