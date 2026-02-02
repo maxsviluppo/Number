@@ -22,7 +22,7 @@ export interface GameState {
   basePoints: number;
 
   // targetQueue: number[]; // Deprecated in favor of levelTargets
-  levelTargets: { value: number; completed: boolean }[];
+  levelTargets: { value: number; completed: boolean; owner?: 'p1' | 'p2' }[];
 }
 
 export interface PlayerRank {

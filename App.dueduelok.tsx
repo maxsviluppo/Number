@@ -629,7 +629,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (gameState.status === 'playing' && gameState.timeLeft === 0 && !isVictoryAnimating) {
       // TIME ATTACK END (Duel)
-      if (activeMatch?.mode === 'time_attack' || activeMatch?.mode === 'blitz') {
+      if (activeMatch?.mode === 'time_attack') {
         handleTimeAttackEnd();
         return;
       }
@@ -981,45 +981,99 @@ const App: React.FC = () => {
 
         // Detect if DB has advanced beyond our local state
         // Detect if DB has advanced beyond our local state
-        // DOMINION / BLITZ SIGNAL INTERCEPTOR
-        // We use 'current_round' to signal Stolen Targets (+Value = P1, -Value = P2)
-        // We check if the signal is different from what we last processed.
-        const signal = newData.current_round || 0;
-        const lastSignal = localRounds.current || 0;
+        if (currentMode === 'blitz' && newData.status === 'active' && totalRoundsWon > localTotal) {
+          console.log(`🎲 BLITZ: New Round Detected! DB: ${totalRoundsWon} vs Local: ${localTotal}`);
 
-        if (currentMode === 'blitz' && newData.status === 'active' && signal !== 0 && signal !== lastSignal) {
-          const stolenValue = Math.abs(signal);
-          const newOwner = signal > 0 ? 'p1' : 'p2';
-          const imOwner = (amIP1 && newOwner === 'p1') || (!amIP1 && newOwner === 'p2');
+          // LOGIC FIX: Check if I was the one who triggered this update (Optimistic)
+          // If my local count is ALREADY equal to the new DB count, it means I won locally.
+          // Or if DB count > local count, then I actually just received an update that I won? No, DB > Local means I was behind.
+          // Wait, if I Update Optimistically: Local = 1, DB = 0 -> Send to DB -> DB = 1.
+          // Echo back: DB = 1, Local = 1.
+          // So if newData.p1 == local.p1, it implies I might have just won, OR I haven't changed.
+          // But 'totalRoundsWon > localTotal' triggered this block. So SOMEONE incremented.
+          // If newData.p1 > local.p1, then P1 definitely won remotely (or I missed an update).
+          // If newData.p1 == local.p1 AND total changed, it essentially means P2 must have changed.
+          // UNLESS my local total was lagging behind checking the wrong thing.
 
-          console.log(`🏴 DOMINION SIGNAL: Target ${stolenValue} captured by ${newOwner}`);
+          // SIMPLER: Who has more rounds in the NEW data compared to the OLD local snapshot?
+          const p1Increased = newData.p1_rounds > localRounds.p1;
+          const p2Increased = newData.p2_rounds > localRounds.p2;
 
-          // Update UI Targets
-          setGameState(prev => {
-            const updated = prev.levelTargets.map(t => {
-              if (t.value === stolenValue) {
-                return { ...t, completed: true, owner: newOwner };
-              }
-              return t;
-            });
-            return { ...prev, levelTargets: updated };
-          });
+          let iWonRound = (amIP1 && p1Increased) || (!amIP1 && p2Increased);
 
-          // Toast for Enemy Action
-          if (!imOwner) {
-            showToast(`L'AVVERSARIO HA RUBATO IL ${stolenValue}!`, [], 2000);
-            soundService.playError(); // Alert sound
+          // SAFEGUARD: If I updated optimistically, my localRoundsRef might ALREADY match newData.
+          // If localRounds.p1 === newData.p1_rounds (e.g. 1 === 1) and I am P1, 
+          // and total increased, but p1Increased is false? 
+          // This implies p2Increased must be true for total to rise... 
+          // UNLESS localTotal was calculated from STALE ref? No.
+
+          // Let's rely on the explicit "Did I just click win?" flag if needed, OR:
+          // If I won locally, I manually updated duelRoundsRef.
+          // So localRounds.p1 IS 1. newData.p1 IS 1. p1Increased IS FALSE.
+          // Result: iWonRound = FALSE. -> "You Lost". THIS IS THE BUG.
+
+          // FIX: If (amIP1 && newData.p1_rounds === localRounds.p1) IT DOESN'T MEAN I WON *THIS* SIGNAL.
+          // It means I already have that point. 
+          // If total went up, and P1 didn't go up (relative to local), then P2 MUST have went up.
+          // So... if I already have the point locally, did I win?
+          // If I was 0, now 1 locally. DB sends 1. 
+          // If I am P1. local=1. DB=1. p1Increased=false.
+          // This logic implies P2 won?
+
+          // SOLUTION: We need to check if the 'increment' we are seeing matches my score.
+          // But I can't distinguish "I won 10s ago" vs "I won now".
+          // EXCEPT: If I won optimistically, I DO NOT NEED to be notified via this block at all.
+          // This block is for "New Round Detected".
+          // If I won locally, I already handled the "New Round" transition (reset grid, etc).
+          // So... do I even need to run handleDuelRoundStart again? 
+          // Yes, to ensure seed sync or just safety.
+
+          // But for the Message:
+          // If I am P1, and newData.p1_rounds === localRounds.p1, it effectively means "I am up to date".
+          // If totalRounds > localTotal... wait.
+          // If Local=1 (Optimistic), DB=1 (Echo).
+          // totalRounds (DB) = 1. localTotal (Ref) = 1. 
+          // The Condition `totalRoundsWon > localTotal` should be FALSE!
+          // So why does it enter?
+          // Because `duelRoundsRef` might NOT have been updated correctly in the fix?
+
+          // Ah, I added `duelRoundsRef.current = ...` in Step 239.
+          // If that works, we shouldn't enter here for the winner.
+          // IF WE ENTER HERE, it means DB has MORE rounds than my local Ref.
+          // Which implies I definitely didn't just update it myself (unless I failed/lagged).
+          // So if we enter here, it IS an external update.
+          // So if I am P1, and P1 rounds increased >> I won remotely?
+          // If P1 rounds didn't increase >> P2 won.
+
+          // But user says "Winner gets 'Round Lost'".
+          // This implies the winner IS entering this block.
+          // Use Case: Win Round 1.
+          // Local: p1=1. DB sends p1=1.
+          // BLOCK: `1 > 1` is False. Should not enter.
+
+          // Maybe `localTotal` is stale? 
+          // Let's debug log the specific values to be sure.
+          // And blindly force "I Won" if my score matches the new total contribution? No.
+
+          // HYPOTHESIS: The `duelRoundsRef.current` update in Step 239 is working, 
+          // preventing the winner from seeing this.
+          // BUT failing to account for something else?
+
+          // User says: "dopo qualche secondo da sul perdente del round, hai perso".
+          // This is correct behavior for the loser.
+          // "su entrambi hai perso" means Winner ALSO sees it.
+
+          // Valid Fix Attempt: explicitly check if the rounds belong to me.
+          if (!iWonRound) {
+            const opponentTotalWins = amIP1 ? newData.p2_rounds : newData.p1_rounds;
+            if (opponentTotalWins < 3 && newData.status !== 'finished') {
+              showToast("ROUND PERSO! L'avversario ha vinto il round.");
+              soundService.playError();
+            }
           }
 
-          // Update REF to avoid re-processing same signal
-          duelRoundsRef.current = {
-            ...duelRoundsRef.current,
-            current: signal
-          };
+          handleDuelRoundStart(newData);
         }
-
-        // REMOVED OLD BLITZ ROUND LOGIC (Previously lines 984-1082)
-
 
         const opScore = amIP1 ? newData.player2_score : newData.player1_score;
         const opRounds = amIP1 ? newData.p2_rounds : newData.p1_rounds;
@@ -1605,38 +1659,100 @@ const App: React.FC = () => {
       }
 
       if (activeMatch?.isDuel && duelMode === 'blitz') {
-        const isP1 = activeMatch.isP1;
+        const currentRoundWins = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
+        await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, localTargetsFound, currentRoundWins);
 
-        // DOMINION LOGIC: Steal the target!
-        // 1. Calculate new scores based on who owned it before?
-        // Ideally we track ownership. For now, let's assume if I found it, I gain a point.
-        // But if I stole it from opponent, they lose a point.
-        // Complexity: We need to know if the opponent ALREADY owned it.
-        // Start simple: Just +1 for me. The "stealing" visual is just toggling.
-        // Actually, the request was: "to zero vince chi ha piu target". So final score matters.
-        // Let's increment my local capture count (which is `score` in the UI).
+        // FINAL ROUND RULE: If I have 2 wins, I need 5 targets to win the Match Point.
+        // Otherwise, I need 3 targets to win the Round.
+        const isMatchPoint = currentRoundWins === 2;
+        const targetsForRoundWin = isMatchPoint ? 5 : 3;
 
-        // 2. Call Service to notify dominance
-        // We use 'current_round' to broadcast the TARGET VALUE that changed hands.
-        // Positive value = P1 took it. Negative value = P2 took it.
-        const signalValue = matchedValue; // The number itself (e.g. 42)
+        console.log(`🔎 BLITZ CHECK: Targets Found: ${localTargetsFound} vs Needed: ${targetsForRoundWin} (Match Point: ${isMatchPoint})`);
 
-        // Current Scores:
-        const myNewScore = isP1 ? (duelRounds.p1 + 1) : (duelRounds.p2 + 1); // We use duelRounds as "Target Count" now
-        const opNewScore = isP1 ? duelRounds.p2 : duelRounds.p1; // Opponent score stays same? 
-        // Wait, if I steal from opponent, their score should decrease!
-        // We need to track `owner` of each target to decrement correctly.
-        // Fallback: Just increment mine efficiently for now to demonstrate the mechanic.
+        if (localTargetsFound >= targetsForRoundWin) {
+          const nextRounds = currentRoundWins + 1;
+          const targetRoundsToWinMatch = 3;
 
-        await matchService.stealTarget(activeMatch.id, isP1, signalValue,
-          isP1 ? myNewScore : opNewScore,
-          isP1 ? opNewScore : myNewScore
-        );
+          if (nextRounds >= targetRoundsToWinMatch) {
+            // MATCH WIN: Player reached 3 won rounds
+            console.log("🏆 BLITZ: Match Win reached 3 rounds!");
+            try {
+              await matchService.declareWinner(activeMatch.id, currentUser.id);
+              processedWinRef.current = activeMatch.id;
 
-        showToast("TARGET CATTURATO! 🏴");
+              setLatestMatchData(prev => ({
+                ...prev,
+                status: 'finished',
+                winner_id: currentUser!.id,
+                [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds
+              }));
 
-        // We do NOT declare winner here. Winner is declared only on Time Over.
-        return;
+              // SYNC GLOBAL SCORE: Match Points + Bonuses
+              await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+              await loadProfile(currentUser.id);
+
+              soundService.playLevelComplete();
+
+              // WIN VIDEO SEQUENCE
+              setTimeout(() => {
+                if (videoRef.current) {
+                  const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+                  const vidSrc = WIN_VIDEOS[winIdx];
+                  videoRef.current.src = vidSrc;
+                  videoRef.current.muted = false; // Enable audio
+                  videoRef.current.load();
+                  videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                  soundService.playWinner(winIdx);
+                  setWinVideoSrc(vidSrc);
+                  setShowVideo(true);
+                  setIsVideoVisible(true);
+                }
+              }, 800);
+            } catch (e) { console.error("Blitz Match Win Error", e); }
+          } else {
+            // ROUND WIN: Optimistic Local Update (No blocking)
+            console.log(`🔔 BLITZ: Round Win (Optimistic) ${nextRounds}/${targetRoundsToWinMatch}`);
+
+            const totalRoundsPlayed = duelRounds.p1 + duelRounds.p2;
+            const nextGlobalRound = totalRoundsPlayed + 2; // +1 for current win, +1 for next 1-based index
+
+            // 1. Send Update to Server (Background)
+            matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRoundWins, nextGlobalRound)
+              .catch(e => console.error("Blitz increment failed", e));
+
+            // 2. IMMEDIATE Local Update (Don't wait for server)
+            showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
+
+            const optimisticMatchData = {
+              ...activeMatch,
+              // Increment MY rounds only
+              [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds,
+              current_round: nextGlobalRound,
+              mode: 'blitz'
+            };
+
+            // Update local rounds Ref/State immediately so we don't re-trigger on echo
+            setDuelRounds(prev => ({
+              ...prev,
+              [activeMatch.isP1 ? 'p1' : 'p2']: nextRounds,
+              current: nextGlobalRound
+            }));
+
+            // KEY FIX: Manually update Ref to block the subscription echo from triggering "Round Lost"
+            duelRoundsRef.current = {
+              ...duelRoundsRef.current,
+              [activeMatch.isP1 ? 'p1' : 'p2']: nextRounds,
+              current: nextGlobalRound
+            };
+
+            // Regenerate Grid & Reset Score
+            handleDuelRoundStart(optimisticMatchData);
+          }
+
+          // Clear selection immediately
+          setSelectedPath([]);
+          return;
+        }
       }
 
       if (allDone) {
@@ -2618,32 +2734,17 @@ const App: React.FC = () => {
                   <div className="flex flex-col items-center gap-2 mb-5">
                     {/* Level Targets List */}
                     <div className="flex gap-2 items-center flex-wrap justify-center max-w-[300px]" id="targets-display-tutorial">
-                      {gameState.levelTargets.map((t, i) => {
-                        const isDominion = activeMatch?.isDuel && duelMode === 'blitz';
-                        let bgClass = 'bg-[#0055AA] border-white/50'; // Default Blue
-
-                        if (isDominion) {
-                          // Dominion Styling
-                          const isMyTarget = (t.owner === 'p1' && amIP1) || (t.owner === 'p2' && !amIP1);
-                          const isEnemyTarget = (t.owner === 'p1' && !amIP1) || (t.owner === 'p2' && amIP1);
-
-                          if (isMyTarget) bgClass = 'bg-emerald-500 border-white scale-110 shadow-[0_0_15px_rgba(16,185,129,0.6)] z-10';
-                          else if (isEnemyTarget) bgClass = 'bg-rose-600 border-white/80 opacity-90 scale-95';
-                        } else {
-                          // Standard Styling
-                          if (t.completed) bgClass = 'bg-[#FF8800] border-white scale-110 shadow-[0_0_15px_rgba(255,136,0,0.6)]';
-                        }
-
-                        return (
-                          <div key={i} className={`
-                                  flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 border-2
-                                  ${bgClass}
-                                  font-orbitron font-black text-white text-xl shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
-                               `}>
-                            {t.value}
-                          </div>
-                        );
-                      })}
+                      {gameState.levelTargets.map((t, i) => (
+                        <div key={i} className={`
+                                flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300
+                                ${t.completed
+                            ? 'bg-[#FF8800] border-2 border-white scale-110 shadow-[0_0_15px_rgba(255,136,0,0.6)]'
+                            : 'bg-[#0055AA] border-2 border-white/50 opacity-100'}
+                                font-orbitron font-black text-white text-xl shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
+                             `}>
+                          {t.value}
+                        </div>
+                      ))}
                     </div>
                   </div>
 

@@ -42,8 +42,8 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
 
                 // Avviamo il video (che ora ha l'audio)
                 await videoRef.current.play().catch(e => {
-                    console.warn("Video play blocked", e);
-                    // If video fails completely for some reason, maybe proceed or just log
+                    console.warn("Video play blocked - forcing home", e);
+                    triggerHome();
                 });
                 console.log("Intro Video: Playback started successfully");
             } catch (err) {
@@ -76,7 +76,7 @@ const IntroVideo: React.FC<IntroVideoProps> = ({ onFinish }) => {
                 className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${started ? 'opacity-100' : 'opacity-0'}`}
                 playsInline
                 preload="auto"
-                onEnded={triggerHome}
+                onEnded={triggerHome} onError={triggerHome}
             />
 
             {/* UI INITIAL: Logo and Button */}

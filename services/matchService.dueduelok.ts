@@ -13,7 +13,7 @@ export interface Match {
     mode: 'standard' | 'blitz' | 'time_attack';
     p1_rounds: number;
     p2_rounds: number;
-    current_round: number; // In Blitz/Dominion Mode: Stores the VALUE of the last stolen target (Positive=P1, Negative=P2)
+    current_round: number;
     created_at: string;
     player1?: { username: string; avatar_url: string };
     player2?: { username: string; avatar_url: string };
@@ -349,27 +349,7 @@ export const matchService = {
         }
     },
 
-    // STEAL TARGET (Blitz/Dominion Mode)
-    // Updates scores AND signals which target was stolen via current_round
-    async stealTarget(matchId: string, isPlayer1: boolean, targetValue: number, currentScoreP1: number, currentScoreP2: number) {
-        // Semantic: current_round > 0 (P1 took it), < 0 (P2 took it)
-        const signalingValue = isPlayer1 ? targetValue : -targetValue;
-
-        const updateData = {
-            player1_score: currentScoreP1,
-            player2_score: currentScoreP2,
-            current_round: signalingValue
-        };
-
-        const { error } = await (supabase as any)
-            .from('matches')
-            .update(updateData)
-            .eq('id', matchId);
-
-        if (error) console.error('Error stealing target:', error);
-    },
-
-    // Incrementa i round vinti (Standard Mode Only Now)
+    // Incrementa i round vinti (Blitz Mode)
     async incrementRound(matchId: string, isPlayer1: boolean, currentRounds: number, nextRoundNumber: number) {
         const updateData = isPlayer1
             ? { p1_rounds: currentRounds + 1, current_round: nextRoundNumber, player1_score: 0, player2_score: 0 }

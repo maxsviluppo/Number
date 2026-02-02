@@ -107,16 +107,10 @@ const App: React.FC = () => {
   const processedWinRef = useRef<string | null>(null);
   const selectionTimeoutRef = useRef<number | null>(null);
 
+  // Keep gameStateRef in sync
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
-
-  // Keep duelRoundsRef in sync
-  const duelRoundsRef = useRef(duelRounds);
-  useEffect(() => {
-    duelRoundsRef.current = duelRounds;
-  }, [duelRounds]);
-
 
   // Logo Animation Effect
   useEffect(() => {
@@ -153,7 +147,7 @@ const App: React.FC = () => {
         console.warn("⚠️ BOOT SYSTEM: Intro sequence timed out - Force entering app");
         setShowIntro(false);
         setGameState(prev => ({ ...prev, status: 'idle' }));
-      }, 6000);
+      }, 45000);
       return () => clearTimeout(timer);
     }
   }, [showIntro]);
@@ -412,7 +406,7 @@ const App: React.FC = () => {
 
     const currentLevel = forceStartLevel !== undefined ? forceStartLevel : gameState.level;
 
-    const targetCount = 5; // User requested 5 targets always valid, even for Blitz
+    const targetCount = 5;
 
     if (newBuffer.length === 0 || forceStartLevel !== undefined || forcedSeed) {
       // If we have a forced seed (DUEL MODE), generate exactly that board
@@ -629,7 +623,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (gameState.status === 'playing' && gameState.timeLeft === 0 && !isVictoryAnimating) {
       // TIME ATTACK END (Duel)
-      if (activeMatch?.mode === 'time_attack' || activeMatch?.mode === 'blitz') {
+      if (activeMatch?.mode === 'time_attack') {
         handleTimeAttackEnd();
         return;
       }
@@ -661,10 +655,6 @@ const App: React.FC = () => {
           soundService.playLose();
         }
       }
-    } else if (gameState.status === 'playing' && !activeMatch?.isDuel && gameState.timeLeft <= 5 && gameState.timeLeft > 0) {
-      // LOW TIME WARNING (Single Player Only)
-      // Play a tick/beep for the last 5 seconds
-      soundService.playTick();
     }
   }, [gameState.timeLeft, gameState.status, activeMatch, currentUser, isVictoryAnimating, loadProfile]);
 
@@ -902,7 +892,6 @@ const App: React.FC = () => {
     setGameState(prev => ({
       ...prev,
       levelTargets: [],
-      score: 0, // Reset score (targets found) for new round
       // FORCE 60s for Time Attack when round actually starts
       timeLeft: (matchData.mode === 'time_attack') ? 60 : INITIAL_TIME,
       status: 'playing'
@@ -949,7 +938,6 @@ const App: React.FC = () => {
         // Ensure Active Match has critical data (Mode) for Host Timer
         if (activeMatch && (!activeMatch.mode || activeMatch.mode !== newData.mode)) {
           setActiveMatch(prev => prev ? { ...prev, isP1: amIP1, mode: newData.mode } : null);
-          setDuelMode(newData.mode as any); // Force Sync Local Mode
         } else if (activeMatch && activeMatch.isP1 !== amIP1) {
           setActiveMatch(prev => prev ? { ...prev, isP1: amIP1 } : null);
         }
@@ -975,51 +963,10 @@ const App: React.FC = () => {
         const totalRoundsWon = currentP1Rounds + currentP2Rounds;
 
         // TRACK ROUND CHANGES (Blitz Mode Auto-Reset)
-        // Use Ref to avoid stale closure issues in subscription
-        const localRounds = duelRoundsRef.current;
-        const localTotal = localRounds.p1 + localRounds.p2;
-
-        // Detect if DB has advanced beyond our local state
-        // Detect if DB has advanced beyond our local state
-        // DOMINION / BLITZ SIGNAL INTERCEPTOR
-        // We use 'current_round' to signal Stolen Targets (+Value = P1, -Value = P2)
-        // We check if the signal is different from what we last processed.
-        const signal = newData.current_round || 0;
-        const lastSignal = localRounds.current || 0;
-
-        if (currentMode === 'blitz' && newData.status === 'active' && signal !== 0 && signal !== lastSignal) {
-          const stolenValue = Math.abs(signal);
-          const newOwner = signal > 0 ? 'p1' : 'p2';
-          const imOwner = (amIP1 && newOwner === 'p1') || (!amIP1 && newOwner === 'p2');
-
-          console.log(`🏴 DOMINION SIGNAL: Target ${stolenValue} captured by ${newOwner}`);
-
-          // Update UI Targets
-          setGameState(prev => {
-            const updated = prev.levelTargets.map(t => {
-              if (t.value === stolenValue) {
-                return { ...t, completed: true, owner: newOwner };
-              }
-              return t;
-            });
-            return { ...prev, levelTargets: updated };
-          });
-
-          // Toast for Enemy Action
-          if (!imOwner) {
-            showToast(`L'AVVERSARIO HA RUBATO IL ${stolenValue}!`, [], 2000);
-            soundService.playError(); // Alert sound
-          }
-
-          // Update REF to avoid re-processing same signal
-          duelRoundsRef.current = {
-            ...duelRoundsRef.current,
-            current: signal
-          };
+        if (currentMode === 'blitz' && newData.status === 'active' && totalRoundsWon > (duelRounds.p1 + duelRounds.p2)) {
+          console.log("🎲 BLITZ: Round finish detected. Resetting board...");
+          handleDuelRoundStart(newData);
         }
-
-        // REMOVED OLD BLITZ ROUND LOGIC (Previously lines 984-1082)
-
 
         const opScore = amIP1 ? newData.player2_score : newData.player1_score;
         const opRounds = amIP1 ? newData.p2_rounds : newData.p1_rounds;
@@ -1034,43 +981,36 @@ const App: React.FC = () => {
           current: newData.current_round || 1
         });
 
-        // Use new values for loss check
         const opponentRoundWins = amIP1 ? currentP2Rounds : currentP1Rounds;
+        const opponentTargetCount = amIP1 ? newData.player2_score : newData.player1_score;
 
         // LOSS DETECTION
         const isStandardLoss = currentMode === 'standard' && opRounds >= 5;
-        // Blitz loss disabled
-        // const isBlitzLoss = currentMode === 'blitz' && opponentRoundWins >= 3;
+        const isBlitzLoss = currentMode === 'blitz' && opponentRoundWins >= 3;
+
+        if ((isStandardLoss || isBlitzLoss) && newData.status !== 'finished' && processedWinRef.current !== newData.id) {
+          console.log("💔 DEFEAT SEQUENCE TRIGGERED");
+          processedWinRef.current = newData.id;
+          if (timerRef.current) window.clearInterval(timerRef.current);
+          setGameState(prev => ({ ...prev, status: 'idle' }));
+          setIsDragging(false);
+          setSelectedPath([]);
+
+          if (videoRef.current) {
+            const loseVid = LOSE_VIDEOS[Math.floor(Math.random() * LOSE_VIDEOS.length)];
+            videoRef.current.src = loseVid;
+            videoRef.current.muted = false;
+            videoRef.current.load();
+            videoRef.current.play().catch(e => console.warn("Loss video blocked:", e));
+            setLoseVideoSrc(loseVid);
+            setShowLostVideo(true);
+            setIsVideoVisible(true);
+          }
+          return;
+        }
 
         if (newData.status === 'finished') {
-          // Ensure processedWinRef blocks duplicate execution but allow UI cleanup
-          // Check if I am the loser
-          if (newData.winner_id !== currentUser?.id && processedWinRef.current !== newData.id) {
-            console.log("🏁 MATCH FINISHED: I am the LOSER. Playing Defeat Sequence.");
-            processedWinRef.current = newData.id;
-
-            if (timerRef.current) window.clearInterval(timerRef.current);
-            setGameState(prev => ({ ...prev, status: 'idle' }));
-            setIsDragging(false);
-            setSelectedPath([]);
-
-            if (videoRef.current) {
-              const loseVid = LOSE_VIDEOS[Math.floor(Math.random() * LOSE_VIDEOS.length)];
-              setLoseVideoSrc(loseVid);
-              setShowLostVideo(true);
-              setIsVideoVisible(true);
-
-              videoRef.current.src = loseVid;
-              videoRef.current.muted = false;
-              videoRef.current.load();
-              videoRef.current.play().catch(e => console.warn("Loss video blocked:", e));
-            }
-          } else if (gameStateRef.current.status === 'playing') {
-            // Just force exit if I was playing (e.g. Winner who hasn't transitioned yet? Winner usually handles it in handleSuccess)
-            // But usually Winner sets 'finished' in handleSuccess.
-            if (timerRef.current) window.clearInterval(timerRef.current);
-            setGameState(prev => ({ ...prev, status: 'idle' }));
-          }
+          const amIWinner = newData.winner_id === currentUser?.id;
         }
 
 
@@ -1566,77 +1506,13 @@ const App: React.FC = () => {
       setScoreAnimKey(k => k + 1);
 
       const isTimeAttack = !!activeMatch && (duelMode === 'time_attack' || activeMatch.mode === 'time_attack');
-      // For Time Attack, we don't care about 'allDone' in the traditional sense, targets regenerate
       const localTargetsFound = newTargets.filter(t => t.completed).length;
       const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
-      // TIME ATTACK: REGENERATE TARGET AFTER 5 SECONDS
-      if (isTimeAttack) {
-        // Sync Score Immediately
-        matchService.updateScore(activeMatch.id, currentUser.id, newScore, activeMatch.isP1)
-          .catch(e => console.error("TA Score Sync Error", e));
-
-        setTimeout(() => {
-          // Check if game is still playing
-          if (gameStateRef.current.status !== 'playing') return;
-
-          const currentTargetsRef = gameStateRef.current.levelTargets;
-          // Find the finished target index (safe lookup)
-          // We rely on the fact that we just completed 'matchedValue'. 
-          // But multiple instances of same value? We find the first completed one that matches or index.
-          // Better: just replace the specific index we touched 'targetIndex'.
-
-          if (targetIndex >= 0 && targetIndex < currentTargetsRef.length) {
-            // Generate new Random Target Logic
-            const lvl = gameStateRef.current.level; // Use current level data
-            // Approximate range based on level (same as createLevelData logic roughly)
-            const min = 1 + (lvl * 2);
-            const max = 20 + (lvl * 5);
-            const newTargetValue = Math.floor(Math.random() * (max - min + 1)) + min;
-
-            // Functional State Update
-            setGameState(prev => {
-              const updatedTargets = [...prev.levelTargets];
-              updatedTargets[targetIndex] = { value: newTargetValue, completed: false };
-              return { ...prev, levelTargets: updatedTargets };
-            });
-          }
-        }, 5000); // 5 Seconds delay (As requested)
-      }
-
+      // [BLITZ] SYNC CURRENT ROUND PROGRESS (0-5 targets inside current round)
       if (activeMatch?.isDuel && duelMode === 'blitz') {
-        const isP1 = activeMatch.isP1;
-
-        // DOMINION LOGIC: Steal the target!
-        // 1. Calculate new scores based on who owned it before?
-        // Ideally we track ownership. For now, let's assume if I found it, I gain a point.
-        // But if I stole it from opponent, they lose a point.
-        // Complexity: We need to know if the opponent ALREADY owned it.
-        // Start simple: Just +1 for me. The "stealing" visual is just toggling.
-        // Actually, the request was: "to zero vince chi ha piu target". So final score matters.
-        // Let's increment my local capture count (which is `score` in the UI).
-
-        // 2. Call Service to notify dominance
-        // We use 'current_round' to broadcast the TARGET VALUE that changed hands.
-        // Positive value = P1 took it. Negative value = P2 took it.
-        const signalValue = matchedValue; // The number itself (e.g. 42)
-
-        // Current Scores:
-        const myNewScore = isP1 ? (duelRounds.p1 + 1) : (duelRounds.p2 + 1); // We use duelRounds as "Target Count" now
-        const opNewScore = isP1 ? duelRounds.p2 : duelRounds.p1; // Opponent score stays same? 
-        // Wait, if I steal from opponent, their score should decrease!
-        // We need to track `owner` of each target to decrement correctly.
-        // Fallback: Just increment mine efficiently for now to demonstrate the mechanic.
-
-        await matchService.stealTarget(activeMatch.id, isP1, signalValue,
-          isP1 ? myNewScore : opNewScore,
-          isP1 ? opNewScore : myNewScore
-        );
-
-        showToast("TARGET CATTURATO! 🏴");
-
-        // We do NOT declare winner here. Winner is declared only on Time Over.
-        return;
+        const currentRoundWins = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
+        await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, localTargetsFound, currentRoundWins);
       }
 
       if (allDone) {
@@ -1646,7 +1522,6 @@ const App: React.FC = () => {
         // DUEL WIN LOGIC
         if (activeMatch?.isDuel) {
           // STANDARD MODE - WIN CONDITION: 5 TARGETS (POINTS)
-          // CRITICAL FIX: Ensure this NEVER runs for Blitz mode
           if (duelMode === 'standard') {
             const finalScore = newScore;
             matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, finalScore, localTargetsFound)
@@ -1700,7 +1575,61 @@ const App: React.FC = () => {
               return;
             }
           }
-          // Blitz logic removed from here - moved up before allDone check
+          if (duelMode === 'blitz') {
+            try {
+              const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
+              const nextRounds = currentRounds + 1;
+              const targetRoundsToWinMatch = 3;
+
+              if (nextRounds >= targetRoundsToWinMatch) {
+                // MATCH WIN: Player reached 3 won rounds
+                console.log("🏆 BLITZ: Match Win reached 3 rounds!");
+                await matchService.declareWinner(activeMatch.id, currentUser.id);
+                processedWinRef.current = activeMatch.id;
+
+                setLatestMatchData(prev => ({
+                  ...prev,
+                  status: 'finished',
+                  winner_id: currentUser!.id,
+                  [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds
+                }));
+
+                // SYNC GLOBAL SCORE: Round points + bonuses
+                await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+                await loadProfile(currentUser.id);
+
+                soundService.playLevelComplete();
+
+                // WIN VIDEO SEQUENCE
+                setTimeout(() => {
+                  if (videoRef.current) {
+                    const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+                    const vidSrc = WIN_VIDEOS[winIdx];
+                    videoRef.current.src = vidSrc;
+                    videoRef.current.muted = true;
+                    videoRef.current.load();
+                    videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                    soundService.playWinner(winIdx);
+                    setWinVideoSrc(vidSrc);
+                    setShowVideo(true);
+                    setIsVideoVisible(true);
+                  }
+                }, 800);
+              } else {
+                // ROUND WIN: Not yet 3 wins
+                console.log("🔔 BLITZ: Round Win (DB increment)");
+                await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRounds);
+
+                showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
+                setGameState(prev => ({ ...prev, status: 'round-won' }));
+
+                // The subscriber effect will detect the increment and trigger handleDuelRoundStart automatically
+              }
+            } catch (e) { console.error("Blitz Win Error", e); }
+
+            setSelectedPath([]);
+            return;
+          }
         }
 
         // STANDARD LEVEL WIN LOGIC (Single Player)
@@ -1800,9 +1729,8 @@ const App: React.FC = () => {
             }
 
           } else {
-            // Blitz - Sync Target Count as "Score" for realtime updates, and Round Wins as "Rounds"
-            const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
-            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, localTargetsFound, currentRounds)
+            // Blitz/Time Attack - just sync score
+            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, localTargetsFound)
               .catch(e => console.error("Error syncing duel stats:", e));
           }
         }
@@ -1983,7 +1911,7 @@ const App: React.FC = () => {
           }
           return prev;
         });
-      }, 500);
+      }, 1000);
     }
   };
 
@@ -2197,11 +2125,9 @@ const App: React.FC = () => {
         setShowIntro(false);
         setGameState(prev => ({ ...prev, status: 'idle' }));
         // Check for Home Tutorial
-        try {
-          if (localStorage.getItem('comic_home_tutorial_done') !== 'true') {
-            setTimeout(() => setShowHomeTutorial(true), 500);
-          }
-        } catch (e) { console.warn("Tutorial check skipped", e); }
+        if (localStorage.getItem('comic_home_tutorial_done') !== 'true') {
+          setTimeout(() => setShowHomeTutorial(true), 500);
+        }
       }} />}
       <div
         className="min-h-[100dvh] bg-gradient-to-t from-[#004488] to-[#0088dd] text-slate-100 font-sans overflow-hidden select-none pb-20 safe-area-bottom"
@@ -2512,10 +2438,10 @@ const App: React.FC = () => {
                 {/* Center: Floating Timer (Half-In/Half-Out) */}
                 {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
                 <div id="timer-display-game" className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
-                  {/* Round Indicator - Only for Blitz - Now handled in Right Side Score */}
-                  {activeMatch?.isDuel && duelMode === 'blitz' && false && (
+                  {/* Round Indicator - Positioned higher and larger */}
+                  {activeMatch?.isDuel && (
                     <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-amber-400/50 text-amber-100 text-[11px] font-black font-orbitron px-5 py-1.5 rounded-full z-[110] whitespace-nowrap shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pulse-slow">
-                      ROUND {duelRounds.p1 + duelRounds.p2 + 1} / 5
+                      {duelMode === 'blitz' ? `ROUND ${duelRounds.p1 + duelRounds.p2 + 1} / 5` : 'VS MODE'}
                     </div>
                   )}
 
@@ -2532,7 +2458,7 @@ const App: React.FC = () => {
                           fill="none"
                           strokeDasharray="283"
                           strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack'
-                            ? 283 - (283 * (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5))
+                            ? 283 - (283 * (opponentTargets || 0) / 5)
                             : (283 * (1 - gameState.timeLeft / 60))
                           }
                           strokeLinecap="round"
@@ -2544,10 +2470,8 @@ const App: React.FC = () => {
                       <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
                     ) : (
                       <>
-                        {activeMatch?.isDuel && duelMode !== 'time_attack' && (
-                          <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">
-                            AVV
-                          </span>
+                        {activeMatch?.isDuel && (
+                          <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>
                         )}
                         <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
                           {activeMatch?.isDuel
@@ -2564,21 +2488,10 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-3 pl-20 sm:pl-0">
 
                     <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
-                      {duelMode === 'blitz' ? (
-                        <>
-                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">WINS</span>
-                          <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
-                            {activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2}/3
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
-                          <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
-                            {gameState.score}
-                          </span>
-                        </>
-                      )}
+                      <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
+                      <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
+                        {gameState.score}
+                      </span>
                     </div>
                   </div>
                 ) : (
@@ -2618,32 +2531,17 @@ const App: React.FC = () => {
                   <div className="flex flex-col items-center gap-2 mb-5">
                     {/* Level Targets List */}
                     <div className="flex gap-2 items-center flex-wrap justify-center max-w-[300px]" id="targets-display-tutorial">
-                      {gameState.levelTargets.map((t, i) => {
-                        const isDominion = activeMatch?.isDuel && duelMode === 'blitz';
-                        let bgClass = 'bg-[#0055AA] border-white/50'; // Default Blue
-
-                        if (isDominion) {
-                          // Dominion Styling
-                          const isMyTarget = (t.owner === 'p1' && amIP1) || (t.owner === 'p2' && !amIP1);
-                          const isEnemyTarget = (t.owner === 'p1' && !amIP1) || (t.owner === 'p2' && amIP1);
-
-                          if (isMyTarget) bgClass = 'bg-emerald-500 border-white scale-110 shadow-[0_0_15px_rgba(16,185,129,0.6)] z-10';
-                          else if (isEnemyTarget) bgClass = 'bg-rose-600 border-white/80 opacity-90 scale-95';
-                        } else {
-                          // Standard Styling
-                          if (t.completed) bgClass = 'bg-[#FF8800] border-white scale-110 shadow-[0_0_15px_rgba(255,136,0,0.6)]';
-                        }
-
-                        return (
-                          <div key={i} className={`
-                                  flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 border-2
-                                  ${bgClass}
-                                  font-orbitron font-black text-white text-xl shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
-                               `}>
-                            {t.value}
-                          </div>
-                        );
-                      })}
+                      {gameState.levelTargets.map((t, i) => (
+                        <div key={i} className={`
+                                flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300
+                                ${t.completed
+                            ? 'bg-[#FF8800] border-2 border-white scale-110 shadow-[0_0_15px_rgba(255,136,0,0.6)]'
+                            : 'bg-[#0055AA] border-2 border-white/50 opacity-100'}
+                                font-orbitron font-black text-white text-xl shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
+                             `}>
+                          {t.value}
+                        </div>
+                      ))}
                     </div>
                   </div>
 
