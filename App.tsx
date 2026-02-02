@@ -1139,32 +1139,7 @@ const App: React.FC = () => {
   }, [activeMatch, currentUser, showDuelRecap, latestMatchData]);
 
   // BLITZ ROUND TRANSITION EFFECT
-  useEffect(() => {
-    if (activeMatch?.isDuel && duelMode === 'blitz') {
-      if (duelRounds.current > prevRoundRef.current) {
-        // New Round Detected
-        if (gameStateRef.current.status === 'playing') {
-          // If I was still playing, I lost the round
-          soundService.playError();
-          showToast(`ROUND PERSO!`, [{ label: "OK", onClick: () => { } }]);
-          setGameState(prev => ({ ...prev, status: 'round-lost' }));
-        } else if (gameStateRef.current.status === 'round-won') {
-          // I won, just confirm transition
-          showToast(`ROUND ${duelRounds.current} START!`);
-        }
-
-        // Restart Game for Next Round
-        setTimeout(() => {
-          startGame(1);
-        }, 1500);
-
-        prevRoundRef.current = duelRounds.current;
-      } else {
-        // Sync ref if we just loaded/joined
-        prevRoundRef.current = duelRounds.current;
-      }
-    }
-  }, [duelRounds, activeMatch, duelMode]);
+  // BLITZ ROUND TRANSITION EFFECT REMOVED (Legacy Round Logic)
 
   // MATCH BROADCAST LOGIC (Abandonment)
   useEffect(() => {
