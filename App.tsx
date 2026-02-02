@@ -976,8 +976,22 @@ const App: React.FC = () => {
         const localTotal = localRounds.p1 + localRounds.p2;
 
         // Detect if DB has advanced beyond our local state
+        // Detect if DB has advanced beyond our local state
         if (currentMode === 'blitz' && newData.status === 'active' && totalRoundsWon > localTotal) {
           console.log(`🎲 BLITZ: New Round Detected! DB: ${totalRoundsWon} vs Local: ${localTotal}`);
+
+          const p1Increased = newData.p1_rounds > localRounds.p1;
+          const p2Increased = newData.p2_rounds > localRounds.p2;
+          const iWonRound = (amIP1 && p1Increased) || (!amIP1 && p2Increased);
+
+          if (!iWonRound) {
+            showToast("ROUND PERSO! L'avversario ha vinto il round.");
+            soundService.playError(); // Or some "Round Lost" sound
+          } else {
+            // If I won, I already saw the Toast optimistically.
+            // But we confirm consistency here.
+          }
+
           handleDuelRoundStart(newData);
         }
 
@@ -1001,8 +1015,10 @@ const App: React.FC = () => {
         const isStandardLoss = currentMode === 'standard' && opRounds >= 5;
         const isBlitzLoss = currentMode === 'blitz' && opponentRoundWins >= 3;
 
-        if ((isStandardLoss || isBlitzLoss) && newData.status !== 'finished' && processedWinRef.current !== newData.id) {
-          console.log("💔 DEFEAT SEQUENCE TRIGGERED");
+        // Check for MATCH LOSS (Blitz or Standard final)
+        // If status is finished and winner is NOT me
+        if (newData.status === 'finished' && newData.winner_id && newData.winner_id !== currentUser?.id && processedWinRef.current !== newData.id) {
+          console.log("💔 DEFEAT SEQUENCE TRIGGERED (Subscription)");
           processedWinRef.current = newData.id;
           if (timerRef.current) window.clearInterval(timerRef.current);
           setGameState(prev => ({ ...prev, status: 'idle' }));
@@ -1522,13 +1538,16 @@ const App: React.FC = () => {
       const localTargetsFound = newTargets.filter(t => t.completed).length;
       const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
-      // [BLITZ] WIN CHECK (Must run here because 3 targets < 5, so 'allDone' is false)
       if (activeMatch?.isDuel && duelMode === 'blitz') {
         const currentRoundWins = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
         await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, localTargetsFound, currentRoundWins);
 
-        const targetsForRoundWin = 3;
-        console.log(`🔎 BLITZ CHECK: Targets Found: ${localTargetsFound} vs Needed: ${targetsForRoundWin}`);
+        // FINAL ROUND RULE: If I have 2 wins, I need 5 targets to win the Match Point.
+        // Otherwise, I need 3 targets to win the Round.
+        const isMatchPoint = currentRoundWins === 2;
+        const targetsForRoundWin = isMatchPoint ? 5 : 3;
+
+        console.log(`🔎 BLITZ CHECK: Targets Found: ${localTargetsFound} vs Needed: ${targetsForRoundWin} (Match Point: ${isMatchPoint})`);
 
         if (localTargetsFound >= targetsForRoundWin) {
           const nextRounds = currentRoundWins + 1;
