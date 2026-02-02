@@ -1572,7 +1572,17 @@ const App: React.FC = () => {
           } else {
             // ROUND WIN: Not yet 3 wins
             console.log(`🔔 BLITZ: Round Win (DB increment) ${nextRounds}/${targetRoundsToWinMatch}`); // FIXED LOG
-            await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRoundWins);
+
+            // Calculate correct next round number (current total + 1 for active round)
+            // But wait, if we just finished round 1 (total wins = 1), next round is 2.
+            // If total wins = 0 (before increment), next round is 2.
+            // Wait, roundSum includes CURRENT wins? No, duelRoundsRef updates via subscription.
+            // Safe logic: Total Rounds Ever Played = p1 + p2.
+            // If I just won, Total Rounds increases by 1. The NEW current_round = (OldTotal + 1) + 1.
+            const totalRoundsPlayed = duelRounds.p1 + duelRounds.p2;
+            const nextGlobalRound = totalRoundsPlayed + 2;
+
+            await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRoundWins, nextGlobalRound);
 
             showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
             setGameState(prev => ({ ...prev, status: 'round-won' }));
