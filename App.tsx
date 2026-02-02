@@ -661,6 +661,10 @@ const App: React.FC = () => {
           soundService.playLose();
         }
       }
+    } else if (gameState.status === 'playing' && !activeMatch?.isDuel && gameState.timeLeft <= 5 && gameState.timeLeft > 0) {
+      // LOW TIME WARNING (Single Player Only)
+      // Play a tick/beep for the last 5 seconds
+      soundService.playTick();
     }
   }, [gameState.timeLeft, gameState.status, activeMatch, currentUser, isVictoryAnimating, loadProfile]);
 
@@ -987,10 +991,9 @@ const App: React.FC = () => {
           if (!iWonRound) {
             // Only show "Round Lost" if it's NOT the final match-ending round.
             // If opponent just reached 3 wins, the MATCH IS OVER, so we wait for the "finished" status to show Defeat Video.
-            // We check 'newData' for the opponent's total rounds.
             const opponentTotalWins = amIP1 ? newData.p2_rounds : newData.p1_rounds;
 
-            if (opponentTotalWins < 3) {
+            if (opponentTotalWins < 3 && newData.status !== 'finished') {
               showToast("ROUND PERSO! L'avversario ha vinto il round.");
               soundService.playError();
             }
@@ -1046,6 +1049,13 @@ const App: React.FC = () => {
         }
 
         if (newData.status === 'finished') {
+          // FORCE EXIT FOR BOTH PLAYERS
+          if (gameStateRef.current.status === 'playing') {
+            console.log("🏁 MATCH FINISHED SYNC: Forcing Exit");
+            if (timerRef.current) window.clearInterval(timerRef.current);
+            setGameState(prev => ({ ...prev, status: 'idle' }));
+            setIsDragging(false);
+          }
           const amIWinner = newData.winner_id === currentUser?.id;
         }
 
@@ -1624,6 +1634,13 @@ const App: React.FC = () => {
               [activeMatch.isP1 ? 'p1' : 'p2']: nextRounds,
               current: nextGlobalRound
             }));
+
+            // KEY FIX: Manually update Ref to block the subscription echo from triggering "Round Lost"
+            duelRoundsRef.current = {
+              ...duelRoundsRef.current,
+              [activeMatch.isP1 ? 'p1' : 'p2']: nextRounds,
+              current: nextGlobalRound
+            };
 
             // Regenerate Grid & Reset Score
             handleDuelRoundStart(optimisticMatchData);
