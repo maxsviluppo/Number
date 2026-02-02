@@ -1025,7 +1025,7 @@ const App: React.FC = () => {
         const opRounds = amIP1 ? newData.p2_rounds : newData.p1_rounds;
 
         setOpponentScore(opScore);
-        // In Blitz, targets = opScore (targets in round), in Standard targets = opRounds (total targets)
+        // In Blitz Dominion, targets = opScore (targets owned), in Standard targets = opRounds (total targets)
         setOpponentTargets(currentMode === 'blitz' ? opScore : opRounds);
 
         setDuelRounds({
@@ -1608,25 +1608,31 @@ const App: React.FC = () => {
         const isP1 = activeMatch.isP1;
 
         // DOMINION LOGIC: Steal the target!
-        // 1. Calculate new scores based on who owned it before?
-        // Ideally we track ownership. For now, let's assume if I found it, I gain a point.
-        // But if I stole it from opponent, they lose a point.
-        // Complexity: We need to know if the opponent ALREADY owned it.
-        // Start simple: Just +1 for me. The "stealing" visual is just toggling.
-        // Actually, the request was: "to zero vince chi ha piu target". So final score matters.
-        // Let's increment my local capture count (which is `score` in the UI).
+        const signalValue = matchedValue; // The number itself
 
-        // 2. Call Service to notify dominance
-        // We use 'current_round' to broadcast the TARGET VALUE that changed hands.
-        // Positive value = P1 took it. Negative value = P2 took it.
-        const signalValue = matchedValue; // The number itself (e.g. 42)
+        // Check if the target was owned by the opponent
+        const targetObj = gameState.levelTargets.find(t => t.value === matchedValue);
+        const wasEnemyOwned = targetObj?.owner && ((isP1 && targetObj.owner === 'p2') || (!isP1 && targetObj.owner === 'p1'));
 
-        // Current Scores:
-        const myNewScore = isP1 ? (duelRounds.p1 + 1) : (duelRounds.p2 + 1); // We use duelRounds as "Target Count" now
-        const opNewScore = isP1 ? duelRounds.p2 : duelRounds.p1; // Opponent score stays same? 
-        // Wait, if I steal from opponent, their score should decrease!
-        // We need to track `owner` of each target to decrement correctly.
-        // Fallback: Just increment mine efficiently for now to demonstrate the mechanic.
+        // Calculate New Scores
+        let myCurrentCount = isP1 ? duelRounds.p1 : duelRounds.p2;
+        let opCurrentCount = isP1 ? duelRounds.p2 : duelRounds.p1;
+
+        // If I didn't own it already, I gain a point
+        if (targetObj?.owner !== (isP1 ? 'p1' : 'p2')) {
+          myCurrentCount += 1;
+        }
+
+        // If the enemy owned it, they lose a point
+        if (wasEnemyOwned) {
+          opCurrentCount = Math.max(0, opCurrentCount - 1);
+        }
+
+        const myNewScore = myCurrentCount;
+        const opNewScore = opCurrentCount;
+
+        // Update Local State Immediately for responsiveness (Steal Back Logic included in signal listener, but good to have local too)
+        // ...actually signal listener handles the visual 'owner' update best to keep sync.
 
         await matchService.stealTarget(activeMatch.id, isP1, signalValue,
           isP1 ? myNewScore : opNewScore,
@@ -2532,7 +2538,7 @@ const App: React.FC = () => {
                           fill="none"
                           strokeDasharray="283"
                           strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack'
-                            ? 283 - (283 * (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5))
+                            ? 283 - (283 * (opponentTargets || 0) / (duelMode === 'blitz' ? gameState.levelTargets.length : 5))
                             : (283 * (1 - gameState.timeLeft / 60))
                           }
                           strokeLinecap="round"
@@ -2566,9 +2572,9 @@ const App: React.FC = () => {
                     <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
                       {duelMode === 'blitz' ? (
                         <>
-                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">WINS</span>
+                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">SCORE</span>
                           <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
-                            {activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2}/3
+                            {gameState.score}
                           </span>
                         </>
                       ) : (
