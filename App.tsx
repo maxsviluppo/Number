@@ -1459,7 +1459,9 @@ const App: React.FC = () => {
       const result = calculateResultFromPath(pathIds);
       // USE REF TO ENSURE FRESHNESS (Fixes First Target Glitch)
       const currentTargets = gameStateRef.current.levelTargets || [];
-      const matchedTarget = currentTargets.find(t => t.value === result && !t.completed);
+      // BLITZ DOMINION FIX: Allow selecting 'completed' targets to steal them back!
+      const isBlitzDominion = activeMatch?.mode === 'blitz' || duelMode === 'blitz';
+      const matchedTarget = currentTargets.find(t => t.value === result && (!t.completed || isBlitzDominion));
 
       if (matchedTarget) {
         // SYNC VIDEO TRIGGER FOR MOBILE - Call play() directly in user gesture stack
@@ -1467,7 +1469,7 @@ const App: React.FC = () => {
         const isTimeAttack = !!activeMatch && (activeMatch.mode === 'time_attack' || duelMode === 'time_attack');
 
         // CRITICAL MOBILE FIX: Set source and play synchronously within the event handler
-        if (isLastTarget && !isTimeAttack && videoRef.current) {
+        if (isLastTarget && !isTimeAttack && !isBlitzDominion && videoRef.current) {
           // 1. Play "Fine Partita" sound immediately on last click
           soundService.playLevelComplete();
 
@@ -1521,7 +1523,10 @@ const App: React.FC = () => {
 
       // Update targets state
       const currentTargets = gameStateRef.current.levelTargets;
-      const targetIndex = currentTargets.findIndex(t => t.value === matchedValue && !t.completed);
+      const isBlitzDominion = activeMatch?.mode === 'blitz' || duelMode === 'blitz';
+
+      // BLITZ DOMINION FIX: Allow finding completed targets too
+      const targetIndex = currentTargets.findIndex(t => t.value === matchedValue && (!t.completed || isBlitzDominion));
 
       if (targetIndex === -1) {
         console.warn("⚠️ Target already completed or not found:", matchedValue);
@@ -1529,6 +1534,7 @@ const App: React.FC = () => {
       }
 
       const newTargets = [...currentTargets];
+      // Mark as completed. In Dominion, the 'owner' update (later) is what really counts.
       newTargets[targetIndex] = { ...newTargets[targetIndex], completed: true };
 
       // Update Local Game State right away for UI feedback
