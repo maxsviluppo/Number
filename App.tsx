@@ -1855,35 +1855,58 @@ const App: React.FC = () => {
     // 2. Final Score Update and Finish Match
     if (activeMatch && currentUser) {
       processedWinRef.current = activeMatch.id;
-      const myScore = gameStateRef.current.score;
-      const oppScore = opponentScore;
+      const myScore = gameStateRef.current.score; // This is POINTS (10, 20...)
+      const oppScore = opponentScore;             // This is OPP POINTS (if synced correctly in Blitz)
 
       let winnerId: string | null = null;
 
-      // BLITZ DOMINION WIN LOGIC
-      // 1. PRIMARY: Who has more TARGETS? (Score represents Targets Owned in Blitz)
-      if (myScore > oppScore) {
-        winnerId = currentUser.id;
-      } else if (oppScore > myScore) {
-        winnerId = activeMatch.opponentId;
+      // Determine My Targets vs Opponent Targets (for Blitz)
+      // Standard: Targets = Completed Count (Accumulated)
+      // Blitz: Targets = Owned Count (Current)
+      let myTargetsForSync = gameStateRef.current.levelTargets.filter(t => t.completed).length; // Default
+
+      if (activeMatch.mode === 'blitz') {
+        const myOwnerId = activeMatch.isP1 ? 'p1' : 'p2';
+        const oppOwnerId = activeMatch.isP1 ? 'p2' : 'p1';
+
+        const myOwned = gameStateRef.current.levelTargets.filter(t => t.owner === myOwnerId).length;
+        const oppOwned = gameStateRef.current.levelTargets.filter(t => t.owner === oppOwnerId).length;
+
+        // Use THESE for win calculation
+        myTargetsForSync = myOwned;
+
+        // 1. PRIMARY: Who has more TARGETS?
+        if (myOwned > oppOwned) {
+          winnerId = currentUser.id;
+        } else if (oppOwned > myOwned) {
+          winnerId = activeMatch.opponentId;
+        } else {
+          // 2. SECONDARY: Tie-Breaker (Points)
+          if (myScore > oppScore) {
+            winnerId = currentUser.id;
+          } else if (oppScore > myScore) {
+            winnerId = activeMatch.opponentId;
+          } else {
+            winnerId = null; // Perfect Draw
+          }
+        }
       } else {
-        // 2. SECONDARY: Tie-Breaker (Points)
-        // "In caso di pareggio numero di target conquistati allora verifica il punteggio piu alto"
-        // Issue: We don't have opponent's exact 'Match Points' (e.g. 350 pts vs 320 pts) locally.
-        // We only track their 'Targets Owned'.
-        // To fix "Resulting in both winners", we must ensure we don't blindly declare myself winner on tie.
-        // For now, if TARGETS are tied, we declare it a DRAW (or let backend decide if it tracks points).
-        // We will NOT declare a winner ID if it's a perfect target tie, effectively making it a Draw.
-        winnerId = null;
+        // STANDARD / TIME ATTACK Logic (Score based)
+        // Score (Points) is primary here too usually?
+        // Standard: "Vince chi fa 5 punti". We handle that in handleSuccess usually.
+        // Time Attack: "Vince chi fa più punti".
+        if (myScore > oppScore) winnerId = currentUser.id;
+        else if (oppScore > myScore) winnerId = activeMatch.opponentId;
       }
 
       const iWon = winnerId === currentUser.id;
 
       // PASS POINTS TO GLOBAL:
-      // If I won, I pass my Local Match Points (totalScore) to global, NOT just the target count.
+      // If I won, I pass my Local Match Points (totalScore) to global.
       const pointsToSync = gameStateRef.current.totalScore + 100; // +100 Bonus
 
-      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, gameStateRef.current.levelTargets.filter(t => t.completed).length)
+      // Sync Stats: Score (Points) AND Targets (Rounds)
+      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, myTargetsForSync)
         .then(() => matchService.declareWinner(activeMatch.id, winnerId))
         .then(() => {
           if (iWon) {
