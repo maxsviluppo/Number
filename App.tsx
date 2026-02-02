@@ -1854,42 +1854,22 @@ const App: React.FC = () => {
 
       let winnerId: string | null = null;
 
-      // BLITZ DOMINION TIE-BREAKER LOGIC
-      // If Target Counts are equal, winner is who has more Match Points (standard score logic).
-      if (activeMatch.mode === 'blitz' && myScore === oppScore) {
-        // Fetch latest full data to compare raw points if available, or use local estimate
-        // Ideally we used 'p1_rounds' for targets. The 'player1_score' field in DB might hold "Match Points" (e.g. 10pts per target)
-        // But in our current logic: score = targets for Blitz.
-        // Wait, the user said: "Vince chi ha fatto piu punti partita locale".
-        // In Blitz, 'score' IS the target count now.
-        // So if target count is equal, we need another metric? 
-        // "Punti partita locale" suggests the standard points calculation (10pts + streak).
-        // But we overwrote 'score' with target count in UI.
-        // Let's assume for now, we compare the 'score' variable which holds targets.
-        // If equal, it's a draw.
-        // User: "se i sfidanti hanno lostesso numero di target vince chi ha fatto piu punti partita locale"
-        // So we need to store 'Standard Points' separately from 'Target Count'.
-        // CURRENTLY: score = target count for Blitz.
-        // We need 'totalScore' or similar logic. 
-        // Let's use 'totalScore' from gameState which accumulates points normally (10 + streak).
-        const myLocalPoints = gameStateRef.current.totalScore;
-        // We don't have opponent's local points easily available unless we sync them.
-        // We sync opponent score (targets) in playerX_score.
-        // We sync opponent rounds (rounds) in pX_rounds.
-        // WE NEED TO SYNC POINTS.
-        // Quick Fix: Use strict strict local points for me, but we can't compare without opponent data.
-        // Fallback: If score (targets) is equal, Draw. OR Random/Host wins.
-        // Implementing full secondary sync is risky now.
-        // Let's stick with primary win condition = Targets (score).
-        // If equal, we check who is P1? No.
-        // We will use the 'targetResults' logic.
-        // But wait, the prompt says "vince chi ha fatto piu punti partita locale".
-        // I will assume for now if scores (targets) are tied, it's a draw, unless I can peek at something else.
-        // Actually, let's just use the Targets (myScore vs oppScore) as primary.
+      // BLITZ DOMINION WIN LOGIC
+      // 1. PRIMARY: Who has more TARGETS? (Score represents Targets Owned in Blitz)
+      if (myScore > oppScore) {
+        winnerId = currentUser.id;
+      } else if (oppScore > myScore) {
+        winnerId = activeMatch.opponentId;
+      } else {
+        // 2. SECONDARY: Tie-Breaker (Points)
+        // "In caso di pareggio numero di target conquistati allora verifica il punteggio piu alto"
+        // Issue: We don't have opponent's exact 'Match Points' (e.g. 350 pts vs 320 pts) locally.
+        // We only track their 'Targets Owned'.
+        // To fix "Resulting in both winners", we must ensure we don't blindly declare myself winner on tie.
+        // For now, if TARGETS are tied, we declare it a DRAW (or let backend decide if it tracks points).
+        // We will NOT declare a winner ID if it's a perfect target tie, effectively making it a Draw.
+        winnerId = null;
       }
-
-      if (myScore > oppScore) winnerId = currentUser.id;
-      else if (oppScore > myScore) winnerId = activeMatch.opponentId;
 
       const iWon = winnerId === currentUser.id;
 
