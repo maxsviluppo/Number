@@ -1036,7 +1036,7 @@ const App: React.FC = () => {
 
         setOpponentScore(opScore);
         // In Blitz Dominion, targets = opScore (targets owned), in Standard targets = opRounds (total targets)
-        setOpponentTargets(currentMode === 'blitz' ? opScore : opRounds);
+        setOpponentTargets(currentMode === 'blitz' ? opRounds : opRounds);
 
         setDuelRounds({
           p1: currentP1Rounds,
@@ -1619,15 +1619,21 @@ const App: React.FC = () => {
           opCurrentCount = Math.max(0, opCurrentCount - 1);
         }
 
-        const myNewScore = myCurrentCount;
-        const opNewScore = opCurrentCount;
+        const myNewTargetCount = myCurrentCount;
+        const opNewTargetCount = opCurrentCount;
 
-        // Update Local State Immediately for responsiveness (Steal Back Logic included in signal listener, but good to have local too)
-        // ...actually signal listener handles the visual 'owner' update best to keep sync.
+        // Sync Points as well for Tie-Breaker
+        // My Points: Calculated above (newScore) which includes 10 + streak
+        const myPoints = newScore;
+        // Opponent Points: We use what we have cached in 'opponentScore'.
+        // This relies on 'opponentScore' being accurate (synced via subscription).
+        const opPoints = opponentScore;
 
         await matchService.stealTarget(activeMatch.id, isP1, signalValue,
-          isP1 ? myNewScore : opNewScore,
-          isP1 ? opNewScore : myNewScore
+          isP1 ? myNewTargetCount : opNewTargetCount, // Targets P1
+          isP1 ? opNewTargetCount : myNewTargetCount, // Targets P2
+          isP1 ? myPoints : opPoints,                 // Points P1
+          isP1 ? opPoints : myPoints                  // Points P2
         );
 
         // DOMINION TOAST REMOVED (Too spammy)
