@@ -985,8 +985,15 @@ const App: React.FC = () => {
           const iWonRound = (amIP1 && p1Increased) || (!amIP1 && p2Increased);
 
           if (!iWonRound) {
-            showToast("ROUND PERSO! L'avversario ha vinto il round.");
-            soundService.playError(); // Or some "Round Lost" sound
+            // Only show "Round Lost" if it's NOT the final match-ending round.
+            // If opponent just reached 3 wins, the MATCH IS OVER, so we wait for the "finished" status to show Defeat Video.
+            // We check 'newData' for the opponent's total rounds.
+            const opponentTotalWins = amIP1 ? newData.p2_rounds : newData.p1_rounds;
+
+            if (opponentTotalWins < 3) {
+              showToast("ROUND PERSO! L'avversario ha vinto il round.");
+              soundService.playError();
+            }
           } else {
             // If I won, I already saw the Toast optimistically.
             // But we confirm consistency here.
