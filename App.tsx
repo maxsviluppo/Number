@@ -107,10 +107,16 @@ const App: React.FC = () => {
   const processedWinRef = useRef<string | null>(null);
   const selectionTimeoutRef = useRef<number | null>(null);
 
-  // Keep gameStateRef in sync
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
+
+  // Keep duelRoundsRef in sync
+  const duelRoundsRef = useRef(duelRounds);
+  useEffect(() => {
+    duelRoundsRef.current = duelRounds;
+  }, [duelRounds]);
+
 
   // Logo Animation Effect
   useEffect(() => {
@@ -147,7 +153,7 @@ const App: React.FC = () => {
         console.warn("⚠️ BOOT SYSTEM: Intro sequence timed out - Force entering app");
         setShowIntro(false);
         setGameState(prev => ({ ...prev, status: 'idle' }));
-      }, 45000);
+      }, 6000);
       return () => clearTimeout(timer);
     }
   }, [showIntro]);
@@ -964,8 +970,13 @@ const App: React.FC = () => {
         const totalRoundsWon = currentP1Rounds + currentP2Rounds;
 
         // TRACK ROUND CHANGES (Blitz Mode Auto-Reset)
-        if (currentMode === 'blitz' && newData.status === 'active' && totalRoundsWon > (duelRounds.p1 + duelRounds.p2)) {
-          console.log("🎲 BLITZ: Round finish detected. Resetting board...");
+        // Use Ref to avoid stale closure issues in subscription
+        const localRounds = duelRoundsRef.current;
+        const localTotal = localRounds.p1 + localRounds.p2;
+
+        // Detect if DB has advanced beyond our local state
+        if (currentMode === 'blitz' && newData.status === 'active' && totalRoundsWon > localTotal) {
+          console.log(`🎲 BLITZ: New Round Detected! DB: ${totalRoundsWon} vs Local: ${localTotal}`);
           handleDuelRoundStart(newData);
         }
 
@@ -982,8 +993,8 @@ const App: React.FC = () => {
           current: newData.current_round || 1
         });
 
+        // Use new values for loss check
         const opponentRoundWins = amIP1 ? currentP2Rounds : currentP1Rounds;
-        const opponentTargetCount = amIP1 ? newData.player2_score : newData.player1_score;
 
         // LOSS DETECTION
         const isStandardLoss = currentMode === 'standard' && opRounds >= 5;
@@ -1581,7 +1592,7 @@ const App: React.FC = () => {
               const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
               const nextRounds = currentRounds + 1;
               const targetRoundsToWinMatch = 3;
-              const targetsForRoundWin = 3;
+              const targetsForRoundWin = 3; // Ensure this is 3
 
               // Check if we actually won the round (found enough targets)
               if (localTargetsFound >= targetsForRoundWin) {
@@ -2136,9 +2147,11 @@ const App: React.FC = () => {
         setShowIntro(false);
         setGameState(prev => ({ ...prev, status: 'idle' }));
         // Check for Home Tutorial
-        if (localStorage.getItem('comic_home_tutorial_done') !== 'true') {
-          setTimeout(() => setShowHomeTutorial(true), 500);
-        }
+        try {
+          if (localStorage.getItem('comic_home_tutorial_done') !== 'true') {
+            setTimeout(() => setShowHomeTutorial(true), 500);
+          }
+        } catch (e) { console.warn("Tutorial check skipped", e); }
       }} />}
       <div
         className="min-h-[100dvh] bg-gradient-to-t from-[#004488] to-[#0088dd] text-slate-100 font-sans overflow-hidden select-none pb-20 safe-area-bottom"
