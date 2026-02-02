@@ -406,7 +406,7 @@ const App: React.FC = () => {
 
     const currentLevel = forceStartLevel !== undefined ? forceStartLevel : gameState.level;
 
-    const targetCount = 5;
+    const targetCount = 5; // User requested 5 targets always valid, even for Blitz
 
     if (newBuffer.length === 0 || forceStartLevel !== undefined || forcedSeed) {
       // If we have a forced seed (DUEL MODE), generate exactly that board
@@ -938,6 +938,7 @@ const App: React.FC = () => {
         // Ensure Active Match has critical data (Mode) for Host Timer
         if (activeMatch && (!activeMatch.mode || activeMatch.mode !== newData.mode)) {
           setActiveMatch(prev => prev ? { ...prev, isP1: amIP1, mode: newData.mode } : null);
+          setDuelMode(newData.mode as any); // Force Sync Local Mode
         } else if (activeMatch && activeMatch.isP1 !== amIP1) {
           setActiveMatch(prev => prev ? { ...prev, isP1: amIP1 } : null);
         }
@@ -1580,51 +1581,60 @@ const App: React.FC = () => {
               const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
               const nextRounds = currentRounds + 1;
               const targetRoundsToWinMatch = 3;
+              const targetsForRoundWin = 3;
 
-              if (nextRounds >= targetRoundsToWinMatch) {
-                // MATCH WIN: Player reached 3 won rounds
-                console.log("🏆 BLITZ: Match Win reached 3 rounds!");
-                await matchService.declareWinner(activeMatch.id, currentUser.id);
-                processedWinRef.current = activeMatch.id;
+              // Check if we actually won the round (found enough targets)
+              if (localTargetsFound >= targetsForRoundWin) {
 
-                setLatestMatchData(prev => ({
-                  ...prev,
-                  status: 'finished',
-                  winner_id: currentUser!.id,
-                  [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds
-                }));
+                if (nextRounds >= targetRoundsToWinMatch) {
+                  // MATCH WIN: Player reached 3 won rounds
+                  console.log("🏆 BLITZ: Match Win reached 3 rounds!");
+                  await matchService.declareWinner(activeMatch.id, currentUser.id);
+                  processedWinRef.current = activeMatch.id;
 
-                // SYNC GLOBAL SCORE: Round points + bonuses
-                await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
-                await loadProfile(currentUser.id);
+                  setLatestMatchData(prev => ({
+                    ...prev,
+                    status: 'finished',
+                    winner_id: currentUser!.id,
+                    [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds
+                  }));
 
-                soundService.playLevelComplete();
+                  // SYNC GLOBAL SCORE: Round points + bonuses
+                  await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+                  await loadProfile(currentUser.id);
 
-                // WIN VIDEO SEQUENCE
-                setTimeout(() => {
-                  if (videoRef.current) {
-                    const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-                    const vidSrc = WIN_VIDEOS[winIdx];
-                    videoRef.current.src = vidSrc;
-                    videoRef.current.muted = true;
-                    videoRef.current.load();
-                    videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
-                    soundService.playWinner(winIdx);
-                    setWinVideoSrc(vidSrc);
-                    setShowVideo(true);
-                    setIsVideoVisible(true);
-                  }
-                }, 800);
-              } else {
-                // ROUND WIN: Not yet 3 wins
-                console.log("🔔 BLITZ: Round Win (DB increment)");
-                await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRounds);
+                  soundService.playLevelComplete();
 
-                showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
-                setGameState(prev => ({ ...prev, status: 'round-won' }));
+                  // WIN VIDEO SEQUENCE
+                  setTimeout(() => {
+                    if (videoRef.current) {
+                      const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+                      const vidSrc = WIN_VIDEOS[winIdx];
+                      videoRef.current.src = vidSrc;
+                      videoRef.current.muted = true;
+                      videoRef.current.load();
+                      videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                      soundService.playWinner(winIdx);
+                      setWinVideoSrc(vidSrc);
+                      setShowVideo(true);
+                      setIsVideoVisible(true);
+                    }
+                  }, 800);
+                } else {
+                  // ROUND WIN: Not yet 3 wins
+                  console.log("🔔 BLITZ: Round Win (DB increment)");
+                  await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRounds);
 
-                // The subscriber effect will detect the increment and trigger handleDuelRoundStart automatically
-              }
+                  showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
+                  setGameState(prev => ({ ...prev, status: 'round-won' }));
+
+                  // The subscriber effect will detect the increment and trigger handleDuelRoundStart automatically
+
+                  // Clear selection immediately to prevent further moves
+                  setSelectedPath([]);
+                  return;
+                }
+              } // End check for round win target count
             } catch (e) { console.error("Blitz Win Error", e); }
 
             setSelectedPath([]);
@@ -1729,8 +1739,9 @@ const App: React.FC = () => {
             }
 
           } else {
-            // Blitz/Time Attack - just sync score
-            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, localTargetsFound)
+            // Blitz - Sync Target Count as "Score" for realtime updates, and Round Wins as "Rounds"
+            const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
+            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, localTargetsFound, currentRounds)
               .catch(e => console.error("Error syncing duel stats:", e));
           }
         }
@@ -2438,8 +2449,8 @@ const App: React.FC = () => {
                 {/* Center: Floating Timer (Half-In/Half-Out) */}
                 {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
                 <div id="timer-display-game" className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
-                  {/* Round Indicator - Only for Blitz */}
-                  {activeMatch?.isDuel && duelMode === 'blitz' && (
+                  {/* Round Indicator - Only for Blitz - Now handled in Right Side Score */}
+                  {activeMatch?.isDuel && duelMode === 'blitz' && false && (
                     <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-amber-400/50 text-amber-100 text-[11px] font-black font-orbitron px-5 py-1.5 rounded-full z-[110] whitespace-nowrap shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pulse-slow">
                       ROUND {duelRounds.p1 + duelRounds.p2 + 1} / 5
                     </div>
@@ -2458,7 +2469,7 @@ const App: React.FC = () => {
                           fill="none"
                           strokeDasharray="283"
                           strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack'
-                            ? 283 - (283 * (opponentTargets || 0) / 5)
+                            ? 283 - (283 * (opponentTargets || 0) / (duelMode === 'blitz' ? 3 : 5))
                             : (283 * (1 - gameState.timeLeft / 60))
                           }
                           strokeLinecap="round"
@@ -2471,7 +2482,9 @@ const App: React.FC = () => {
                     ) : (
                       <>
                         {activeMatch?.isDuel && (
-                          <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">AVV</span>
+                          <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">
+                            {duelMode === 'time_attack' ? 'TEMPO' : 'AVV'}
+                          </span>
                         )}
                         <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
                           {activeMatch?.isDuel
@@ -2488,10 +2501,21 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-3 pl-20 sm:pl-0">
 
                     <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
-                      <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
-                      <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
-                        {gameState.score}
-                      </span>
+                      {duelMode === 'blitz' ? (
+                        <>
+                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">WINS</span>
+                          <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
+                            {activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2}/3
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
+                          <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
+                            {gameState.score}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 ) : (
