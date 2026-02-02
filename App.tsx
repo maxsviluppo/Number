@@ -50,7 +50,7 @@ const TUTORIAL_STEPS = [
 
 const WIN_VIDEOS = ['/Win1noaudio.mp4', '/Win2noaudioe.mp4', '/Win3noaudio.mp4', '/Win4noaudio.mp4'];
 const LOSE_VIDEOS = ['/Lose1noaudio.mp4'];
-const SURRENDER_VIDEOS = ['/ritirata.mp4', '/ritirata1.mp4', '/ritirata2.mp4'];
+const SURRENDER_VIDEOS = ['/Resa1noaudio.mp4'];
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -1167,12 +1167,14 @@ const App: React.FC = () => {
           setIsVideoVisible(false);
 
           if (videoRef.current) {
-            videoRef.current.muted = false;
+            videoRef.current.muted = true; // Video has no audio
             videoRef.current.src = randomSurrender;
             videoRef.current.play().catch(e => {
               console.warn("Surrender (abandon) video blocked:", e);
               setIsVideoVisible(false);
             });
+            // Play Surrender Audio
+            soundService.playExternalSound('Resa1.mp3');
           }
 
           // 2. Add Points (Optional logic, using current score)
