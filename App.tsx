@@ -1497,7 +1497,7 @@ const App: React.FC = () => {
         }
 
         handleSuccess(result!);
-      } else {
+        setSelectedPath([]); // DESELECT IMMEDIATELY AFTER SUCCESS
         handleError();
       }
       setPreviewResult(null);

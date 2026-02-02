@@ -350,15 +350,20 @@ export const matchService = {
     },
 
     // STEAL TARGET (Blitz/Dominion Mode)
-    // Updates scores AND signals which target was stolen via current_round
-    async stealTarget(matchId: string, isPlayer1: boolean, targetValue: number, currentScoreP1: number, currentScoreP2: number) {
+    // Updates TARGET COUNTS (in pX_rounds) AND POINTS (in playerX_score) AND signals stolen target
+    async stealTarget(matchId: string, isPlayer1: boolean, targetValue: number,
+        targetsP1: number, targetsP2: number,
+        pointsP1: number, pointsP2: number) {
+
         // Semantic: current_round > 0 (P1 took it), < 0 (P2 took it)
         const signalingValue = isPlayer1 ? targetValue : -targetValue;
 
         const updateData = {
-            player1_score: currentScoreP1,
-            player2_score: currentScoreP2,
-            current_round: signalingValue
+            p1_rounds: targetsP1,         // Targets Owned
+            p2_rounds: targetsP2,         // Targets Owned
+            player1_score: pointsP1,      // Match Points (Tie-breaker)
+            player2_score: pointsP2,      // Match Points (Tie-breaker)
+            current_round: signalingValue // Signal
         };
 
         const { error } = await (supabase as any)

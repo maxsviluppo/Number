@@ -84,15 +84,33 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
 
                     {/* TU */}
                     <div className={`flex flex-col items-center gap-3 transition-all duration-300 ${isWinner ? 'scale-105' : 'opacity-70'}`}>
-                        <div className={`w-28 h-28 rounded-2xl flex flex-col items-center justify-center shadow-xl relative transition-all
-                            ${isWinner ? 'bg-[#FF8800]/5' : 'bg-white/5'}`}>
-                            <span className="text-[9px] font-black text-white/30 uppercase absolute top-2">PUNTI</span>
-                            <span className={`font-orbitron font-black text-4xl ${isWinner ? 'text-[#FF8800]' : 'text-white'}`}>{myScore}</span>
-                        </div>
+                        {matchData?.mode === 'blitz' ? (
+                            <div className={`w-28 h-28 rounded-2xl flex flex-col items-center justify-center shadow-xl relative transition-all border-2
+                                ${isWinner ? 'bg-[#FF8800]/10 border-[#FF8800]' : 'bg-white/5 border-white/10'}`}>
+                                <div className="flex flex-col items-center justify-center leading-none">
+                                    <span className="text-[9px] font-black text-white/50 uppercase mb-1">TARGETS</span>
+                                    <span className={`font-orbitron font-black text-4xl ${isWinner ? 'text-[#FF8800]' : 'text-white'}`}>{myRounds}</span>
+                                </div>
+                                <div className="w-full h-[1px] bg-white/10 my-1"></div>
+                                <div className="flex flex-col items-center justify-center leading-none">
+                                    <span className="text-[7px] font-black text-white/30 uppercase">PTS</span>
+                                    <span className={`font-orbitron font-bold text-xl ${isWinner ? 'text-[#FF8800]/80' : 'text-white/50'}`}>{myScore}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={`w-28 h-28 rounded-2xl flex flex-col items-center justify-center shadow-xl relative transition-all
+                                ${isWinner ? 'bg-[#FF8800]/5' : 'bg-white/5'}`}>
+                                <span className="text-[9px] font-black text-white/30 uppercase absolute top-2">PUNTI</span>
+                                <span className={`font-orbitron font-black text-4xl ${isWinner ? 'text-[#FF8800]' : 'text-white'}`}>{myScore}</span>
+                            </div>
+                        )}
+
                         <div className="flex flex-col items-center">
                             <span className="text-white font-black uppercase text-[11px] tracking-wider">TU</span>
                             <div className="flex flex-col items-center">
-                                <span className="text-[#FF8800] font-bold text-[9px] mt-0.5">+{myScore} XP</span>
+                                {/* Only show XP gain if not Blitz (since Blitz shows Points inside box or we can duplicate) */}
+                                {matchData?.mode !== 'blitz' && <span className="text-[#FF8800] font-bold text-[9px] mt-0.5">+{myScore} XP</span>}
+                                {matchData?.mode === 'blitz' && <span className="text-[#FF8800] font-bold text-[9px] mt-0.5">+{myScore} XP</span>}
 
                                 {isWinner && (matchData?.last_time_bonus > 0 || matchData?.last_victory_bonus > 0) && (
                                     <div className="mt-2 space-y-0.5 bg-black/20 p-2 rounded-lg border border-white/5 w-full min-w-[120px]">
@@ -123,20 +141,33 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
 
                     {/* AVVERSARIO */}
                     <div className={`flex flex-col items-center gap-3 transition-all duration-300 ${!isWinner ? 'scale-105' : 'opacity-50'}`}>
-                        <div className={`w-28 h-28 rounded-2xl flex flex-col items-center justify-center shadow-xl relative transition-all
-                            ${!isWinner ? 'bg-green-500/5' : 'bg-white/5'}`}>
-                            {matchData?.mode === 'time_attack' ? (
-                                <>
-                                    <Clock size={24} className="text-white/30 mb-1" />
-                                    <span className="font-orbitron font-black text-2xl text-white/60">60s</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="text-[9px] font-black text-white/30 uppercase absolute top-2">PUNTI</span>
-                                    <span className={`font-orbitron font-black text-4xl ${!isWinner ? 'text-green-500' : 'text-white/60'}`}>{opponentScore}</span>
-                                </>
-                            )}
-                        </div>
+                        {matchData?.mode === 'time_attack' ? (
+                            <div className={`w-28 h-28 rounded-2xl flex flex-col items-center justify-center shadow-xl relative transition-all
+                                ${!isWinner ? 'bg-green-500/5' : 'bg-white/5'}`}>
+                                <Clock size={24} className="text-white/30 mb-1" />
+                                <span className="font-orbitron font-black text-2xl text-white/60">60s</span>
+                            </div>
+                        ) : matchData?.mode === 'blitz' ? (
+                            <div className={`w-28 h-28 rounded-2xl flex flex-col items-center justify-center shadow-xl relative transition-all border-2
+                                ${!isWinner ? 'bg-green-500/10 border-green-500' : 'bg-white/5 border-white/10'}`}>
+                                <div className="flex flex-col items-center justify-center leading-none">
+                                    <span className="text-[9px] font-black text-white/50 uppercase mb-1">TARGETS</span>
+                                    <span className={`font-orbitron font-black text-4xl ${!isWinner ? 'text-green-500' : 'text-white'}`}>{oppRounds}</span>
+                                </div>
+                                <div className="w-full h-[1px] bg-white/10 my-1"></div>
+                                <div className="flex flex-col items-center justify-center leading-none">
+                                    <span className="text-[7px] font-black text-white/30 uppercase">PTS</span>
+                                    <span className={`font-orbitron font-bold text-xl ${!isWinner ? 'text-green-500/80' : 'text-white/50'}`}>{opponentScore}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={`w-28 h-28 rounded-2xl flex flex-col items-center justify-center shadow-xl relative transition-all
+                                ${!isWinner ? 'bg-green-500/5' : 'bg-white/5'}`}>
+                                <span className="text-[9px] font-black text-white/30 uppercase absolute top-2">PUNTI</span>
+                                <span className={`font-orbitron font-black text-4xl ${!isWinner ? 'text-green-500' : 'text-white/60'}`}>{opponentScore}</span>
+                            </div>
+                        )}
+
                         <div className="flex flex-col items-center text-center">
                             <span className="text-white/70 font-black uppercase text-[11px] tracking-wider truncate max-w-[100px]">
                                 {amIP1 ? matchData.player2?.username : matchData.player1?.username || 'Avversario'}
