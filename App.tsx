@@ -1521,10 +1521,68 @@ const App: React.FC = () => {
       const localTargetsFound = newTargets.filter(t => t.completed).length;
       const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
-      // [BLITZ] SYNC CURRENT ROUND PROGRESS (0-5 targets inside current round)
+      // [BLITZ] WIN CHECK (Must run here because 3 targets < 5, so 'allDone' is false)
       if (activeMatch?.isDuel && duelMode === 'blitz') {
         const currentRoundWins = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
         await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, localTargetsFound, currentRoundWins);
+
+        const targetsForRoundWin = 3;
+        console.log(`🔎 BLITZ CHECK: Targets Found: ${localTargetsFound} vs Needed: ${targetsForRoundWin}`);
+
+        if (localTargetsFound >= targetsForRoundWin) {
+          const nextRounds = currentRoundWins + 1;
+          const targetRoundsToWinMatch = 3;
+
+          if (nextRounds >= targetRoundsToWinMatch) {
+            // MATCH WIN: Player reached 3 won rounds
+            console.log("🏆 BLITZ: Match Win reached 3 rounds!");
+            try {
+              await matchService.declareWinner(activeMatch.id, currentUser.id);
+              processedWinRef.current = activeMatch.id;
+
+              setLatestMatchData(prev => ({
+                ...prev,
+                status: 'finished',
+                winner_id: currentUser!.id,
+                [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds
+              }));
+
+              // SYNC GLOBAL SCORE: Match Points + Bonuses
+              await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+              await loadProfile(currentUser.id);
+
+              soundService.playLevelComplete();
+
+              // WIN VIDEO SEQUENCE
+              setTimeout(() => {
+                if (videoRef.current) {
+                  const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+                  const vidSrc = WIN_VIDEOS[winIdx];
+                  videoRef.current.src = vidSrc;
+                  videoRef.current.muted = false; // Enable audio
+                  videoRef.current.load();
+                  videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                  soundService.playWinner(winIdx);
+                  setWinVideoSrc(vidSrc);
+                  setShowVideo(true);
+                  setIsVideoVisible(true);
+                }
+              }, 800);
+            } catch (e) { console.error("Blitz Match Win Error", e); }
+          } else {
+            // ROUND WIN: Not yet 3 wins
+            console.log(`🔔 BLITZ: Round Win (DB increment) ${nextRounds}/${targetRoundsToWinMatch}`); // FIXED LOG
+            await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRoundWins);
+
+            showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
+            setGameState(prev => ({ ...prev, status: 'round-won' }));
+
+            // The subscriber effect will detect the increment and trigger handleDuelRoundStart automatically
+          }
+          // Clear selection immediately to prevent further moves
+          setSelectedPath([]);
+          return;
+        }
       }
 
       if (allDone) {
@@ -1588,72 +1646,7 @@ const App: React.FC = () => {
               return;
             }
           }
-          if (duelMode === 'blitz') {
-            try {
-              const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
-              const nextRounds = currentRounds + 1;
-              const targetRoundsToWinMatch = 3;
-              const targetsForRoundWin = 3; // Ensure this is 3
-
-              // Check if we actually won the round (found enough targets)
-              console.log(`🔎 BLITZ CHECK: Targets Found: ${localTargetsFound} vs Needed: ${targetsForRoundWin}`);
-
-              if (localTargetsFound >= targetsForRoundWin) {
-
-                if (nextRounds >= targetRoundsToWinMatch) {
-                  // MATCH WIN: Player reached 3 won rounds
-                  console.log("🏆 BLITZ: Match Win reached 3 rounds!");
-                  await matchService.declareWinner(activeMatch.id, currentUser.id);
-                  processedWinRef.current = activeMatch.id;
-
-                  setLatestMatchData(prev => ({
-                    ...prev,
-                    status: 'finished',
-                    winner_id: currentUser!.id,
-                    [activeMatch.isP1 ? 'p1_rounds' : 'p2_rounds']: nextRounds
-                  }));
-
-                  // SYNC GLOBAL SCORE: Round points + bonuses
-                  await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
-                  await loadProfile(currentUser.id);
-
-                  soundService.playLevelComplete();
-
-                  // WIN VIDEO SEQUENCE
-                  setTimeout(() => {
-                    if (videoRef.current) {
-                      const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-                      const vidSrc = WIN_VIDEOS[winIdx];
-                      videoRef.current.src = vidSrc;
-                      videoRef.current.muted = true;
-                      videoRef.current.load();
-                      videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
-                      soundService.playWinner(winIdx);
-                      setWinVideoSrc(vidSrc);
-                      setShowVideo(true);
-                      setIsVideoVisible(true);
-                    }
-                  }, 800);
-                } else {
-                  // ROUND WIN: Not yet 3 wins
-                  console.log("🔔 BLITZ: Round Win (DB increment)");
-                  await matchService.incrementRound(activeMatch.id, activeMatch.isP1, currentRounds);
-
-                  showToast(`ROUND VINTO! (${nextRounds}/${targetRoundsToWinMatch})`);
-                  setGameState(prev => ({ ...prev, status: 'round-won' }));
-
-                  // The subscriber effect will detect the increment and trigger handleDuelRoundStart automatically
-
-                  // Clear selection immediately to prevent further moves
-                  setSelectedPath([]);
-                  return;
-                }
-              } // End check for round win target count
-            } catch (e) { console.error("Blitz Win Error", e); }
-
-            setSelectedPath([]);
-            return;
-          }
+          // Blitz logic removed from here - moved up before allDone check
         }
 
         // STANDARD LEVEL WIN LOGIC (Single Player)
