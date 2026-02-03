@@ -49,7 +49,7 @@ const TUTORIAL_STEPS = [
 ];
 
 const WIN_VIDEOS = ['/Win1noaudio.mp4', '/Win2noaudioe.mp4', '/Win3noaudio.mp4', '/Win4noaudio.mp4'];
-const LOSE_VIDEOS = ['/Lose1noaudio.mp4', '/Lose2noaudio.mp4'];
+const LOSE_VIDEOS = ['/Lose1noaudio.mp4'];
 const SURRENDER_VIDEOS = ['/Resa1noaudio.mp4'];
 
 const BOSS_LEVELS = [
@@ -103,7 +103,6 @@ const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [showLostVideo, setShowLostVideo] = useState(false);
-  const [showBossIntro, setShowBossIntro] = useState(false);
   const [showHomeTutorial, setShowHomeTutorial] = useState(false);
   const [showGameTutorial, setShowGameTutorial] = useState(false);
   const theme = 'orange';
@@ -507,50 +506,20 @@ const App: React.FC = () => {
 
     setActiveModal(null);
     setGrid(levelData.grid);
-
-    if (bossId === 1) {
-      // PREPARE LEVEL BUT DON'T START YET
-      setGameState(prev => ({
-        ...prev,
-        score: 0,
-        totalScore: 0,
-        streak: 0,
-        level: bossId,
-        isBossLevel: true,
-        bossLevelId: bossId,
-        timeLeft: 90,
-        targetResult: 0,
-        status: 'idle', // Stay idle until video ends
-        levelTargets: levelData.targets,
-      }));
-
-      // SHOW BOSS INTRO
-      setShowBossIntro(true);
-      setIsVideoVisible(true);
-      if (videoRef.current) {
-        videoRef.current.src = '/Boss1intro.mp4';
-        videoRef.current.muted = true; // REQUIRED for browser autoplay policy
-        videoRef.current.load();
-        videoRef.current.play().catch(e => {
-          console.warn("Boss intro blocked:", e);
-        });
-      }
-    } else {
-      setGameState(prev => ({
-        ...prev,
-        score: 0,
-        totalScore: 0, // Boss level starts at 0 pts
-        streak: 0,
-        level: bossId, // Boss Level ID
-        isBossLevel: true,
-        bossLevelId: bossId,
-        timeLeft: 90,
-        targetResult: 0,
-        status: 'playing',
-        levelTargets: levelData.targets,
-      }));
-      soundService.playSuccess();
-    }
+    setGameState(prev => ({
+      ...prev,
+      score: 0,
+      totalScore: 0, // Boss level starts at 0 pts
+      streak: 0,
+      level: bossId, // Boss Level ID
+      isBossLevel: true,
+      bossLevelId: bossId,
+      timeLeft: 90,
+      targetResult: 0,
+      status: 'playing',
+      levelTargets: levelData.targets,
+    }));
+    soundService.playSuccess();
   };
 
   const generateGrid = useCallback((forceStartLevel?: number, forcedSeed?: string) => {
@@ -791,16 +760,7 @@ const App: React.FC = () => {
         }
 
         // VIDEO UNLOCK - AUTO PLAY MUTED ON TIMEOUT (Browser Policy)
-        let loseVid = '';
-        if (gameState.bossLevelId === 1) {
-          loseVid = '/Boss1sconfitta.mp4';
-        } else {
-          const loseIdx = Math.floor(Math.random() * LOSE_VIDEOS.length);
-          loseVid = LOSE_VIDEOS[loseIdx];
-          // Play Synchronized Audio Track (Lose1.mp3 / Lose2.mp3)
-          soundService.playLose(loseIdx);
-        }
-
+        const loseVid = LOSE_VIDEOS[0];
         setLoseVideoSrc(loseVid);
         setShowLostVideo(true);
         setIsVideoVisible(true);
@@ -812,6 +772,9 @@ const App: React.FC = () => {
           videoRef.current.play().catch(e => {
             console.warn("Loss video blocked (timeout):", e);
           });
+
+          // Play Synchronized Audio Track (Lose1.mp3)
+          soundService.playLose();
         }
       }
     } else if (gameState.status === 'playing' && !activeMatch?.isDuel && gameState.timeLeft <= 5 && gameState.timeLeft > 0) {
@@ -1844,30 +1807,11 @@ const App: React.FC = () => {
 
           showToast(`🏆 BOSS SCONFITTO! +30s BONUS CARRIERA!`, [], 4000);
 
-          // Boss 1 specific victory sequence
-          if (gameState.bossLevelId === 1) {
-            setTimeout(() => {
-              if (videoRef.current) {
-                const vidSrc = '/Boss1vittoria.mp4';
-                videoRef.current.src = vidSrc;
-                videoRef.current.muted = true; // REQUIRED for browser autoplay policy
-                videoRef.current.load();
-                videoRef.current.play().catch(e => console.warn("Boss win video blocked:", e));
-
-                setWinVideoSrc(vidSrc);
-                setShowVideo(true);
-                setIsVideoVisible(true);
-              }
-            }, 800);
-
-            // The redirection to home happens in handleVideoClose when the video ends or is skipped.
-          } else {
-            // Return to Home after victory animation for other bosses (fallback)
-            setTimeout(() => {
-              goToHome();
-              setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
-            }, 3000);
-          }
+          // Return to Home after victory animation
+          setTimeout(() => {
+            goToHome();
+            setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
+          }, 3000);
 
           return;
         }
@@ -2369,7 +2313,6 @@ const App: React.FC = () => {
   const handleVideoClose = () => {
     // 1. Visual Fade Out
     setIsVideoVisible(false);
-    soundService.stopBoss1vittoria();
 
     // 2. Audio Fade Out
     if (videoRef.current) {
@@ -2403,9 +2346,6 @@ const App: React.FC = () => {
         setShowDuelRecap(true);
         // Ensure we are idle to stop game interaction
         setGameState(prev => ({ ...prev, status: 'idle' }));
-      } else if (gameState.isBossLevel) {
-        goToHome();
-        setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
       } else {
         setGameState(prev => ({
           ...prev,
@@ -2418,7 +2358,6 @@ const App: React.FC = () => {
   const handleLostVideoClose = () => {
     // 1. Visual Fade Out
     setIsVideoVisible(false);
-    soundService.stopBoss1sconfitta();
 
     // 2. Audio Fade Out
     if (videoRef.current) {
@@ -2451,37 +2390,6 @@ const App: React.FC = () => {
         setGameState(prev => ({ ...prev, status: 'idle' }));
       }
     }, 2000);
-  };
-
-  const handleBossIntroClose = () => {
-    setIsVideoVisible(false);
-    soundService.stopBossIntro();
-
-    if (videoRef.current) {
-      const vid = videoRef.current;
-      const startVolume = vid.volume;
-      const fadeDuration = 1000;
-      const intervalTime = 40;
-      const steps = fadeDuration / intervalTime;
-      let currentStep = 0;
-
-      const fadeInterval = setInterval(() => {
-        currentStep++;
-        const progress = Math.min(1, currentStep / steps);
-        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
-        if (newVolume > 0.01) vid.volume = newVolume;
-        else {
-          vid.volume = 0;
-          clearInterval(fadeInterval);
-        }
-      }, intervalTime);
-    }
-
-    setTimeout(() => {
-      setShowBossIntro(false);
-      setGameState(prev => ({ ...prev, status: 'playing', timeLeft: 90 }));
-      soundService.playSuccess();
-    }, 1000);
   };
 
   const handleSurrenderVideoClose = () => {
@@ -2548,70 +2456,35 @@ const App: React.FC = () => {
         {/* UNIFIED VIDEO OVERLAY - Always in DOM for Mobile Unlock */}
         <div
           className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out 
-            ${(showVideo || showLostVideo || showSurrenderVideo || showBossIntro) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+            ${(showVideo || showLostVideo || showSurrenderVideo) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
           onPointerDown={() => {
             if (showVideo) handleVideoClose();
             else if (showLostVideo) handleLostVideoClose();
             else if (showSurrenderVideo) handleSurrenderVideoClose();
-            else if (showBossIntro) handleBossIntroClose();
           }}
         >
           <video
             ref={videoRef}
-            src={showVideo ? winVideoSrc : (showLostVideo ? loseVideoSrc : (showSurrenderVideo ? surrenderVideoSrc : (showBossIntro ? '/Boss1intro.mp4' : '')))}
+            src={showVideo ? winVideoSrc : (showLostVideo ? loseVideoSrc : (showSurrenderVideo ? surrenderVideoSrc : ''))}
             className="w-full h-full object-cover"
             playsInline
             autoPlay
             onPlay={() => {
               if (videoRef.current) videoRef.current.volume = 0.7;
               setIsVideoVisible(true);
-
-              // SYNC BOSS AUDIO (Trigger exactly when video starts)
-              if (gameState.bossLevelId === 1) {
-                if (showBossIntro) {
-                  soundService.stopBossIntro(); // Force clear any pre-loaded source
-                  soundService.playBossIntro();
-                } else if (showVideo) {
-                  soundService.stopBoss1vittoria();
-                  soundService.playBoss1vittoria();
-                } else if (showLostVideo) {
-                  soundService.stopBoss1sconfitta();
-                  soundService.playBoss1sconfitta();
-                }
-              }
             }}
             onEnded={() => {
               if (showVideo) handleVideoClose();
               else if (showLostVideo) handleLostVideoClose();
               else if (showSurrenderVideo) handleSurrenderVideoClose();
-              else if (showBossIntro) handleBossIntroClose();
             }}
           />
-
-          {/* Audio Toggle for Boss Intro/Win/Loss */}
-          {(showBossIntro || ((showVideo || showLostVideo) && gameState.isBossLevel)) && (
-            <button
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                const newMuted = !isMuted;
-                setIsMuted(newMuted);
-                soundService.setMuted(newMuted);
-              }}
-              className={`absolute top-12 right-6 z-[2010] p-3 rounded-full border transition-all active:scale-95 shadow-lg
-                    ${!isMuted
-                  ? 'bg-emerald-500 border-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]'
-                  : 'bg-black/40 backdrop-blur-md border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
-                }`}
-            >
-              {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
-            </button>
-          )}
 
           {/* Overlay color based on state */}
           {showLostVideo && <div className="absolute inset-0 bg-red-900/10 mix-blend-overlay pointer-events-none"></div>}
           {showSurrenderVideo && <div className="absolute inset-0 bg-blue-900/10 mix-blend-overlay pointer-events-none"></div>}
 
-          {(showVideo || showLostVideo || showSurrenderVideo || showBossIntro) && (
+          {(showVideo || showLostVideo || showSurrenderVideo) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 z-50 pointer-events-none">
               {/* FAIL-SAFE TAP TO PLAY (Only visible if video stuck/not visible) */}
               {/* FAIL-SAFE TAP TO PLAY REMOVED - AUTOMATIC ONLY */}
@@ -2624,11 +2497,10 @@ const App: React.FC = () => {
                   if (showVideo) handleVideoClose();
                   else if (showLostVideo) handleLostVideoClose();
                   else if (showSurrenderVideo) handleSurrenderVideoClose();
-                  else if (showBossIntro) handleBossIntroClose();
                 }}
               >
-                <span>SKIP {showBossIntro ? 'INTRO' : ''}</span>
-                <FastForward size={14} className={showLostVideo ? (gameState.isBossLevel ? "text-emerald-400" : "text-red-500") : (showSurrenderVideo ? "text-blue-500" : (showBossIntro ? "text-emerald-400" : "text-[#FF8800]"))} />
+                <span>SKIP</span>
+                <FastForward size={14} className={showLostVideo ? "text-red-500" : (showSurrenderVideo ? "text-blue-500" : "text-[#FF8800]")} />
               </button>
             </div>
           )}
@@ -2818,18 +2690,32 @@ const App: React.FC = () => {
                   </button>
 
                   <button
-                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
+                    className={`flex items-center justify-center gap-2 py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none transition-all duration-300 col-span-2 relative overflow-hidden group
+                      ${((userProfile?.max_level || 0) > 5 || gameState.level > 5 || (savedGame?.level || 0) > 5)
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:scale-105'
+                        : 'bg-slate-800 text-slate-500 opacity-80 cursor-not-allowed'}`}
                     id="boss-btn-home"
                     onPointerDown={() => {
-                      soundService.playUIClick();
-                      setActiveModal('boss_selection');
+                      if ((userProfile?.max_level || 0) > 5 || gameState.level > 5 || (savedGame?.level || 0) > 5) {
+                        soundService.playUIClick();
+                        setActiveModal('boss_selection');
+                      } else {
+                        soundService.playError();
+                        showToast(`🚀 COMPLETA IL LIVELLO 5 PER SBLOCCARE I BOSS!`, [], 3000);
+                      }
                     }}
                   >
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-                    <Crown className="w-8 h-8 text-yellow-300 animate-[bounce_3s_infinite]" />
+                    {((userProfile?.max_level || 0) > 5 || gameState.level > 5 || (savedGame?.level || 0) > 5) ? (
+                      <Crown className="w-8 h-8 text-yellow-300 animate-[bounce_3s_infinite]" />
+                    ) : (
+                      <Lock className="w-8 h-8 text-slate-400" />
+                    )}
                     <div className="flex flex-col items-start leading-none relative z-10">
                       <span className="font-orbitron text-xl font-black uppercase tracking-widest drop-shadow-md">BOSS LEVELS</span>
-                      <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Sfide Epiche & Bonus</span>
+                      <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">
+                        {((userProfile?.max_level || 0) > 5 || gameState.level > 5 || (savedGame?.level || 0) > 5) ? 'Sfide Epiche & Bonus' : 'Sblocca al Livello 6'}
+                      </span>
                     </div>
                   </button>
 

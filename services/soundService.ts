@@ -8,7 +8,13 @@ class SoundService {
   private successBuffer: AudioBuffer | null = null;
   private winnerBuffers: AudioBuffer[] = [];
   private levelCompleteBuffer: AudioBuffer | null = null;
-  private loseBuffer: AudioBuffer | null = null;
+  private loseBuffers: AudioBuffer[] = [];
+  private bossIntroBuffer: AudioBuffer | null = null;
+  private bossIntroSource: AudioBufferSourceNode | null = null;
+  private boss1vittoriaBuffer: AudioBuffer | null = null;
+  private boss1vittoriaSource: AudioBufferSourceNode | null = null;
+  private boss1sconfittaBuffer: AudioBuffer | null = null;
+  private boss1sconfittaSource: AudioBufferSourceNode | null = null;
 
   /**
    * Inizializza l'AudioContext e sblocca l'hardware con un buffer silente.
@@ -73,9 +79,43 @@ class SoundService {
       const levelCompleteArr = await levelCompleteRes.arrayBuffer();
       this.levelCompleteBuffer = await this.ctx.decodeAudioData(levelCompleteArr);
 
-      const loseRes = await fetch('/Lose1.mp3');
-      const loseArr = await loseRes.arrayBuffer();
-      this.loseBuffer = await this.ctx.decodeAudioData(loseArr);
+      // Load multiple lose sounds
+      const loseFiles = ['/Lose1.mp3', '/Lose2.mp3'];
+      this.loseBuffers = [];
+      for (const file of loseFiles) {
+        try {
+          const res = await fetch(file);
+          const arr = await res.arrayBuffer();
+          const buf = await this.ctx.decodeAudioData(arr);
+          this.loseBuffers.push(buf);
+        } catch (e) {
+          console.warn(`Failed to load loss sound: ${file}`, e);
+        }
+      }
+
+      try {
+        const bossIntroRes = await fetch('/Boss1intro.mp3');
+        const bossIntroArr = await bossIntroRes.arrayBuffer();
+        this.bossIntroBuffer = await this.ctx.decodeAudioData(bossIntroArr);
+      } catch (e) {
+        console.warn("Failed to load boss intro sound:", e);
+      }
+
+      try {
+        const boss1WinRes = await fetch('/Boss1vittoria.mp3');
+        const boss1WinArr = await boss1WinRes.arrayBuffer();
+        this.boss1vittoriaBuffer = await this.ctx.decodeAudioData(boss1WinArr);
+      } catch (e) {
+        console.warn("Failed to load boss 1 victory sound:", e);
+      }
+
+      try {
+        const boss1LoseRes = await fetch('/Boss1sconfitta.mp3');
+        const boss1LoseArr = await boss1LoseRes.arrayBuffer();
+        this.boss1sconfittaBuffer = await this.ctx.decodeAudioData(boss1LoseArr);
+      } catch (e) {
+        console.warn("Failed to load boss 1 loss sound:", e);
+      }
     } catch (e) {
       console.warn("Failed to load sounds:", e);
     }
@@ -266,12 +306,71 @@ class SoundService {
     source.start(0);
   }
 
-  playLose() {
-    if (this.isMuted || !this.loseBuffer || !this.ctx || !this.masterGain) return;
+  playLose(index?: number) {
+    if (this.isMuted || this.loseBuffers.length === 0 || !this.ctx || !this.masterGain) return;
+
+    // Use index if provided and valid, otherwise random
+    let bufferToPlay = this.loseBuffers[0];
+    if (index !== undefined && index >= 0 && index < this.loseBuffers.length) {
+      bufferToPlay = this.loseBuffers[index];
+    } else if (index === undefined) {
+      bufferToPlay = this.loseBuffers[Math.floor(Math.random() * this.loseBuffers.length)];
+    }
+
     const source = this.ctx.createBufferSource();
-    source.buffer = this.loseBuffer;
+    source.buffer = bufferToPlay;
     source.connect(this.masterGain);
     source.start(0);
+  }
+
+  playBossIntro() {
+    if (this.isMuted || !this.bossIntroBuffer || !this.ctx || !this.masterGain) return;
+    this.stopBossIntro();
+    this.bossIntroSource = this.ctx.createBufferSource();
+    this.bossIntroSource.buffer = this.bossIntroBuffer;
+    this.bossIntroSource.connect(this.masterGain);
+    this.bossIntroSource.start(0);
+  }
+
+  stopBossIntro() {
+    if (this.bossIntroSource) {
+      try {
+        this.bossIntroSource.stop();
+      } catch (e) { }
+      this.bossIntroSource = null;
+    }
+  }
+
+  playBoss1vittoria() {
+    if (this.isMuted || !this.boss1vittoriaBuffer || !this.ctx || !this.masterGain) return;
+    this.stopBoss1vittoria();
+    this.boss1vittoriaSource = this.ctx.createBufferSource();
+    this.boss1vittoriaSource.buffer = this.boss1vittoriaBuffer;
+    this.boss1vittoriaSource.connect(this.masterGain);
+    this.boss1vittoriaSource.start(0);
+  }
+
+  stopBoss1vittoria() {
+    if (this.boss1vittoriaSource) {
+      try { this.boss1vittoriaSource.stop(); } catch (e) { }
+      this.boss1vittoriaSource = null;
+    }
+  }
+
+  playBoss1sconfitta() {
+    if (this.isMuted || !this.boss1sconfittaBuffer || !this.ctx || !this.masterGain) return;
+    this.stopBoss1sconfitta();
+    this.boss1sconfittaSource = this.ctx.createBufferSource();
+    this.boss1sconfittaSource.buffer = this.boss1sconfittaBuffer;
+    this.boss1sconfittaSource.connect(this.masterGain);
+    this.boss1sconfittaSource.start(0);
+  }
+
+  stopBoss1sconfitta() {
+    if (this.boss1sconfittaSource) {
+      try { this.boss1sconfittaSource.stop(); } catch (e) { }
+      this.boss1sconfittaSource = null;
+    }
   }
 }
 
