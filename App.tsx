@@ -1571,13 +1571,23 @@ const App: React.FC = () => {
     setTriggerParticles(false);
     setPreviewResult(null);
 
+    // Check for Career Bonus
+    const careerBonus = parseInt(localStorage.getItem('career_time_bonus') || '0');
+    let newTimeLeft = savedGame.timeLeft || INITIAL_TIME;
+
+    if (careerBonus > 0) {
+      localStorage.setItem('career_time_bonus', '0');
+      newTimeLeft += careerBonus;
+      showToast(`🏆 BONUS BOSS ATTIVATO! +${careerBonus}s al tempo ripristinato!`);
+    }
+
     setGameState(prev => ({
       ...prev, // Keep some defaults
       score: 0,
       totalScore: 0, // Reset session score to 0 on restore
       streak: savedGame.streak || 0,
       level: savedGame.level || 1,
-      timeLeft: savedGame.timeLeft || INITIAL_TIME,
+      timeLeft: newTimeLeft,
       status: 'playing',
       estimatedIQ: savedGame.estimatedIQ || 100,
       levelTargets: [],
@@ -1585,7 +1595,7 @@ const App: React.FC = () => {
 
     // Generate Grid for the SAVED Level
     setTimeout(() => generateGrid(savedGame.level), 0);
-    showToast("Partita Ripristinata");
+    if (careerBonus === 0) showToast("Partita Ripristinata");
   };
 
   const handleStartGameClick = useCallback(async (e?: React.PointerEvent) => {
@@ -3203,6 +3213,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
               )}
+
 
               {gameState.status === 'game-over' && (
                 <div className={`glass-panel p-6 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-sm mt-40 relative overflow-hidden border-[3px] shadow-lg
