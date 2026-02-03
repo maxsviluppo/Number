@@ -11,6 +11,8 @@ class SoundService {
   private loseBuffers: AudioBuffer[] = [];
   private bossIntroBuffer: AudioBuffer | null = null;
   private bossIntroSource: AudioBufferSourceNode | null = null;
+  private bossBonusBuffer: AudioBuffer | null = null;
+  private bossBonusSource: AudioBufferSourceNode | null = null;
   private boss1vittoriaBuffer: AudioBuffer | null = null;
   private boss1vittoriaSource: AudioBufferSourceNode | null = null;
   private boss1sconfittaBuffer: AudioBuffer | null = null;
@@ -99,6 +101,14 @@ class SoundService {
         this.bossIntroBuffer = await this.ctx.decodeAudioData(bossIntroArr);
       } catch (e) {
         console.warn("Failed to load boss intro sound:", e);
+      }
+
+      try {
+        const bossBonusRes = await fetch('/Bonus30secondiboss.mp3');
+        const bossBonusArr = await bossBonusRes.arrayBuffer();
+        this.bossBonusBuffer = await this.ctx.decodeAudioData(bossBonusArr);
+      } catch (e) {
+        console.warn("Failed to load boss bonus sound:", e);
       }
 
       try {
@@ -338,6 +348,22 @@ class SoundService {
         this.bossIntroSource.stop();
       } catch (e) { }
       this.bossIntroSource = null;
+    }
+  }
+
+  playBossBonus() {
+    if (this.isMuted || !this.bossBonusBuffer || !this.ctx || !this.masterGain) return;
+    this.stopBossBonus();
+    this.bossBonusSource = this.ctx.createBufferSource();
+    this.bossBonusSource.buffer = this.bossBonusBuffer;
+    this.bossBonusSource.connect(this.masterGain);
+    this.bossBonusSource.start(0);
+  }
+
+  stopBossBonus() {
+    if (this.bossBonusSource) {
+      try { this.bossBonusSource.stop(); } catch (e) { }
+      this.bossBonusSource = null;
     }
   }
 
