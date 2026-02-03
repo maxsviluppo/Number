@@ -3249,14 +3249,13 @@ const App: React.FC = () => {
                         </div>
                       </div>
 
-                      <button onPointerDown={(e) => {
+                      <button onPointerDown={async (e) => {
                         e.stopPropagation();
-                        // Apply rewards logic if needed (already in score maybe? No, need to save)
-                        // Usually syncProgress handles standard levels. For Boss, we might want explicit call?
-                        // For now, just go home.
+                        if (currentUser && gameState.bossLevelId) {
+                          await profileService.completeBoss(currentUser.id, gameState.bossLevelId);
+                          loadProfile(currentUser.id);
+                        }
                         setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null, status: 'idle' }));
-                        // Force Save
-                        if (currentUser) profileService.syncProgress(currentUser.id, 1000, userProfile?.max_level || gameState.level, gameState.estimatedIQ);
                       }}
                         className="w-full bg-yellow-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border border-yellow-400 hover:bg-yellow-500">
                         RISCATTA & TORNA ALLA BASE
@@ -3369,26 +3368,28 @@ const App: React.FC = () => {
                   const isUnlocked = (userProfile?.max_level || 0) > boss.requiredLevel ||
                     gameState.level > boss.requiredLevel ||
                     (savedGame?.level || 0) > boss.requiredLevel;
-                  // const isCompleted = ... (check badge logic later)
+                  const isCompleted = userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`);
 
                   return (
                     <button
                       key={boss.id}
                       disabled={!isUnlocked}
                       className={`w-full p-4 rounded-xl flex items-center gap-4 border-2 transition-all group shadow-lg relative overflow-hidden
-                           ${isUnlocked
-                          ? 'bg-gradient-to-r from-emerald-800 to-teal-900 border-emerald-500/30 hover:border-emerald-400 active:scale-95 cursor-pointer'
-                          : 'bg-slate-800 border-slate-700 opacity-60 cursor-not-allowed grayscale'}`}
+                           ${isCompleted
+                          ? 'bg-slate-800/80 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.2)] cursor-default grayscale-[0.5]'
+                          : isUnlocked
+                            ? 'bg-gradient-to-r from-emerald-800 to-teal-900 border-emerald-500/30 hover:border-emerald-400 active:scale-95 cursor-pointer'
+                            : 'bg-slate-800 border-slate-700 opacity-60 cursor-not-allowed grayscale'}`}
                       onPointerDown={() => {
-                        if (isUnlocked) {
+                        if (isUnlocked && !isCompleted) {
                           soundService.playUIClick();
                           startBossGame(boss.id);
                         }
                       }}
                     >
                       <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 border-2 shadow-inner relative z-10
-                            ${isUnlocked ? 'bg-emerald-500 border-emerald-300 text-white' : 'bg-slate-700 border-slate-600 text-slate-500'}`}>
-                        {isUnlocked ? <Play size={24} fill="currentColor" /> : <Shield size={24} />}
+                            ${isUnlocked ? (isCompleted ? 'bg-amber-500 border-amber-300 text-white' : 'bg-emerald-500 border-emerald-300 text-white') : 'bg-slate-700 border-slate-600 text-slate-500'}`}>
+                        {isCompleted ? <Trophy size={24} className="animate-bounce-slow" /> : (isUnlocked ? <Play size={24} fill="currentColor" /> : <Shield size={24} />)}
                       </div>
 
                       <div className="text-left flex-1 relative z-10">

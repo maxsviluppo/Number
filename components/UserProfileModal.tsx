@@ -283,13 +283,17 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                             </div>
 
                             <div className="relative border-l-2 border-slate-700 ml-4 pl-8 space-y-8">
-                                {[5, 10, 15, 20, 25, 30].map((bossLevel) => {
-                                    const isDefeated = stats.max_level > bossLevel;
-                                    const isNext = stats.max_level <= bossLevel && stats.max_level > bossLevel - 5;
-                                    const isLocked = stats.max_level <= bossLevel - 5;
+                                {[1, 10, 15, 20, 25, 30].map((bossId) => {
+                                    const bossLevel = bossId === 1 ? 5 : bossId; // Boss 1 is at level 5
+                                    const isDefeated = bossId === 1
+                                        ? unlockedBadges.includes('boss_matematico')
+                                        : stats.max_level > bossLevel;
+
+                                    const isNext = !isDefeated && stats.max_level >= (bossLevel - 4);
+                                    const isLocked = !isDefeated && !isNext;
 
                                     return (
-                                        <div key={bossLevel} className="relative group">
+                                        <div key={bossId} className="relative group">
                                             {/* Node Marker */}
                                             <div className={`absolute -left-[41px] w-6 h-6 rounded-full border-4 transition-all duration-300 z-10 
                                                 ${isDefeated ? 'bg-green-500 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)]' :
@@ -311,7 +315,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                                                     <div>
                                                         <span className={`text-[10px] font-black uppercase tracking-widest ${isNext ? 'text-red-400' : 'text-slate-500'}`}>Livello {bossLevel}</span>
                                                         <h4 className={`text-sm font-bold font-orbitron uppercase mt-1 ${isDefeated ? 'text-green-400 line-through decoration-2' : 'text-white'}`}>
-                                                            {bossLevel === 5 ? 'Il Guardiano del Cancello' :
+                                                            {bossId === 1 ? 'BOSS MATEMATICO' :
                                                                 bossLevel === 10 ? 'Cyber Sentinel' :
                                                                     bossLevel === 15 ? 'Nucleo Instabile' :
                                                                         bossLevel === 20 ? 'L\'Architetto' : 'Entità Sconosciuta'}

@@ -46,6 +46,7 @@ export const BADGES: Badge[] = [
 
     // --- SPECIAL BOSSES (Mock Logic for now based on Levels) ---
     { id: 'boss_5', title: 'Guardiano Caduto', description: 'Sconfiggi il Guardiano al Livello 5.', icon: Swords, color: 'text-red-500', bgGradient: 'from-red-900/40 to-black/40', condition: (s) => s.max_level > 5 },
+    { id: 'boss_matematico', title: 'Sterminatore Matematico', description: 'Sconfiggi il primo Boss: Il Boss Matematico.', icon: Swords, color: 'text-emerald-400', bgGradient: 'from-emerald-900/40 to-black/40', condition: (s) => false }, // Condition is manual sync
     { id: 'boss_10', title: 'Sentinel Down', description: 'Sconfiggi la Sentinella al Livello 10.', icon: Shield, color: 'text-orange-500', bgGradient: 'from-orange-900/40 to-black/40', condition: (s) => s.max_level > 10 },
     { id: 'boss_25', title: 'Glitch Fixer', description: 'Correggi l\'anomalia al Livello 25.', icon: Bug, color: 'text-green-500', bgGradient: 'from-green-900/40 to-black/40', condition: (s) => s.max_level > 25 },
     { id: 'boss_50', title: 'Matrix Breaker', description: 'Sconfiggi l\'Architetto al Livello 50.', icon: Globe, color: 'text-blue-500', bgGradient: 'from-blue-900/40 to-black/40', condition: (s) => s.max_level > 50 },
