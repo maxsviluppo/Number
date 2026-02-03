@@ -2690,32 +2690,18 @@ const App: React.FC = () => {
                   </button>
 
                   <button
-                    className={`flex items-center justify-center gap-2 py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none transition-all duration-300 col-span-2 relative overflow-hidden group
-                      ${((userProfile?.max_level || 0) > 5 || gameState.level > 5 || (savedGame?.level || 0) > 5)
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:scale-105'
-                        : 'bg-slate-800 text-slate-500 opacity-80 cursor-not-allowed'}`}
+                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
                     id="boss-btn-home"
                     onPointerDown={() => {
-                      if ((userProfile?.max_level || 0) > 5 || gameState.level > 5 || (savedGame?.level || 0) > 5) {
-                        soundService.playUIClick();
-                        setActiveModal('boss_selection');
-                      } else {
-                        soundService.playError();
-                        showToast(`🚀 COMPLETA IL LIVELLO 5 PER SBLOCCARE I BOSS!`, [], 3000);
-                      }
+                      soundService.playUIClick();
+                      setActiveModal('boss_selection');
                     }}
                   >
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-                    {((userProfile?.max_level || 0) > 5 || gameState.level > 5 || (savedGame?.level || 0) > 5) ? (
-                      <Crown className="w-8 h-8 text-yellow-300 animate-[bounce_3s_infinite]" />
-                    ) : (
-                      <Lock className="w-8 h-8 text-slate-400" />
-                    )}
+                    <Crown className="w-8 h-8 text-yellow-300 animate-[bounce_3s_infinite]" />
                     <div className="flex flex-col items-start leading-none relative z-10">
                       <span className="font-orbitron text-xl font-black uppercase tracking-widest drop-shadow-md">BOSS LEVELS</span>
-                      <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">
-                        {((userProfile?.max_level || 0) > 5 || gameState.level > 5 || (savedGame?.level || 0) > 5) ? 'Sfide Epiche & Bonus' : 'Sblocca al Livello 6'}
-                      </span>
+                      <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Sfide Epiche & Bonus</span>
                     </div>
                   </button>
 
