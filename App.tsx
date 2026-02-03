@@ -104,6 +104,7 @@ const App: React.FC = () => {
   const [showVideo, setShowVideo] = useState(false);
   const [showLostVideo, setShowLostVideo] = useState(false);
   const [showBossIntro, setShowBossIntro] = useState(false);
+  const [isBossBonusPlaying, setIsBossBonusPlaying] = useState(false);
   const [showHomeTutorial, setShowHomeTutorial] = useState(false);
   const [showGameTutorial, setShowGameTutorial] = useState(false);
   const theme = 'orange';
@@ -2370,6 +2371,8 @@ const App: React.FC = () => {
     // 1. Visual Fade Out
     setIsVideoVisible(false);
     soundService.stopBoss1vittoria();
+    soundService.stopBossBonus();
+    setIsBossBonusPlaying(false);
 
     // 2. Audio Fade Out
     if (videoRef.current) {
@@ -2533,12 +2536,13 @@ const App: React.FC = () => {
         } catch (e) { console.warn("Tutorial check skipped", e); }
       }} />}
       <div
-        className="min-h-[100dvh] bg-gradient-to-t from-[#004488] to-[#0088dd] text-slate-100 font-sans overflow-hidden select-none pb-20 safe-area-bottom"
+        className={`min-h-[100dvh] text-slate-100 font-sans overflow-hidden select-none pb-20 safe-area-bottom transition-colors duration-1000
+          ${gameState.isBossLevel ? 'bg-emerald-950' : 'bg-gradient-to-t from-[#004488] to-[#0088dd]'}`}
         onPointerUp={handleGlobalEnd}
         onPointerLeave={handleGlobalEnd}
       >
-        {/* BOSS BACKGROUND LAYER */}
-        <div className={`absolute inset-0 bg-[url('/sfondo_green.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
+        {/* BOSS BACKGROUND LAYER - Fixed to cover everything including bottom safe area */}
+        <div className={`fixed -inset-[2px] bg-[url('/sfondo_green.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
 
 
 
@@ -2558,7 +2562,7 @@ const App: React.FC = () => {
         >
           <video
             ref={videoRef}
-            src={showVideo ? winVideoSrc : (showLostVideo ? loseVideoSrc : (showSurrenderVideo ? surrenderVideoSrc : (showBossIntro ? '/Boss1intro.mp4' : '')))}
+            src={isBossBonusPlaying ? '/Bonus30secondiboss.mp4' : (showVideo ? winVideoSrc : (showLostVideo ? loseVideoSrc : (showSurrenderVideo ? surrenderVideoSrc : (showBossIntro ? '/Boss1intro.mp4' : ''))))}
             className="w-full h-full object-cover"
             playsInline
             autoPlay
@@ -2572,8 +2576,13 @@ const App: React.FC = () => {
                   soundService.stopBossIntro(); // Force clear any pre-loaded source
                   soundService.playBossIntro();
                 } else if (showVideo) {
-                  soundService.stopBoss1vittoria();
-                  soundService.playBoss1vittoria();
+                  if (isBossBonusPlaying) {
+                    soundService.stopBossBonus();
+                    soundService.playBossBonus();
+                  } else {
+                    soundService.stopBoss1vittoria();
+                    soundService.playBoss1vittoria();
+                  }
                 } else if (showLostVideo) {
                   soundService.stopBoss1sconfitta();
                   soundService.playBoss1sconfitta();
@@ -2581,7 +2590,18 @@ const App: React.FC = () => {
               }
             }}
             onEnded={() => {
-              if (showVideo) handleVideoClose();
+              if (showVideo) {
+                if (gameState.bossLevelId === 1 && !isBossBonusPlaying) {
+                  setIsBossBonusPlaying(true);
+                  if (videoRef.current) {
+                    videoRef.current.src = '/Bonus30secondiboss.mp4';
+                    videoRef.current.load();
+                    videoRef.current.play().catch(e => console.warn("Bonus video blocked:", e));
+                  }
+                } else {
+                  handleVideoClose();
+                }
+              }
               else if (showLostVideo) handleLostVideoClose();
               else if (showSurrenderVideo) handleSurrenderVideoClose();
               else if (showBossIntro) handleBossIntroClose();
@@ -2628,7 +2648,7 @@ const App: React.FC = () => {
                 }}
               >
                 <span>SKIP {showBossIntro ? 'INTRO' : ''}</span>
-                <FastForward size={14} className={showLostVideo ? (gameState.isBossLevel ? "text-emerald-400" : "text-red-500") : (showSurrenderVideo ? "text-blue-500" : (showBossIntro ? "text-emerald-400" : "text-[#FF8800]"))} />
+                <FastForward size={14} className={showLostVideo ? (gameState.isBossLevel ? "text-emerald-400" : "text-red-500") : (showSurrenderVideo ? "text-blue-500" : ((showBossIntro || (showVideo && gameState.isBossLevel)) ? "text-emerald-400" : "text-[#FF8800]"))} />
               </button>
             </div>
           )}
