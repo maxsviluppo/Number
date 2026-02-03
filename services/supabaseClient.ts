@@ -64,6 +64,7 @@ export interface UserProfile {
     estimated_iq: number;
     avatar_url?: string;
     updated_at?: string;
+    career_time_bonus?: number; // Accumulated time bonus from boss victories
 }
 
 export interface LeaderboardEntry {
@@ -297,7 +298,9 @@ export const profileService = {
                 id: userId,
                 badges: updatedBadges,
                 // Also give a score bonus for first completion
-                total_score: (profile.total_score || 0) + 1000
+                total_score: (profile.total_score || 0) + 1000,
+                // Award 30 second time bonus for Boss 1
+                career_time_bonus: (profile.career_time_bonus || 0) + (bossId === 1 ? 30 : 0)
             });
             console.log(`🏆 Boss ${bossId} completed! Badge awarded: ${badgeId}`);
             return true; // Newly awarded

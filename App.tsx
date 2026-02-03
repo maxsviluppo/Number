@@ -1511,6 +1511,8 @@ const App: React.FC = () => {
     // Consume bonus if starting a standard game
     if (careerBonus > 0 && !activeMatch?.isDuel) {
       localStorage.setItem('career_time_bonus', '0');
+      // Show toast notification
+      showToast(`🏆 BONUS BOSS ATTIVATO! +${careerBonus}s al tempo iniziale!`);
     }
 
     setGameState(prev => {
@@ -1850,15 +1852,24 @@ const App: React.FC = () => {
           // We don't stack it indefinitely, we set it to 30 for the next classic game
           localStorage.setItem('career_time_bonus', '30');
 
-          // Sync score to global profile - EXCLUDING Time Bonus as requested
+          // Sync score to global profile AND award boss completion
           if (currentUser) {
             const bossFinalPoints = newScore + 50; // Just Score + Victory Bonus, NO Time Left conversion
+
+            // Award Boss Badge + Time Bonus
+            profileService.completeBoss(currentUser.id, gameState.bossLevelId!)
+              .then(isNewCompletion => {
+                if (isNewCompletion) {
+                  console.log('✅ Boss completion badge and time bonus awarded!');
+                }
+              })
+              .catch(e => console.error("Error completing boss:", e));
+
+            // Sync points
             profileService.syncProgress(currentUser.id, bossFinalPoints, gameState.level, gameState.estimatedIQ)
               .then(() => loadProfile(currentUser.id))
               .catch(e => console.error("Error syncing boss progress:", e));
           }
-
-          // showToast(`🏆 BOSS SCONFITTO! +30s BONUS CARRIERA!`, [], 4000); // REMOVED
 
           // Boss 1 specific victory sequence
           if (gameState.bossLevelId === 1) {
@@ -1875,11 +1886,7 @@ const App: React.FC = () => {
             // Standard Boss Win
             setShowVideo(true);
           }
-          // Return to Home after victory animation for other bosses (fallback)
-          setTimeout(() => {
-            goToHome();
-            setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
-          }, 3000);
+
           return;
         }
 
