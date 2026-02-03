@@ -3407,7 +3407,8 @@ const App: React.FC = () => {
 
               <div className="flex flex-col gap-4 relative z-10 w-full overflow-y-auto max-h-[50vh]">
                 {BOSS_LEVELS.map(boss => {
-                  const isUnlocked = (userProfile?.max_level || 0) > boss.requiredLevel ||
+                  const isUnlocked = boss.id === 1 || // TEMP: FORCE UNLOCK BOSS 1 FOR DEV
+                    (userProfile?.max_level || 0) > boss.requiredLevel ||
                     gameState.level > boss.requiredLevel ||
                     (savedGame?.level || 0) > boss.requiredLevel;
                   const isCompleted = userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`);
