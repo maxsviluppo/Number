@@ -2409,8 +2409,8 @@ const App: React.FC = () => {
         // Ensure we are idle to stop game interaction
         setGameState(prev => ({ ...prev, status: 'idle' }));
       } else if (gameState.isBossLevel) {
-        goToHome();
-        setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
+        setActiveModal('boss_selection');
+        setGameState(prev => ({ ...prev, status: 'idle', isBossLevel: false, bossLevelId: null }));
       } else {
         setGameState(prev => ({
           ...prev,
@@ -2601,7 +2601,21 @@ const App: React.FC = () => {
             }}
             onEnded={() => {
               if (showVideo) {
-                handleVideoClose();
+                if (gameState.bossLevelId === 1 && isBossBonusPlaying) {
+                  // STEP 1 COMPLETE: Bonus Video Ended -> Play Boss Victory Video
+                  setIsBossBonusPlaying(false);
+                  setWinVideoSrc('/Boss1vittoria.mp4');
+                  // Force reload to ensure src update
+                  setTimeout(() => {
+                    if (videoRef.current) {
+                      videoRef.current.load();
+                      videoRef.current.play().catch(e => console.warn("Boss victory video blocked:", e));
+                    }
+                  }, 50);
+                } else {
+                  // STEP 2 COMPLETE: Boss Victory Video Ended -> Close and return to lobby
+                  handleVideoClose();
+                }
               }
               else if (showLostVideo) handleLostVideoClose();
               else if (showSurrenderVideo) handleSurrenderVideoClose();
