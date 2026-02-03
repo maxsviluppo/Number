@@ -2600,10 +2600,8 @@ const App: React.FC = () => {
               }
             }}
             onEnded={() => {
-                  handleVideoClose();
-                } else {
-                  handleVideoClose();
-                }
+              if (showVideo) {
+                handleVideoClose();
               }
               else if (showLostVideo) handleLostVideoClose();
               else if (showSurrenderVideo) handleSurrenderVideoClose();
