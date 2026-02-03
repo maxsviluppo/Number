@@ -143,6 +143,20 @@ const App: React.FC = () => {
     }, 8000); // Slightly more frequent
     return () => clearInterval(interval);
   }, []);
+  useEffect(() => {
+    if (gameState.isBossLevel) {
+      document.body.style.background = '#022c22'; // emerald-950
+      document.documentElement.style.background = '#022c22';
+    } else {
+      document.body.style.background = '#020617'; // Default Slate-950
+      document.documentElement.style.background = '#020617';
+    }
+    return () => {
+      document.body.style.background = '#020617';
+      document.documentElement.style.background = '#020617';
+    };
+  }, [gameState.isBossLevel]);
+
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
 
   const [savedGame, setSavedGame] = useState<any>(null);
@@ -2536,13 +2550,21 @@ const App: React.FC = () => {
         } catch (e) { console.warn("Tutorial check skipped", e); }
       }} />}
       <div
-        className={`min-h-[100dvh] text-slate-100 font-sans overflow-hidden select-none pb-20 safe-area-bottom transition-colors duration-1000
-          ${gameState.isBossLevel ? 'bg-emerald-950' : 'bg-gradient-to-t from-[#004488] to-[#0088dd]'}`}
+        className={`min-h-[100dvh] text-slate-100 font-sans overflow-hidden select-none pb-20 safe-area-bottom transition-colors duration-1000`}
+        style={{
+          background: gameState.isBossLevel ? '#022c22' : 'linear-gradient(to top, #004488, #0088dd)'
+        }}
         onPointerUp={handleGlobalEnd}
         onPointerLeave={handleGlobalEnd}
       >
-        {/* BOSS BACKGROUND LAYER - Fixed to cover everything including bottom safe area with extra bleed */}
-        <div className={`fixed -inset-[5%] w-[110%] h-[110%] bg-[url('/sfondo_green.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
+        {/* BOSS BACKGROUND FALLBACK LAYER (Solid Green) - Ensures no blue leaks ever */}
+        <div className={`fixed inset-0 bg-emerald-950 z-[-1] transition-opacity duration-300 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0'}`}></div>
+
+        {/* BOSS BOTTOM PATCH - Extra safety for safe-area */}
+        <div className={`fixed -bottom-40 left-0 w-full h-80 bg-emerald-950 z-[-1] ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0'}`}></div>
+
+        {/* BOSS BACKGROUND IMAGE LAYER - Extreme bleed to cover everything */}
+        <div className={`fixed -inset-[20%] w-[140%] h-[140%] bg-[url('/sfondo_green.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
 
 
 
