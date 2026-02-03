@@ -2541,8 +2541,8 @@ const App: React.FC = () => {
         onPointerUp={handleGlobalEnd}
         onPointerLeave={handleGlobalEnd}
       >
-        {/* BOSS BACKGROUND LAYER - Fixed to cover everything including bottom safe area */}
-        <div className={`fixed -inset-[2px] bg-[url('/sfondo_green.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
+        {/* BOSS BACKGROUND LAYER - Fixed to cover everything including bottom safe area with extra bleed */}
+        <div className={`fixed -inset-[5%] w-[110%] h-[110%] bg-[url('/sfondo_green.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
 
 
 
