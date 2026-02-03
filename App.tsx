@@ -2600,18 +2600,7 @@ const App: React.FC = () => {
               }
             }}
             onEnded={() => {
-              if (showVideo) {
-                if (gameState.bossLevelId === 1 && isBossBonusPlaying) {
-                  // Sequence Step: Bonus Video Ended -> Play Victory Video
-                  setIsBossBonusPlaying(false);
-                  setWinVideoSrc('/Boss1vittoria.mp4');
-                  // Force reload next tick to ensure src update is picked up
-                  setTimeout(() => {
-                    if (videoRef.current) {
-                      videoRef.current.load();
-                      videoRef.current.play().catch(e => console.warn("Chain video blocked:", e));
-                    }
-                  }, 50);
+                  handleVideoClose();
                 } else {
                   handleVideoClose();
                 }
