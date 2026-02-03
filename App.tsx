@@ -1880,140 +1880,37 @@ const App: React.FC = () => {
             goToHome();
             setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
           }, 3000);
+          return;
         }
 
-        return;
-      }
+        // DUEL WIN LOGIC
+        if (activeMatch?.isDuel) {
+          // STANDARD MODE - WIN CONDITION: 5 TARGETS (POINTS)
+          // CRITICAL FIX: Ensure this NEVER runs for Blitz mode
+          if (duelMode === 'standard') {
+            const finalScore = newScore;
+            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, finalScore, localTargetsFound)
+              .catch(e => console.error("Error syncing final duel stats:", e));
 
-      // DUEL WIN LOGIC
-      if (activeMatch?.isDuel) {
-        // STANDARD MODE - WIN CONDITION: 5 TARGETS (POINTS)
-        // CRITICAL FIX: Ensure this NEVER runs for Blitz mode
-        if (duelMode === 'standard') {
-          const finalScore = newScore;
-          matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, finalScore, localTargetsFound)
-            .catch(e => console.error("Error syncing final duel stats:", e));
-
-          if (localTargetsFound >= 5) {
-            try {
-              await matchService.declareWinner(activeMatch.id, currentUser.id);
-              processedWinRef.current = activeMatch.id;
-
-              // Optimistic Update
-              setLatestMatchData(prev => ({
-                ...prev,
-                status: 'finished',
-                winner_id: currentUser!.id,
-                player1_score: activeMatch.isP1 ? finalScore : prev?.player1_score,
-                player2_score: !activeMatch.isP1 ? finalScore : prev?.player2_score,
-                p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
-                p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds,
-                last_time_bonus: finalTimeBonus,
-                last_victory_bonus: finalVictoryBonus
-              }));
-
-              // SYNC GLOBAL SCORE: Match Points + Bonuses
-              await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
-              await loadProfile(currentUser.id);
-
-              soundService.playLevelComplete();
-
-              setTimeout(() => {
-                if (videoRef.current) {
-                  const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-                  const vidSrc = WIN_VIDEOS[winIdx];
-                  videoRef.current.src = vidSrc;
-                  videoRef.current.muted = false;
-                  videoRef.current.load();
-                  videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
-                  soundService.playWinner(winIdx);
-                  setWinVideoSrc(vidSrc);
-                  setShowVideo(true);
-                  setIsVideoVisible(true);
-                }
-              }, 800);
-
-            } catch (error: any) {
-              console.error("Error finishing duel safely:", error);
-              setGameState(prev => ({ ...prev, status: 'idle' }));
-              setShowDuelRecap(true);
-            }
-            setSelectedPath([]);
-            return;
-          }
-        }
-        // BLITZ DOMINION LOGIC:
-        // We intentionally do NOT trigger a win here.
-        // Dominion mode ends strictly when the timer reaches zero (handled in handleTimeAttackEnd).
-        // Finding all targets (if that were possible/relevant) doesn't end the game early in Dominion.
-      }
-
-      // STANDARD LEVEL WIN LOGIC (Single Player)
-      if (timerRef.current) window.clearInterval(timerRef.current);
-      setIsVictoryAnimating(true);
-
-      setGameState(prev => ({
-        ...prev,
-        score: prev.score + totalWinBonuses,
-        totalScore: prev.totalScore + totalWinBonuses,
-        streak: 0,
-        estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
-        levelTargets: newTargets,
-      }));
-
-      if (currentUser) {
-        const saveState = {
-          totalScore: gameStateRef.current.totalScore + currentPoints + totalWinBonuses,
-          streak: 0,
-          level: gameState.level + 1,
-          timeLeft: gameState.timeLeft + 60,
-          estimatedIQ: Math.min(200, gameState.estimatedIQ + 4)
-        };
-
-        // SYNC TO GLOBAL PROFILE
-        profileService.syncProgress(currentUser.id, finalPointsToSync, saveState.level, saveState.estimatedIQ)
-          .then(() => loadProfile(currentUser.id))
-          .catch(e => console.error("Error syncing progress:", e));
-
-        profileService.saveGameState(currentUser.id, saveState)
-          .catch(e => console.error("Error saving game state:", e));
-        setSavedGame(saveState);
-      }
-
-
-    } else {
-      // NOT ALL DONE - CONTINUE PLAYING
-      // setGameState was already called at the top of handleSuccess for consistent UI update
-      // SYNC DUEL STATS (Non-Winning Move)
-      if (activeMatch?.isDuel && currentUser) {
-        // Calculate localTargetsFound for this scope
-        const localTargetsFound = newTargets.filter(t => t.completed).length;
-
-        if (duelMode === 'standard') {
-          // STANDARD MODE: Score logic
-          matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, localTargetsFound)
-            .catch(e => console.error("Error syncing duel stats:", e));
-
-          // CHECK WIN CONDITION HERE TOO
-          if (localTargetsFound >= 5) {
-            (async () => {
+            if (localTargetsFound >= 5) {
               try {
                 await matchService.declareWinner(activeMatch.id, currentUser.id);
                 processedWinRef.current = activeMatch.id;
 
-                // Optimistic Data Update
+                // Optimistic Update
                 setLatestMatchData(prev => ({
                   ...prev,
                   status: 'finished',
-                  winner_id: currentUser.id,
-                  player1_score: activeMatch.isP1 ? newScore : prev?.player1_score,
-                  player2_score: !activeMatch.isP1 ? newScore : prev?.player2_score,
+                  winner_id: currentUser!.id,
+                  player1_score: activeMatch.isP1 ? finalScore : prev?.player1_score,
+                  player2_score: !activeMatch.isP1 ? finalScore : prev?.player2_score,
                   p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
                   p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds,
+                  last_time_bonus: finalTimeBonus,
+                  last_victory_bonus: finalVictoryBonus
                 }));
 
-                // SYNC GLOBAL SCORE
-                const finalPointsToSync = newScore;
+                // SYNC GLOBAL SCORE: Match Points + Bonuses
                 await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
                 await loadProfile(currentUser.id);
 
@@ -2027,1867 +1924,1966 @@ const App: React.FC = () => {
                     videoRef.current.muted = false;
                     videoRef.current.load();
                     videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                    soundService.playWinner(winIdx);
                     setWinVideoSrc(vidSrc);
                     setShowVideo(true);
                     setIsVideoVisible(true);
                   }
                 }, 800);
-              } catch (e) { console.error(e); }
-            })();
-            setSelectedPath([]);
-            return;
-          }
 
-        } else {
-          // Blitz/TimeAttack generic sync
-          const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
-          matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, localTargetsFound, currentRounds)
-            .catch(e => console.error("Error syncing duel stats:", e));
+              } catch (error: any) {
+                console.error("Error finishing duel safely:", error);
+                setGameState(prev => ({ ...prev, status: 'idle' }));
+                setShowDuelRecap(true);
+              }
+              setSelectedPath([]);
+              return;
+            }
+          }
+          // BLITZ DOMINION LOGIC:
+          // We intentionally do NOT trigger a win here.
+          // Dominion mode ends strictly when the timer reaches zero (handled in handleTimeAttackEnd).
+          // Finding all targets (if that were possible/relevant) doesn't end the game early in Dominion.
+        }
+
+        // STANDARD LEVEL WIN LOGIC (Single Player)
+        if (timerRef.current) window.clearInterval(timerRef.current);
+        setIsVictoryAnimating(true);
+
+        setGameState(prev => ({
+          ...prev,
+          score: prev.score + totalWinBonuses,
+          totalScore: prev.totalScore + totalWinBonuses,
+          streak: 0,
+          estimatedIQ: Math.min(200, prev.estimatedIQ + 4),
+          levelTargets: newTargets,
+        }));
+
+        if (currentUser) {
+          const saveState = {
+            totalScore: gameStateRef.current.totalScore + currentPoints + totalWinBonuses,
+            streak: 0,
+            level: gameState.level + 1,
+            timeLeft: gameState.timeLeft + 60,
+            estimatedIQ: Math.min(200, gameState.estimatedIQ + 4)
+          };
+
+          // SYNC TO GLOBAL PROFILE
+          profileService.syncProgress(currentUser.id, finalPointsToSync, saveState.level, saveState.estimatedIQ)
+            .then(() => loadProfile(currentUser.id))
+            .catch(e => console.error("Error syncing progress:", e));
+
+          profileService.saveGameState(currentUser.id, saveState)
+            .catch(e => console.error("Error saving game state:", e));
+          setSavedGame(saveState);
+        }
+      } else {
+        // NOT ALL DONE - CONTINUE PLAYING
+        // setGameState was already called at the top of handleSuccess for consistent UI update
+        // SYNC DUEL STATS (Non-Winning Move)
+        if (activeMatch?.isDuel && currentUser) {
+          // Calculate localTargetsFound for this scope
+          const localTargetsFound = newTargets.filter(t => t.completed).length;
+
+          if (duelMode === 'standard') {
+            // STANDARD MODE: Score logic
+            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, localTargetsFound)
+              .catch(e => console.error("Error syncing duel stats:", e));
+
+            // CHECK WIN CONDITION HERE TOO
+            if (localTargetsFound >= 5) {
+              (async () => {
+                try {
+                  await matchService.declareWinner(activeMatch.id, currentUser.id);
+                  processedWinRef.current = activeMatch.id;
+
+                  // Optimistic Data Update
+                  setLatestMatchData(prev => ({
+                    ...prev,
+                    status: 'finished',
+                    winner_id: currentUser.id,
+                    player1_score: activeMatch.isP1 ? newScore : prev?.player1_score,
+                    player2_score: !activeMatch.isP1 ? newScore : prev?.player2_score,
+                    p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
+                    p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds,
+                  }));
+
+                  // SYNC GLOBAL SCORE
+                  const finalPointsToSync = newScore;
+                  await profileService.syncProgress(currentUser.id, finalPointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+                  await loadProfile(currentUser.id);
+
+                  soundService.playLevelComplete();
+
+                  setTimeout(() => {
+                    if (videoRef.current) {
+                      const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+                      const vidSrc = WIN_VIDEOS[winIdx];
+                      videoRef.current.src = vidSrc;
+                      videoRef.current.muted = false;
+                      videoRef.current.load();
+                      videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                      setWinVideoSrc(vidSrc);
+                      setShowVideo(true);
+                      setIsVideoVisible(true);
+                    }
+                  }, 800);
+                } catch (e) { console.error(e); }
+              })();
+              setSelectedPath([]);
+              return;
+            }
+
+          } else {
+            // Blitz/TimeAttack generic sync
+            const currentRounds = activeMatch.isP1 ? duelRounds.p1 : duelRounds.p2;
+            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, localTargetsFound, currentRounds)
+              .catch(e => console.error("Error syncing duel stats:", e));
+          }
+        }
+
+        // TIME ATTACK: Individual Target Refill
+        if (duelMode === 'time_attack' || activeMatch?.mode === 'time_attack') {
+          setTimeout(() => {
+            const currentState = gameStateRef.current;
+            if (!currentState || !currentState.grid) return;
+
+            const currentGrid = currentState.grid;
+            const currentRefTargets = currentState.levelTargets || [];
+            const allSols = Array.from(findAllSolutions(currentGrid));
+            const activeValues = currentRefTargets.filter(t => !t.completed).map(t => t.value);
+            const candidates = allSols.filter(v => !activeValues.includes(v));
+
+            if (candidates.length > 0) {
+              const nextVal = candidates[Math.floor(Math.random() * candidates.length)];
+              setGameState(prev => {
+                const updated = [...prev.levelTargets];
+                const idx = updated.findIndex(t => t.value === matchedValue && t.completed);
+                if (idx !== -1) {
+                  updated[idx] = { value: nextVal, completed: false };
+                }
+                return { ...prev, levelTargets: updated };
+              });
+              soundService.playPop();
+            }
+          }, 3000);
         }
       }
-
-      // TIME ATTACK: Individual Target Refill
-      if (duelMode === 'time_attack' || activeMatch?.mode === 'time_attack') {
-        setTimeout(() => {
-          const currentState = gameStateRef.current;
-          if (!currentState || !currentState.grid) return;
-
-          const currentGrid = currentState.grid;
-          const currentRefTargets = currentState.levelTargets || [];
-          const allSols = Array.from(findAllSolutions(currentGrid));
-          const activeValues = currentRefTargets.filter(t => !t.completed).map(t => t.value);
-          const candidates = allSols.filter(v => !activeValues.includes(v));
-
-          if (candidates.length > 0) {
-            const nextVal = candidates[Math.floor(Math.random() * candidates.length)];
-            setGameState(prev => {
-              const updated = [...prev.levelTargets];
-              const idx = updated.findIndex(t => t.value === matchedValue && t.completed);
-              if (idx !== -1) {
-                updated[idx] = { value: nextVal, completed: false };
-              }
-              return { ...prev, levelTargets: updated };
-            });
-            soundService.playPop();
-          }
-        }, 3000);
-      }
+      setSelectedPath([]);
+    } catch (error) {
+      console.error("Critical error in handleSuccess:", error);
+      setGameState(prev => ({ ...prev, status: 'idle' }));
+      setSelectedPath([]);
     }
-    setSelectedPath([]);
-  } catch (error) {
-    console.error("Critical error in handleSuccess:", error);
-    setGameState(prev => ({ ...prev, status: 'idle' }));
-    setSelectedPath([]);
-  }
-};
+  };
 
-const handleTimeAttackEnd = () => {
-  // 1. Play Sound (Finished)
-  soundService.playExternalSound('Fine_partita_win.mp3');
+  const handleTimeAttackEnd = () => {
+    // 1. Play Sound (Finished)
+    soundService.playExternalSound('Fine_partita_win.mp3');
 
-  // 2. Final Score Update and Finish Match
-  if (activeMatch && currentUser) {
-    processedWinRef.current = activeMatch.id;
-    const myScore = gameStateRef.current.score; // This is POINTS (10, 20...)
-    const oppScore = opponentScore;             // This is OPP POINTS (if synced correctly in Blitz)
+    // 2. Final Score Update and Finish Match
+    if (activeMatch && currentUser) {
+      processedWinRef.current = activeMatch.id;
+      const myScore = gameStateRef.current.score; // This is POINTS (10, 20...)
+      const oppScore = opponentScore;             // This is OPP POINTS (if synced correctly in Blitz)
 
-    let winnerId: string | null = null;
+      let winnerId: string | null = null;
 
-    // Determine My Targets vs Opponent Targets (for Blitz)
-    // Standard: Targets = Completed Count (Accumulated)
-    // Blitz: Targets = Owned Count (Current)
-    let myTargetsForSync = gameStateRef.current.levelTargets.filter(t => t.completed).length; // Default
+      // Determine My Targets vs Opponent Targets (for Blitz)
+      // Standard: Targets = Completed Count (Accumulated)
+      // Blitz: Targets = Owned Count (Current)
+      let myTargetsForSync = gameStateRef.current.levelTargets.filter(t => t.completed).length; // Default
 
-    if (activeMatch.mode === 'blitz') {
-      const myOwnerId = activeMatch.isP1 ? 'p1' : 'p2';
-      const oppOwnerId = activeMatch.isP1 ? 'p2' : 'p1';
+      if (activeMatch.mode === 'blitz') {
+        const myOwnerId = activeMatch.isP1 ? 'p1' : 'p2';
+        const oppOwnerId = activeMatch.isP1 ? 'p2' : 'p1';
 
-      const myOwned = gameStateRef.current.levelTargets.filter(t => t.owner === myOwnerId).length;
-      const oppOwned = gameStateRef.current.levelTargets.filter(t => t.owner === oppOwnerId).length;
+        const myOwned = gameStateRef.current.levelTargets.filter(t => t.owner === myOwnerId).length;
+        const oppOwned = gameStateRef.current.levelTargets.filter(t => t.owner === oppOwnerId).length;
 
-      // Use THESE for win calculation
-      myTargetsForSync = myOwned;
+        // Use THESE for win calculation
+        myTargetsForSync = myOwned;
 
-      // 1. PRIMARY: Who has more TARGETS?
-      if (myOwned > oppOwned) {
-        winnerId = currentUser.id;
-      } else if (oppOwned > myOwned) {
-        winnerId = activeMatch.opponentId;
-      } else {
-        // 2. SECONDARY: Tie-Breaker (Points)
-        if (myScore > oppScore) {
+        // 1. PRIMARY: Who has more TARGETS?
+        if (myOwned > oppOwned) {
           winnerId = currentUser.id;
-        } else if (oppScore > myScore) {
+        } else if (oppOwned > myOwned) {
           winnerId = activeMatch.opponentId;
         } else {
-          winnerId = null; // Perfect Draw
+          // 2. SECONDARY: Tie-Breaker (Points)
+          if (myScore > oppScore) {
+            winnerId = currentUser.id;
+          } else if (oppScore > myScore) {
+            winnerId = activeMatch.opponentId;
+          } else {
+            winnerId = null; // Perfect Draw
+          }
         }
+      } else {
+        // STANDARD / TIME ATTACK Logic (Score based)
+        // Score (Points) is primary here too usually?
+        // Standard: "Vince chi fa 5 punti". We handle that in handleSuccess usually.
+        // Time Attack: "Vince chi fa più punti".
+        if (myScore > oppScore) winnerId = currentUser.id;
+        else if (oppScore > myScore) winnerId = activeMatch.opponentId;
       }
-    } else {
-      // STANDARD / TIME ATTACK Logic (Score based)
-      // Score (Points) is primary here too usually?
-      // Standard: "Vince chi fa 5 punti". We handle that in handleSuccess usually.
-      // Time Attack: "Vince chi fa più punti".
-      if (myScore > oppScore) winnerId = currentUser.id;
-      else if (oppScore > myScore) winnerId = activeMatch.opponentId;
-    }
 
-    const iWon = winnerId === currentUser.id;
+      const iWon = winnerId === currentUser.id;
 
-    // PASS POINTS TO GLOBAL:
-    // If I won, I pass my Local Match Points (totalScore) to global.
-    const pointsToSync = gameStateRef.current.totalScore + 100; // +100 Bonus
+      // PASS POINTS TO GLOBAL:
+      // If I won, I pass my Local Match Points (totalScore) to global.
+      const pointsToSync = gameStateRef.current.totalScore + 100; // +100 Bonus
 
-    // Sync Stats: Score (Points) AND Targets (Rounds)
-    matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, myTargetsForSync)
-      .then(() => matchService.declareWinner(activeMatch.id, winnerId))
-      .then(() => {
-        if (iWon) {
-          // SYNC TO GLOBAL PROFILE - Score + Win Bonus
-          // Use 'pointsToSync' calculated above (Local Points + Bonus)
-          profileService.syncProgress(currentUser.id, pointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
-            .then(() => loadProfile(currentUser.id));
-        }
-      })
-      .catch(e => console.error("Error ending time attack:", e));
+      // Sync Stats: Score (Points) AND Targets (Rounds)
+      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, myTargetsForSync)
+        .then(() => matchService.declareWinner(activeMatch.id, winnerId))
+        .then(() => {
+          if (iWon) {
+            // SYNC TO GLOBAL PROFILE - Score + Win Bonus
+            // Use 'pointsToSync' calculated above (Local Points + Bonus)
+            profileService.syncProgress(currentUser.id, pointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
+              .then(() => loadProfile(currentUser.id));
+          }
+        })
+        .catch(e => console.error("Error ending time attack:", e));
 
-    // 3. Play Video before Recap
-    if (iWon) {
-      setTimeout(() => {
-        if (videoRef.current) {
-          const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-          const vidSrc = WIN_VIDEOS[winIdx];
-          videoRef.current.src = vidSrc;
-          videoRef.current.muted = true;
-          videoRef.current.load();
-          videoRef.current.play().catch(e => console.warn("TimeAttack win video blocked:", e));
-          soundService.playWinner(winIdx);
-          setWinVideoSrc(vidSrc);
-          setShowVideo(true);
-          setIsVideoVisible(true);
-        }
-      }, 800);
-    } else {
-      setTimeout(() => {
-        if (videoRef.current) {
-          const loseVid = LOSE_VIDEOS[0];
-          videoRef.current.src = loseVid;
-          videoRef.current.muted = true;
-          videoRef.current.load();
-          videoRef.current.play().catch(e => console.warn("TimeAttack loss video blocked:", e));
-          soundService.playLose();
-          setLoseVideoSrc(loseVid);
-          setShowLostVideo(true);
-          setIsVideoVisible(true);
-        }
-      }, 800);
-    }
-
-    // 4. Show Recap trigger handles by Video Close
-    // Fallback only if no video
-    if (!iWon && !activeMatch?.isDuel) {
-      // Should not happen here given logic
-    }
-  } else {
-    setGameState(prev => ({ ...prev, status: 'idle' }));
-    setShowDuelRecap(true);
-  }
-};
-
-const handleError = () => {
-  soundService.playError();
-  setGameState(prev => ({
-    ...prev,
-    streak: 0,
-    lastLevelPerfect: false,
-    basePoints: BASE_POINTS_START,
-    estimatedIQ: Math.max(70, prev.estimatedIQ - 1.5),
-  }));
-  setSelectedPath([]);
-};
-
-
-
-const nextLevel = () => {
-  soundService.playUIClick();
-  setIsVictoryAnimating(false);
-  const nextLvl = gameState.level + 1;
-  setGameState(prev => ({
-    ...prev,
-    level: nextLvl,
-    status: 'playing',
-    streak: 0,
-    // CARRY OVER: Add 60s to whatever is left
-    timeLeft: prev.timeLeft + 60,
-  }));
-  // Pass explicit level to avoid stale state
-  generateGrid(nextLvl);
-};
-
-
-
-useEffect(() => {
-  if (gameState.status === 'level-complete' || gameState.status === 'game-over') {
-    getIQInsights(gameState.totalScore, gameState.level, gameState.timeLeft).then(setInsight);
-  }
-}, [gameState.status, gameState.totalScore, gameState.level, gameState.timeLeft]); // Added dependencies
-
-// BOSS UNLOCK CHECKER
-useEffect(() => {
-  if (gameState.status === 'idle' && userProfile) {
-    // BOSS 1 UNLOCK (Level > 5)
-    if ((userProfile.max_level || 1) > 5) {
-      const key = `boss_unlock_seen_1_${userProfile.id}`;
-      if (localStorage.getItem(key) !== 'true') {
+      // 3. Play Video before Recap
+      if (iWon) {
         setTimeout(() => {
-          // Play Unlock Video (Placeholder for now)
-          setShowHomeTutorial(false); // Hide tutorial if overlapping
-          showToast("⚠️ LIVELLO BOSS SBLOCCATO!", [{ label: "GIOCA ORA", onClick: () => setActiveModal('boss_selection') }]);
-          soundService.playBadge(); // Alert Sound
-          localStorage.setItem(key, 'true');
-        }, 3000);
+          if (videoRef.current) {
+            const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+            const vidSrc = WIN_VIDEOS[winIdx];
+            videoRef.current.src = vidSrc;
+            videoRef.current.muted = true;
+            videoRef.current.load();
+            videoRef.current.play().catch(e => console.warn("TimeAttack win video blocked:", e));
+            soundService.playWinner(winIdx);
+            setWinVideoSrc(vidSrc);
+            setShowVideo(true);
+            setIsVideoVisible(true);
+          }
+        }, 800);
+      } else {
+        setTimeout(() => {
+          if (videoRef.current) {
+            const loseVid = LOSE_VIDEOS[0];
+            videoRef.current.src = loseVid;
+            videoRef.current.muted = true;
+            videoRef.current.load();
+            videoRef.current.play().catch(e => console.warn("TimeAttack loss video blocked:", e));
+            soundService.playLose();
+            setLoseVideoSrc(loseVid);
+            setShowLostVideo(true);
+            setIsVideoVisible(true);
+          }
+        }, 800);
+      }
+
+      // 4. Show Recap trigger handles by Video Close
+      // Fallback only if no video
+      if (!iWon && !activeMatch?.isDuel) {
+        // Should not happen here given logic
+      }
+    } else {
+      setGameState(prev => ({ ...prev, status: 'idle' }));
+      setShowDuelRecap(true);
+    }
+  };
+
+  const handleError = () => {
+    soundService.playError();
+    setGameState(prev => ({
+      ...prev,
+      streak: 0,
+      lastLevelPerfect: false,
+      basePoints: BASE_POINTS_START,
+      estimatedIQ: Math.max(70, prev.estimatedIQ - 1.5),
+    }));
+    setSelectedPath([]);
+  };
+
+
+
+  const nextLevel = () => {
+    soundService.playUIClick();
+    setIsVictoryAnimating(false);
+    const nextLvl = gameState.level + 1;
+    setGameState(prev => ({
+      ...prev,
+      level: nextLvl,
+      status: 'playing',
+      streak: 0,
+      // CARRY OVER: Add 60s to whatever is left
+      timeLeft: prev.timeLeft + 60,
+    }));
+    // Pass explicit level to avoid stale state
+    generateGrid(nextLvl);
+  };
+
+
+
+  useEffect(() => {
+    if (gameState.status === 'level-complete' || gameState.status === 'game-over') {
+      getIQInsights(gameState.totalScore, gameState.level, gameState.timeLeft).then(setInsight);
+    }
+  }, [gameState.status, gameState.totalScore, gameState.level, gameState.timeLeft]); // Added dependencies
+
+  // BOSS UNLOCK CHECKER
+  useEffect(() => {
+    if (gameState.status === 'idle' && userProfile) {
+      // BOSS 1 UNLOCK (Level > 5)
+      if ((userProfile.max_level || 1) > 5) {
+        const key = `boss_unlock_seen_1_${userProfile.id}`;
+        if (localStorage.getItem(key) !== 'true') {
+          setTimeout(() => {
+            // Play Unlock Video (Placeholder for now)
+            setShowHomeTutorial(false); // Hide tutorial if overlapping
+            showToast("⚠️ LIVELLO BOSS SBLOCCATO!", [{ label: "GIOCA ORA", onClick: () => setActiveModal('boss_selection') }]);
+            soundService.playBadge(); // Alert Sound
+            localStorage.setItem(key, 'true');
+          }, 3000);
+        }
       }
     }
-  }
-}, [gameState.status, userProfile, showToast]);
+  }, [gameState.status, userProfile, showToast]);
 
-/* INPUT BLOCKING LOGIC */
-const canInteract = () => {
-  // STRICTLY BLOCK if game is over or paused or not playing
-  if (gameState.status !== 'playing') return false;
-  if (isPaused) return false;
-  if (isVictoryAnimating) return false;
-  if (showVideo || showLostVideo) return false;
-  if (showDuelRecap) return false; // Explicitly block if recap is open
-  return true;
-};
+  /* INPUT BLOCKING LOGIC */
+  const canInteract = () => {
+    // STRICTLY BLOCK if game is over or paused or not playing
+    if (gameState.status !== 'playing') return false;
+    if (isPaused) return false;
+    if (isVictoryAnimating) return false;
+    if (showVideo || showLostVideo) return false;
+    if (showDuelRecap) return false; // Explicitly block if recap is open
+    return true;
+  };
 
-const onStartInteraction = async (id: string) => {
-  if (!canInteract()) return;
-  await handleUserInteraction();
+  const onStartInteraction = async (id: string) => {
+    if (!canInteract()) return;
+    await handleUserInteraction();
 
-  const cell = grid.find(c => c.id === id);
-  if (cell && cell.type === 'number') {
-    soundService.playSelect();
-    setIsDragging(true);
-    setSelectedPath([id]);
-    setPreviewResult(parseInt(cell.value));
-
-    // [FIX] SELECTION AUTO-DESELECT (1 SECOND)
-    if (selectionTimeoutRef.current) window.clearTimeout(selectionTimeoutRef.current);
-    selectionTimeoutRef.current = window.setTimeout(() => {
-      setSelectedPath(prev => {
-        if (prev.length === 1 && prev[0] === id) {
-          setPreviewResult(null);
-          return [];
-        }
-        return prev;
-      });
-    }, 500);
-  }
-};
-
-const isAdjacent = (cell1: HexCellData, cell2: HexCellData): boolean => {
-  if (theme === 'orange') {
-    const dr = Math.abs(cell1.row - cell2.row);
-    const dc = Math.abs(cell1.col - cell2.col);
-    // Rectilinear adjacency: Up/Down OR Left/Right
-    return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
-  }
-
-  const dr = Math.abs(cell1.row - cell2.row);
-  const dc = cell2.col - cell1.col;
-
-  // Stessa riga
-  if (dr === 0) return Math.abs(dc) === 1;
-
-  // Righe adiacenti
-  if (dr === 1) {
-    // Per il sistema offset a righe pari
-    if (cell1.row % 2 === 0) {
-      return dc === 0 || dc === -1;
-    } else {
-      return dc === 0 || dc === 1;
-    }
-  }
-  return false;
-};
-
-const onMoveInteraction = (id: string) => {
-  if (!isDragging || !canInteract()) return;
-  // BACKTRACKING LOGIC
-  // Se l'utente torna alla penultima casella selezionata, rimuovi l'ultima (backtrack)
-  if (selectedPath.length > 1 && id === selectedPath[selectedPath.length - 2]) {
-    soundService.playSelect(); // Suono feedback rimozione
-    const newPath = selectedPath.slice(0, -1);
-    setSelectedPath(newPath);
-    setPreviewResult(calculateResultFromPath(newPath));
-    return;
-  }
-
-  if (selectedPath.includes(id)) return;
-
-  const lastId = selectedPath[selectedPath.length - 1];
-  const lastCell = grid.find(c => c.id === lastId);
-  const currentCell = grid.find(c => c.id === id);
-
-  if (lastCell && currentCell) {
-    // Regola 1: Alternanza Tipi (Numero -> Operatore o viceversa)
-    const typeCheck = lastCell.type !== currentCell.type;
-
-    // Regola 2: Adiacenza Fisica (Deve essere un vicino diretto nell'esagono)
-    const adjacencyCheck = isAdjacent(lastCell, currentCell);
-
-    if (typeCheck && adjacencyCheck) {
+    const cell = grid.find(c => c.id === id);
+    if (cell && cell.type === 'number') {
       soundService.playSelect();
-      const newPath = [...selectedPath, id];
+      setIsDragging(true);
+      setSelectedPath([id]);
+      setPreviewResult(parseInt(cell.value));
+
+      // [FIX] SELECTION AUTO-DESELECT (1 SECOND)
+      if (selectionTimeoutRef.current) window.clearTimeout(selectionTimeoutRef.current);
+      selectionTimeoutRef.current = window.setTimeout(() => {
+        setSelectedPath(prev => {
+          if (prev.length === 1 && prev[0] === id) {
+            setPreviewResult(null);
+            return [];
+          }
+          return prev;
+        });
+      }, 500);
+    }
+  };
+
+  const isAdjacent = (cell1: HexCellData, cell2: HexCellData): boolean => {
+    if (theme === 'orange') {
+      const dr = Math.abs(cell1.row - cell2.row);
+      const dc = Math.abs(cell1.col - cell2.col);
+      // Rectilinear adjacency: Up/Down OR Left/Right
+      return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
+    }
+
+    const dr = Math.abs(cell1.row - cell2.row);
+    const dc = cell2.col - cell1.col;
+
+    // Stessa riga
+    if (dr === 0) return Math.abs(dc) === 1;
+
+    // Righe adiacenti
+    if (dr === 1) {
+      // Per il sistema offset a righe pari
+      if (cell1.row % 2 === 0) {
+        return dc === 0 || dc === -1;
+      } else {
+        return dc === 0 || dc === 1;
+      }
+    }
+    return false;
+  };
+
+  const onMoveInteraction = (id: string) => {
+    if (!isDragging || !canInteract()) return;
+    // BACKTRACKING LOGIC
+    // Se l'utente torna alla penultima casella selezionata, rimuovi l'ultima (backtrack)
+    if (selectedPath.length > 1 && id === selectedPath[selectedPath.length - 2]) {
+      soundService.playSelect(); // Suono feedback rimozione
+      const newPath = selectedPath.slice(0, -1);
       setSelectedPath(newPath);
       setPreviewResult(calculateResultFromPath(newPath));
-
-      // Clear selection timeout if we started a path
-      if (selectionTimeoutRef.current) {
-        window.clearTimeout(selectionTimeoutRef.current);
-        selectionTimeoutRef.current = null;
-      }
+      return;
     }
-  }
-};
 
-// Logic for First Selection (Click/Tap) - Removed selectionTimeoutRef logic
-const onSelectionStart = (id: string) => {
-  // No timeout logic needed here anymore
-};
+    if (selectedPath.includes(id)) return;
 
-const handleGlobalEnd = () => {
-  if (selectionTimeoutRef.current) {
-    window.clearTimeout(selectionTimeoutRef.current);
-    selectionTimeoutRef.current = null;
-  }
-  if (isDragging) {
-    setIsDragging(false);
-    evaluatePath(selectedPath);
-  }
-};
+    const lastId = selectedPath[selectedPath.length - 1];
+    const lastCell = grid.find(c => c.id === lastId);
+    const currentCell = grid.find(c => c.id === id);
 
+    if (lastCell && currentCell) {
+      // Regola 1: Alternanza Tipi (Numero -> Operatore o viceversa)
+      const typeCheck = lastCell.type !== currentCell.type;
 
+      // Regola 2: Adiacenza Fisica (Deve essere un vicino diretto nell'esagono)
+      const adjacencyCheck = isAdjacent(lastCell, currentCell);
 
+      if (typeCheck && adjacencyCheck) {
+        soundService.playSelect();
+        const newPath = [...selectedPath, id];
+        setSelectedPath(newPath);
+        setPreviewResult(calculateResultFromPath(newPath));
 
-
-const handleVideoClose = () => {
-  // 1. Visual Fade Out
-  setIsVideoVisible(false);
-  soundService.stopBoss1vittoria();
-  soundService.stopBossBonus();
-  setIsBossBonusPlaying(false);
-
-  // 2. Audio Fade Out
-  if (videoRef.current) {
-    const vid = videoRef.current;
-    const startVolume = vid.volume; // usually 1.0
-    const fadeDuration = 2000;
-    const intervalTime = 50; // run every 50ms
-    const steps = fadeDuration / intervalTime; // 40 steps
-    let currentStep = 0;
-
-    const fadeInterval = setInterval(() => {
-      currentStep++;
-      const progress = Math.min(1, currentStep / steps);
-      const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
-
-      if (newVolume > 0.01) {
-        vid.volume = newVolume;
-      } else {
-        vid.volume = 0;
-        clearInterval(fadeInterval);
-      }
-    }, intervalTime);
-  }
-
-  // 3. Unmount after fade and Show Recap if Duel
-  setTimeout(() => {
-    setShowVideo(false);
-    setIsVictoryAnimating(false);
-
-    if (activeMatch?.isDuel) {
-      setShowDuelRecap(true);
-      // Ensure we are idle to stop game interaction
-      setGameState(prev => ({ ...prev, status: 'idle' }));
-    } else if (gameState.isBossLevel) {
-      goToHome();
-      setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
-    } else {
-      setGameState(prev => ({
-        ...prev,
-        status: 'level-complete'
-      }));
-    }
-  }, 2000);
-};
-
-const handleLostVideoClose = () => {
-  // 1. Visual Fade Out
-  setIsVideoVisible(false);
-  soundService.stopBoss1sconfitta();
-
-  // 2. Audio Fade Out
-  if (videoRef.current) {
-    const vid = videoRef.current;
-    const startVolume = vid.volume;
-    const fadeDuration = 2000;
-    const intervalTime = 40;
-    const steps = fadeDuration / intervalTime;
-    let currentStep = 0;
-
-    const fadeInterval = setInterval(() => {
-      currentStep++;
-      const progress = Math.min(1, currentStep / steps);
-      const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
-
-      if (newVolume > 0.01) {
-        vid.volume = newVolume;
-      } else {
-        vid.volume = 0;
-        clearInterval(fadeInterval);
-      }
-    }, intervalTime);
-  }
-
-  // 3. Unmount after fade and Show Recap if Duel
-  setTimeout(() => {
-    setShowLostVideo(false);
-    if (activeMatch?.isDuel) {
-      setShowDuelRecap(true);
-      setGameState(prev => ({ ...prev, status: 'idle' }));
-    }
-  }, 2000);
-};
-
-const handleBossIntroClose = () => {
-  setIsVideoVisible(false);
-  soundService.stopBossIntro();
-
-  if (videoRef.current) {
-    const vid = videoRef.current;
-    const startVolume = vid.volume;
-    const fadeDuration = 1000;
-    const intervalTime = 40;
-    const steps = fadeDuration / intervalTime;
-    let currentStep = 0;
-
-    const fadeInterval = setInterval(() => {
-      currentStep++;
-      const progress = Math.min(1, currentStep / steps);
-      const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
-      if (newVolume > 0.01) vid.volume = newVolume;
-      else {
-        vid.volume = 0;
-        clearInterval(fadeInterval);
-      }
-    }, intervalTime);
-  }
-
-  setTimeout(() => {
-    setShowBossIntro(false);
-    setGameState(prev => ({ ...prev, status: 'playing', timeLeft: 90 }));
-    soundService.playSuccess();
-  }, 1000);
-};
-
-const handleSurrenderVideoClose = () => {
-  setIsVideoVisible(false);
-  if (videoRef.current) {
-    const vid = videoRef.current;
-    const startVolume = vid.volume;
-    const fadeDuration = 800;
-    const intervalTime = 40;
-    const steps = fadeDuration / intervalTime;
-    let currentStep = 0;
-
-    const fadeInterval = setInterval(() => {
-      currentStep++;
-      const progress = Math.min(1, currentStep / steps);
-      const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
-      if (newVolume > 0.01) vid.volume = newVolume;
-      else {
-        vid.volume = 0;
-        clearInterval(fadeInterval);
-      }
-    }, intervalTime);
-  }
-
-  setTimeout(() => {
-    setShowSurrenderVideo(false);
-    setGameState(prev => {
-      // Bonus points for surrender win
-      const bonus = (duelMode === 'blitz' ? 50 : 100);
-      if (currentUser) {
-        profileService.syncProgress(currentUser.id, bonus, prev.level, prev.estimatedIQ)
-          .then(() => loadProfile(currentUser.id));
-      }
-      return { ...prev, status: 'opponent-surrendered' };
-    });
-  }, 800);
-};
-
-return (
-  <>
-    {showIntro && <IntroVideo onFinish={() => {
-      setShowIntro(false);
-      setGameState(prev => ({ ...prev, status: 'idle' }));
-      // Check for Home Tutorial
-      try {
-        if (localStorage.getItem('comic_home_tutorial_done') !== 'true') {
-          setTimeout(() => setShowHomeTutorial(true), 500);
+        // Clear selection timeout if we started a path
+        if (selectionTimeoutRef.current) {
+          window.clearTimeout(selectionTimeoutRef.current);
+          selectionTimeoutRef.current = null;
         }
-      } catch (e) { console.warn("Tutorial check skipped", e); }
-    }} />}
-    <div
-      className={`min-h-[100dvh] text-slate-100 font-sans overflow-hidden select-none pb-20 safe-area-bottom transition-colors duration-1000`}
-      style={{
-        background: gameState.isBossLevel ? '#022c22' : 'linear-gradient(to top, #004488, #0088dd)'
-      }}
-      onPointerUp={handleGlobalEnd}
-      onPointerLeave={handleGlobalEnd}
-    >
-      {/* BOSS BACKGROUND FALLBACK LAYER (Solid Green) - Ensures no blue leaks ever */}
-      <div className={`fixed inset-0 bg-emerald-950 z-[-1] transition-opacity duration-300 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0'}`}></div>
+      }
+    }
+  };
 
-      {/* BOSS BOTTOM PATCH - Extra safety for safe-area */}
-      <div className={`fixed -bottom-40 left-0 w-full h-80 bg-emerald-950 z-[-1] ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0'}`}></div>
+  // Logic for First Selection (Click/Tap) - Removed selectionTimeoutRef logic
+  const onSelectionStart = (id: string) => {
+    // No timeout logic needed here anymore
+  };
 
-      {/* BOSS BACKGROUND IMAGE LAYER - Extreme bleed to cover everything */}
-      <div className={`fixed -inset-[20%] w-[140%] h-[140%] bg-[url('/sfondo_green.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
+  const handleGlobalEnd = () => {
+    if (selectionTimeoutRef.current) {
+      window.clearTimeout(selectionTimeoutRef.current);
+      selectionTimeoutRef.current = null;
+    }
+    if (isDragging) {
+      setIsDragging(false);
+      evaluatePath(selectedPath);
+    }
+  };
 
 
 
 
-      {/* WIN VIDEO OVERLAY REMOVED (Duplicate/Legacy) */}
 
-      {/* UNIFIED VIDEO OVERLAY - Always in DOM for Mobile Unlock */}
+  const handleVideoClose = () => {
+    // 1. Visual Fade Out
+    setIsVideoVisible(false);
+    soundService.stopBoss1vittoria();
+    soundService.stopBossBonus();
+    setIsBossBonusPlaying(false);
+
+    // 2. Audio Fade Out
+    if (videoRef.current) {
+      const vid = videoRef.current;
+      const startVolume = vid.volume; // usually 1.0
+      const fadeDuration = 2000;
+      const intervalTime = 50; // run every 50ms
+      const steps = fadeDuration / intervalTime; // 40 steps
+      let currentStep = 0;
+
+      const fadeInterval = setInterval(() => {
+        currentStep++;
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
+
+        if (newVolume > 0.01) {
+          vid.volume = newVolume;
+        } else {
+          vid.volume = 0;
+          clearInterval(fadeInterval);
+        }
+      }, intervalTime);
+    }
+
+    // 3. Unmount after fade and Show Recap if Duel
+    setTimeout(() => {
+      setShowVideo(false);
+      setIsVictoryAnimating(false);
+
+      if (activeMatch?.isDuel) {
+        setShowDuelRecap(true);
+        // Ensure we are idle to stop game interaction
+        setGameState(prev => ({ ...prev, status: 'idle' }));
+      } else if (gameState.isBossLevel) {
+        goToHome();
+        setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
+      } else {
+        setGameState(prev => ({
+          ...prev,
+          status: 'level-complete'
+        }));
+      }
+    }, 2000);
+  };
+
+  const handleLostVideoClose = () => {
+    // 1. Visual Fade Out
+    setIsVideoVisible(false);
+    soundService.stopBoss1sconfitta();
+
+    // 2. Audio Fade Out
+    if (videoRef.current) {
+      const vid = videoRef.current;
+      const startVolume = vid.volume;
+      const fadeDuration = 2000;
+      const intervalTime = 40;
+      const steps = fadeDuration / intervalTime;
+      let currentStep = 0;
+
+      const fadeInterval = setInterval(() => {
+        currentStep++;
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
+
+        if (newVolume > 0.01) {
+          vid.volume = newVolume;
+        } else {
+          vid.volume = 0;
+          clearInterval(fadeInterval);
+        }
+      }, intervalTime);
+    }
+
+    // 3. Unmount after fade and Show Recap if Duel
+    setTimeout(() => {
+      setShowLostVideo(false);
+      if (activeMatch?.isDuel) {
+        setShowDuelRecap(true);
+        setGameState(prev => ({ ...prev, status: 'idle' }));
+      }
+    }, 2000);
+  };
+
+  const handleBossIntroClose = () => {
+    setIsVideoVisible(false);
+    soundService.stopBossIntro();
+
+    if (videoRef.current) {
+      const vid = videoRef.current;
+      const startVolume = vid.volume;
+      const fadeDuration = 1000;
+      const intervalTime = 40;
+      const steps = fadeDuration / intervalTime;
+      let currentStep = 0;
+
+      const fadeInterval = setInterval(() => {
+        currentStep++;
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
+        if (newVolume > 0.01) vid.volume = newVolume;
+        else {
+          vid.volume = 0;
+          clearInterval(fadeInterval);
+        }
+      }, intervalTime);
+    }
+
+    setTimeout(() => {
+      setShowBossIntro(false);
+      setGameState(prev => ({ ...prev, status: 'playing', timeLeft: 90 }));
+      soundService.playSuccess();
+    }, 1000);
+  };
+
+  const handleSurrenderVideoClose = () => {
+    setIsVideoVisible(false);
+    if (videoRef.current) {
+      const vid = videoRef.current;
+      const startVolume = vid.volume;
+      const fadeDuration = 800;
+      const intervalTime = 40;
+      const steps = fadeDuration / intervalTime;
+      let currentStep = 0;
+
+      const fadeInterval = setInterval(() => {
+        currentStep++;
+        const progress = Math.min(1, currentStep / steps);
+        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
+        if (newVolume > 0.01) vid.volume = newVolume;
+        else {
+          vid.volume = 0;
+          clearInterval(fadeInterval);
+        }
+      }, intervalTime);
+    }
+
+    setTimeout(() => {
+      setShowSurrenderVideo(false);
+      setGameState(prev => {
+        // Bonus points for surrender win
+        const bonus = (duelMode === 'blitz' ? 50 : 100);
+        if (currentUser) {
+          profileService.syncProgress(currentUser.id, bonus, prev.level, prev.estimatedIQ)
+            .then(() => loadProfile(currentUser.id));
+        }
+        return { ...prev, status: 'opponent-surrendered' };
+      });
+    }, 800);
+  };
+
+  return (
+    <>
+      {showIntro && <IntroVideo onFinish={() => {
+        setShowIntro(false);
+        setGameState(prev => ({ ...prev, status: 'idle' }));
+        // Check for Home Tutorial
+        try {
+          if (localStorage.getItem('comic_home_tutorial_done') !== 'true') {
+            setTimeout(() => setShowHomeTutorial(true), 500);
+          }
+        } catch (e) { console.warn("Tutorial check skipped", e); }
+      }} />}
       <div
-        className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out 
-            ${(showVideo || showLostVideo || showSurrenderVideo || showBossIntro) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-        onPointerDown={() => {
-          if (showVideo) handleVideoClose();
-          else if (showLostVideo) handleLostVideoClose();
-          else if (showSurrenderVideo) handleSurrenderVideoClose();
-          else if (showBossIntro) handleBossIntroClose();
+        className={`min-h-[100dvh] text-slate-100 font-sans overflow-hidden select-none pb-20 safe-area-bottom transition-colors duration-1000`}
+        style={{
+          background: gameState.isBossLevel ? '#022c22' : 'linear-gradient(to top, #004488, #0088dd)'
         }}
+        onPointerUp={handleGlobalEnd}
+        onPointerLeave={handleGlobalEnd}
       >
-        <video
-          ref={videoRef}
-          src={isBossBonusPlaying ? '/Bonus30secondiboss.mp4' : (showVideo ? winVideoSrc : (showLostVideo ? loseVideoSrc : (showSurrenderVideo ? surrenderVideoSrc : (showBossIntro ? '/Boss1intro.mp4' : ''))))}
-          className="w-full h-full object-cover"
-          playsInline
-          autoPlay
-          onPlay={() => {
-            if (videoRef.current) videoRef.current.volume = 0.7;
-            setIsVideoVisible(true);
+        {/* BOSS BACKGROUND FALLBACK LAYER (Solid Green) - Ensures no blue leaks ever */}
+        <div className={`fixed inset-0 bg-emerald-950 z-[-1] transition-opacity duration-300 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0'}`}></div>
 
-            // SYNC BOSS AUDIO
-            if (gameState.bossLevelId === 1) {
-              if (showBossIntro) {
-                soundService.stopBossIntro();
-                soundService.playBossIntro();
-              } else if (showVideo) {
-                if (isBossBonusPlaying) {
-                  soundService.stopBoss1vittoria();
-                  soundService.playBossBonus();
-                } else {
-                  soundService.stopBossBonus();
-                  soundService.playBoss1vittoria();
-                }
-              } else if (showLostVideo) {
-                soundService.stopBoss1sconfitta();
-                soundService.playBoss1sconfitta();
-              }
-            }
-          }}
-          onEnded={() => {
-            if (showVideo) {
-              if (gameState.bossLevelId === 1 && isBossBonusPlaying) {
-                // Sequence Step: Bonus Video Ended -> Play Victory Video
-                setIsBossBonusPlaying(false);
-                setWinVideoSrc('/Boss1vittoria.mp4');
-                // Force reload next tick to ensure src update is picked up
-                setTimeout(() => {
-                  if (videoRef.current) {
-                    videoRef.current.load();
-                    videoRef.current.play().catch(e => console.warn("Chain video blocked:", e));
-                  }
-                }, 50);
-              } else {
-                handleVideoClose();
-              }
-            }
+        {/* BOSS BOTTOM PATCH - Extra safety for safe-area */}
+        <div className={`fixed -bottom-40 left-0 w-full h-80 bg-emerald-950 z-[-1] ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0'}`}></div>
+
+        {/* BOSS BACKGROUND IMAGE LAYER - Extreme bleed to cover everything */}
+        <div className={`fixed -inset-[20%] w-[140%] h-[140%] bg-[url('/sfondo_green.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
+
+
+
+
+        {/* WIN VIDEO OVERLAY REMOVED (Duplicate/Legacy) */}
+
+        {/* UNIFIED VIDEO OVERLAY - Always in DOM for Mobile Unlock */}
+        <div
+          className={`fixed inset-0 z-[2000] bg-black flex items-center justify-center transition-opacity duration-[800ms] ease-out 
+            ${(showVideo || showLostVideo || showSurrenderVideo || showBossIntro) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+          onPointerDown={() => {
+            if (showVideo) handleVideoClose();
             else if (showLostVideo) handleLostVideoClose();
             else if (showSurrenderVideo) handleSurrenderVideoClose();
             else if (showBossIntro) handleBossIntroClose();
           }}
-        />
+        >
+          <video
+            ref={videoRef}
+            src={isBossBonusPlaying ? '/Bonus30secondiboss.mp4' : (showVideo ? winVideoSrc : (showLostVideo ? loseVideoSrc : (showSurrenderVideo ? surrenderVideoSrc : (showBossIntro ? '/Boss1intro.mp4' : ''))))}
+            className="w-full h-full object-cover"
+            playsInline
+            autoPlay
+            onPlay={() => {
+              if (videoRef.current) videoRef.current.volume = 0.7;
+              setIsVideoVisible(true);
 
-        {/* Audio Toggle for Boss Intro/Win/Loss */}
-        {(showBossIntro || ((showVideo || showLostVideo) && gameState.isBossLevel)) && (
-          <button
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              const newMuted = !isMuted;
-              setIsMuted(newMuted);
-              soundService.setMuted(newMuted);
+              // SYNC BOSS AUDIO
+              if (gameState.bossLevelId === 1) {
+                if (showBossIntro) {
+                  soundService.stopBossIntro();
+                  soundService.playBossIntro();
+                } else if (showVideo) {
+                  if (isBossBonusPlaying) {
+                    soundService.stopBoss1vittoria();
+                    soundService.playBossBonus();
+                  } else {
+                    soundService.stopBossBonus();
+                    soundService.playBoss1vittoria();
+                  }
+                } else if (showLostVideo) {
+                  soundService.stopBoss1sconfitta();
+                  soundService.playBoss1sconfitta();
+                }
+              }
             }}
-            className={`absolute top-12 right-6 z-[2010] p-3 rounded-full border transition-all active:scale-95 shadow-lg
-                    ${!isMuted
-                ? 'bg-emerald-500 border-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]'
-                : 'bg-black/40 backdrop-blur-md border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
-              }`}
-          >
-            {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
-          </button>
-        )}
+            onEnded={() => {
+              if (showVideo) {
+                if (gameState.bossLevelId === 1 && isBossBonusPlaying) {
+                  // Sequence Step: Bonus Video Ended -> Play Victory Video
+                  setIsBossBonusPlaying(false);
+                  setWinVideoSrc('/Boss1vittoria.mp4');
+                  // Force reload next tick to ensure src update is picked up
+                  setTimeout(() => {
+                    if (videoRef.current) {
+                      videoRef.current.load();
+                      videoRef.current.play().catch(e => console.warn("Chain video blocked:", e));
+                    }
+                  }, 50);
+                } else {
+                  handleVideoClose();
+                }
+              }
+              else if (showLostVideo) handleLostVideoClose();
+              else if (showSurrenderVideo) handleSurrenderVideoClose();
+              else if (showBossIntro) handleBossIntroClose();
+            }}
+          />
 
-        {/* Overlay color based on state */}
-        {showLostVideo && <div className="absolute inset-0 bg-red-900/10 mix-blend-overlay pointer-events-none"></div>}
-        {showSurrenderVideo && <div className="absolute inset-0 bg-blue-900/10 mix-blend-overlay pointer-events-none"></div>}
-
-        {(showVideo || showLostVideo || showSurrenderVideo || showBossIntro) && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 z-50 pointer-events-none">
-            {/* FAIL-SAFE TAP TO PLAY (Only visible if video stuck/not visible) */}
-            {/* FAIL-SAFE TAP TO PLAY REMOVED - AUTOMATIC ONLY */}
-
-
+          {/* Audio Toggle for Boss Intro/Win/Loss */}
+          {(showBossIntro || ((showVideo || showLostVideo) && gameState.isBossLevel)) && (
             <button
-              className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group pointer-events-auto"
               onPointerDown={(e) => {
                 e.stopPropagation();
-                if (showVideo) handleVideoClose();
-                else if (showLostVideo) handleLostVideoClose();
-                else if (showSurrenderVideo) handleSurrenderVideoClose();
-                else if (showBossIntro) handleBossIntroClose();
+                const newMuted = !isMuted;
+                setIsMuted(newMuted);
+                soundService.setMuted(newMuted);
               }}
+              className={`absolute top-12 right-6 z-[2010] p-3 rounded-full border transition-all active:scale-95 shadow-lg
+                    ${!isMuted
+                  ? 'bg-emerald-500 border-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+                  : 'bg-black/40 backdrop-blur-md border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                }`}
             >
-              <span>SKIP {showBossIntro ? 'INTRO' : ''}</span>
-              <FastForward size={14} className={showLostVideo ? (gameState.isBossLevel ? "text-emerald-400" : "text-red-500") : (showSurrenderVideo ? "text-blue-500" : ((showBossIntro || (showVideo && gameState.isBossLevel)) ? "text-emerald-400" : "text-[#FF8800]"))} />
+              {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
             </button>
+          )}
+
+          {/* Overlay color based on state */}
+          {showLostVideo && <div className="absolute inset-0 bg-red-900/10 mix-blend-overlay pointer-events-none"></div>}
+          {showSurrenderVideo && <div className="absolute inset-0 bg-blue-900/10 mix-blend-overlay pointer-events-none"></div>}
+
+          {(showVideo || showLostVideo || showSurrenderVideo || showBossIntro) && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 z-50 pointer-events-none">
+              {/* FAIL-SAFE TAP TO PLAY (Only visible if video stuck/not visible) */}
+              {/* FAIL-SAFE TAP TO PLAY REMOVED - AUTOMATIC ONLY */}
+
+
+              <button
+                className="absolute bottom-12 right-12 z-50 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl text-white font-orbitron font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 active:scale-95 group pointer-events-auto"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  if (showVideo) handleVideoClose();
+                  else if (showLostVideo) handleLostVideoClose();
+                  else if (showSurrenderVideo) handleSurrenderVideoClose();
+                  else if (showBossIntro) handleBossIntroClose();
+                }}
+              >
+                <span>SKIP {showBossIntro ? 'INTRO' : ''}</span>
+                <FastForward size={14} className={showLostVideo ? (gameState.isBossLevel ? "text-emerald-400" : "text-red-500") : (showSurrenderVideo ? "text-blue-500" : ((showBossIntro || (showVideo && gameState.isBossLevel)) ? "text-emerald-400" : "text-[#FF8800]"))} />
+              </button>
+            </div>
+          )}
+        </div>
+
+
+        <ParticleEffect trigger={triggerParticles} />
+
+        {/* Abstract Curves Background */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-[0.08]">
+          <path d="M-100 200 Q 200 0 500 300 T 1000 100" stroke="white" strokeWidth="60" fill="none" />
+          <path d="M-100 500 Q 300 300 600 600 T 1200 400" stroke="white" strokeWidth="40" fill="none" />
+          <path d="M-100 800 Q 400 600 800 900 T 1300 700" stroke="white" strokeWidth="80" fill="none" />
+          <path d="M800 -100 Q 600 300 900 600" stroke="white" strokeWidth="30" fill="none" />
+        </svg>
+
+        {toast.visible && (
+          <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[10000] animate-toast-in w-[90%] max-w-md">
+            <div className="bg-slate-900/95 text-white px-8 py-5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.6)] flex flex-col items-center gap-4 border-[3px] border-[#FF8800] backdrop-blur-xl">
+              <span className="font-bold text-center text-lg leading-snug drop-shadow-md">{toast.message}</span>
+              {toast.actions && (
+                <div className="flex gap-3 w-full justify-center">
+                  {toast.actions.map((action, i) => (
+                    <button
+                      key={i}
+                      onPointerDown={(e) => { e.stopPropagation(); action.onClick(); }}
+                      className={`px-6 py-2.5 rounded-xl font-black uppercase text-sm tracking-wider transition-all active:scale-95 shadow-lg border-2
+                                ${action.variant === 'secondary'
+                          ? 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'
+                          : 'bg-[#FF8800] text-white border-white hover:bg-[#FF9900]'
+                        }`}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
-      </div>
-
-
-      <ParticleEffect trigger={triggerParticles} />
-
-      {/* Abstract Curves Background */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-[0.08]">
-        <path d="M-100 200 Q 200 0 500 300 T 1000 100" stroke="white" strokeWidth="60" fill="none" />
-        <path d="M-100 500 Q 300 300 600 600 T 1200 400" stroke="white" strokeWidth="40" fill="none" />
-        <path d="M-100 800 Q 400 600 800 900 T 1300 700" stroke="white" strokeWidth="80" fill="none" />
-        <path d="M800 -100 Q 600 300 900 600" stroke="white" strokeWidth="30" fill="none" />
-      </svg>
-
-      {toast.visible && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[10000] animate-toast-in w-[90%] max-w-md">
-          <div className="bg-slate-900/95 text-white px-8 py-5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.6)] flex flex-col items-center gap-4 border-[3px] border-[#FF8800] backdrop-blur-xl">
-            <span className="font-bold text-center text-lg leading-snug drop-shadow-md">{toast.message}</span>
-            {toast.actions && (
-              <div className="flex gap-3 w-full justify-center">
-                {toast.actions.map((action, i) => (
-                  <button
-                    key={i}
-                    onPointerDown={(e) => { e.stopPropagation(); action.onClick(); }}
-                    className={`px-6 py-2.5 rounded-xl font-black uppercase text-sm tracking-wider transition-all active:scale-95 shadow-lg border-2
-                                ${action.variant === 'secondary'
-                        ? 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'
-                        : 'bg-[#FF8800] text-white border-white hover:bg-[#FF9900]'
-                      }`}
-                  >
-                    {action.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
 
 
-      {gameState.status === 'idle' && (
-        <>
-          <CharacterHelper />
-          <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 pt-24 pb-32 animate-screen-in relative">
+        {gameState.status === 'idle' && (
+          <>
+            <CharacterHelper />
+            <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 pt-24 pb-32 animate-screen-in relative">
 
-            {/* TOP LEFT: User Auth */}
-            <div className="fixed bottom-4 left-4 z-50 flex gap-3 items-center" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
-              <button
-                onPointerDown={async (e) => {
-                  e.stopPropagation();
-                  await handleUserInteraction();
-                  soundService.playUIClick();
-                  if (currentUser) {
-                    setActiveModal('logout_confirm');
-                  } else {
-                    showToast('Accesso richiesto');
-                    setShowAuthModal(true);
-                  }
-                }}
-                id={currentUser ? "user-profile-home" : "login-btn-home"}
-                className="flex items-center gap-3 pr-3 pl-1 py-1 rounded-full bg-black/40 border border-white/20 backdrop-blur-md hover:bg-black/60 transition-all group"
-              >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 border-white/50 shadow-lg ${currentUser ? 'bg-[#FF8800] text-white' : 'bg-slate-700 text-slate-400 group-hover:bg-white group-hover:text-[#FF8800] transition-colors'}`}>
-                  <User size={20} strokeWidth={2.5} />
-                </div>
-                {currentUser && (
-                  <div className="flex flex-col items-start pl-2 leading-none">
-                    <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest leading-none">
-                      {userProfile?.username || 'GUEST'}
-                    </span>
-                    <span className="font-orbitron text-[8px] font-black text-[#FF8800] uppercase tracking-tighter mt-1">
-                      {userProfile?.total_score || 0} PTS
-                    </span>
-                  </div>
-                )}
-              </button>
-            </div>
-
-            {/* TOP RIGHT: Audio (Fixed at the very top) */}
-            <div className="fixed top-12 right-6 z-[3000] flex gap-3 items-center">
-              <button
-                onPointerDown={toggleMute}
-                className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
-                    ${isMuted ? 'bg-slate-700 text-slate-400' : 'bg-[#FF8800] text-white'}`}
-                title="Audio"
-                id="audio-btn-home"
-              >
-                {isMuted ? <VolumeX size={24} strokeWidth={2.5} /> : <Volume2 size={24} strokeWidth={2.5} />}
-              </button>
-            </div>
-
-            {/* BOTTOM RIGHT ICONS: Admin & Tutorial (FIXED Position) */}
-            <div className="fixed bottom-4 right-4 z-[2000] flex gap-3" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
-              {/* Tutorial Icon */}
-              <button
-                onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
-                id="tutorial-btn-home"
-                className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
-                title="Tutorial"
-              >
-                <HelpCircle size={24} strokeWidth={2.5} />
-              </button>
-
-              {/* Admin Access */}
-              <button
-                onPointerDown={async (e) => {
-                  e.stopPropagation();
-                  await handleUserInteraction();
-                  soundService.playUIClick();
-                  setActiveModal('admin');
-                }}
-                className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
-                title="Admin Access"
-              >
-                <Shield size={24} strokeWidth={2.5} />
-              </button>
-            </div>
-            <div className="mb-6 flex flex-col items-center">
-              {/* Logo: Custom Shape Image with White Border & Brain */}
-              {/* Logo: Pure Color CSS Mask Implementation */}
-              {/* Logo: Custom Shape Image with White Border & Brain */}
-              {/* Logo: Pure Color CSS Mask Implementation */}
-              <div
-                onPointerDown={async (e) => {
-                  e.stopPropagation();
-                  await handleUserInteraction();
-                  soundService.playUIClick();
-                  setActiveModal('profile');
-                }}
-                id="logo-home"
-                className={`relative w-36 h-36 flex items-center justify-center mb-4 transition-all duration-[2000ms] ease-in-out group cursor-pointer ${logoAnim ? 'scale-110 drop-shadow-[0_0_25px_rgba(255,136,0,0.6)]' : 'hover:scale-110'}`}
-                title="Apri Profilo"
-              >
-                {/* Custom Octagon Image */}
-                <img src="/octagon-base.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
-
-                {/* Brain Icon - Centered */}
-                <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
-
-              </div>
-
-              <h1 className="text-6xl sm:text-8xl font-black font-orbitron tracking-tighter text-[#FF8800] lowercase" style={{ WebkitTextStroke: '3px white' }}>
-                number
-              </h1>
-            </div>
-
-            {/* Tip Bubble Removed */}
-
-            <div className="flex flex-col gap-4 items-center w-full max-w-sm relative z-20">
-              <button
-                onPointerDown={handleStartGameClick}
-                id="play-btn-home"
-                className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-gradient-to-r from-[#FF8800] to-[#FF5500] text-white py-5 rounded-2xl font-orbitron font-black text-xl border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_4px_0_rgba(0,0,0,0.2)] hover:scale-105 transition-all duration-300"
-              >
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                <Play className="w-8 h-8 fill-current relative z-10" />
-                <span className="tracking-widest relative z-10">{savedGame && savedGame.level > 1 ? `CONTINUA LVL ${savedGame.level}` : "GIOCA"}</span>
-              </button>
-
-              <div className="grid grid-cols-2 gap-4 w-full">
-                {/* 1VS1 MODE BUTTON - NEURAL DUEL */}
-                {/* 1VS1 MODE BUTTON - SINGLE ENTRY */}
+              {/* TOP LEFT: User Auth */}
+              <div className="fixed bottom-4 left-4 z-50 flex gap-3 items-center" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
                 <button
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 text-white py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
-                  id="duel-btn-home"
-                  onPointerDown={() => {
+                  onPointerDown={async (e) => {
+                    e.stopPropagation();
+                    await handleUserInteraction();
                     soundService.playUIClick();
-                    if (!currentUser) {
-                      showToast("Accedi per sfidare altri giocatori!");
-                      setShowAuthModal(true);
+                    if (currentUser) {
+                      setActiveModal('logout_confirm');
                     } else {
-                      setActiveModal('duel_selection'); // Open Selection logic
+                      showToast('Accesso richiesto');
+                      setShowAuthModal(true);
                     }
                   }}
+                  id={currentUser ? "user-profile-home" : "login-btn-home"}
+                  className="flex items-center gap-3 pr-3 pl-1 py-1 rounded-full bg-black/40 border border-white/20 backdrop-blur-md hover:bg-black/60 transition-all group"
                 >
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-                  <Swords className="w-8 h-8 animate-pulse text-yellow-300" />
-                  <div className="flex flex-col items-start leading-none relative z-10">
-                    <span className="font-orbitron text-xl font-black uppercase tracking-widest italic drop-shadow-md">NEURAL DUEL</span>
-                    <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Sfida 1vs1 Realtime</span>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 border-white/50 shadow-lg ${currentUser ? 'bg-[#FF8800] text-white' : 'bg-slate-700 text-slate-400 group-hover:bg-white group-hover:text-[#FF8800] transition-colors'}`}>
+                    <User size={20} strokeWidth={2.5} />
                   </div>
-                  {/* Badge */}
-                  <div className="absolute top-2 right-2 bg-red-600/90 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-white animate-pulse shadow-lg">NEW MODES</div>
-                </button>
-
-                <button
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
-                  id="boss-btn-home"
-                  onPointerDown={() => {
-                    soundService.playUIClick();
-                    setActiveModal('boss_selection');
-                  }}
-                >
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-                  <Crown className="w-8 h-8 text-yellow-300 animate-[bounce_3s_infinite]" />
-                  <div className="flex flex-col items-start leading-none relative z-10">
-                    <span className="font-orbitron text-xl font-black uppercase tracking-widest drop-shadow-md">BOSS LEVELS</span>
-                    <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Sfide Epiche & Bonus</span>
-                  </div>
-                </button>
-
-                <button
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group"
-                  id="challenges-btn-home"
-                  onPointerDown={() => { soundService.playUIClick(); showToast("Nessuna sfida attiva al momento"); }}
-                >
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                  <Trophy className="w-5 h-5" />
-                  <span className="font-orbitron text-xs font-black uppercase tracking-widest relative z-10">Sfide</span>
-                </button>
-
-                <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
-                  id="ranking-btn-home"
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-900 py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-15"></div>
-                  <BarChart3 className="w-5 h-5 relative z-10" />
-                  <span className="font-orbitron text-xs font-black uppercase tracking-widest relative z-10">RANKING</span>
+                  {currentUser && (
+                    <div className="flex flex-col items-start pl-2 leading-none">
+                      <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest leading-none">
+                        {userProfile?.username || 'GUEST'}
+                      </span>
+                      <span className="font-orbitron text-[8px] font-black text-[#FF8800] uppercase tracking-tighter mt-1">
+                        {userProfile?.total_score || 0} PTS
+                      </span>
+                    </div>
+                  )}
                 </button>
               </div>
 
-              {/* AUTH BUTTON */}
-              {/* Auth Button Moved to Top Right - Removed from here */}
-
-              {/* Audio Button Removed */}
-
-
-            </div>
-          </div>
-        </>
-      )}
-
-
-
-      {gameState.status !== 'idle' && (
-        <div className="w-full h-full flex flex-col items-center z-10 p-4 max-w-4xl animate-screen-in">
-          <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
-            <div className={`
-                relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.15)]
-                ${gameState.isBossLevel
-                ? 'bg-gradient-to-r from-lime-500 via-green-500 to-lime-600'
-                : 'bg-gradient-to-r from-orange-400 via-[#FF5500] to-orange-600'}
-                transition-all duration-300
-              `}>
-              {/* Left Group: Buttons */}
-              <div className="flex items-center gap-3">
-                <button
-                  onPointerDown={(e) => {
-                    goToHome(e);
-                    setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
-                  }}
-                  className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
-                      ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
-                  title="Home"
-                >
-                  <Home className="w-6 h-6" />
-                </button>
+              {/* TOP RIGHT: Audio (Fixed at the very top) */}
+              <div className="fixed top-12 right-6 z-[3000] flex gap-3 items-center">
                 <button
                   onPointerDown={toggleMute}
-                  className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
-                      ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
+                  className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
+                    ${isMuted ? 'bg-slate-700 text-slate-400' : 'bg-[#FF8800] text-white'}`}
+                  title="Audio"
+                  id="audio-btn-home"
                 >
-                  {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+                  {isMuted ? <VolumeX size={24} strokeWidth={2.5} /> : <Volume2 size={24} strokeWidth={2.5} />}
                 </button>
               </div>
 
-              {/* Center: Floating Timer (Half-In/Half-Out) */}
-              {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
-              <div id="timer-display-game" className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
-                {/* Round Indicator - Only for Blitz - Now handled in Right Side Score */}
-                {activeMatch?.isDuel && duelMode === 'blitz' && false && (
-                  <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-amber-400/50 text-amber-100 text-[11px] font-black font-orbitron px-5 py-1.5 rounded-full z-[110] whitespace-nowrap shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pulse-slow">
-                    ROUND {duelRounds.p1 + duelRounds.p2 + 1} / 5
-                  </div>
-                )}
+              {/* BOTTOM RIGHT ICONS: Admin & Tutorial (FIXED Position) */}
+              <div className="fixed bottom-4 right-4 z-[2000] flex gap-3" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
+                {/* Tutorial Icon */}
+                <button
+                  onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
+                  id="tutorial-btn-home"
+                  className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                  title="Tutorial"
+                >
+                  <HelpCircle size={24} strokeWidth={2.5} />
+                </button>
 
-                {gameState.isBossLevel ? (
-                  <div className={`relative w-24 h-24 flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110' : 'hover:scale-105'}`}>
-                    {/* External White Frame */}
-                    <div className="absolute -inset-1 rotate-45 rounded-xl border-[4px] border-white pointer-events-none"></div>
+                {/* Admin Access */}
+                <button
+                  onPointerDown={async (e) => {
+                    e.stopPropagation();
+                    await handleUserInteraction();
+                    soundService.playUIClick();
+                    setActiveModal('admin');
+                  }}
+                  className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                  title="Admin Access"
+                >
+                  <Shield size={24} strokeWidth={2.5} />
+                </button>
+              </div>
+              <div className="mb-6 flex flex-col items-center">
+                {/* Logo: Custom Shape Image with White Border & Brain */}
+                {/* Logo: Pure Color CSS Mask Implementation */}
+                {/* Logo: Custom Shape Image with White Border & Brain */}
+                {/* Logo: Pure Color CSS Mask Implementation */}
+                <div
+                  onPointerDown={async (e) => {
+                    e.stopPropagation();
+                    await handleUserInteraction();
+                    soundService.playUIClick();
+                    setActiveModal('profile');
+                  }}
+                  id="logo-home"
+                  className={`relative w-36 h-36 flex items-center justify-center mb-4 transition-all duration-[2000ms] ease-in-out group cursor-pointer ${logoAnim ? 'scale-110 drop-shadow-[0_0_25px_rgba(255,136,0,0.6)]' : 'hover:scale-110'}`}
+                  title="Apri Profilo"
+                >
+                  {/* Custom Octagon Image */}
+                  <img src="/octagon-base.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
 
-                    <div className="absolute inset-0 bg-slate-900 rotate-45 rounded-xl border-[4px] border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]"></div>
+                  {/* Brain Icon - Centered */}
+                  <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
 
-                    {/* BOSS TIMER PROGRESS DIAMOND */}
-                    <svg className="absolute inset-0 w-full h-full rotate-45 pointer-events-none z-20 overflow-visible">
-                      <defs>
-                        <filter id="bossGlow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feGaussianBlur stdDeviation="2" result="blur" />
-                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                        </filter>
-                      </defs>
-                      <rect
-                        x="2" y="2" width="92" height="92" rx="12"
-                        stroke="rgba(16, 185, 129, 0.2)"
-                        strokeWidth="6"
-                        fill="none"
-                      />
-                      {!isPaused && (
+                </div>
+
+                <h1 className="text-6xl sm:text-8xl font-black font-orbitron tracking-tighter text-[#FF8800] lowercase" style={{ WebkitTextStroke: '3px white' }}>
+                  number
+                </h1>
+              </div>
+
+              {/* Tip Bubble Removed */}
+
+              <div className="flex flex-col gap-4 items-center w-full max-w-sm relative z-20">
+                <button
+                  onPointerDown={handleStartGameClick}
+                  id="play-btn-home"
+                  className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-gradient-to-r from-[#FF8800] to-[#FF5500] text-white py-5 rounded-2xl font-orbitron font-black text-xl border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_4px_0_rgba(0,0,0,0.2)] hover:scale-105 transition-all duration-300"
+                >
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                  <Play className="w-8 h-8 fill-current relative z-10" />
+                  <span className="tracking-widest relative z-10">{savedGame && savedGame.level > 1 ? `CONTINUA LVL ${savedGame.level}` : "GIOCA"}</span>
+                </button>
+
+                <div className="grid grid-cols-2 gap-4 w-full">
+                  {/* 1VS1 MODE BUTTON - NEURAL DUEL */}
+                  {/* 1VS1 MODE BUTTON - SINGLE ENTRY */}
+                  <button
+                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 text-white py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
+                    id="duel-btn-home"
+                    onPointerDown={() => {
+                      soundService.playUIClick();
+                      if (!currentUser) {
+                        showToast("Accedi per sfidare altri giocatori!");
+                        setShowAuthModal(true);
+                      } else {
+                        setActiveModal('duel_selection'); // Open Selection logic
+                      }
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+                    <Swords className="w-8 h-8 animate-pulse text-yellow-300" />
+                    <div className="flex flex-col items-start leading-none relative z-10">
+                      <span className="font-orbitron text-xl font-black uppercase tracking-widest italic drop-shadow-md">NEURAL DUEL</span>
+                      <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Sfida 1vs1 Realtime</span>
+                    </div>
+                    {/* Badge */}
+                    <div className="absolute top-2 right-2 bg-red-600/90 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-white animate-pulse shadow-lg">NEW MODES</div>
+                  </button>
+
+                  <button
+                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
+                    id="boss-btn-home"
+                    onPointerDown={() => {
+                      soundService.playUIClick();
+                      setActiveModal('boss_selection');
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+                    <Crown className="w-8 h-8 text-yellow-300 animate-[bounce_3s_infinite]" />
+                    <div className="flex flex-col items-start leading-none relative z-10">
+                      <span className="font-orbitron text-xl font-black uppercase tracking-widest drop-shadow-md">BOSS LEVELS</span>
+                      <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Sfide Epiche & Bonus</span>
+                    </div>
+                  </button>
+
+                  <button
+                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group"
+                    id="challenges-btn-home"
+                    onPointerDown={() => { soundService.playUIClick(); showToast("Nessuna sfida attiva al momento"); }}
+                  >
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                    <Trophy className="w-5 h-5" />
+                    <span className="font-orbitron text-xs font-black uppercase tracking-widest relative z-10">Sfide</span>
+                  </button>
+
+                  <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
+                    id="ranking-btn-home"
+                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-900 py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-15"></div>
+                    <BarChart3 className="w-5 h-5 relative z-10" />
+                    <span className="font-orbitron text-xs font-black uppercase tracking-widest relative z-10">RANKING</span>
+                  </button>
+                </div>
+
+                {/* AUTH BUTTON */}
+                {/* Auth Button Moved to Top Right - Removed from here */}
+
+                {/* Audio Button Removed */}
+
+
+              </div>
+            </div>
+          </>
+        )}
+
+
+
+        {gameState.status !== 'idle' && (
+          <div className="w-full h-full flex flex-col items-center z-10 p-4 max-w-4xl animate-screen-in">
+            <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
+              <div className={`
+                relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.15)]
+                ${gameState.isBossLevel
+                  ? 'bg-gradient-to-r from-lime-500 via-green-500 to-lime-600'
+                  : 'bg-gradient-to-r from-orange-400 via-[#FF5500] to-orange-600'}
+                transition-all duration-300
+              `}>
+                {/* Left Group: Buttons */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onPointerDown={(e) => {
+                      goToHome(e);
+                      setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
+                    }}
+                    className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
+                      ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
+                    title="Home"
+                  >
+                    <Home className="w-6 h-6" />
+                  </button>
+                  <button
+                    onPointerDown={toggleMute}
+                    className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
+                      ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
+                  >
+                    {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+                  </button>
+                </div>
+
+                {/* Center: Floating Timer (Half-In/Half-Out) */}
+                {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
+                <div id="timer-display-game" className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
+                  {/* Round Indicator - Only for Blitz - Now handled in Right Side Score */}
+                  {activeMatch?.isDuel && duelMode === 'blitz' && false && (
+                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-amber-400/50 text-amber-100 text-[11px] font-black font-orbitron px-5 py-1.5 rounded-full z-[110] whitespace-nowrap shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pulse-slow">
+                      ROUND {duelRounds.p1 + duelRounds.p2 + 1} / 5
+                    </div>
+                  )}
+
+                  {gameState.isBossLevel ? (
+                    <div className={`relative w-24 h-24 flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110' : 'hover:scale-105'}`}>
+                      {/* External White Frame */}
+                      <div className="absolute -inset-1 rotate-45 rounded-xl border-[4px] border-white pointer-events-none"></div>
+
+                      <div className="absolute inset-0 bg-slate-900 rotate-45 rounded-xl border-[4px] border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]"></div>
+
+                      {/* BOSS TIMER PROGRESS DIAMOND */}
+                      <svg className="absolute inset-0 w-full h-full rotate-45 pointer-events-none z-20 overflow-visible">
+                        <defs>
+                          <filter id="bossGlow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="2" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                          </filter>
+                        </defs>
                         <rect
                           x="2" y="2" width="92" height="92" rx="12"
-                          stroke="#10b981"
+                          stroke="rgba(16, 185, 129, 0.2)"
                           strokeWidth="6"
                           fill="none"
-                          pathLength="100"
-                          strokeDasharray="100"
-                          strokeDashoffset={100 * (1 - (gameState.timeLeft / 90))}
-                          strokeLinecap="round"
-                          className="transition-all duration-1000 ease-linear"
-                          filter="url(#bossGlow)"
                         />
-                      )}
-                    </svg>
+                        {!isPaused && (
+                          <rect
+                            x="2" y="2" width="92" height="92" rx="12"
+                            stroke="#10b981"
+                            strokeWidth="6"
+                            fill="none"
+                            pathLength="100"
+                            strokeDasharray="100"
+                            strokeDashoffset={100 * (1 - (gameState.timeLeft / 90))}
+                            strokeLinecap="round"
+                            className="transition-all duration-1000 ease-linear"
+                            filter="url(#bossGlow)"
+                          />
+                        )}
+                      </svg>
 
-                    <div className="relative z-10 flex flex-col items-center justify-center text-white">
+                      <div className="relative z-10 flex flex-col items-center justify-center text-white">
+                        {isPaused ? (
+                          <Pause className="w-8 h-8 text-emerald-400 animate-pulse" />
+                        ) : (
+                          <>
+                            <span className="text-[8px] font-black text-emerald-400 uppercase leading-none mb-1 tracking-widest">BOSS</span>
+                            <span className="font-black font-orbitron text-3xl leading-none drop-shadow-md">{gameState.timeLeft}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${(activeMatch?.isDuel && duelMode !== 'time_attack') ? 'border-red-500/50 grayscale-0 opacity-100 flex flex-col' : ''}`}>
+                      <svg className="absolute inset-0 w-full h-full -rotate-90 scale-90">
+                        <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
+                        {!isPaused && (
+                          <circle
+                            cx="50%" cy="50%" r="45%"
+                            stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                              ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
+                              : (gameState.timeLeft <= 10 ? '#ef4444' : '#FF8800')}
+                            strokeWidth="8"
+                            fill="none"
+                            strokeDasharray="283"
+                            strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                              ? 283 - (283 * (opponentTargets || 0) / 5)
+                              : (283 * (1 - gameState.timeLeft / 60))
+                            }
+                            strokeLinecap="round"
+                            className="transition-all duration-1000"
+                          />
+                        )}
+                      </svg>
                       {isPaused ? (
-                        <Pause className="w-8 h-8 text-emerald-400 animate-pulse" />
+                        <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
                       ) : (
                         <>
-                          <span className="text-[8px] font-black text-emerald-400 uppercase leading-none mb-1 tracking-widest">BOSS</span>
-                          <span className="font-black font-orbitron text-3xl leading-none drop-shadow-md">{gameState.timeLeft}</span>
+                          {activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz' && (
+                            <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">
+                              AVV
+                            </span>
+                          )}
+                          <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
+                            {activeMatch?.isDuel
+                              ? ((duelMode === 'time_attack' || duelMode === 'blitz') ? gameState.timeLeft : opponentTargets)
+                              : gameState.timeLeft}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* RIGHT SIDE: SCORE / ROUNDS */}
+                {activeMatch?.isDuel ? (
+                  <div className="flex items-center gap-3 pl-20 sm:pl-0">
+
+                    <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
+                      {duelMode === 'blitz' ? (
+                        <>
+                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">SCORE</span>
+                          <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
+                            {gameState.score}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
+                          <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
+                            {gameState.score}
+                          </span>
                         </>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${(activeMatch?.isDuel && duelMode !== 'time_attack') ? 'border-red-500/50 grayscale-0 opacity-100 flex flex-col' : ''}`}>
-                    <svg className="absolute inset-0 w-full h-full -rotate-90 scale-90">
-                      <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
-                      {!isPaused && (
-                        <circle
-                          cx="50%" cy="50%" r="45%"
-                          stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                            ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
-                            : (gameState.timeLeft <= 10 ? '#ef4444' : '#FF8800')}
-                          strokeWidth="8"
-                          fill="none"
-                          strokeDasharray="283"
-                          strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                            ? 283 - (283 * (opponentTargets || 0) / 5)
-                            : (283 * (1 - gameState.timeLeft / 60))
-                          }
-                          strokeLinecap="round"
-                          className="transition-all duration-1000"
-                        />
-                      )}
-                    </svg>
-                    {isPaused ? (
-                      <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
-                    ) : (
-                      <>
-                        {activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz' && (
-                          <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">
-                            AVV
-                          </span>
-                        )}
-                        <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
-                          {activeMatch?.isDuel
-                            ? ((duelMode === 'time_attack' || duelMode === 'blitz') ? gameState.timeLeft : opponentTargets)
-                            : gameState.timeLeft}
-                        </span>
-                      </>
-                    )}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3">
+                      <div id="score-display-game" className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
+                        <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
+                        <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
+                      </div>
+                      <div className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
+                        <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">{gameState.isBossLevel ? 'BOSS' : 'LV'}</span>
+                        <span className="text-sm font-black font-orbitron leading-none">{gameState.isBossLevel ? gameState.bossLevelId : gameState.level}</span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
+            </header>
 
-              {/* RIGHT SIDE: SCORE / ROUNDS */}
-              {activeMatch?.isDuel ? (
-                <div className="flex items-center gap-3 pl-20 sm:pl-0">
-
-                  <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
-                    {duelMode === 'blitz' ? (
-                      <>
-                        <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">SCORE</span>
-                        <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
-                          {gameState.score}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
-                        <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
-                          {gameState.score}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-3">
-                    <div id="score-display-game" className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
-                      <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
-                      <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
-                    </div>
-                    <div className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
-                      <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">{gameState.isBossLevel ? 'BOSS' : 'LV'}</span>
-                      <span className="text-sm font-black font-orbitron leading-none">{gameState.isBossLevel ? gameState.bossLevelId : gameState.level}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </header>
-
-          <main className="relative flex-grow w-full flex flex-col items-center justify-center">
-            {gameState.status === 'playing' && (
-              <div className="w-full flex flex-col items-center h-full relative">
-                {/* Info Row: Current Calculation Badge (Left) */}
-                <div className="w-full max-w-2xl px-4 flex justify-start items-center min-h-[50px] mb-2 mt-6">
-                  <div className={`transition-all duration-300 transform origin-left
+            <main className="relative flex-grow w-full flex flex-col items-center justify-center">
+              {gameState.status === 'playing' && (
+                <div className="w-full flex flex-col items-center h-full relative">
+                  {/* Info Row: Current Calculation Badge (Left) */}
+                  <div className="w-full max-w-2xl px-4 flex justify-start items-center min-h-[50px] mb-2 mt-6">
+                    <div className={`transition-all duration-300 transform origin-left
                         ${isDragging && selectedPath.length > 0 ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-90 -translate-x-4 pointer-events-none'}`}>
-                    <div className={`px-5 py-2 rounded-xl border-[3px] flex items-center gap-3 shadow-md transition-colors duration-200
+                      <div className={`px-5 py-2 rounded-xl border-[3px] flex items-center gap-3 shadow-md transition-colors duration-200
                           ${(previewResult !== null && (gameState.isBossLevel
-                        ? (gameState.levelTargets.find(t => !t.completed)?.value === previewResult)
-                        : gameState.levelTargets.some(t => t.value === previewResult && !t.completed)))
-                        ? (gameState.isBossLevel
-                          ? 'bg-emerald-600 border-white text-white scale-105 shadow-[0_0_20px_rgba(16,185,129,0.5)]'
-                          : 'bg-[#FF8800] border-white text-white scale-105')
-                        : (gameState.isBossLevel
-                          ? 'bg-white border-emerald-600 text-emerald-600'
-                          : 'bg-white border-[#FF8800] text-[#FF8800]')}`}>
-                      <span className="text-[10px] font-black uppercase tracking-wider opacity-80">Totale:</span>
-                      <span className="text-2xl font-black font-orbitron leading-none">
-                        {previewResult !== null ? previewResult : '...'}
-                      </span>
+                          ? (gameState.levelTargets.find(t => !t.completed)?.value === previewResult)
+                          : gameState.levelTargets.some(t => t.value === previewResult && !t.completed)))
+                          ? (gameState.isBossLevel
+                            ? 'bg-emerald-600 border-white text-white scale-105 shadow-[0_0_20px_rgba(16,185,129,0.5)]'
+                            : 'bg-[#FF8800] border-white text-white scale-105')
+                          : (gameState.isBossLevel
+                            ? 'bg-white border-emerald-600 text-emerald-600'
+                            : 'bg-white border-[#FF8800] text-[#FF8800]')}`}>
+                        <span className="text-[10px] font-black uppercase tracking-wider opacity-80">Totale:</span>
+                        <span className="text-2xl font-black font-orbitron leading-none">
+                          {previewResult !== null ? previewResult : '...'}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex flex-col items-center gap-2 mb-5">
-                  {/* Level Targets List */}
-                  {/* Level Targets List */}
-                  <div className="flex gap-2 items-center flex-wrap justify-center max-w-[300px]" id="targets-display-tutorial">
-                    {gameState.isBossLevel ? (
-                      // BOSS MODE: Display only CURRENT target (Large)
-                      (() => {
-                        const activeTarget = gameState.levelTargets.find(t => !t.completed);
-                        if (!activeTarget) return null; // All done (handled by win screen usually)
-                        const remainingCount = gameState.levelTargets.filter(t => !t.completed).length;
-                        const totalCount = gameState.levelTargets.length;
-                        const currentIndex = totalCount - remainingCount + 1;
+                  <div className="flex flex-col items-center gap-2 mb-5">
+                    {/* Level Targets List */}
+                    {/* Level Targets List */}
+                    <div className="flex gap-2 items-center flex-wrap justify-center max-w-[300px]" id="targets-display-tutorial">
+                      {gameState.isBossLevel ? (
+                        // BOSS MODE: Display only CURRENT target (Large)
+                        (() => {
+                          const activeTarget = gameState.levelTargets.find(t => !t.completed);
+                          if (!activeTarget) return null; // All done (handled by win screen usually)
+                          const remainingCount = gameState.levelTargets.filter(t => !t.completed).length;
+                          const totalCount = gameState.levelTargets.length;
+                          const currentIndex = totalCount - remainingCount + 1;
 
-                        return (
-                          <div className="flex flex-col items-center animate-bounce-short w-full">
-                            <div className="flex flex-col items-center justify-center w-full max-w-[240px] h-24 px-4 rounded-xl border-[4px] border-emerald-400 bg-emerald-900/80 shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all duration-300 transform hover:scale-105">
-                              <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-[0.2em] mb-1">
-                                TARGET {currentIndex}/{totalCount}
-                              </span>
-                              <span className={`font-orbitron font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none
+                          return (
+                            <div className="flex flex-col items-center animate-bounce-short w-full">
+                              <div className="flex flex-col items-center justify-center w-full max-w-[240px] h-24 px-4 rounded-xl border-[4px] border-emerald-400 bg-emerald-900/80 shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all duration-300 transform hover:scale-105">
+                                <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-[0.2em] mb-1">
+                                  TARGET {currentIndex}/{totalCount}
+                                </span>
+                                <span className={`font-orbitron font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none
                                   ${activeTarget.displayValue ? 'text-2xl tracking-widest' : 'text-5xl'}`}>
-                                {activeTarget.displayValue || activeTarget.value}
-                              </span>
+                                  {activeTarget.displayValue || activeTarget.value}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })()
-                    ) : (
-                      // STANDARD MODE: Display All
-                      gameState.levelTargets.map((t, i) => {
-                        const isDominion = activeMatch?.isDuel && duelMode === 'blitz';
-                        let bgClass = 'bg-[#0055AA] border-white/50'; // Default Blue
+                          );
+                        })()
+                      ) : (
+                        // STANDARD MODE: Display All
+                        gameState.levelTargets.map((t, i) => {
+                          const isDominion = activeMatch?.isDuel && duelMode === 'blitz';
+                          let bgClass = 'bg-[#0055AA] border-white/50'; // Default Blue
 
-                        if (isDominion) {
-                          // Dominion Styling
-                          const isMyTarget = (t.owner === 'p1' && activeMatch?.isP1) || (t.owner === 'p2' && !activeMatch?.isP1);
-                          const isEnemyTarget = (t.owner === 'p1' && !activeMatch?.isP1) || (t.owner === 'p2' && activeMatch?.isP1);
+                          if (isDominion) {
+                            // Dominion Styling
+                            const isMyTarget = (t.owner === 'p1' && activeMatch?.isP1) || (t.owner === 'p2' && !activeMatch?.isP1);
+                            const isEnemyTarget = (t.owner === 'p1' && !activeMatch?.isP1) || (t.owner === 'p2' && activeMatch?.isP1);
 
-                          if (isMyTarget) bgClass = 'bg-emerald-500 border-white scale-110 shadow-[0_0_15px_rgba(16,185,129,0.6)] z-10';
-                          else if (isEnemyTarget) bgClass = 'bg-rose-600 border-white/80 opacity-90 scale-95';
-                        } else {
-                          // Standard Styling
-                          if (t.completed) bgClass = 'bg-[#FF8800] border-white scale-110 shadow-[0_0_15px_rgba(255,136,0,0.6)]';
-                        }
+                            if (isMyTarget) bgClass = 'bg-emerald-500 border-white scale-110 shadow-[0_0_15px_rgba(16,185,129,0.6)] z-10';
+                            else if (isEnemyTarget) bgClass = 'bg-rose-600 border-white/80 opacity-90 scale-95';
+                          } else {
+                            // Standard Styling
+                            if (t.completed) bgClass = 'bg-[#FF8800] border-white scale-110 shadow-[0_0_15px_rgba(255,136,0,0.6)]';
+                          }
 
-                        return (
-                          <div key={i} className={`
+                          return (
+                            <div key={i} className={`
                                     flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 border-2
                                     ${bgClass}
                                      font-orbitron font-black text-white text-xl shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
                                  ${t.displayValue ? 'text-[10px] sm:text-xs leading-tight whitespace-nowrap px-1' : 'text-xl'} 
                                  `}>
-                            {t.displayValue || t.value}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                <div className="relative flex-grow w-full flex items-center justify-center overflow-visible">
-
-                  {isPaused && (
-                    <div id="pause-overlay-game" className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl rounded-3xl transition-all animate-fadeIn">
-                      <div className="flex flex-col items-center gap-4">
-                        <Pause className="w-24 h-24 text-white opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
-                        <span className="font-orbitron font-black text-2xl text-white tracking-[0.3em] animate-pulse">PAUSA</span>
-                      </div>
+                              {t.displayValue || t.value}
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
-                  )}
+                  </div>
 
-                  <div id="grid-container-game" className={`relative mx-auto transition-all duration-500 transform
+                  <div className="relative flex-grow w-full flex items-center justify-center overflow-visible">
+
+                    {isPaused && (
+                      <div id="pause-overlay-game" className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl rounded-3xl transition-all animate-fadeIn">
+                        <div className="flex flex-col items-center gap-4">
+                          <Pause className="w-24 h-24 text-white opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
+                          <span className="font-orbitron font-black text-2xl text-white tracking-[0.3em] animate-pulse">PAUSA</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div id="grid-container-game" className={`relative mx-auto transition-all duration-500 transform
                     ${isPaused ? 'opacity-10 scale-95 filter blur-lg pointer-events-none grayscale' : 'opacity-100 scale-100 filter-none'}
                     ${theme === 'orange'
-                      ? 'w-[calc(272px*var(--hex-scale))] h-[calc(376px*var(--hex-scale))]'
-                      : 'w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))]'
-                    }`}>
-                    {grid.map(cell => (
-                      <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* BLITZ ROUND WON OVERLAY */}
-            {gameState.status === 'round-won' && (
-              <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn">
-                <div className="text-center p-8 bg-slate-900 border-4 border-[#FF8800] rounded-[3rem] shadow-[0_0_50px_rgba(255,136,0,0.5)] animate-bounce-slow">
-                  <FastForward className="w-16 h-16 text-[#FF8800] mx-auto mb-4" />
-                  <h2 className="text-4xl font-black font-orbitron text-white uppercase tracking-widest leading-none mb-2">ROUND VINTO!</h2>
-                  <div className="text-lg font-black font-orbitron text-[#FF8800] uppercase tracking-tighter">Sincronizzazione in corso...</div>
-                  <div className="mt-4 flex gap-2 justify-center">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="w-3 h-3 rounded-full bg-[#FF8800] animate-pulse" style={{ animationDelay: `${i * 0.2}s` }}></div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {gameState.status === 'game-over' && (
-              <div className={`glass-panel p-6 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-sm mt-40 relative overflow-hidden border-[3px] shadow-lg
-                  ${gameState.isBossLevel
-                  ? 'border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.3)]'
-                  : 'border-[#FF8800]/30 shadow-[0_0_50px_rgba(255,136,0,0.2)]'}`}>
-                {/* Background Texture */}
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
-
-                <AlertTriangle className={`w-12 h-12 mx-auto mb-2 animate-pulse ${gameState.isBossLevel ? 'text-emerald-400' : 'text-[#FF8800]'}`} />
-                <h2 className={`text-3xl font-black font-orbitron mb-1 tracking-wider ${gameState.isBossLevel ? 'text-emerald-400' : 'text-[#FF8800]'}`}>HAI PERSO</h2>
-                <div className="text-[10px] font-bold text-slate-400 mb-6 uppercase tracking-[0.2em]">{gameState.isBossLevel ? 'Boss Sfidato' : 'Livello Non Superato'}</div>
-
-                <div className="space-y-3 relative z-10">
-                  <button onPointerDown={(e) => {
-                    e.stopPropagation();
-                    resetDuelState();
-                    if (gameState.isBossLevel && gameState.bossLevelId) {
-                      startBossGame(gameState.bossLevelId);
-                    } else {
-                      startGame(gameState.level);
-                    }
-                  }}
-                    className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all border-2 border-slate-200">
-                    {gameState.isBossLevel ? 'RIPROVA BOSS' : `RIGIOCA LIVELLO ${gameState.level}`}
-                  </button>
-                  <button onPointerDown={(e) => {
-                    e.stopPropagation();
-                    resetDuelState(activeMatch?.id, currentUser?.id);
-                    goToHome();
-                    setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
-                  }}
-                    className="w-full bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm border border-slate-700 active:scale-95 transition-all hover:bg-slate-700 hover:text-white">
-                    TORNA ALLA HOME
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* SURRENDER RECAP SCREEN */}
-            {gameState.status === 'opponent-surrendered' && (
-              <div className="glass-panel p-8 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-sm mt-12 relative overflow-hidden border-[3px] border-cyan-500 shadow-[0_0_60px_rgba(6,182,212,0.4)]">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
-
-                <Trophy className="w-16 h-16 text-cyan-400 mx-auto mb-4 animate-[bounce_2s_infinite]" />
-                <h2 className="text-3xl font-black font-orbitron mb-2 text-cyan-400 tracking-wider drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]">HAI VINTO</h2>
-                <div className="text-xs font-bold text-white mb-6 uppercase tracking-[0.1em] bg-cyan-500/10 py-1 rounded">Vittoria per Ritiro</div>
-
-                <div className="bg-slate-900/60 p-5 rounded-2xl mb-6 border border-cyan-500/20">
-                  <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block mb-2">Punteggio Ottenuto</span>
-                  <div className="text-4xl font-black font-orbitron text-white text-shadow-neon-cyan">
-                    +{gameState.score + (duelMode === 'blitz' ? 50 : 100)} {/* Bonus for win */}
-                  </div>
-                  <span className="text-[8px] text-slate-500 uppercase font-bold mt-1 block">Accumulati nel Profilo Globale</span>
-                </div>
-
-                <button onPointerDown={(e) => {
-                  e.stopPropagation();
-                  // Just reset local, match is already gone/cancelled if we are here (surrender screen)
-                  resetDuelState();
-                  setActiveModal('duel_selection');
-                }}
-                  className="w-full bg-cyan-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border border-cyan-400 hover:bg-cyan-500">
-                  TORNA ALLA LOBBY
-                </button>
-              </div>
-            )}
-
-            {gameState.status === 'level-complete' && (
-              <div className="glass-panel p-8 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md mt-12 relative overflow-hidden border-[3px] border-[#FF8800]/50 shadow-[0_0_60px_rgba(255,136,0,0.3)]">
-                {/* Background Texture */}
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
-
-                {gameState.isBossLevel ? (
-                  // BOSS WIN SCREEN
-                  <div className="relative z-10">
-                    <Crown className="w-20 h-20 text-yellow-400 mx-auto mb-4 animate-bounce" />
-                    <h2 className="text-4xl font-black font-orbitron text-yellow-400 mb-2 uppercase tracking-wider drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]">BOSS SCONFITTO!</h2>
-                    <div className="text-xs font-bold text-white mb-6 uppercase tracking-[0.1em] bg-yellow-500/20 py-1 rounded">Dominio Matematico Stabilito</div>
-
-                    <div className="bg-slate-900/60 p-5 rounded-2xl mb-6 border border-yellow-500/20">
-                      <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block mb-2">Ricompensa</span>
-                      <div className="text-3xl font-black font-orbitron text-white text-shadow-neon-yellow flex flex-col items-center gap-1">
-                        <span>30s BONUS</span>
-                        <span className="text-xs text-yellow-500 font-bold">+1000 PUNTI</span>
-                      </div>
-                    </div>
-
-                    <button onPointerDown={async (e) => {
-                      e.stopPropagation();
-                      if (currentUser && gameState.bossLevelId) {
-                        await profileService.completeBoss(currentUser.id, gameState.bossLevelId);
-                        loadProfile(currentUser.id);
-                      }
-                      setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null, status: 'idle' }));
-                    }}
-                      className="w-full bg-yellow-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border border-yellow-400 hover:bg-yellow-500">
-                      RISCATTA & TORNA ALLA BASE
-                    </button>
-                  </div>
-                ) : (
-                  // STANDARD LEVEL WIN
-                  <div className="relative z-10">
-                    <div className="flex justify-center items-center gap-6 mb-6">
-                      <div className="flex flex-col items-center">
-                        <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Livello</span>
-                        <span className="text-3xl font-black font-orbitron text-white">{gameState.level}</span>
-                      </div>
-                      <ChevronRight className="w-8 h-8 text-[#FF8800] animate-pulse" strokeWidth={3} />
-                      <div className="flex flex-col items-center">
-                        <span className="text-[9px] uppercase font-black text-[#FF8800] tracking-wider">Prossimo</span>
-                        <span className="text-4xl font-black font-orbitron text-[#FF8800] drop-shadow-[0_0_10px_rgba(255,136,0,0.5)]">{gameState.level + 1}</span>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-900/50 p-5 rounded-2xl mb-6 border border-white/10 space-y-3">
-                      <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Punti Livello</span>
-                        <span className="text-lg font-orbitron font-black text-[#FF8800] animate-pulse">
-                          +{gameState.score > 0 ? (gameState.timeLeft * 2) + 50 + (10 * 5) : '...'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Punteggio Totale</span>
-                        <span className="text-lg font-orbitron font-black text-white">{gameState.totalScore}</span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <div className="bg-green-500/10 rounded-lg p-2 flex flex-col items-center">
-                          <span className="text-[8px] font-black uppercase text-green-400 tracking-wider">Residuo</span>
-                          <span className="text-sm font-orbitron font-black text-green-300">{gameState.timeLeft}s</span>
-                        </div>
-                        <div className="bg-green-500/20 rounded-lg p-2 flex flex-col items-center border border-green-500/30">
-                          <span className="text-[8px] font-black uppercase text-green-300 tracking-wider">Totale</span>
-                          <span className="text-sm font-orbitron font-black text-white">{gameState.timeLeft + 60}s</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }}
-                        className="w-full bg-gradient-to-r from-[#FF8800] to-[#FF5500] text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-lg shadow-[0_8px_20px_rgba(255,136,0,0.4)] active:scale-95 transition-all flex items-center justify-center gap-2 border-[3px] border-white group relative overflow-hidden">
-                        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                        <Play className="w-5 h-5 fill-current" />
-                        <span className="relative z-10">Prossimo Livello</span>
-                      </button>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <button onPointerDown={(e) => { e.stopPropagation(); startGame(gameState.level); }}
-                          className="bg-slate-800 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-700 hover:text-white hover:bg-slate-700">
-                          Rigioca
-                        </button>
-                        <button onPointerDown={(e) => {
-                          e.stopPropagation();
-                          resetDuelState(activeMatch?.id, currentUser?.id);
-                          goToHome(e);
-                          setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
-                        }}
-                          className="bg-slate-800 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-700 hover:text-white hover:bg-slate-700">
-                          Home
-                        </button>
-                      </div>
-
-                      <button className="text-[9px] text-cyan-500/40 uppercase font-black tracking-[0.2em] hover:text-cyan-400 transition-colors pt-1 animate-pulse">
-                        Salvataggio Automatico Attivo
-                      </button>
+                        ? 'w-[calc(272px*var(--hex-scale))] h-[calc(376px*var(--hex-scale))]'
+                        : 'w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))]'
+                      }`}>
+                      {grid.map(cell => (
+                        <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} />
+                      ))}
                     </div>
                   </div>
-                )}
-              </div>
-            )}
-          </main>
-        </div >
-      )}
-
-      {
-        activeModal === 'tutorial' && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-            <div className="bg-white border-[4px] border-[#FF8800] w-full max-w-md p-8 rounded-[2rem] shadow-[0_0_50px_rgba(255,136,0,0.3)] flex flex-col" onPointerDown={e => e.stopPropagation()}>
-              <div className="flex flex-col items-center text-center py-4">
-                <div className="mb-6 scale-125 drop-shadow-sm">{TUTORIAL_STEPS[tutorialStep].icon}</div>
-                <h2 className="text-2xl font-black font-orbitron text-[#FF8800] mb-4 uppercase tracking-widest">{TUTORIAL_STEPS[tutorialStep].title}</h2>
-                <p className="text-slate-600 font-bold text-sm leading-relaxed mb-10 border-t-2 border-slate-100 pt-4 w-full">{TUTORIAL_STEPS[tutorialStep].description}</p>
-                <button onPointerDown={(e) => { e.stopPropagation(); nextTutorialStep(); }} className="w-full bg-[#FF8800] text-white border-[3px] border-white py-5 rounded-2xl font-orbitron font-black text-sm uppercase shadow-lg active:scale-95 transition-all outline-none ring-0">
-                  {tutorialStep === TUTORIAL_STEPS.length - 1 ? 'HO CAPITO' : 'AVANTI'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      }
-
-      {activeModal === 'boss_selection' && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-          <div className="bg-slate-900 border-[3px] border-emerald-500/50 w-full max-w-lg p-8 rounded-[2rem] shadow-[0_0_50px_rgba(16,185,129,0.2)] flex flex-col relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
-
-            <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase text-center relative z-10 flex items-center justify-center gap-3">
-              <Crown className="text-yellow-400" /> LIVELLI BOSS
-            </h2>
-            <p className="text-slate-400 text-center text-sm mb-8 font-mono relative z-10">Sconfiggi i Boss per Bonus Epici</p>
-
-            <div className="flex flex-col gap-4 relative z-10 w-full overflow-y-auto max-h-[50vh]">
-              {BOSS_LEVELS.map(boss => {
-                const isUnlocked = (userProfile?.max_level || 0) > boss.requiredLevel ||
-                  gameState.level > boss.requiredLevel ||
-                  (savedGame?.level || 0) > boss.requiredLevel;
-                const isCompleted = userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`);
-
-                return (
-                  <button
-                    key={boss.id}
-                    disabled={!isUnlocked}
-                    className={`w-full p-4 rounded-xl flex items-center gap-4 border-2 transition-all group shadow-lg relative overflow-hidden
-                           ${isCompleted
-                        ? 'bg-slate-800/80 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.2)] cursor-default grayscale-[0.5]'
-                        : isUnlocked
-                          ? 'bg-gradient-to-r from-emerald-800 to-teal-900 border-emerald-500/30 hover:border-emerald-400 active:scale-95 cursor-pointer'
-                          : 'bg-slate-800 border-slate-700 opacity-60 cursor-not-allowed grayscale'}`}
-                    onPointerDown={() => {
-                      if (isUnlocked && !isCompleted) {
-                        soundService.playUIClick();
-                        startBossGame(boss.id);
-                      }
-                    }}
-                  >
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 border-2 shadow-inner relative z-10
-                            ${isUnlocked ? (isCompleted ? 'bg-amber-500 border-amber-300 text-white' : 'bg-emerald-500 border-emerald-300 text-white') : 'bg-slate-700 border-slate-600 text-slate-500'}`}>
-                      {isCompleted ? <Trophy size={24} className="animate-bounce-slow" /> : (isUnlocked ? <Play size={24} fill="currentColor" /> : <Shield size={24} />)}
-                    </div>
-
-                    <div className="text-left flex-1 relative z-10">
-                      <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">{boss.title}</h3>
-                      <p className="text-[10px] text-emerald-200 font-bold uppercase tracking-wide mb-1">{boss.description}</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] bg-black/40 px-2 py-0.5 rounded text-white font-mono">REQ: LIV {boss.requiredLevel}</span>
-                        <span className="text-[9px] bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded font-mono flex items-center gap-1"><Zap size={8} /> {boss.reward}</span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <button onClick={() => setActiveModal(null)} className="mt-6 text-slate-500 text-xs hover:text-white uppercase font-bold tracking-widest relative z-10">
-              Chiudi
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* MODE SELECTION MODAL */}
-      {activeModal === 'duel_selection' && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-          <div className="bg-slate-900 border-[3px] border-white/20 w-full max-w-lg p-8 rounded-[2rem] shadow-2xl flex flex-col relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
-            {/* Background Decor */}
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
-
-            <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase text-center relative z-10 flex items-center justify-center gap-3">
-              <Swords className="text-[#FF8800]" /> SELEZIONA SFIDA
-            </h2>
-            <p className="text-slate-400 text-center text-sm mb-8 font-mono relative z-10">Scegli il tuo stile di combattimento</p>
-
-            <div className="flex flex-col gap-3 relative z-10 w-full">
-              {/* Option 1: STANDARD */}
-              <button
-                className="w-full bg-gradient-to-r from-red-600 to-rose-700 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
-                onPointerDown={() => { soundService.playUIClick(); setDuelMode('standard'); setActiveModal('duel'); }}
-              >
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
-                  <Swords size={22} className="text-yellow-300 drop-shadow-sm" />
-                </div>
-                <div className="text-left flex-1 relative z-10">
-                  <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">STANDARD</h3>
-                  <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Velocità Pura • Partita Secca</p>
-                </div>
-                <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
-              </button>
-
-              {/* Option 2: BLITZ */}
-              <button
-                className="w-full bg-gradient-to-r from-orange-500 to-amber-600 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
-                onPointerDown={() => { soundService.playUIClick(); setDuelMode('blitz'); setActiveModal('duel'); }}
-              >
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                <div className="absolute top-0 right-12 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20">NEW</div>
-
-                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
-                  <Zap size={22} className="text-white drop-shadow-sm" />
-                </div>
-                <div className="text-left flex-1 relative z-10">
-                  <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">BLITZ DOMINION</h3>
-                  <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Alta Strategia • Conquista</p>
-                </div>
-                <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
-              </button>
-
-              {/* Option 3: TIME ATTACK */}
-              <button
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
-                onPointerDown={() => { soundService.playUIClick(); setDuelMode('time_attack'); setActiveModal('duel'); }}
-              >
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                <div className="absolute top-0 right-12 bg-yellow-400 text-black text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20 animate-pulse">HOT</div>
-
-                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
-                  <Clock size={22} className="text-white drop-shadow-sm" />
-                </div>
-                <div className="text-left flex-1 relative z-10">
-                  <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">TIME ATTACK</h3>
-                  <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">60 Secondi • Target Infiniti</p>
-                </div>
-                <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
-              </button>
-            </div>
-
-            <button onClick={() => setActiveModal(null)} className="mt-8 text-slate-500 text-xs hover:text-white uppercase font-bold tracking-widest relative z-10">
-              Annulla
-            </button>
-          </div>
-        </div>
-      )}
-      {activeModal === 'registration_success' && (
-        <RegistrationSuccess onEnter={() => setActiveModal(null)} />
-      )}
-
-      {activeModal === 'resume_confirm' && (
-        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => setActiveModal(null)}>
-          <div className="bg-slate-900 border-[3px] border-[#FF8800] w-full max-w-sm p-8 rounded-[2rem] shadow-[0_0_50px_rgba(255,136,0,0.4)] flex flex-col text-center relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
-
-            <AlertTriangle className="w-16 h-16 text-[#FF8800] mx-auto mb-4 animate-pulse" />
-            <h2 className="text-2xl font-black font-orbitron text-white mb-2 uppercase tracking-wider relative z-10">PARTITA SALVATA</h2>
-            <p className="text-slate-400 font-bold text-sm mb-8 relative z-10">
-              Hai una partita in sospeso.<br />Vuoi riprenderla o iniziarne una nuova?
-            </p>
-
-            <div className="space-y-3 relative z-10">
-              <button
-                onPointerDown={(e) => { e.stopPropagation(); restoreGame(); }}
-                className="w-full bg-[#FF8800] text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border-2 border-white"
-              >
-                RIPRENDI PARTITA
-              </button>
-              <button
-                onPointerDown={(e) => { e.stopPropagation(); startGame(); }}
-                className="w-full bg-slate-800 text-slate-400 py-3 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border border-slate-600 active:scale-95 transition-all hover:text-white"
-              >
-                NUOVA PARTITA (CANCELLA)
-              </button>
-              <button
-                onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
-                className="w-full py-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-white transition-colors"
-              >
-                INDIETRO
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeModal === 'logout_confirm' && (
-        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => setActiveModal(null)}>
-          <div className="bg-slate-900 border-[3px] border-red-500/50 w-full max-w-sm p-8 rounded-[2rem] shadow-[0_0_50px_rgba(220,38,38,0.4)] flex flex-col text-center relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
-
-            <User className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-black font-orbitron text-white mb-2 uppercase tracking-wider relative z-10">LOGOUT</h2>
-            <p className="text-slate-400 font-bold text-sm mb-8 relative z-10">
-              Vuoi davvero disconnetterti?
-            </p>
-
-            <div className="space-y-3 relative z-10">
-              <button
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  import('./services/supabaseClient').then(({ authService }) => authService.signOut());
-                  setCurrentUser(null);
-                  setUserProfile(null);
-                  showToast(`Logout effettuato.`);
-                  setActiveModal(null);
-                }}
-                className="w-full bg-red-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border-2 border-white"
-              >
-                CONFERMA USCITA
-              </button>
-              <button
-                onPointerDown={(e) => { e.stopPropagation(); setActiveModal(null); }}
-                className="w-full bg-slate-800 text-slate-400 py-3 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border border-slate-600 active:scale-95 transition-all hover:text-white"
-              >
-                ANNULLA
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeModal === 'duel' && currentUser && (
-        <NeuralDuelLobby
-          currentUser={currentUser}
-          userProfile={userProfile}
-          mode={duelMode}
-          showToast={showToast}
-          onlinePlayers={onlinePlayers}
-          onClose={() => setActiveModal('duel_selection')}
-          onMatchStart={(seed, matchId, opponentId, isP1) => {
-            setActiveModal(null);
-
-            // Check if I am P1 by fetching match from matches state or just check if matchId was hosted by me
-            // Simplified: The lobby component knows, or we just rely on latest match data sync.
-            // Better: neuralDuelLobby already knows, but let's just use current user logic.
-            setActiveMatch({ id: matchId, opponentId, isDuel: true, isP1: isP1 }); // Placeholder, fix in effect
-
-            // Initialize Duel Game
-            soundService.playUIClick();
-            setGameState(prev => ({
-              ...prev,
-              score: 0,
-              totalScore: prev.totalScore, // Preserve points during duel
-              streak: 0,
-              level: 1,
-              timeLeft: duelMode === 'time_attack' ? 60 : INITIAL_TIME,
-              targetResult: 0,
-              status: 'playing',
-              estimatedIQ: prev.estimatedIQ,
-              lastLevelPerfect: true,
-              basePoints: BASE_POINTS_START,
-              levelTargets: [],
-            }));
-            // Pass the MATCH SEED to create the exact same board for both players
-            generateGrid(1, seed);
-            // Reset Opponent Score
-            setOpponentScore(0);
-            // Clean ready status just in case
-            matchService.resetRoundStatus(matchId);
-          }}
-        />
-      )}
-
-      {
-        activeModal === 'leaderboard' && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-            <div className="glass-panel w-full max-w-md p-6 rounded-[2rem] modal-content flex flex-col h-[70vh]" onPointerDown={e => e.stopPropagation()}>
-              <h2 className="text-2xl font-black font-orbitron text-white mb-4 uppercase flex items-center gap-3"><Award className="text-amber-400" /> CLASSIFICHE</h2>
-
-              {/* Leaderboard Tabs */}
-              <div className="flex bg-white/10 rounded-xl p-1 mb-4">
-                <button
-                  onClick={() => setTutorialStep(0)} // Using tutorialStep variable as a hack for tab index or just create a new local state wrapper... 
-                  // Actually, let's just assume we view SCORE by default, or better:
-                  // Since I can't easily add state here without full re-write, I'll use a local var logic or verify if I can edit state.
-                  // I will check if I can modify App state higher up. I see 'tutorialStep'.
-                  // I'll create a simple toggle inside the render using a new state variable is simpler if I could...
-                  // Let's use `scoreAnimKey` as a toggle for tabs? No that's dirty.
-                  // I'll stick to a simple internal toggle using `tutorialStep` (since it's unused in this modal) 
-                  // 0 = Score, 1 = Level.
-                  onPointerDown={() => setTutorialStep(0)}
-                  className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase transition-all ${tutorialStep === 0 ? 'bg-[#FF8800] text-black shadow-lg' : 'text-gray-400 hover:text-white'}`}
-                >
-                  Punteggio
-                </button>
-                <button
-                  onPointerDown={() => setTutorialStep(1)}
-                  className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase transition-all ${tutorialStep === 1 ? 'bg-cyan-500 text-black shadow-lg' : 'text-gray-400 hover:text-white'}`}
-                >
-                  Livello Max
-                </button>
-              </div>
-
-              {(!leaderboardData || (!leaderboardData['byScore'] && !Array.isArray(leaderboardData))) ? (
-                <div className="text-center py-10 text-slate-400 font-orbitron">Caricamento...</div>
-              ) : (
-                <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scroll">
-                  {/* DATA LIST */}
-                  {((tutorialStep === 0 ? (leaderboardData as any).byScore : (leaderboardData as any).byLevel) || []).map((p: any, idx: number) => {
-                    // Rank Calculation Inline for Leaderboard (avoiding circular dependency or extra imports if possible, but we imported `getRank` so use it)
-                    const playerRank = getRank(p.max_level || 1);
-                    const RankIcon = playerRank.icon;
-
-                    return (
-                      <div key={idx} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5 relative overflow-hidden group">
-                        {/* Top 3 Highlight */}
-                        {idx < 3 && <div className={`absolute left-0 top-0 bottom-0 w-1 ${idx === 0 ? 'bg-[#FFD700]' : idx === 1 ? 'bg-gray-300' : 'bg-[#CD7F32]'}`}></div>}
-
-                        <div className="flex items-center gap-3 pl-2">
-                          {/* Avatar or Placeholder */}
-                          <div className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full bg-slate-800 border-2 border-white/10 overflow-hidden flex items-center justify-center">
-                            {p.avatar_url ? (
-                              <img src={p.avatar_url} className="w-full h-full object-cover" alt={p.username} />
-                            ) : (
-                              <span className="text-xs font-bold text-slate-500">{p.username?.charAt(0) || '?'}</span>
-                            )}
-                          </div>
-
-                          <div className="flex flex-col">
-                            <span className={`text-sm font-bold leading-tight ${idx < 3 ? 'text-white' : 'text-gray-300'}`}>
-                              {idx + 1}. {p.username || 'Giocatore'}
-                            </span>
-
-                            <div className="flex items-center gap-1 mt-0.5">
-                              {idx === 0 && <Sparkles size={10} className="text-yellow-400" />}
-                              <RankIcon size={10} className={playerRank.color} />
-                              <span className={`text-[8px] uppercase font-black tracking-widest ${playerRank.color}`}>{playerRank.title}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          {tutorialStep === 0 ? (
-                            <>
-                              <span className="font-orbitron font-black text-[#FF8800] text-sm">{p.total_score} pts</span>
-                              <span className="font-orbitron font-bold text-gray-500 text-[9px]">Liv {p.max_level}</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="font-orbitron font-black text-cyan-400 text-sm">Liv {p.max_level}</span>
-                              <span className="font-orbitron font-bold text-gray-500 text-[9px]">{p.total_score} pts</span>
-                            </>
-                          )}
-
-                        </div>
-                      </div>
-                    )
-                  })}
-
-                  {((tutorialStep === 0 ? (leaderboardData as any).byScore : (leaderboardData as any).byLevel) || []).length === 0 && (
-                    <div className="text-center py-8 text-gray-500 text-xs">Nessun dato disponibile</div>
-                  )}
                 </div>
               )}
 
-              <button onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }} className="mt-4 w-full bg-slate-800 text-white py-4 rounded-xl font-orbitron font-black text-xs uppercase active:scale-95 transition-all">CHIUDI</button>
+              {/* BLITZ ROUND WON OVERLAY */}
+              {gameState.status === 'round-won' && (
+                <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn">
+                  <div className="text-center p-8 bg-slate-900 border-4 border-[#FF8800] rounded-[3rem] shadow-[0_0_50px_rgba(255,136,0,0.5)] animate-bounce-slow">
+                    <FastForward className="w-16 h-16 text-[#FF8800] mx-auto mb-4" />
+                    <h2 className="text-4xl font-black font-orbitron text-white uppercase tracking-widest leading-none mb-2">ROUND VINTO!</h2>
+                    <div className="text-lg font-black font-orbitron text-[#FF8800] uppercase tracking-tighter">Sincronizzazione in corso...</div>
+                    <div className="mt-4 flex gap-2 justify-center">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="w-3 h-3 rounded-full bg-[#FF8800] animate-pulse" style={{ animationDelay: `${i * 0.2}s` }}></div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {gameState.status === 'game-over' && (
+                <div className={`glass-panel p-6 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-sm mt-40 relative overflow-hidden border-[3px] shadow-lg
+                  ${gameState.isBossLevel
+                    ? 'border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.3)]'
+                    : 'border-[#FF8800]/30 shadow-[0_0_50px_rgba(255,136,0,0.2)]'}`}>
+                  {/* Background Texture */}
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+
+                  <AlertTriangle className={`w-12 h-12 mx-auto mb-2 animate-pulse ${gameState.isBossLevel ? 'text-emerald-400' : 'text-[#FF8800]'}`} />
+                  <h2 className={`text-3xl font-black font-orbitron mb-1 tracking-wider ${gameState.isBossLevel ? 'text-emerald-400' : 'text-[#FF8800]'}`}>HAI PERSO</h2>
+                  <div className="text-[10px] font-bold text-slate-400 mb-6 uppercase tracking-[0.2em]">{gameState.isBossLevel ? 'Boss Sfidato' : 'Livello Non Superato'}</div>
+
+                  <div className="space-y-3 relative z-10">
+                    <button onPointerDown={(e) => {
+                      e.stopPropagation();
+                      resetDuelState();
+                      if (gameState.isBossLevel && gameState.bossLevelId) {
+                        startBossGame(gameState.bossLevelId);
+                      } else {
+                        startGame(gameState.level);
+                      }
+                    }}
+                      className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all border-2 border-slate-200">
+                      {gameState.isBossLevel ? 'RIPROVA BOSS' : `RIGIOCA LIVELLO ${gameState.level}`}
+                    </button>
+                    <button onPointerDown={(e) => {
+                      e.stopPropagation();
+                      resetDuelState(activeMatch?.id, currentUser?.id);
+                      goToHome();
+                      setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
+                    }}
+                      className="w-full bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm border border-slate-700 active:scale-95 transition-all hover:bg-slate-700 hover:text-white">
+                      TORNA ALLA HOME
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* SURRENDER RECAP SCREEN */}
+              {gameState.status === 'opponent-surrendered' && (
+                <div className="glass-panel p-8 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-sm mt-12 relative overflow-hidden border-[3px] border-cyan-500 shadow-[0_0_60px_rgba(6,182,212,0.4)]">
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+
+                  <Trophy className="w-16 h-16 text-cyan-400 mx-auto mb-4 animate-[bounce_2s_infinite]" />
+                  <h2 className="text-3xl font-black font-orbitron mb-2 text-cyan-400 tracking-wider drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]">HAI VINTO</h2>
+                  <div className="text-xs font-bold text-white mb-6 uppercase tracking-[0.1em] bg-cyan-500/10 py-1 rounded">Vittoria per Ritiro</div>
+
+                  <div className="bg-slate-900/60 p-5 rounded-2xl mb-6 border border-cyan-500/20">
+                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block mb-2">Punteggio Ottenuto</span>
+                    <div className="text-4xl font-black font-orbitron text-white text-shadow-neon-cyan">
+                      +{gameState.score + (duelMode === 'blitz' ? 50 : 100)} {/* Bonus for win */}
+                    </div>
+                    <span className="text-[8px] text-slate-500 uppercase font-bold mt-1 block">Accumulati nel Profilo Globale</span>
+                  </div>
+
+                  <button onPointerDown={(e) => {
+                    e.stopPropagation();
+                    // Just reset local, match is already gone/cancelled if we are here (surrender screen)
+                    resetDuelState();
+                    setActiveModal('duel_selection');
+                  }}
+                    className="w-full bg-cyan-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border border-cyan-400 hover:bg-cyan-500">
+                    TORNA ALLA LOBBY
+                  </button>
+                </div>
+              )}
+
+              {gameState.status === 'level-complete' && (
+                <div className="glass-panel p-8 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md mt-12 relative overflow-hidden border-[3px] border-[#FF8800]/50 shadow-[0_0_60px_rgba(255,136,0,0.3)]">
+                  {/* Background Texture */}
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+
+                  {gameState.isBossLevel ? (
+                    // BOSS WIN SCREEN
+                    <div className="relative z-10">
+                      <Crown className="w-20 h-20 text-yellow-400 mx-auto mb-4 animate-bounce" />
+                      <h2 className="text-4xl font-black font-orbitron text-yellow-400 mb-2 uppercase tracking-wider drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]">BOSS SCONFITTO!</h2>
+                      <div className="text-xs font-bold text-white mb-6 uppercase tracking-[0.1em] bg-yellow-500/20 py-1 rounded">Dominio Matematico Stabilito</div>
+
+                      <div className="bg-slate-900/60 p-5 rounded-2xl mb-6 border border-yellow-500/20">
+                        <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block mb-2">Ricompensa</span>
+                        <div className="text-3xl font-black font-orbitron text-white text-shadow-neon-yellow flex flex-col items-center gap-1">
+                          <span>30s BONUS</span>
+                          <span className="text-xs text-yellow-500 font-bold">+1000 PUNTI</span>
+                        </div>
+                      </div>
+
+                      <button onPointerDown={async (e) => {
+                        e.stopPropagation();
+                        if (currentUser && gameState.bossLevelId) {
+                          await profileService.completeBoss(currentUser.id, gameState.bossLevelId);
+                          loadProfile(currentUser.id);
+                        }
+                        setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null, status: 'idle' }));
+                      }}
+                        className="w-full bg-yellow-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border border-yellow-400 hover:bg-yellow-500">
+                        RISCATTA & TORNA ALLA BASE
+                      </button>
+                    </div>
+                  ) : (
+                    // STANDARD LEVEL WIN
+                    <div className="relative z-10">
+                      <div className="flex justify-center items-center gap-6 mb-6">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Livello</span>
+                          <span className="text-3xl font-black font-orbitron text-white">{gameState.level}</span>
+                        </div>
+                        <ChevronRight className="w-8 h-8 text-[#FF8800] animate-pulse" strokeWidth={3} />
+                        <div className="flex flex-col items-center">
+                          <span className="text-[9px] uppercase font-black text-[#FF8800] tracking-wider">Prossimo</span>
+                          <span className="text-4xl font-black font-orbitron text-[#FF8800] drop-shadow-[0_0_10px_rgba(255,136,0,0.5)]">{gameState.level + 1}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-900/50 p-5 rounded-2xl mb-6 border border-white/10 space-y-3">
+                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Punti Livello</span>
+                          <span className="text-lg font-orbitron font-black text-[#FF8800] animate-pulse">
+                            +{gameState.score > 0 ? (gameState.timeLeft * 2) + 50 + (10 * 5) : '...'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Punteggio Totale</span>
+                          <span className="text-lg font-orbitron font-black text-white">{gameState.totalScore}</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <div className="bg-green-500/10 rounded-lg p-2 flex flex-col items-center">
+                            <span className="text-[8px] font-black uppercase text-green-400 tracking-wider">Residuo</span>
+                            <span className="text-sm font-orbitron font-black text-green-300">{gameState.timeLeft}s</span>
+                          </div>
+                          <div className="bg-green-500/20 rounded-lg p-2 flex flex-col items-center border border-green-500/30">
+                            <span className="text-[8px] font-black uppercase text-green-300 tracking-wider">Totale</span>
+                            <span className="text-sm font-orbitron font-black text-white">{gameState.timeLeft + 60}s</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }}
+                          className="w-full bg-gradient-to-r from-[#FF8800] to-[#FF5500] text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-lg shadow-[0_8px_20px_rgba(255,136,0,0.4)] active:scale-95 transition-all flex items-center justify-center gap-2 border-[3px] border-white group relative overflow-hidden">
+                          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                          <Play className="w-5 h-5 fill-current" />
+                          <span className="relative z-10">Prossimo Livello</span>
+                        </button>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <button onPointerDown={(e) => { e.stopPropagation(); startGame(gameState.level); }}
+                            className="bg-slate-800 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-700 hover:text-white hover:bg-slate-700">
+                            Rigioca
+                          </button>
+                          <button onPointerDown={(e) => {
+                            e.stopPropagation();
+                            resetDuelState(activeMatch?.id, currentUser?.id);
+                            goToHome(e);
+                            setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
+                          }}
+                            className="bg-slate-800 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-700 hover:text-white hover:bg-slate-700">
+                            Home
+                          </button>
+                        </div>
+
+                        <button className="text-[9px] text-cyan-500/40 uppercase font-black tracking-[0.2em] hover:text-cyan-400 transition-colors pt-1 animate-pulse">
+                          Salvataggio Automatico Attivo
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </main>
+          </div >
+        )}
+
+        {
+          activeModal === 'tutorial' && (
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
+              <div className="bg-white border-[4px] border-[#FF8800] w-full max-w-md p-8 rounded-[2rem] shadow-[0_0_50px_rgba(255,136,0,0.3)] flex flex-col" onPointerDown={e => e.stopPropagation()}>
+                <div className="flex flex-col items-center text-center py-4">
+                  <div className="mb-6 scale-125 drop-shadow-sm">{TUTORIAL_STEPS[tutorialStep].icon}</div>
+                  <h2 className="text-2xl font-black font-orbitron text-[#FF8800] mb-4 uppercase tracking-widest">{TUTORIAL_STEPS[tutorialStep].title}</h2>
+                  <p className="text-slate-600 font-bold text-sm leading-relaxed mb-10 border-t-2 border-slate-100 pt-4 w-full">{TUTORIAL_STEPS[tutorialStep].description}</p>
+                  <button onPointerDown={(e) => { e.stopPropagation(); nextTutorialStep(); }} className="w-full bg-[#FF8800] text-white border-[3px] border-white py-5 rounded-2xl font-orbitron font-black text-sm uppercase shadow-lg active:scale-95 transition-all outline-none ring-0">
+                    {tutorialStep === TUTORIAL_STEPS.length - 1 ? 'HO CAPITO' : 'AVANTI'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        {activeModal === 'boss_selection' && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
+            <div className="bg-slate-900 border-[3px] border-emerald-500/50 w-full max-w-lg p-8 rounded-[2rem] shadow-[0_0_50px_rgba(16,185,129,0.2)] flex flex-col relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+
+              <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase text-center relative z-10 flex items-center justify-center gap-3">
+                <Crown className="text-yellow-400" /> LIVELLI BOSS
+              </h2>
+              <p className="text-slate-400 text-center text-sm mb-8 font-mono relative z-10">Sconfiggi i Boss per Bonus Epici</p>
+
+              <div className="flex flex-col gap-4 relative z-10 w-full overflow-y-auto max-h-[50vh]">
+                {BOSS_LEVELS.map(boss => {
+                  const isUnlocked = (userProfile?.max_level || 0) > boss.requiredLevel ||
+                    gameState.level > boss.requiredLevel ||
+                    (savedGame?.level || 0) > boss.requiredLevel;
+                  const isCompleted = userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`);
+
+                  return (
+                    <button
+                      key={boss.id}
+                      disabled={!isUnlocked}
+                      className={`w-full p-4 rounded-xl flex items-center gap-4 border-2 transition-all group shadow-lg relative overflow-hidden
+                           ${isCompleted
+                          ? 'bg-slate-800/80 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.2)] cursor-default grayscale-[0.5]'
+                          : isUnlocked
+                            ? 'bg-gradient-to-r from-emerald-800 to-teal-900 border-emerald-500/30 hover:border-emerald-400 active:scale-95 cursor-pointer'
+                            : 'bg-slate-800 border-slate-700 opacity-60 cursor-not-allowed grayscale'}`}
+                      onPointerDown={() => {
+                        if (isUnlocked && !isCompleted) {
+                          soundService.playUIClick();
+                          startBossGame(boss.id);
+                        }
+                      }}
+                    >
+                      <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 border-2 shadow-inner relative z-10
+                            ${isUnlocked ? (isCompleted ? 'bg-amber-500 border-amber-300 text-white' : 'bg-emerald-500 border-emerald-300 text-white') : 'bg-slate-700 border-slate-600 text-slate-500'}`}>
+                        {isCompleted ? <Trophy size={24} className="animate-bounce-slow" /> : (isUnlocked ? <Play size={24} fill="currentColor" /> : <Shield size={24} />)}
+                      </div>
+
+                      <div className="text-left flex-1 relative z-10">
+                        <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">{boss.title}</h3>
+                        <p className="text-[10px] text-emerald-200 font-bold uppercase tracking-wide mb-1">{boss.description}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] bg-black/40 px-2 py-0.5 rounded text-white font-mono">REQ: LIV {boss.requiredLevel}</span>
+                          <span className="text-[9px] bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded font-mono flex items-center gap-1"><Zap size={8} /> {boss.reward}</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button onClick={() => setActiveModal(null)} className="mt-6 text-slate-500 text-xs hover:text-white uppercase font-bold tracking-widest relative z-10">
+                Chiudi
+              </button>
             </div>
           </div>
-        )
-      }
+        )}
 
-      {activeModal === 'admin' && <AdminPanel onClose={() => setActiveModal(null)} />}
+        {/* MODE SELECTION MODAL */}
+        {activeModal === 'duel_selection' && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
+            <div className="bg-slate-900 border-[3px] border-white/20 w-full max-w-lg p-8 rounded-[2rem] shadow-2xl flex flex-col relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
+              {/* Background Decor */}
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
 
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={handleLoginSuccess} />}
+              <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase text-center relative z-10 flex items-center justify-center gap-3">
+                <Swords className="text-[#FF8800]" /> SELEZIONA SFIDA
+              </h2>
+              <p className="text-slate-400 text-center text-sm mb-8 font-mono relative z-10">Scegli il tuo stile di combattimento</p>
 
-      {activeModal === 'profile' && (
-        <UserProfileModal
-          currentUser={currentUser}
-          userProfile={userProfile}
-          onClose={() => setActiveModal(null)}
-          onUpdate={(newP) => setUserProfile(newP)}
-        />
-      )}
+              <div className="flex flex-col gap-3 relative z-10 w-full">
+                {/* Option 1: STANDARD */}
+                <button
+                  className="w-full bg-gradient-to-r from-red-600 to-rose-700 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
+                  onPointerDown={() => { soundService.playUIClick(); setDuelMode('standard'); setActiveModal('duel'); }}
+                >
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
+                    <Swords size={22} className="text-yellow-300 drop-shadow-sm" />
+                  </div>
+                  <div className="text-left flex-1 relative z-10">
+                    <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">STANDARD</h3>
+                    <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Velocità Pura • Partita Secca</p>
+                  </div>
+                  <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
+                </button>
 
-      {/* DUEL RECAP MODAL */}
-      {/* DUEL RECAP MODAL */}
-      {showDuelRecap && latestMatchData && !showVideo && !showLostVideo && !showSurrenderVideo && (
-        <DuelRecapModal
-          matchData={latestMatchData}
-          currentUser={currentUser}
-          isWinnerProp={
-            latestMatchData.winner_id
-              ? latestMatchData.winner_id === currentUser?.id
-              : (latestMatchData.mode === 'blitz'
-                ? ( // BLITZ LOGIC: Targets > Points
-                  // Calculate my targets (pX_rounds) vs opp targets
-                  (() => {
-                    const isP1 = latestMatchData.player1_id === currentUser?.id;
-                    const myTargets = isP1 ? latestMatchData.p1_rounds : latestMatchData.p2_rounds;
-                    const oppTargets = isP1 ? latestMatchData.p2_rounds : latestMatchData.p1_rounds;
-                    const myPoints = gameState.score;
-                    const oppPoints = opponentScore;
+                {/* Option 2: BLITZ */}
+                <button
+                  className="w-full bg-gradient-to-r from-orange-500 to-amber-600 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
+                  onPointerDown={() => { soundService.playUIClick(); setDuelMode('blitz'); setActiveModal('duel'); }}
+                >
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                  <div className="absolute top-0 right-12 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20">NEW</div>
 
-                    if (myTargets > oppTargets) return true;
-                    if (oppTargets > myTargets) return false;
-                    // Tie on Targets -> Check Points
-                    return myPoints > oppPoints;
-                  })()
+                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
+                    <Zap size={22} className="text-white drop-shadow-sm" />
+                  </div>
+                  <div className="text-left flex-1 relative z-10">
+                    <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">BLITZ DOMINION</h3>
+                    <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Alta Strategia • Conquista</p>
+                  </div>
+                  <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
+                </button>
+
+                {/* Option 3: TIME ATTACK */}
+                <button
+                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
+                  onPointerDown={() => { soundService.playUIClick(); setDuelMode('time_attack'); setActiveModal('duel'); }}
+                >
+                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                  <div className="absolute top-0 right-12 bg-yellow-400 text-black text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20 animate-pulse">HOT</div>
+
+                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
+                    <Clock size={22} className="text-white drop-shadow-sm" />
+                  </div>
+                  <div className="text-left flex-1 relative z-10">
+                    <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">TIME ATTACK</h3>
+                    <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">60 Secondi • Target Infiniti</p>
+                  </div>
+                  <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
+                </button>
+              </div>
+
+              <button onClick={() => setActiveModal(null)} className="mt-8 text-slate-500 text-xs hover:text-white uppercase font-bold tracking-widest relative z-10">
+                Annulla
+              </button>
+            </div>
+          </div>
+        )}
+        {activeModal === 'registration_success' && (
+          <RegistrationSuccess onEnter={() => setActiveModal(null)} />
+        )}
+
+        {activeModal === 'resume_confirm' && (
+          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => setActiveModal(null)}>
+            <div className="bg-slate-900 border-[3px] border-[#FF8800] w-full max-w-sm p-8 rounded-[2rem] shadow-[0_0_50px_rgba(255,136,0,0.4)] flex flex-col text-center relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+
+              <AlertTriangle className="w-16 h-16 text-[#FF8800] mx-auto mb-4 animate-pulse" />
+              <h2 className="text-2xl font-black font-orbitron text-white mb-2 uppercase tracking-wider relative z-10">PARTITA SALVATA</h2>
+              <p className="text-slate-400 font-bold text-sm mb-8 relative z-10">
+                Hai una partita in sospeso.<br />Vuoi riprenderla o iniziarne una nuova?
+              </p>
+
+              <div className="space-y-3 relative z-10">
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); restoreGame(); }}
+                  className="w-full bg-[#FF8800] text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border-2 border-white"
+                >
+                  RIPRENDI PARTITA
+                </button>
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); startGame(); }}
+                  className="w-full bg-slate-800 text-slate-400 py-3 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border border-slate-600 active:scale-95 transition-all hover:text-white"
+                >
+                  NUOVA PARTITA (CANCELLA)
+                </button>
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
+                  className="w-full py-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-white transition-colors"
+                >
+                  INDIETRO
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeModal === 'logout_confirm' && (
+          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => setActiveModal(null)}>
+            <div className="bg-slate-900 border-[3px] border-red-500/50 w-full max-w-sm p-8 rounded-[2rem] shadow-[0_0_50px_rgba(220,38,38,0.4)] flex flex-col text-center relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+
+              <User className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-black font-orbitron text-white mb-2 uppercase tracking-wider relative z-10">LOGOUT</h2>
+              <p className="text-slate-400 font-bold text-sm mb-8 relative z-10">
+                Vuoi davvero disconnetterti?
+              </p>
+
+              <div className="space-y-3 relative z-10">
+                <button
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    import('./services/supabaseClient').then(({ authService }) => authService.signOut());
+                    setCurrentUser(null);
+                    setUserProfile(null);
+                    showToast(`Logout effettuato.`);
+                    setActiveModal(null);
+                  }}
+                  className="w-full bg-red-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border-2 border-white"
+                >
+                  CONFERMA USCITA
+                </button>
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); setActiveModal(null); }}
+                  className="w-full bg-slate-800 text-slate-400 py-3 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border border-slate-600 active:scale-95 transition-all hover:text-white"
+                >
+                  ANNULLA
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeModal === 'duel' && currentUser && (
+          <NeuralDuelLobby
+            currentUser={currentUser}
+            userProfile={userProfile}
+            mode={duelMode}
+            showToast={showToast}
+            onlinePlayers={onlinePlayers}
+            onClose={() => setActiveModal('duel_selection')}
+            onMatchStart={(seed, matchId, opponentId, isP1) => {
+              setActiveModal(null);
+
+              // Check if I am P1 by fetching match from matches state or just check if matchId was hosted by me
+              // Simplified: The lobby component knows, or we just rely on latest match data sync.
+              // Better: neuralDuelLobby already knows, but let's just use current user logic.
+              setActiveMatch({ id: matchId, opponentId, isDuel: true, isP1: isP1 }); // Placeholder, fix in effect
+
+              // Initialize Duel Game
+              soundService.playUIClick();
+              setGameState(prev => ({
+                ...prev,
+                score: 0,
+                totalScore: prev.totalScore, // Preserve points during duel
+                streak: 0,
+                level: 1,
+                timeLeft: duelMode === 'time_attack' ? 60 : INITIAL_TIME,
+                targetResult: 0,
+                status: 'playing',
+                estimatedIQ: prev.estimatedIQ,
+                lastLevelPerfect: true,
+                basePoints: BASE_POINTS_START,
+                levelTargets: [],
+              }));
+              // Pass the MATCH SEED to create the exact same board for both players
+              generateGrid(1, seed);
+              // Reset Opponent Score
+              setOpponentScore(0);
+              // Clean ready status just in case
+              matchService.resetRoundStatus(matchId);
+            }}
+          />
+        )}
+
+        {
+          activeModal === 'leaderboard' && (
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
+              <div className="glass-panel w-full max-w-md p-6 rounded-[2rem] modal-content flex flex-col h-[70vh]" onPointerDown={e => e.stopPropagation()}>
+                <h2 className="text-2xl font-black font-orbitron text-white mb-4 uppercase flex items-center gap-3"><Award className="text-amber-400" /> CLASSIFICHE</h2>
+
+                {/* Leaderboard Tabs */}
+                <div className="flex bg-white/10 rounded-xl p-1 mb-4">
+                  <button
+                    onClick={() => setTutorialStep(0)} // Using tutorialStep variable as a hack for tab index or just create a new local state wrapper... 
+                    // Actually, let's just assume we view SCORE by default, or better:
+                    // Since I can't easily add state here without full re-write, I'll use a local var logic or verify if I can edit state.
+                    // I will check if I can modify App state higher up. I see 'tutorialStep'.
+                    // I'll create a simple toggle inside the render using a new state variable is simpler if I could...
+                    // Let's use `scoreAnimKey` as a toggle for tabs? No that's dirty.
+                    // I'll stick to a simple internal toggle using `tutorialStep` (since it's unused in this modal) 
+                    // 0 = Score, 1 = Level.
+                    onPointerDown={() => setTutorialStep(0)}
+                    className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase transition-all ${tutorialStep === 0 ? 'bg-[#FF8800] text-black shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    Punteggio
+                  </button>
+                  <button
+                    onPointerDown={() => setTutorialStep(1)}
+                    className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase transition-all ${tutorialStep === 1 ? 'bg-cyan-500 text-black shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    Livello Max
+                  </button>
+                </div>
+
+                {(!leaderboardData || (!leaderboardData['byScore'] && !Array.isArray(leaderboardData))) ? (
+                  <div className="text-center py-10 text-slate-400 font-orbitron">Caricamento...</div>
+                ) : (
+                  <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scroll">
+                    {/* DATA LIST */}
+                    {((tutorialStep === 0 ? (leaderboardData as any).byScore : (leaderboardData as any).byLevel) || []).map((p: any, idx: number) => {
+                      // Rank Calculation Inline for Leaderboard (avoiding circular dependency or extra imports if possible, but we imported `getRank` so use it)
+                      const playerRank = getRank(p.max_level || 1);
+                      const RankIcon = playerRank.icon;
+
+                      return (
+                        <div key={idx} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5 relative overflow-hidden group">
+                          {/* Top 3 Highlight */}
+                          {idx < 3 && <div className={`absolute left-0 top-0 bottom-0 w-1 ${idx === 0 ? 'bg-[#FFD700]' : idx === 1 ? 'bg-gray-300' : 'bg-[#CD7F32]'}`}></div>}
+
+                          <div className="flex items-center gap-3 pl-2">
+                            {/* Avatar or Placeholder */}
+                            <div className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full bg-slate-800 border-2 border-white/10 overflow-hidden flex items-center justify-center">
+                              {p.avatar_url ? (
+                                <img src={p.avatar_url} className="w-full h-full object-cover" alt={p.username} />
+                              ) : (
+                                <span className="text-xs font-bold text-slate-500">{p.username?.charAt(0) || '?'}</span>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col">
+                              <span className={`text-sm font-bold leading-tight ${idx < 3 ? 'text-white' : 'text-gray-300'}`}>
+                                {idx + 1}. {p.username || 'Giocatore'}
+                              </span>
+
+                              <div className="flex items-center gap-1 mt-0.5">
+                                {idx === 0 && <Sparkles size={10} className="text-yellow-400" />}
+                                <RankIcon size={10} className={playerRank.color} />
+                                <span className={`text-[8px] uppercase font-black tracking-widest ${playerRank.color}`}>{playerRank.title}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            {tutorialStep === 0 ? (
+                              <>
+                                <span className="font-orbitron font-black text-[#FF8800] text-sm">{p.total_score} pts</span>
+                                <span className="font-orbitron font-bold text-gray-500 text-[9px]">Liv {p.max_level}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="font-orbitron font-black text-cyan-400 text-sm">Liv {p.max_level}</span>
+                                <span className="font-orbitron font-bold text-gray-500 text-[9px]">{p.total_score} pts</span>
+                              </>
+                            )}
+
+                          </div>
+                        </div>
+                      )
+                    })}
+
+                    {((tutorialStep === 0 ? (leaderboardData as any).byScore : (leaderboardData as any).byLevel) || []).length === 0 && (
+                      <div className="text-center py-8 text-gray-500 text-xs">Nessun dato disponibile</div>
+                    )}
+                  </div>
+                )}
+
+                <button onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }} className="mt-4 w-full bg-slate-800 text-white py-4 rounded-xl font-orbitron font-black text-xs uppercase active:scale-95 transition-all">CHIUDI</button>
+              </div>
+            </div>
+          )
+        }
+
+        {activeModal === 'admin' && <AdminPanel onClose={() => setActiveModal(null)} />}
+
+        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={handleLoginSuccess} />}
+
+        {activeModal === 'profile' && (
+          <UserProfileModal
+            currentUser={currentUser}
+            userProfile={userProfile}
+            onClose={() => setActiveModal(null)}
+            onUpdate={(newP) => setUserProfile(newP)}
+          />
+        )}
+
+        {/* DUEL RECAP MODAL */}
+        {/* DUEL RECAP MODAL */}
+        {showDuelRecap && latestMatchData && !showVideo && !showLostVideo && !showSurrenderVideo && (
+          <DuelRecapModal
+            matchData={latestMatchData}
+            currentUser={currentUser}
+            isWinnerProp={
+              latestMatchData.winner_id
+                ? latestMatchData.winner_id === currentUser?.id
+                : (latestMatchData.mode === 'blitz'
+                  ? ( // BLITZ LOGIC: Targets > Points
+                    // Calculate my targets (pX_rounds) vs opp targets
+                    (() => {
+                      const isP1 = latestMatchData.player1_id === currentUser?.id;
+                      const myTargets = isP1 ? latestMatchData.p1_rounds : latestMatchData.p2_rounds;
+                      const oppTargets = isP1 ? latestMatchData.p2_rounds : latestMatchData.p1_rounds;
+                      const myPoints = gameState.score;
+                      const oppPoints = opponentScore;
+
+                      if (myTargets > oppTargets) return true;
+                      if (oppTargets > myTargets) return false;
+                      // Tie on Targets -> Check Points
+                      return myPoints > oppPoints;
+                    })()
+                  )
+                  : (gameState.score > opponentScore) // Standard/TimeAttack
                 )
-                : (gameState.score > opponentScore) // Standard/TimeAttack
-              )
-          }
-          myScore={gameState.score}
-          opponentScore={opponentScore}
-          isFinal={latestMatchData.status === 'finished'}
-          onReady={() => { }}
-          onExit={goToDuelLobby}
+            }
+            myScore={gameState.score}
+            opponentScore={opponentScore}
+            isFinal={latestMatchData.status === 'finished'}
+            onReady={() => { }}
+            onExit={goToDuelLobby}
+          />
+        )}
+
+        <footer className="mt-auto py-6 text-slate-600 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.6 - LOCAL DEV</footer>
+
+        {/* HOMEPAGE TUTORIAL OVERLAY */}
+        <ComicTutorial
+          isVisible={showHomeTutorial}
+          steps={[
+            {
+              targetId: 'audio-btn-home',
+              title: 'AUDIO IMMERSIVO',
+              description: 'Clicca qui per attivare o disattivare il suono. Per un\'esperienza ottimale, ti consigliamo di tenerlo acceso!',
+              position: 'top'
+            },
+            {
+              targetId: currentUser ? 'user-profile-home' : 'login-btn-home',
+              title: currentUser ? 'PROFILO & STATS' : 'ACCEDI ORA',
+              description: currentUser
+                ? 'Qui puoi vedere il tuo punteggio totale e gestire il tuo account.'
+                : 'Registrati per salvare i progressi, scalare le classifiche e sfidare altri giocatori!',
+              position: 'top'
+            },
+            {
+              targetId: 'logo-home',
+              title: 'IL TUO HUB',
+              description: 'Clicca sul logo NUMBER per accedere al tuo Profilo Completo, vedere i Badge sbloccati e i Trofei!',
+              position: 'bottom'
+            },
+            {
+              targetId: 'tutorial-btn-home',
+              title: 'GUIDA AI COMANDI',
+              description: 'Se hai dubbi su come giocare, clicca qui per rivedere le regole base.',
+              position: 'bottom'
+            },
+            {
+              targetId: 'play-btn-home',
+              title: 'INIZIA L\'AVVENTURA',
+              description: 'Pronto a mettere alla prova i tuoi neuroni? Clicca qui per avviare la modalità Classica.',
+              position: 'center'
+            },
+            {
+              targetId: 'duel-btn-home',
+              title: 'SFIDE 1VS1',
+              description: 'Entra nell\'arena! Sfida altri utenti in tempo reale in duelli di velocità matematica.',
+              position: 'bottom'
+            },
+            {
+              targetId: 'ranking-btn-home',
+              title: 'CLASSIFICA GLOBALE',
+              description: 'Controlla la tua posizione nel mondo. Diventerai il numero 1?',
+              position: 'bottom'
+            }
+          ]}
+          onComplete={(neverShow) => {
+            setShowHomeTutorial(false);
+            if (neverShow) localStorage.setItem('comic_home_tutorial_done', 'true');
+          }}
+          onSkip={(neverShow) => {
+            setShowHomeTutorial(false);
+            if (neverShow) localStorage.setItem('comic_home_tutorial_done', 'true');
+          }}
         />
-      )}
 
-      <footer className="mt-auto py-6 text-slate-600 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.6 - LOCAL DEV</footer>
+        {/* GAME TUTORIAL OVERLAY */}
+        <ComicTutorial
+          isVisible={showGameTutorial}
+          steps={[
+            {
+              targetId: 'targets-display-tutorial',
+              title: 'I TUOI OBIETTIVI',
+              description: 'Questi sono i numeri che devi ottenere. Trova le combinazioni nella griglia per raggiungerli tutti!',
+              position: 'top'
+            },
+            {
+              targetId: 'grid-container-game',
+              title: 'LA GRIGLIA',
+              description: 'Collega le celle: NUMERO -> OPERATORE -> NUMERO.  Esempio: 5 + 3.  Non puoi collegare due numeri vicini senza operatore!',
+              position: 'center'
+            },
+            {
+              targetId: 'score-display-game',
+              title: 'PUNTEGGIO',
+              description: 'Più sei veloce e mantieni la streak (serie di risposte corrette), più punti farai. Punta al record!',
+              position: 'right'
+            },
+            {
+              targetId: 'timer-display-game',
+              title: 'TEMPO & PAUSA',
+              description: 'Hai poco tempo! Se ti serve respirare, clicca qui per mettere in PAUSA il sistema.',
+              position: 'center'
+            }
+          ]}
+          onComplete={(neverShow) => {
+            setShowGameTutorial(false);
+            if (neverShow) localStorage.setItem('comic_game_tutorial_done', 'true');
+          }}
+          onSkip={(neverShow) => {
+            setShowGameTutorial(false);
+            if (neverShow) localStorage.setItem('comic_game_tutorial_done', 'true');
+          }}
+        />
 
-      {/* HOMEPAGE TUTORIAL OVERLAY */}
-      <ComicTutorial
-        isVisible={showHomeTutorial}
-        steps={[
-          {
-            targetId: 'audio-btn-home',
-            title: 'AUDIO IMMERSIVO',
-            description: 'Clicca qui per attivare o disattivare il suono. Per un\'esperienza ottimale, ti consigliamo di tenerlo acceso!',
-            position: 'top'
-          },
-          {
-            targetId: currentUser ? 'user-profile-home' : 'login-btn-home',
-            title: currentUser ? 'PROFILO & STATS' : 'ACCEDI ORA',
-            description: currentUser
-              ? 'Qui puoi vedere il tuo punteggio totale e gestire il tuo account.'
-              : 'Registrati per salvare i progressi, scalare le classifiche e sfidare altri giocatori!',
-            position: 'top'
-          },
-          {
-            targetId: 'logo-home',
-            title: 'IL TUO HUB',
-            description: 'Clicca sul logo NUMBER per accedere al tuo Profilo Completo, vedere i Badge sbloccati e i Trofei!',
-            position: 'bottom'
-          },
-          {
-            targetId: 'tutorial-btn-home',
-            title: 'GUIDA AI COMANDI',
-            description: 'Se hai dubbi su come giocare, clicca qui per rivedere le regole base.',
-            position: 'bottom'
-          },
-          {
-            targetId: 'play-btn-home',
-            title: 'INIZIA L\'AVVENTURA',
-            description: 'Pronto a mettere alla prova i tuoi neuroni? Clicca qui per avviare la modalità Classica.',
-            position: 'center'
-          },
-          {
-            targetId: 'duel-btn-home',
-            title: 'SFIDE 1VS1',
-            description: 'Entra nell\'arena! Sfida altri utenti in tempo reale in duelli di velocità matematica.',
-            position: 'bottom'
-          },
-          {
-            targetId: 'ranking-btn-home',
-            title: 'CLASSIFICA GLOBALE',
-            description: 'Controlla la tua posizione nel mondo. Diventerai il numero 1?',
-            position: 'bottom'
-          }
-        ]}
-        onComplete={(neverShow) => {
-          setShowHomeTutorial(false);
-          if (neverShow) localStorage.setItem('comic_home_tutorial_done', 'true');
-        }}
-        onSkip={(neverShow) => {
-          setShowHomeTutorial(false);
-          if (neverShow) localStorage.setItem('comic_home_tutorial_done', 'true');
-        }}
-      />
-
-      {/* GAME TUTORIAL OVERLAY */}
-      <ComicTutorial
-        isVisible={showGameTutorial}
-        steps={[
-          {
-            targetId: 'targets-display-tutorial',
-            title: 'I TUOI OBIETTIVI',
-            description: 'Questi sono i numeri che devi ottenere. Trova le combinazioni nella griglia per raggiungerli tutti!',
-            position: 'top'
-          },
-          {
-            targetId: 'grid-container-game',
-            title: 'LA GRIGLIA',
-            description: 'Collega le celle: NUMERO -> OPERATORE -> NUMERO.  Esempio: 5 + 3.  Non puoi collegare due numeri vicini senza operatore!',
-            position: 'center'
-          },
-          {
-            targetId: 'score-display-game',
-            title: 'PUNTEGGIO',
-            description: 'Più sei veloce e mantieni la streak (serie di risposte corrette), più punti farai. Punta al record!',
-            position: 'right'
-          },
-          {
-            targetId: 'timer-display-game',
-            title: 'TEMPO & PAUSA',
-            description: 'Hai poco tempo! Se ti serve respirare, clicca qui per mettere in PAUSA il sistema.',
-            position: 'center'
-          }
-        ]}
-        onComplete={(neverShow) => {
-          setShowGameTutorial(false);
-          if (neverShow) localStorage.setItem('comic_game_tutorial_done', 'true');
-        }}
-        onSkip={(neverShow) => {
-          setShowGameTutorial(false);
-          if (neverShow) localStorage.setItem('comic_game_tutorial_done', 'true');
-        }}
-      />
-
-    </div >
-  </>
-);
+      </div >
+    </>
+  );
 };
 
 export default App;
