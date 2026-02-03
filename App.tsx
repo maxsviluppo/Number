@@ -3768,7 +3768,7 @@ const App: React.FC = () => {
           />
         )}
 
-        <footer className="mt-auto py-6 text-slate-600 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v3.6 - LOCAL DEV</footer>
+        <footer className="mt-auto py-6 text-slate-600 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-0">AI Evaluation Engine v3.6 - LOCAL DEV</footer>
 
         {/* HOMEPAGE TUTORIAL OVERLAY */}
         <ComicTutorial
