@@ -1833,8 +1833,9 @@ const App: React.FC = () => {
         // DOMINION TOAST REMOVED (Too spammy)
 
         // We do NOT declare winner here. Winner is declared only on Time Over.
-        return;
       }
+
+
 
       if (allDone) {
         setTriggerParticles(false);
