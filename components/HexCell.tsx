@@ -9,6 +9,7 @@ interface HexCellProps {
   onMouseEnter: (id: string) => void;
   onMouseDown: (id: string) => void;
   theme?: 'default' | 'orange';
+  isBossLevel?: boolean;
 }
 
 const HexCell: React.FC<HexCellProps> = ({
@@ -18,6 +19,7 @@ const HexCell: React.FC<HexCellProps> = ({
   onMouseEnter,
   onMouseDown,
   theme = 'default',
+  isBossLevel = false,
 }) => {
   const [animationClass, setAnimationClass] = useState('animate-hex-entry');
   const prevSelected = useRef(isSelected);
@@ -81,7 +83,9 @@ const HexCell: React.FC<HexCellProps> = ({
     ? '' // Use image only, no container style
     : '';
   const orangeOperatorStyle = isOrangeTheme && !isNumber
-    ? 'bg-gradient-to-br from-[#E65100] to-[#B71C1C] border-[3px] border-white shadow-[0_2px_0_rgba(0,0,0,0.2)]'
+    ? isBossLevel
+      ? 'bg-gradient-to-br from-green-800 to-emerald-950 border-[3px] border-emerald-700 shadow-[0_2px_0_rgba(0,50,0,0.5)]'
+      : 'bg-gradient-to-br from-[#E65100] to-[#B71C1C] border-[3px] border-white shadow-[0_2px_0_rgba(0,0,0,0.2)]'
     : '';
 
   // Gestione animazioni di selezione e deselezione
@@ -152,7 +156,11 @@ const HexCell: React.FC<HexCellProps> = ({
           alt="cell"
           className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-md"
           style={{
-            filter: isSelected ? 'hue-rotate(100deg) brightness(1.1) saturate(1.2)' : 'none',
+            filter: isSelected
+              ? 'hue-rotate(100deg) brightness(1.1) saturate(1.2)'
+              : isBossLevel
+                ? 'hue-rotate(100deg) saturate(1.5) brightness(0.7)' // Dark Green for Boss
+                : 'none',
             transition: 'filter 0.3s ease'
           }}
         />
