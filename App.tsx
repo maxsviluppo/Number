@@ -1009,7 +1009,8 @@ const App: React.FC = () => {
   useEffect(() => {
     // MODIFIED: Timer disabled for Standard, ENABLED for Time Attack AND Blitz
     const isTimeDuel = activeMatch?.mode === 'time_attack' || activeMatch?.mode === 'blitz';
-    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && (!activeMatch?.isDuel || isTimeDuel)) {
+    // ADDED: !showGameTutorial blocks timer during tutorial
+    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && !showGameTutorial && (!activeMatch?.isDuel || isTimeDuel)) {
       timerRef.current = window.setInterval(() => {
         setGameState(prev => {
           if (prev.timeLeft <= 0) return prev;
@@ -1020,7 +1021,7 @@ const App: React.FC = () => {
       if (timerRef.current) window.clearInterval(timerRef.current);
     }
     return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
-  }, [gameState.status, isPaused, isVictoryAnimating, showVideo, activeMatch, gameState.timeLeft]);
+  }, [gameState.status, isPaused, isVictoryAnimating, showVideo, activeMatch, gameState.timeLeft, showGameTutorial]);
 
 
   const handleLoginSuccess = (user: any) => {
