@@ -1,4 +1,4 @@
-
+// FORCED UPDATE: 2026-02-04 15:15 - RECAP MODAL FIX
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { HexCellData, GameState } from './types';
 import { INITIAL_TIME, BASE_POINTS_START, MAX_STREAK, GRID_ROWS, GRID_COLS, OPERATORS, MOCK_LEADERBOARD } from './constants';
@@ -88,7 +88,7 @@ const App: React.FC = () => {
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
 
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | 'full_reset_confirm' | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean, isP1: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0);
@@ -226,15 +226,16 @@ const App: React.FC = () => {
 
 
   const getDifficultyRange = (level: number) => {
-    // MODIFIED: Much gentler slope for first 30 levels to ease player in
-    if (level <= 5) return { min: 1, max: 12 };       // Very easy start (mostly sums)
-    if (level <= 10) return { min: 5, max: 20 };      // Introducing complexity slowly
-    if (level <= 20) return { min: 10, max: 35 };     // Moderate
-    if (level <= 30) return { min: 15, max: 50 };     // Challenging but fair
+    // NUOVA CURVA: Progressione molto più graduale - difficoltà livello 20 ora al livello 80
+    if (level <= 10) return { min: 1, max: 12 };       // Inizio molto facile (solo somme/sottrazioni)
+    if (level <= 20) return { min: 3, max: 18 };       // Ancora facile, preparazione per ×
+    if (level <= 40) return { min: 5, max: 25 };       // Introduzione graduale di ×
+    if (level <= 60) return { min: 8, max: 35 };       // × più frequente
+    if (level <= 80) return { min: 10, max: 50 };      // Preparazione per ÷ (era livello 20)
+    if (level <= 100) return { min: 15, max: 65 };     // ÷ più frequente
 
-    // Original linear scaling kicking in after level 30
-    // Adjusted formula to match the curve
-    return { min: 20 + ((level - 20) * 2), max: 50 + ((level - 20) * 5) };
+    // Progressione lineare molto graduale per livelli avanzati
+    return { min: 20 + Math.floor((level - 100) * 1.5), max: 65 + Math.floor((level - 100) * 3) };
   };
 
   // Helper: Calculate result from a cell path (for solver)
@@ -344,7 +345,8 @@ const App: React.FC = () => {
 
     // Helper: Weighted numbers for early levels
     const getWeightedNumber = () => {
-      if (level <= 30) {
+      // Numeri più piccoli per molti più livelli (fino al 60)
+      if (level <= 60) {
         const r = rng();
         // 60% chance of small numbers (1-4), 30% mid (5-7), 10% high (8-9) or 0
         if (r < 0.60) return Math.floor(rng() * 4) + 1;
@@ -359,10 +361,39 @@ const App: React.FC = () => {
       const pool = [];
       let weights = { '+': 0.35, '-': 0.35, '×': 0.20, '÷': 0.10 };
 
-      // Easier operators for early levels
-      if (level <= 5) weights = { '+': 0.50, '-': 0.50, '×': 0.0, '÷': 0.0 };
-      else if (level <= 15) weights = { '+': 0.40, '-': 0.40, '×': 0.20, '÷': 0.0 };
-      else if (level <= 30) weights = { '+': 0.35, '-': 0.35, '×': 0.25, '÷': 0.05 };
+      // NUOVA PROGRESSIONE: Introduzione molto più graduale degli operatori
+      if (level <= 15) {
+        // Livelli 1-15: Solo addizione e sottrazione
+        weights = { '+': 0.50, '-': 0.50, '×': 0.0, '÷': 0.0 };
+      }
+      else if (level <= 25) {
+        // Livelli 16-25: Prima introduzione della moltiplicazione (10%)
+        weights = { '+': 0.45, '-': 0.45, '×': 0.10, '÷': 0.0 };
+      }
+      else if (level <= 40) {
+        // Livelli 26-40: Moltiplicazione aumenta gradualmente (20%)
+        weights = { '+': 0.40, '-': 0.40, '×': 0.20, '÷': 0.0 };
+      }
+      else if (level <= 50) {
+        // Livelli 41-50: Moltiplicazione più frequente (30%), ancora niente divisione
+        weights = { '+': 0.35, '-': 0.35, '×': 0.30, '÷': 0.0 };
+      }
+      else if (level <= 65) {
+        // Livelli 51-65: Prima introduzione della divisione (5%)
+        weights = { '+': 0.35, '-': 0.30, '×': 0.30, '÷': 0.05 };
+      }
+      else if (level <= 80) {
+        // Livelli 66-80: Divisione aumenta (10%)
+        weights = { '+': 0.30, '-': 0.30, '×': 0.30, '÷': 0.10 };
+      }
+      else if (level <= 100) {
+        // Livelli 81-100: Bilanciamento verso operatori complessi
+        weights = { '+': 0.25, '-': 0.30, '×': 0.30, '÷': 0.15 };
+      }
+      // Livelli 100+: Massima difficoltà
+      else {
+        weights = { '+': 0.25, '-': 0.25, '×': 0.30, '÷': 0.20 };
+      }
 
       for (let i = 0; i < count; i++) {
         const r = rng();
@@ -1596,6 +1627,110 @@ const App: React.FC = () => {
     // Generate Grid for the SAVED Level
     setTimeout(() => generateGrid(savedGame.level), 0);
     if (careerBonus === 0) showToast("Partita Ripristinata");
+  };
+
+  // NEW GAME: Resetta solo il progresso di gioco (livello, punteggio, tempo salvato)
+  // Mantiene: badge, boss completati, statistiche duelli, QI stimato
+  const handleNewGame = async () => {
+    if (!currentUser) return;
+
+    try {
+      // 1. Cancella partita salvata
+      await profileService.saveGameState(currentUser.id, null);
+      setSavedGame(null);
+
+      // 2. Reset solo max_level nel profilo (mantiene tutto il resto)
+      await profileService.updateProfile({
+        id: currentUser.id,
+        max_level: 1,
+      });
+
+      // 3. Ricarica profilo
+      await loadProfile(currentUser.id);
+
+      // 4. Reset stato gioco locale
+      setGameState(prev => ({
+        ...prev,
+        score: 0,
+        totalScore: 0,
+        streak: 0,
+        level: 1,
+        timeLeft: INITIAL_TIME,
+        targetResult: 0,
+        status: 'idle',
+        lastLevelPerfect: true,
+        basePoints: BASE_POINTS_START,
+        levelTargets: [],
+        isBossLevel: false,
+        bossLevelId: null,
+      }));
+
+      setActiveModal(null);
+      soundService.playSuccess();
+      showToast('🎮 NUOVA PARTITA! Inizia dal Livello 1!');
+
+    } catch (error) {
+      console.error('Errore durante nuova partita:', error);
+      showToast('❌ Errore durante il reset. Riprova.');
+    }
+  };
+
+  // FULL GAME RESET: Cancella TUTTO (progressi, badge, boss, statistiche)
+  const handleFullReset = async () => {
+    if (!currentUser) return;
+
+    try {
+      // 1. Cancella partita salvata
+      await profileService.saveGameState(currentUser.id, null);
+      setSavedGame(null);
+
+      // 2. Reset profilo completo (solo campi esistenti nel DB)
+      await profileService.updateProfile({
+        id: currentUser.id,
+        max_level: 1,
+        total_score: 0,
+        estimated_iq: 100,
+        badges: [],
+        career_time_bonus: 0,
+      });
+
+      // 3. Cancella localStorage
+      localStorage.removeItem('career_time_bonus');
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('boss_unlock_seen_')) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      // 4. Ricarica profilo
+      await loadProfile(currentUser.id);
+
+      // 5. Reset stato gioco
+      setGameState(prev => ({
+        ...prev,
+        score: 0,
+        totalScore: 0,
+        streak: 0,
+        level: 1,
+        timeLeft: INITIAL_TIME,
+        targetResult: 0,
+        status: 'idle',
+        estimatedIQ: 100,
+        lastLevelPerfect: true,
+        basePoints: BASE_POINTS_START,
+        levelTargets: [],
+        isBossLevel: false,
+        bossLevelId: null,
+      }));
+
+      setActiveModal(null);
+      soundService.playSuccess();
+      showToast('🔥 RESET COMPLETO! Benvenuto in una nuova avventura!');
+
+    } catch (error) {
+      console.error('Errore durante il reset:', error);
+      showToast('❌ Errore durante il reset. Riprova.');
+    }
   };
 
   const handleStartGameClick = useCallback(async (e?: React.PointerEvent) => {
@@ -3543,33 +3678,203 @@ const App: React.FC = () => {
 
         {activeModal === 'resume_confirm' && (
           <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => setActiveModal(null)}>
-            <div className="bg-slate-900 border-[3px] border-[#FF8800] w-full max-w-sm p-8 rounded-[2rem] shadow-[0_0_50px_rgba(255,136,0,0.4)] flex flex-col text-center relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-[3px] border-[#FF8800] w-full max-w-md p-8 rounded-[2rem] shadow-[0_0_60px_rgba(255,136,0,0.5)] flex flex-col relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
+              {/* Animated Background */}
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#FF8800] to-transparent animate-pulse"></div>
 
-              <AlertTriangle className="w-16 h-16 text-[#FF8800] mx-auto mb-4 animate-pulse" />
-              <h2 className="text-2xl font-black font-orbitron text-white mb-2 uppercase tracking-wider relative z-10">PARTITA SALVATA</h2>
-              <p className="text-slate-400 font-bold text-sm mb-8 relative z-10">
-                Hai una partita in sospeso.<br />Vuoi riprenderla o iniziarne una nuova?
-              </p>
+              {/* Header Icon - Hexagon Shape (like game cells) */}
+              <div className="relative z-10 mb-6">
+                <div className="w-24 h-24 mx-auto relative">
+                  {/* Hexagon SVG Background */}
+                  <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full drop-shadow-[0_0_20px_rgba(255,136,0,0.6)]">
+                    <defs>
+                      <linearGradient id="hexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style={{ stopColor: '#FF8800', stopOpacity: 1 }} />
+                        <stop offset="100%" style={{ stopColor: '#D97706', stopOpacity: 1 }} />
+                      </linearGradient>
+                    </defs>
+                    <polygon
+                      points="50,5 90,27.5 90,72.5 50,95 10,72.5 10,27.5"
+                      fill="url(#hexGradient)"
+                      stroke="#FFB347"
+                      strokeWidth="2"
+                      className="animate-pulse"
+                    />
+                  </svg>
+                  {/* Play Icon Centered */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Play className="w-10 h-10 text-white drop-shadow-lg" fill="white" />
+                  </div>
+                </div>
+              </div>
 
+              {/* Title */}
+              <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase tracking-wider relative z-10 text-center">
+                PARTITA IN CORSO
+              </h2>
+
+              {/* Saved Game Info */}
+              <div className="bg-black/30 border border-[#FF8800]/30 rounded-xl p-4 mb-6 relative z-10">
+                <div className="flex items-center justify-center gap-3 mb-2">
+                  <Trophy className="w-5 h-5 text-amber-400" />
+                  <span className="text-slate-300 font-bold text-sm">LIVELLO SALVATO</span>
+                </div>
+                <div className="text-5xl font-black font-orbitron text-[#FF8800] text-center">
+                  {savedGame?.level || 1}
+                </div>
+
+                {/* Detailed Stats Grid */}
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  {/* Time Info - Now shows total available time */}
+                  <div className="bg-black/20 rounded-lg p-2 border border-white/5">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Timer className="w-3 h-3 text-blue-400" />
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">Tempo Totale</span>
+                    </div>
+                    <div className="text-lg font-black font-orbitron text-white text-center">
+                      {(savedGame?.timeLeft || 0) + parseInt(localStorage.getItem('career_time_bonus') || '0')}s
+                    </div>
+                    {/* Breakdown if bonus exists */}
+                    {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (
+                      <div className="text-[9px] text-slate-500 text-center mt-0.5">
+                        ({savedGame?.timeLeft || 0}s + {localStorage.getItem('career_time_bonus')}s bonus)
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-black/20 rounded-lg p-2 border border-white/5">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Trophy className="w-3 h-3 text-amber-400" />
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">Punti</span>
+                    </div>
+                    <div className="text-lg font-black font-orbitron text-white text-center">
+                      {savedGame?.totalScore || 0}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bonus Time Highlight (if exists) */}
+                {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (
+                  <div className="mt-3 bg-gradient-to-r from-amber-900/40 to-orange-900/40 border border-amber-500/40 rounded-lg p-2.5">
+                    <div className="flex items-center justify-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                      <span className="text-xs text-amber-300 font-bold">
+                        BONUS BOSS ATTIVO: +{localStorage.getItem('career_time_bonus')}s
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
               <div className="space-y-3 relative z-10">
+                {/* Resume Button */}
                 <button
-                  onPointerDown={(e) => { e.stopPropagation(); restoreGame(); }}
-                  className="w-full bg-[#FF8800] text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border-2 border-white"
+                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); restoreGame(); }}
+                  className="w-full bg-gradient-to-r from-[#FF8800] to-orange-600 text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg shadow-[#FF8800]/30 active:scale-95 transition-all border-2 border-white/20 hover:shadow-[#FF8800]/50 flex items-center justify-center gap-3 group"
                 >
+                  <Play className="w-5 h-5 group-hover:scale-110 transition-transform" />
                   RIPRENDI PARTITA
                 </button>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3 py-2">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                  <span className="text-slate-500 text-[10px] font-bold uppercase">Opzioni Avanzate</span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                </div>
+
+                {/* New Game Button */}
                 <button
-                  onPointerDown={(e) => { e.stopPropagation(); startGame(); }}
-                  className="w-full bg-slate-800 text-slate-400 py-3 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border border-slate-600 active:scale-95 transition-all hover:text-white"
+                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); handleNewGame(); }}
+                  className="w-full bg-gradient-to-r from-orange-600/60 to-amber-600/60 text-amber-200 py-3 px-6 rounded-xl font-orbitron font-bold uppercase tracking-widest text-xs border-2 border-amber-500/40 active:scale-95 transition-all hover:border-amber-500/70 flex items-center justify-center gap-2 group"
                 >
-                  NUOVA PARTITA (CANCELLA)
+                  <Play className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  NUOVA PARTITA
                 </button>
+
+                {/* Back Button */}
                 <button
                   onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
-                  className="w-full py-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-white transition-colors"
+                  className="w-full py-3 text-slate-500 font-bold uppercase text-xs tracking-widest hover:text-white transition-colors flex items-center justify-center gap-2 group"
                 >
-                  INDIETRO
+                  <Home className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  TORNA ALLA HOME
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* FULL RESET CONFIRMATION MODAL */}
+        {activeModal === 'full_reset_confirm' && (
+          <div className="fixed inset-0 z-[5001] flex items-center justify-center p-6 modal-overlay bg-black/95 backdrop-blur-lg" onPointerDown={() => setActiveModal('resume_confirm')}>
+            <div className="bg-gradient-to-br from-red-950 via-red-900 to-red-950 border-[3px] border-red-500 w-full max-w-md p-8 rounded-[2rem] shadow-[0_0_80px_rgba(239,68,68,0.6)] flex flex-col relative overflow-hidden animate-pulse" onPointerDown={e => e.stopPropagation()}>
+              {/* Animated Warning Background */}
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse"></div>
+
+              {/* Warning Icon */}
+              <div className="relative z-10 mb-6">
+                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-red-600 to-red-800 rounded-full flex items-center justify-center shadow-lg shadow-red-500/50 animate-pulse border-4 border-red-400">
+                  <AlertTriangle className="w-14 h-14 text-white" strokeWidth={3} />
+                </div>
+              </div>
+
+              {/* Title */}
+              <h2 className="text-3xl font-black font-orbitron text-white mb-3 uppercase tracking-wider relative z-10 text-center">
+                ⚠️ ATTENZIONE ⚠️
+              </h2>
+
+              {/* Warning Message */}
+              <div className="bg-black/40 border-2 border-red-500/50 rounded-xl p-5 mb-6 relative z-10">
+                <p className="text-white font-bold text-center mb-4 leading-relaxed">
+                  Stai per <span className="text-red-400 font-black">CANCELLARE TUTTO</span>:
+                </p>
+                <div className="space-y-2 text-sm text-slate-300">
+                  <div className="flex items-center gap-2">
+                    <X className="w-4 h-4 text-red-400" />
+                    <span>Tutti i livelli completati</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <X className="w-4 h-4 text-red-400" />
+                    <span>Tutti i badge e medaglie</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <X className="w-4 h-4 text-red-400" />
+                    <span>Boss sconfitti e bonus</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <X className="w-4 h-4 text-red-400" />
+                    <span>Statistiche duelli</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <X className="w-4 h-4 text-red-400" />
+                    <span>Punteggi e QI stimato</span>
+                  </div>
+                </div>
+                <p className="text-red-400 font-black text-center mt-4 text-xs uppercase tracking-wider">
+                  Questa azione è IRREVERSIBILE!
+                </p>
+              </div>
+
+              {/* Confirmation Buttons */}
+              <div className="space-y-3 relative z-10">
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); handleFullReset(); }}
+                  className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg shadow-red-500/50 active:scale-95 transition-all border-2 border-white/30 hover:shadow-red-500/70 flex items-center justify-center gap-3 group"
+                >
+                  <AlertTriangle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  SÌ, CANCELLA TUTTO
+                </button>
+
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal('resume_confirm'); }}
+                  className="w-full bg-gradient-to-r from-slate-700 to-slate-800 text-white py-3 px-6 rounded-xl font-orbitron font-bold uppercase tracking-widest text-xs border-2 border-white/20 active:scale-95 transition-all hover:from-slate-600 hover:to-slate-700 flex items-center justify-center gap-2"
+                >
+                  <Shield className="w-4 h-4" />
+                  NO, TORNA INDIETRO
                 </button>
               </div>
             </div>
