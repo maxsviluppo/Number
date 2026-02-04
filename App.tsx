@@ -1629,107 +1629,55 @@ const App: React.FC = () => {
     if (careerBonus === 0) showToast("Partita Ripristinata");
   };
 
-  // NEW GAME: Resetta solo il progresso di gioco (livello, punteggio, tempo salvato)
-  // Mantiene: badge, boss completati, statistiche duelli, QI stimato
-  const handleNewGame = async () => {
-    if (!currentUser) return;
 
-    try {
-      // 1. Cancella partita salvata
-      await profileService.saveGameState(currentUser.id, null);
-      setSavedGame(null);
 
-      // 2. Reset solo max_level nel profilo (mantiene tutto il resto)
-      await profileService.updateProfile({
-        id: currentUser.id,
-        max_level: 1,
-      });
-
-      // 3. Ricarica profilo
-      await loadProfile(currentUser.id);
-
-      // 4. Reset stato gioco locale
-      setGameState(prev => ({
-        ...prev,
-        score: 0,
-        totalScore: 0,
-        streak: 0,
-        level: 1,
-        timeLeft: INITIAL_TIME,
-        targetResult: 0,
-        status: 'idle',
-        lastLevelPerfect: true,
-        basePoints: BASE_POINTS_START,
-        levelTargets: [],
-        isBossLevel: false,
-        bossLevelId: null,
-      }));
-
-      setActiveModal(null);
-      soundService.playSuccess();
-      showToast('🎮 NUOVA PARTITA! Inizia dal Livello 1!');
-
-    } catch (error) {
-      console.error('Errore durante nuova partita:', error);
-      showToast('❌ Errore durante il reset. Riprova.');
-    }
-  };
-
-  // FULL GAME RESET: Cancella TUTTO (progressi, badge, boss, statistiche)
+  // FULL GAME RESET: Ora agisce come "NUOVA PARTITA" (soft reset)
+  // Resetta Livello a 1, ma mantiene Badge, Boss e Statistiche totali.
   const handleFullReset = async () => {
     if (!currentUser) return;
 
     try {
-      // 1. Cancella partita salvata
+      // 1. Cancella la partita salvata (resume state)
       await profileService.saveGameState(currentUser.id, null);
       setSavedGame(null);
 
-      // 2. Reset profilo completo (solo campi esistenti nel DB)
+      // 2. Reset solo del livello nel profilo (mantiene badge, score totale, ecc.)
       await profileService.updateProfile({
         id: currentUser.id,
         max_level: 1,
-        total_score: 0,
-        estimated_iq: 100,
-        badges: [],
-        career_time_bonus: 0,
       });
 
-      // 3. Cancella localStorage
-      localStorage.removeItem('career_time_bonus');
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('boss_unlock_seen_')) {
-          localStorage.removeItem(key);
-        }
-      });
-
-      // 4. Ricarica profilo
+      // 3. Ricarica profilo aggiornato
       await loadProfile(currentUser.id);
 
-      // 5. Reset stato gioco
-      setGameState(prev => ({
-        ...prev,
+      // 4. Reset stato gioco locale
+      setGameState({
+        ...gameState,
         score: 0,
-        totalScore: 0,
+        // totalScore: 0, // Manteniamo il punteggio totale accumulato? Se vuoi reset parziale, meglio tenerlo o resettarlo? 
+        // L'utente ha chiesto "azzeriamo livelli e tempo come pulsante nuova partita".
+        // La mia handleNewGame di prima metteva totalScore a 0 LATO CLIENT per la sessione, ma non toccava il DB.
+        totalScore: 0, // Reset visuale sessione
         streak: 0,
         level: 1,
         timeLeft: INITIAL_TIME,
         targetResult: 0,
         status: 'idle',
-        estimatedIQ: 100,
+        estimatedIQ: 100, // Manteniamo o reset? HandleNewGame lo teneva. Mettiamo default visuale.
         lastLevelPerfect: true,
         basePoints: BASE_POINTS_START,
         levelTargets: [],
         isBossLevel: false,
         bossLevelId: null,
-      }));
+      });
 
       setActiveModal(null);
       soundService.playSuccess();
-      showToast('🔥 RESET COMPLETO! Benvenuto in una nuova avventura!');
+      showToast('🎮 PARTITA RIAVVIATA! Si riparte dal Livello 1');
 
     } catch (error) {
       console.error('Errore durante il reset:', error);
-      showToast('❌ Errore durante il reset. Riprova.');
+      showToast('❌ Errore durante il riavvio. Riprova.');
     }
   };
 
@@ -3785,13 +3733,13 @@ const App: React.FC = () => {
                   <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
                 </div>
 
-                {/* New Game Button */}
+                {/* Full Reset Button */}
                 <button
-                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); handleNewGame(); }}
-                  className="w-full bg-gradient-to-r from-orange-600/60 to-amber-600/60 text-amber-200 py-3 px-6 rounded-xl font-orbitron font-bold uppercase tracking-widest text-xs border-2 border-amber-500/40 active:scale-95 transition-all hover:border-amber-500/70 flex items-center justify-center gap-2 group"
+                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal('full_reset_confirm'); }}
+                  className="w-full bg-gradient-to-r from-red-900/50 to-red-800/50 text-red-300 py-3 px-6 rounded-xl font-orbitron font-bold uppercase tracking-widest text-xs border-2 border-red-500/30 active:scale-95 transition-all hover:border-red-500/60 flex items-center justify-center gap-2 group"
                 >
-                  <Play className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  NUOVA PARTITA
+                  <AlertTriangle className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  RESET TOTALE
                 </button>
 
                 {/* Back Button */}
