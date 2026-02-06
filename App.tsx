@@ -2793,7 +2793,7 @@ const App: React.FC = () => {
 
         {toast.visible && (
           <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[10000] animate-toast-in w-[90%] max-w-md">
-            <div className="bg-slate-900/70 text-white px-8 py-5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.6)] flex flex-col items-center gap-4 border-[3px] border-[#FF8800] backdrop-blur-xl">
+            <div className="bg-transparent text-white px-8 py-5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.6)] flex flex-col items-center gap-4 border-[3px] border-[#FF8800] backdrop-blur-sm">
               <span className="font-bold text-center text-lg leading-snug drop-shadow-md">{toast.message}</span>
               {toast.actions && (
                 <div className="flex gap-3 w-full justify-center">
