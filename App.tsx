@@ -3687,17 +3687,20 @@ const App: React.FC = () => {
 
         {/* BOSS SELECTION MODAL */}
         {activeModal === 'boss_selection' && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-            <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 border-[3px] border-emerald-500/50 w-full max-w-2xl p-8 rounded-[2rem] shadow-[0_0_60px_rgba(16,185,129,0.4)] flex flex-col relative overflow-hidden max-h-[85vh]" onPointerDown={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
+            <div className="bg-slate-900/90 border-[3px] border-emerald-500/50 w-full max-w-2xl p-6 rounded-[2rem] shadow-[0_0_60px_rgba(16,185,129,0.4)] flex flex-col relative overflow-hidden h-[85vh] backdrop-blur-xl" onPointerDown={e => e.stopPropagation()}>
               {/* Background Decor */}
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+              <div className="absolute inset-0 bg-[url('/sfondo_green.png')] bg-cover bg-center opacity-30 pointer-events-none mix-blend-overlay"></div>
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent animate-pulse"></div>
 
               <div className="relative z-10">
                 <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase text-center flex items-center justify-center gap-3">
                   <Crown className="text-yellow-300 animate-bounce" /> SFIDE BOSS
                 </h2>
-                <p className="text-emerald-400 text-center text-sm mb-6 font-mono">Sconfiggi i guardiani per sbloccare bonus esclusivi</p>
+                <p className="text-emerald-400 text-center text-sm mb-6 font-orbitron font-black uppercase tracking-[0.2em] drop-shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse-slow">
+                  SFIDALI • VINCI • DOMINA
+                </p>
 
                 {/* Boss Grid */}
                 <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[55vh] pr-2 custom-scroll">
