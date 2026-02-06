@@ -3619,10 +3619,10 @@ const App: React.FC = () => {
               {/* Background Decor */}
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
 
-              <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase text-center relative z-10 flex items-center justify-center gap-3">
-                <Swords className="text-red-500 animate-bounce" /> SELEZIONA SFIDA
+              <h2 className="text-xl sm:text-3xl font-black font-orbitron text-white mb-2 uppercase text-center relative z-10 flex items-center justify-center gap-2 sm:gap-3">
+                <Swords className="w-6 h-6 sm:w-8 sm:h-8 text-red-500 animate-bounce" /> SELEZIONA SFIDA
               </h2>
-              <p className="text-red-500 text-center text-sm mb-8 font-orbitron font-black uppercase tracking-[0.2em] relative z-10 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse-slow">
+              <p className="text-red-500 text-center text-[10px] sm:text-sm mb-4 sm:mb-8 font-orbitron font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] relative z-10 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse-slow">
                 COMBATTI • VINCI • GLORIA
               </p>
 
@@ -3695,10 +3695,10 @@ const App: React.FC = () => {
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent animate-pulse"></div>
 
               <div className="relative z-10">
-                <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase text-center flex items-center justify-center gap-3">
-                  <Crown className="text-yellow-300 animate-bounce" /> SFIDE BOSS
+                <h2 className="text-xl sm:text-3xl font-black font-orbitron text-white mb-2 uppercase text-center flex items-center justify-center gap-2 sm:gap-3">
+                  <Crown className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-300 animate-bounce" /> SFIDE BOSS
                 </h2>
-                <p className="text-emerald-400 text-center text-sm mb-6 font-orbitron font-black uppercase tracking-[0.2em] drop-shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse-slow">
+                <p className="text-emerald-400 text-center text-[10px] sm:text-sm mb-4 sm:mb-6 font-orbitron font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] drop-shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse-slow">
                   SFIDALI • VINCI • DOMINA
                 </p>
 
