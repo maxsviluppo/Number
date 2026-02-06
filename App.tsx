@@ -204,6 +204,14 @@ const App: React.FC = () => {
     }
   }, [showIntro]);
 
+  // FORCE SCROLL RESET ON IDLE (Home Screen Stability)
+  useEffect(() => {
+    if (gameState.status === 'idle' && !activeModal) {
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+    }
+  }, [gameState.status, activeModal]);
+
 
 
 
@@ -2690,7 +2698,7 @@ const App: React.FC = () => {
         } catch (e) { console.warn("Tutorial check skipped", e); }
       }} />}
       <div
-        className={`min-h-[100dvh] text-slate-100 font-sans overflow-hidden select-none pb-20 safe-area-bottom transition-colors duration-1000`}
+        className={`h-[100dvh] w-full text-slate-100 font-sans overflow-hidden select-none fixed inset-0 transition-colors duration-1000 flex flex-col items-center justify-center`}
         style={{
           background: gameState.isBossLevel ? '#022c22' : 'linear-gradient(to top, #004488, #0088dd)'
         }}
@@ -2862,7 +2870,7 @@ const App: React.FC = () => {
         {gameState.status === 'idle' && (
           <>
             <CharacterHelper />
-            <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 pt-24 pb-32 animate-screen-in relative">
+            <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 animate-screen-in relative">
 
               {/* TOP LEFT: User Auth */}
               <div className="fixed bottom-4 left-4 z-50 flex gap-3 items-center" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
