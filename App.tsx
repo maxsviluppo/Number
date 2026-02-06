@@ -569,6 +569,10 @@ const App: React.FC = () => {
     setActiveModal(null);
     setGrid(levelData.grid);
 
+    // CRITICAL FIX: Preserve career level during boss challenges
+    // Boss levels are separate challenges and should NOT overwrite max_level
+    const careerLevel = userProfile?.max_level || 1;
+
     if (bossId === 1) {
       // PREPARE LEVEL BUT DON'T START YET
       setGameState(prev => ({
@@ -576,7 +580,7 @@ const App: React.FC = () => {
         score: 0,
         totalScore: 0,
         streak: 0,
-        level: bossId,
+        level: careerLevel, // PRESERVE CAREER LEVEL
         isBossLevel: true,
         bossLevelId: bossId,
         timeLeft: 90,
@@ -602,7 +606,7 @@ const App: React.FC = () => {
         score: 0,
         totalScore: 0, // Boss level starts at 0 pts
         streak: 0,
-        level: bossId, // Boss Level ID
+        level: careerLevel, // PRESERVE CAREER LEVEL
         isBossLevel: true,
         bossLevelId: bossId,
         timeLeft: 90,
@@ -1088,7 +1092,12 @@ const App: React.FC = () => {
       }
     }
 
-    setGameState(prev => ({ ...prev, status: 'idle' }));
+    setGameState(prev => ({
+      ...prev,
+      status: 'idle',
+      isBossLevel: false,
+      bossLevelId: null
+    }));
     setActiveModal(null);
     setActiveMatch(null);
     setShowDuelRecap(false);
@@ -3370,7 +3379,6 @@ const App: React.FC = () => {
                       e.stopPropagation();
                       resetDuelState(activeMatch?.id, currentUser?.id);
                       goToHome();
-                      setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
                     }}
                       className="w-full bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm border border-slate-700 active:scale-95 transition-all hover:bg-slate-700 hover:text-white">
                       TORNA ALLA HOME
