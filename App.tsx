@@ -176,6 +176,7 @@ const App: React.FC = () => {
 
   const [savedGame, setSavedGame] = useState<any>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [pauseLocked, setPauseLocked] = useState(false);
   const [winVideoSrc, setWinVideoSrc] = useState(WIN_VIDEOS[0]);
   const [loseVideoSrc, setLoseVideoSrc] = useState(LOSE_VIDEOS[0]);
   const [surrenderVideoSrc, setSurrenderVideoSrc] = useState(SURRENDER_VIDEOS[0]);
@@ -1030,7 +1031,18 @@ const App: React.FC = () => {
     e.stopPropagation();
     await handleUserInteraction();
     soundService.playUIClick();
-    setIsPaused(!isPaused);
+
+    if (!isPaused) {
+      if (pauseLocked) {
+        showToast("Sistema in riscaldamento... Attesa 3s");
+        return;
+      }
+      setIsPaused(true);
+    } else {
+      setIsPaused(false);
+      setPauseLocked(true);
+      setTimeout(() => setPauseLocked(false), 3000);
+    }
   };
 
   // Fetch Leaderboard Data on Open
@@ -1744,10 +1756,9 @@ const App: React.FC = () => {
     // Clear any leftover duel state when starting single player
     if (activeMatch) setActiveMatch(null);
 
-    if (savedGame) {
-      setActiveModal('resume_confirm');
-      return;
-    }
+    // Always show briefing modal before starting
+    setActiveModal('resume_confirm');
+    return;
 
     // New Comic Tutorial Check
     if (localStorage.getItem('comic_game_tutorial_done') !== 'true') {
@@ -2651,11 +2662,14 @@ const App: React.FC = () => {
       <div
         className={`fixed inset-0 w-full h-[100dvh] text-slate-100 font-sans overflow-hidden select-none transition-colors duration-1000`}
         style={{
-          background: gameState.isBossLevel ? '#022c22' : 'linear-gradient(to top, #004488, #0088dd)'
+          background: gameState.isBossLevel ? '#022c22' : '#004488'
         }}
         onPointerUp={handleGlobalEnd}
         onPointerLeave={handleGlobalEnd}
       >
+        {/* MAIN BLUE BACKGROUND IMAGE LAYER */}
+        <div className={`fixed inset-0 bg-[url('/sfondoblu.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
+
         {/* BOSS BACKGROUND FALLBACK LAYER (Solid Green) - Ensures no blue leaks ever */}
         <div className={`fixed inset-0 bg-emerald-950 z-[-1] transition-opacity duration-300 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0'}`}></div>
 
@@ -3310,16 +3324,15 @@ const App: React.FC = () => {
 
 
               {gameState.status === 'game-over' && (
-                <div className={`glass-panel p-6 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-sm mt-40 relative overflow-hidden border-[3px] shadow-lg
+                <div className={`bg-slate-900/60 p-8 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-sm mt-20 relative overflow-hidden border-[4px] shadow-[0_40px_100px_rgba(0,0,0,0.6)] backdrop-blur-2xl
                   ${gameState.isBossLevel
                     ? 'border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.3)]'
-                    : 'border-[#FF8800]/30 shadow-[0_0_50px_rgba(255,136,0,0.2)]'}`}>
-                  {/* Background Texture */}
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+                    : 'border-[#FF8800] shadow-[0_0_50px_rgba(255,136,0,0.2)]'}`}>
+                  {/* Background Texture Removed */}
 
                   <AlertTriangle className={`w-12 h-12 mx-auto mb-2 animate-pulse ${gameState.isBossLevel ? 'text-emerald-400' : 'text-[#FF8800]'}`} />
                   <h2 className={`text-3xl font-black font-orbitron mb-1 tracking-wider ${gameState.isBossLevel ? 'text-emerald-400' : 'text-[#FF8800]'}`}>HAI PERSO</h2>
-                  <div className="text-[10px] font-bold text-slate-400 mb-6 uppercase tracking-[0.2em]">{gameState.isBossLevel ? 'Boss Sfidato' : 'Livello Non Superato'}</div>
+                  <div className="text-[10px] font-bold text-white mb-6 uppercase tracking-[0.2em]">{gameState.isBossLevel ? 'Boss Sfidato' : 'Livello Non Superato'}</div>
 
                   <div className="space-y-3 relative z-10">
                     <button onPointerDown={(e) => {
@@ -3376,9 +3389,8 @@ const App: React.FC = () => {
               )}
 
               {gameState.status === 'level-complete' && (
-                <div className="glass-panel p-8 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md mt-12 relative overflow-hidden border-[3px] border-[#FF8800]/50 shadow-[0_0_60px_rgba(255,136,0,0.3)]">
-                  {/* Background Texture */}
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+                <div className="bg-slate-900/60 p-8 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-md mt-12 relative overflow-hidden border-[4px] border-[#FF8800] shadow-[0_40px_100px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
+                  {/* Background Texture Removed */}
 
                   {gameState.isBossLevel ? (
                     // BOSS WIN SCREEN
@@ -3412,7 +3424,7 @@ const App: React.FC = () => {
                     <div className="relative z-10">
                       <div className="flex justify-center items-center gap-6 mb-6">
                         <div className="flex flex-col items-center">
-                          <span className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Livello</span>
+                          <span className="text-[9px] uppercase font-black text-white/70 tracking-wider">Livello</span>
                           <span className="text-3xl font-black font-orbitron text-white">{gameState.level}</span>
                         </div>
                         <ChevronRight className="w-8 h-8 text-[#FF8800] animate-pulse" strokeWidth={3} />
@@ -3422,15 +3434,15 @@ const App: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="bg-slate-900/50 p-5 rounded-2xl mb-6 border border-white/10 space-y-3">
-                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Punti Livello</span>
+                      <div className="bg-black/30 p-5 rounded-2xl mb-6 border border-white/20 space-y-3">
+                        <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                          <span className="text-[10px] font-bold text-white uppercase tracking-wider">Punti Livello</span>
                           <span className="text-lg font-orbitron font-black text-[#FF8800] animate-pulse">
                             +{gameState.score > 0 ? (gameState.timeLeft * 2) + 50 + (10 * 5) : '...'}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Punteggio Totale</span>
+                        <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                          <span className="text-[10px] font-bold text-white uppercase tracking-wider">Punteggio Totale</span>
                           <span className="text-lg font-orbitron font-black text-white">{gameState.totalScore}</span>
                         </div>
 
@@ -3790,10 +3802,12 @@ const App: React.FC = () => {
         )}
 
         {activeModal === 'resume_confirm' && (
-          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => setActiveModal(null)}>
-            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-[3px] border-[#FF8800] w-full max-w-md p-8 rounded-[2rem] shadow-[0_0_60px_rgba(255,136,0,0.5)] flex flex-col relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
-              {/* Animated Background */}
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
+          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 modal-overlay overflow-hidden" onPointerDown={() => setActiveModal(null)}>
+            {/* Background Image Layer - Direct Visibility */}
+            <div className="absolute inset-0 bg-[url('/sfondoblu.png')] bg-cover bg-center z-[-1] animate-pulse-slow"></div>
+
+            <div className="bg-slate-900/60 border-[4px] border-[#FF8800] w-full max-w-md p-8 rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.6)] flex flex-col relative overflow-hidden backdrop-blur-2xl" onPointerDown={e => e.stopPropagation()}>
+              {/* Animated Background - Line Removed */}
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#FF8800] to-transparent animate-pulse"></div>
 
               {/* Header Icon - Hexagon Shape (like game cells) */}
@@ -3824,14 +3838,14 @@ const App: React.FC = () => {
 
               {/* Title */}
               <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase tracking-wider relative z-10 text-center">
-                PARTITA IN CORSO
+                {savedGame ? 'PARTITA IN CORSO' : 'NUOVA SFIDA'}
               </h2>
 
               {/* Saved Game Info */}
               <div className="bg-black/30 border border-[#FF8800]/30 rounded-xl p-4 mb-6 relative z-10">
                 <div className="flex items-center justify-center gap-3 mb-2">
                   <Trophy className="w-5 h-5 text-amber-400" />
-                  <span className="text-slate-300 font-bold text-sm">LIVELLO SALVATO</span>
+                  <span className="text-white font-bold text-sm">{savedGame ? 'LIVELLO SALVATO' : 'LIVELLO INIZIALE'}</span>
                 </div>
                 <div className="text-5xl font-black font-orbitron text-[#FF8800] text-center">
                   {savedGame?.level || 1}
@@ -3840,26 +3854,26 @@ const App: React.FC = () => {
                 {/* Detailed Stats Grid */}
                 <div className="grid grid-cols-2 gap-3 mt-4">
                   {/* Time Info - Now shows total available time */}
-                  <div className="bg-black/20 rounded-lg p-2 border border-white/5">
+                  <div className="bg-black/20 rounded-lg p-2 border border-white/10">
                     <div className="flex items-center justify-center gap-1 mb-1">
                       <Timer className="w-3 h-3 text-blue-400" />
-                      <span className="text-[10px] text-slate-400 uppercase font-bold">Tempo Totale</span>
+                      <span className="text-[10px] text-white uppercase font-bold">Tempo Totale</span>
                     </div>
                     <div className="text-lg font-black font-orbitron text-white text-center">
                       {(savedGame?.timeLeft || 0) + parseInt(localStorage.getItem('career_time_bonus') || '0')}s
                     </div>
                     {/* Breakdown if bonus exists */}
                     {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (
-                      <div className="text-[9px] text-slate-500 text-center mt-0.5">
+                      <div className="text-[9px] text-white/70 text-center mt-0.5">
                         ({savedGame?.timeLeft || 0}s + {localStorage.getItem('career_time_bonus')}s bonus)
                       </div>
                     )}
                   </div>
 
-                  <div className="bg-black/20 rounded-lg p-2 border border-white/5">
+                  <div className="bg-black/20 rounded-lg p-2 border border-white/10">
                     <div className="flex items-center justify-center gap-1 mb-1">
                       <Trophy className="w-3 h-3 text-amber-400" />
-                      <span className="text-[10px] text-slate-400 uppercase font-bold">Punti</span>
+                      <span className="text-[10px] text-white uppercase font-bold">Punti</span>
                     </div>
                     <div className="text-lg font-black font-orbitron text-white text-center">
                       {savedGame?.totalScore || 0}
@@ -3882,26 +3896,26 @@ const App: React.FC = () => {
 
               {/* Action Buttons */}
               <div className="space-y-3 relative z-10">
-                {/* Resume Button */}
+                {/* Resume/Start Button */}
                 <button
-                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); restoreGame(); }}
+                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); savedGame ? restoreGame() : startGame(); }}
                   className="w-full bg-gradient-to-r from-[#FF8800] to-orange-600 text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg shadow-[#FF8800]/30 active:scale-95 transition-all border-2 border-white/20 hover:shadow-[#FF8800]/50 flex items-center justify-center gap-3 group"
                 >
                   <Play className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  RIPRENDI PARTITA
+                  {savedGame ? 'RIPRENDI PARTITA' : 'INIZIA ORA'}
                 </button>
 
                 {/* Divider */}
                 <div className="flex items-center gap-3 py-2">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
-                  <span className="text-slate-500 text-[10px] font-bold uppercase">Opzioni Avanzate</span>
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                  <span className="text-white text-[10px] font-bold uppercase tracking-widest">Opzioni Avanzate</span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
                 </div>
 
                 {/* Full Reset Button */}
                 <button
                   onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal('full_reset_confirm'); }}
-                  className="w-full bg-gradient-to-r from-red-900/50 to-red-800/50 text-red-300 py-3 px-6 rounded-xl font-orbitron font-bold uppercase tracking-widest text-xs border-2 border-red-500/30 active:scale-95 transition-all hover:border-red-500/60 flex items-center justify-center gap-2 group"
+                  className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border-2 border-white/20 shadow-lg shadow-red-900/40 active:scale-95 transition-all hover:from-red-500 hover:to-red-600 flex items-center justify-center gap-2 group"
                 >
                   <AlertTriangle className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   RESET TOTALE
@@ -3910,7 +3924,7 @@ const App: React.FC = () => {
                 {/* Back Button */}
                 <button
                   onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
-                  className="w-full py-3 text-slate-500 font-bold uppercase text-xs tracking-widest hover:text-white transition-colors flex items-center justify-center gap-2 group"
+                  className="w-full py-3 text-white/60 font-black uppercase text-xs tracking-[0.2em] hover:text-white transition-all flex items-center justify-center gap-2 group"
                 >
                   <Home className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   TORNA ALLA HOME
