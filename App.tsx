@@ -2797,13 +2797,7 @@ const App: React.FC = () => {
 
         <ParticleEffect trigger={triggerParticles} />
 
-        {/* Abstract Curves Background */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-[0.08]">
-          <path d="M-100 200 Q 200 0 500 300 T 1000 100" stroke="white" strokeWidth="60" fill="none" />
-          <path d="M-100 500 Q 300 300 600 600 T 1200 400" stroke="white" strokeWidth="40" fill="none" />
-          <path d="M-100 800 Q 400 600 800 900 T 1300 700" stroke="white" strokeWidth="80" fill="none" />
-          <path d="M800 -100 Q 600 300 900 600" stroke="white" strokeWidth="30" fill="none" />
-        </svg>
+        {/* Abstract Curves Removed for single clean blue background */}
 
         {toast.visible && (
           <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[10000] animate-toast-in w-[90%] max-w-md">
@@ -3836,18 +3830,15 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Title */}
-              <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase tracking-wider relative z-10 text-center">
-                {savedGame ? 'PARTITA IN CORSO' : 'NUOVA SFIDA'}
-              </h2>
+              {/* Title Removed as requested */}
 
               {/* Saved Game Info */}
               <div className="bg-black/30 border border-[#FF8800]/30 rounded-xl p-4 mb-6 relative z-10">
-                <div className="flex items-center justify-center gap-3 mb-2">
-                  <Trophy className="w-5 h-5 text-amber-400" />
-                  <span className="text-white font-bold text-sm">{savedGame ? 'LIVELLO SALVATO' : 'LIVELLO INIZIALE'}</span>
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <Trophy className="w-8 h-8 text-amber-400" />
+                  <span className="text-white font-black text-xl tracking-widest">{savedGame ? 'LIVELLO SALVATO' : 'LIVELLO INIZIALE'}</span>
                 </div>
-                <div className="text-5xl font-black font-orbitron text-[#FF8800] text-center">
+                <div className="text-8xl font-black font-orbitron text-[#FF8800] text-center drop-shadow-[0_0_30px_rgba(255,136,0,0.5)] animate-pulse-slow">
                   {savedGame?.level || 1}
                 </div>
 
