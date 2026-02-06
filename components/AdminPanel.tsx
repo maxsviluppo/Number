@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Users, DollarSign, Trophy, TrendingUp, Calendar, Mail, X, Shield, Lock, Activity, List, Send, Save, Menu, Trash2 } from 'lucide-react';
+import { Users, DollarSign, Trophy, TrendingUp, Calendar, Mail, X, Shield, Lock, Activity, List, Send, Save, Menu, Trash2, Eye, EyeOff } from 'lucide-react';
 
 
 
@@ -12,6 +12,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     // Dashboard stats
     const [stats, setStats] = useState({
@@ -167,12 +168,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             <div className="relative">
                                 <Lock className="absolute left-3 top-3 text-gray-500" size={18} />
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-[#111] border border-[#333] text-white rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-[#FF8800] focus:ring-1 focus:ring-[#FF8800] transition-all"
+                                    className="w-full bg-[#111] border border-[#333] text-white rounded-xl py-2.5 pl-10 pr-12 focus:outline-none focus:border-[#FF8800] focus:ring-1 focus:ring-[#FF8800] transition-all"
                                     placeholder="Inserisci password"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#FF8800] transition-colors"
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
                         </div>
                         <button

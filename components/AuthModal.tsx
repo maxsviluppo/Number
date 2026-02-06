@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { authService } from '../services/supabaseClient';
-import { X, Mail, Lock, User, KeyRound, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { X, Mail, Lock, User, KeyRound, AlertCircle, CheckCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 
 interface AuthModalProps {
     onClose: () => void;
@@ -18,6 +18,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -59,6 +61,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         setMode(newMode);
         setError(null);
         setSuccessMsg(null);
+        setShowPassword(false);
     };
 
     return (
@@ -131,13 +134,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                             <div className="relative">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
-                                    className="w-full bg-slate-900/50 border-2 border-slate-700/50 rounded-xl py-3 pl-12 pr-4 text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-none transition-colors font-bold"
+                                    className="w-full bg-slate-900/50 border-2 border-slate-700/50 rounded-xl py-3 pl-12 pr-12 text-white placeholder-slate-600 focus:border-cyan-400 focus:outline-none transition-colors font-bold"
                                     placeholder="••••••••"
                                     required
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-400 transition-colors"
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
                             </div>
                         </div>
                     )}
