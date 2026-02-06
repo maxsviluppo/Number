@@ -3670,9 +3670,8 @@ const App: React.FC = () => {
               </button>
             </div>
           </div>
-        )
+        )}
 
-        }
         {/* BOSS SELECTION MODAL */}
         {activeModal === 'boss_selection' && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
