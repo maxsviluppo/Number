@@ -141,7 +141,7 @@ const HexCell: React.FC<HexCellProps> = ({
       style={{
         top: `calc(${topValue}px * var(--hex-scale))`,
         left: `calc(${leftValue}px * var(--hex-scale))`,
-        animationDelay: animationClass === 'animate-hex-entry' ? `${entryDelay}s` : '0s'
+        animationDelay: animationClass === 'animate-hex-entry' ? `${data.row * 0.12}s` : '0s'
       }}
       data-cell-id={data.id}
       onMouseDown={() => onMouseDown(data.id)}
