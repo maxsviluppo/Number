@@ -222,10 +222,10 @@ const App: React.FC = () => {
   const showToast = useCallback((message: string, actions?: { label: string, onClick: () => void, variant?: 'primary' | 'secondary' }[]) => {
     if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
     setToast({ message, visible: true, actions });
-    // Se ci sono azioni, il toast rimane visibile più a lungo o finché non si clicca
+    // Durata ridotta: 2.5 secondi per toast normali, 6 secondi se ci sono azioni
     toastTimeoutRef.current = window.setTimeout(() => {
       setToast(prev => ({ ...prev, visible: false }));
-    }, actions ? 8000 : 2500);
+    }, actions ? 6000 : 2500);
   }, []);
 
   // DETERMINISTIC RNG HELPERS
@@ -2536,33 +2536,17 @@ const App: React.FC = () => {
 
 
   const handleVideoClose = () => {
-    // 1. Visual Fade Out
+    // Terminazione immediata quando si clicca skip
     setIsVideoVisible(false);
     soundService.stopBoss1vittoria();
     soundService.stopBossBonus();
     setIsBossBonusPlaying(false);
 
-    // 2. Audio Fade Out
+    // Stop video immediately
     if (videoRef.current) {
-      const vid = videoRef.current;
-      const startVolume = vid.volume; // usually 1.0
-      const fadeDuration = 2000;
-      const intervalTime = 50; // run every 50ms
-      const steps = fadeDuration / intervalTime; // 40 steps
-      let currentStep = 0;
-
-      const fadeInterval = setInterval(() => {
-        currentStep++;
-        const progress = Math.min(1, currentStep / steps);
-        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
-
-        if (newVolume > 0.01) {
-          vid.volume = newVolume;
-        } else {
-          vid.volume = 0;
-          clearInterval(fadeInterval);
-        }
-      }, intervalTime);
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+      videoRef.current.volume = 0;
     }
 
     // 3. Unmount after fade and Show Recap if Duel
@@ -2587,31 +2571,15 @@ const App: React.FC = () => {
   };
 
   const handleLostVideoClose = () => {
-    // 1. Visual Fade Out
+    // Terminazione immediata quando si clicca skip
     setIsVideoVisible(false);
     soundService.stopBoss1sconfitta();
 
-    // 2. Audio Fade Out
+    // Stop video immediately
     if (videoRef.current) {
-      const vid = videoRef.current;
-      const startVolume = vid.volume;
-      const fadeDuration = 2000;
-      const intervalTime = 40;
-      const steps = fadeDuration / intervalTime;
-      let currentStep = 0;
-
-      const fadeInterval = setInterval(() => {
-        currentStep++;
-        const progress = Math.min(1, currentStep / steps);
-        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
-
-        if (newVolume > 0.01) {
-          vid.volume = newVolume;
-        } else {
-          vid.volume = 0;
-          clearInterval(fadeInterval);
-        }
-      }, intervalTime);
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+      videoRef.current.volume = 0;
     }
 
     // 3. Unmount after fade and Show Recap if Duel
@@ -2625,27 +2593,15 @@ const App: React.FC = () => {
   };
 
   const handleBossIntroClose = () => {
+    // Terminazione immediata quando si clicca skip
     setIsVideoVisible(false);
-    soundService.stopBossIntro();
+    setShowBossIntro(false);
 
+    // Stop video immediately
     if (videoRef.current) {
-      const vid = videoRef.current;
-      const startVolume = vid.volume;
-      const fadeDuration = 1000;
-      const intervalTime = 40;
-      const steps = fadeDuration / intervalTime;
-      let currentStep = 0;
-
-      const fadeInterval = setInterval(() => {
-        currentStep++;
-        const progress = Math.min(1, currentStep / steps);
-        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
-        if (newVolume > 0.01) vid.volume = newVolume;
-        else {
-          vid.volume = 0;
-          clearInterval(fadeInterval);
-        }
-      }, intervalTime);
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+      videoRef.current.volume = 0;
     }
 
     setTimeout(() => {
@@ -2656,25 +2612,14 @@ const App: React.FC = () => {
   };
 
   const handleSurrenderVideoClose = () => {
+    // Terminazione immediata quando si clicca skip
     setIsVideoVisible(false);
-    if (videoRef.current) {
-      const vid = videoRef.current;
-      const startVolume = vid.volume;
-      const fadeDuration = 800;
-      const intervalTime = 40;
-      const steps = fadeDuration / intervalTime;
-      let currentStep = 0;
 
-      const fadeInterval = setInterval(() => {
-        currentStep++;
-        const progress = Math.min(1, currentStep / steps);
-        const newVolume = Math.max(0, startVolume * (1 - progress) * (1 - progress));
-        if (newVolume > 0.01) vid.volume = newVolume;
-        else {
-          vid.volume = 0;
-          clearInterval(fadeInterval);
-        }
-      }, intervalTime);
+    // Stop video immediately
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+      videoRef.current.volume = 0;
     }
 
     setTimeout(() => {
@@ -2848,7 +2793,7 @@ const App: React.FC = () => {
 
         {toast.visible && (
           <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[10000] animate-toast-in w-[90%] max-w-md">
-            <div className="bg-slate-900/95 text-white px-8 py-5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.6)] flex flex-col items-center gap-4 border-[3px] border-[#FF8800] backdrop-blur-xl">
+            <div className="bg-slate-900/70 text-white px-8 py-5 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.6)] flex flex-col items-center gap-4 border-[3px] border-[#FF8800] backdrop-blur-xl">
               <span className="font-bold text-center text-lg leading-snug drop-shadow-md">{toast.message}</span>
               {toast.actions && (
                 <div className="flex gap-3 w-full justify-center">
