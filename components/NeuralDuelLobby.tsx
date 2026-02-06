@@ -41,27 +41,33 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                 const updatedInvites = [...sentInvites];
                 let pointsAwarded = 0;
 
-                for (const inv of pending) {
-                    const { data } = await supabase.from('profiles').select('id').eq('email', inv.email).maybeSingle();
-                    if (data) {
-                        // Found! Update status
-                        const idx = updatedInvites.findIndex(i => i.email === inv.email);
-                        if (idx !== -1) {
-                            updatedInvites[idx].status = 'success';
-                            updatedInvites[idx].rewarded = true;
-                            pointsAwarded += 100;
+                try {
+                    for (const inv of pending) {
+                        const { data } = await (supabase as any).from('profiles').select('id').eq('email', inv.email).maybeSingle();
+                        if (data) {
+                            // Found! Update status
+                            const idx = updatedInvites.findIndex(i => i.email === inv.email);
+                            if (idx !== -1) {
+                                updatedInvites[idx].status = 'success';
+                                updatedInvites[idx].rewarded = true;
+                                pointsAwarded += 100;
+                            }
                         }
                     }
-                }
 
-                if (pointsAwarded > 0) {
-                    setSentInvites(updatedInvites);
-                    localStorage.setItem('neural_sent_invites', JSON.stringify(updatedInvites));
+                    if (pointsAwarded > 0) {
+                        setSentInvites(updatedInvites);
+                        localStorage.setItem('neural_sent_invites', JSON.stringify(updatedInvites));
 
-                    // Award Points
-                    await profileService.syncProgress(currentUser.id, pointsAwarded, 0, 0);
-                    soundService.playSuccess();
-                    showToast(`AMICO TROVATO! +${pointsAwarded} Punti Bonus!`);
+                        // Award Points
+                        await profileService.syncProgress(currentUser.id, pointsAwarded, 0, 0);
+                        soundService.playSuccess();
+                        showToast(`AMICO TROVATO! +${pointsAwarded} Punti Bonus!`);
+                    }
+                } catch (e: any) {
+                    if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+                        console.error("Error checking invites:", e);
+                    }
                 }
             }
         };
@@ -168,8 +174,10 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                 return newMatch;
             }
         } catch (e: any) {
-            console.error('Invite error:', e);
-            showToast("Errore invio invito");
+            if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+                console.error('Invite error:', e);
+                showToast("Errore invio invito");
+            }
         }
         return null;
     };
@@ -260,7 +268,11 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
         if (currentUser?.id) {
             matchService.cleanupUserMatches(currentUser.id)
                 .then(() => fetchMatches()) // Fetch fresh after cleanup
-                .catch(e => console.error("Initial cleanup error", e));
+                .catch(e => {
+                    if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+                        console.error("Initial cleanup error", e);
+                    }
+                });
         }
     }, [currentUser?.id]);
 
@@ -307,8 +319,10 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                 });
             }
         } catch (e: any) {
-            console.error('Lobby error:', e);
-            showToast(e.message || "Impossibile creare la sfida");
+            if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+                console.error('Lobby error:', e);
+                showToast(e.message || "Impossibile creare la sfida");
+            }
         }
     };
 
@@ -340,8 +354,10 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                 }
             }
         } catch (e: any) {
-            console.error('Invite New error:', e);
-            showToast("Errore creazione invito");
+            if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+                console.error('Invite New error:', e);
+                showToast("Errore creazione invito");
+            }
         }
     };
 
@@ -363,9 +379,11 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                 fetchMatches();
             }
         } catch (e: any) {
-            console.error('Join error:', e);
-            showToast(e.message || "Impossibile unirsi alla sfida");
-            fetchMatches();
+            if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+                console.error('Join error:', e);
+                showToast(e.message || "Impossibile unirsi alla sfida");
+                fetchMatches();
+            }
         }
     };
 
@@ -380,9 +398,11 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                 showToast("Invito non più valido.");
                 fetchMatches();
             }
-        } catch (e) {
-            console.error('Accept invite error:', e);
-            showToast("Errore accettazione invito");
+        } catch (e: any) {
+            if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+                console.error('Accept invite error:', e);
+                showToast("Errore accettazione invito");
+            }
         }
     };
 

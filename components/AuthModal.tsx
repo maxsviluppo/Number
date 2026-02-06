@@ -163,8 +163,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                     >
                         {loading && <Loader2 className="w-5 h-5 animate-spin" />}
                         {mode === 'login' && 'ENTRA NEL SISTEMA'}
-                        {mode === 'signup' && 'REGISTRA CODICE'}
-                        {mode === 'forgot-password' && 'INVIA CODICE RIPRISTINO'}
+                        {mode === 'signup' && 'REGISTRATI'}
+                        {mode === 'forgot-password' && 'RIPRISTINA PASSWORD'}
                     </button>
 
                 </form>

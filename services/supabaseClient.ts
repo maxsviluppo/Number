@@ -1,7 +1,7 @@
 import { createClient, User } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://bpyqazhiespiknhflowh.supabase.co';
-const supabaseAnonKey = 'sb_publishable_xMiHJsO79O5pUMGSDp6OJA_ZxVY_DMJ';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://bpyqazhiespiknhflowh.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_xMiHJsO79O5pUMGSDp6OJA_ZxVY_DMJ';
 
 // DUMMY CLIENT FACTORY (Safe Fallback)
 const createDummyClient = () => ({
@@ -206,6 +206,29 @@ export const profileService = {
 
         if (error) {
             console.error('Error updating profile:', error);
+            throw error;
+        }
+        return data;
+    },
+
+    // FULL RESET: Wipe everything for a "fresh start"
+    async resetUserProfile(userId: string) {
+        const { data, error } = await supabase
+            .from('profiles')
+            .update({
+                max_level: 1,
+                total_score: 0,
+                estimated_iq: 100,
+                badges: [],
+                career_time_bonus: 0,
+                current_run_state: null
+            })
+            .eq('id', userId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error resetting profile:', error);
             throw error;
         }
         return data;
