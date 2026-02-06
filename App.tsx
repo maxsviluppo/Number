@@ -2662,7 +2662,7 @@ const App: React.FC = () => {
       <div
         className={`fixed inset-0 w-full h-[100dvh] text-slate-100 font-sans overflow-hidden select-none transition-colors duration-1000`}
         style={{
-          background: gameState.isBossLevel ? '#022c22' : '#004488'
+          background: gameState.isBossLevel ? '#022c22' : 'transparent'
         }}
         onPointerUp={handleGlobalEnd}
         onPointerLeave={handleGlobalEnd}
@@ -3020,7 +3020,7 @@ const App: React.FC = () => {
 
 
         {gameState.status !== 'idle' && (
-          <div className="w-full h-full flex flex-col items-center z-10 p-4 max-w-4xl animate-screen-in">
+          <div className="w-full h-full flex flex-col items-center z-10 p-4 pt-12 sm:pt-4 max-w-4xl animate-screen-in">
             <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
               <div className={`
                 relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.15)]
@@ -3834,9 +3834,9 @@ const App: React.FC = () => {
 
               {/* Saved Game Info */}
               <div className="bg-black/30 border border-[#FF8800]/30 rounded-xl p-4 mb-6 relative z-10">
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  <Trophy className="w-8 h-8 text-amber-400" />
-                  <span className="text-white font-black text-xl tracking-widest">{savedGame ? 'LIVELLO SALVATO' : 'LIVELLO INIZIALE'}</span>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-white/60 font-black text-[9px] tracking-[0.15em] uppercase">{savedGame ? 'LIVELLO SALVATO' : 'LIVELLO INIZIALE'}</span>
                 </div>
                 <div className="text-8xl font-black font-orbitron text-[#FF8800] text-center drop-shadow-[0_0_30px_rgba(255,136,0,0.5)] animate-pulse-slow">
                   {savedGame?.level || 1}
