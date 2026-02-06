@@ -2870,7 +2870,7 @@ const App: React.FC = () => {
         {gameState.status === 'idle' && (
           <>
             <CharacterHelper />
-            <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-12 animate-screen-in relative min-h-[100dvh] justify-center">
+            <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-12 animate-screen-in relative min-h-[100dvh] justify-center -translate-y-5">
 
               {/* TOP LEFT: User Auth */}
               <div className="fixed bottom-4 left-4 z-50 flex gap-3 items-center" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
