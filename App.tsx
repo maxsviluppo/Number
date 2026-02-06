@@ -571,6 +571,13 @@ const App: React.FC = () => {
   }, [findAllSolutions]);
 
   const startBossGame = (bossId: number) => {
+    // Safety check: Don't allow re-playing defeated bosses
+    const isDefeated = userProfile?.badges?.includes(bossId === 1 ? 'boss_matematico' : `boss_${bossId}_defeated`);
+    if (isDefeated) {
+      showToast('Hai già sconfitto questo boss!');
+      return;
+    }
+
     const levelData = generateBossLevel(bossId);
     if (!levelData) return;
 
@@ -2001,19 +2008,18 @@ const App: React.FC = () => {
           if (currentUser) {
             const bossFinalPoints = newScore + 50; // Just Score + Victory Bonus, NO Time Left conversion
 
-            // Award Boss Badge + Time Bonus
+            // Award Boss Badge + Time Bonus AND Sync points sequentially
             profileService.completeBoss(currentUser.id, gameState.bossLevelId!)
               .then(isNewCompletion => {
-                if (isNewCompletion) {
-                  console.log('✅ Boss completion badge and time bonus awarded!');
-                }
+                if (isNewCompletion) console.log('✅ Boss completion badge awarded!');
+                // Chain syncProgress after boss completion
+                return profileService.syncProgress(currentUser.id, bossFinalPoints, gameState.level, gameState.estimatedIQ);
               })
-              .catch(e => console.error("Error completing boss:", e));
-
-            // Sync points
-            profileService.syncProgress(currentUser.id, bossFinalPoints, gameState.level, gameState.estimatedIQ)
-              .then(() => loadProfile(currentUser.id))
-              .catch(e => console.error("Error syncing boss progress:", e));
+              .then(() => {
+                console.log('✅ Boss progress and badge synced!');
+                loadProfile(currentUser.id);
+              })
+              .catch(e => console.error("Error updating boss completion:", e));
           }
 
           // Boss 1 specific victory sequence
