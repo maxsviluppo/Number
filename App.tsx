@@ -3670,7 +3670,163 @@ const App: React.FC = () => {
               </button>
             </div>
           </div>
+        )
+
+        }
+        {/* BOSS SELECTION MODAL */}
+        {activeModal === 'boss_selection' && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
+            <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 border-[3px] border-emerald-500/50 w-full max-w-2xl p-8 rounded-[2rem] shadow-[0_0_60px_rgba(16,185,129,0.4)] flex flex-col relative overflow-hidden max-h-[85vh]" onPointerDown={e => e.stopPropagation()}>
+              {/* Background Decor */}
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent animate-pulse"></div>
+
+              <div className="relative z-10">
+                <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase text-center flex items-center justify-center gap-3">
+                  <Crown className="text-yellow-300 animate-bounce" /> SFIDE BOSS
+                </h2>
+                <p className="text-emerald-400 text-center text-sm mb-6 font-mono">Sconfiggi i guardiani per sbloccare bonus esclusivi</p>
+
+                {/* Boss Grid */}
+                <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[55vh] pr-2 custom-scroll">
+                  {BOSS_LEVELS.map((boss) => {
+                    const isDefeated = userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`) || false;
+                    const isUnlocked = (userProfile?.max_level || 1) >= boss.requiredLevel;
+                    const canPlay = isUnlocked && !isDefeated;
+
+                    return (
+                      <div
+                        key={boss.id}
+                        className={`relative p-5 rounded-2xl border-2 transition-all overflow-hidden group
+                          ${isDefeated
+                            ? 'bg-slate-800/40 border-green-500/40 opacity-70'
+                            : canPlay
+                              ? 'bg-gradient-to-r from-emerald-900/60 to-teal-900/60 border-emerald-500/50 hover:border-emerald-400 hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-emerald-500/30'
+                              : 'bg-slate-900/50 border-slate-700 opacity-50 grayscale cursor-not-allowed'
+                          }
+                        `}
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          if (canPlay) {
+                            soundService.playUIClick();
+                            if (!currentUser) {
+                              showToast('Accedi per giocare le sfide boss!');
+                              setShowAuthModal(true);
+                            } else {
+                              startBossGame(boss.id);
+                            }
+                          } else if (isDefeated) {
+                            soundService.playUIClick();
+                            showToast('Boss già sconfitto! Hai ottenuto il bonus.');
+                          } else {
+                            soundService.playUIClick();
+                            showToast(`Raggiungi il livello ${boss.requiredLevel} per sbloccare questo boss!`);
+                          }
+                        }}
+                      >
+                        {/* Background Pattern */}
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+
+                        {/* Victory Badge */}
+                        {isDefeated && (
+                          <div className="absolute top-3 right-3 z-20">
+                            <div className="relative">
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 border-4 border-white shadow-lg flex items-center justify-center animate-pulse">
+                                <Trophy className="w-6 h-6 text-white" strokeWidth={3} />
+                              </div>
+                              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-yellow-400 border-2 border-white flex items-center justify-center">
+                                <span className="text-[10px] font-black">✔</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Lock Badge */}
+                        {!isUnlocked && (
+                          <div className="absolute top-3 right-3 z-20">
+                            <div className="w-12 h-12 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center">
+                              <Lock className="w-6 h-6 text-slate-500" />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="relative z-10 flex items-start gap-4">
+                          {/* Boss Icon */}
+                          <div className={`w-16 h-16 rounded-xl flex items-center justify-center shrink-0 border-2 shadow-lg
+                            ${isDefeated
+                              ? 'bg-green-500/20 border-green-500/40'
+                              : canPlay
+                                ? 'bg-emerald-500/20 border-emerald-500/50'
+                                : 'bg-slate-800 border-slate-700'
+                            }
+                          `}>
+                            <Crown className={`w-8 h-8 ${isDefeated ? 'text-green-400' : canPlay ? 'text-yellow-300' : 'text-slate-600'}`} />
+                          </div>
+
+                          {/* Boss Info */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded
+                                ${isDefeated
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : canPlay
+                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                    : 'bg-slate-700/50 text-slate-500'
+                                }
+                              `}>
+                                Livello {boss.requiredLevel}
+                              </span>
+                              {isDefeated && (
+                                <span className="text-[8px] font-bold uppercase text-green-400 bg-green-500/10 px-2 py-0.5 rounded animate-pulse">
+                                  COMPLETATO
+                                </span>
+                              )}
+                            </div>
+                            <h3 className={`font-orbitron font-black text-lg uppercase leading-none mb-2
+                              ${isDefeated ? 'text-green-400 line-through decoration-2' : 'text-white'}
+                            `}>
+                              {boss.title}
+                            </h3>
+                            <p className="text-slate-400 text-xs mb-3">{boss.description}</p>
+
+                            {/* Stats */}
+                            <div className="flex gap-3 text-[10px]">
+                              <div className="flex items-center gap-1">
+                                <Target className="w-3 h-3 text-emerald-400" />
+                                <span className="text-slate-300 font-bold">{boss.targets} Target</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Timer className="w-3 h-3 text-cyan-400" />
+                                <span className="text-slate-300 font-bold">{boss.time}s</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-yellow-400" />
+                                <span className="text-yellow-300 font-bold">{boss.reward}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Indicator */}
+                          {canPlay && (
+                            <ChevronRight className="w-6 h-6 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="mt-6 w-full text-slate-400 text-sm hover:text-white uppercase font-bold tracking-widest py-3 rounded-xl border border-slate-700 hover:border-slate-500 transition-all"
+                >
+                  Chiudi
+                </button>
+              </div>
+            </div>
+          </div>
         )}
+
         {activeModal === 'registration_success' && (
           <RegistrationSuccess onEnter={() => setActiveModal(null)} />
         )}
