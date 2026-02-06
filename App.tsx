@@ -62,6 +62,111 @@ const BOSS_LEVELS = [
     time: 90,
     reward: "30s BONUS",
     bg: "bg-emerald-900"
+  },
+  {
+    id: 2,
+    requiredLevel: 10,
+    title: "IL GUARDIANO",
+    description: "Riflessi pronti, calcoli fulminei.",
+    isComingSoon: true
+  },
+  {
+    id: 3,
+    requiredLevel: 25,
+    title: "L'ARCHITETTO",
+    description: "La struttura è tutto.",
+    isComingSoon: true
+  },
+  {
+    id: 4,
+    requiredLevel: 40,
+    title: "CERCATORE D'ORO",
+    description: "Sequenze perfette o nulla.",
+    isComingSoon: true
+  },
+  {
+    id: 5,
+    requiredLevel: 55,
+    title: "CYBER DEMON",
+    description: "Sconfiggi il codice.",
+    isComingSoon: true
+  },
+  {
+    id: 6,
+    requiredLevel: 70,
+    title: "VIBRANIUM",
+    description: "Infrangibile come la tua logica.",
+    isComingSoon: true
+  },
+  {
+    id: 7,
+    requiredLevel: 85,
+    title: "ORACLE",
+    description: "Prevedi il risultato.",
+    isComingSoon: true
+  },
+  {
+    id: 8,
+    requiredLevel: 100,
+    title: "TITANO",
+    description: "Il peso della matematica.",
+    isComingSoon: true
+  },
+  {
+    id: 9,
+    requiredLevel: 115,
+    title: "NIGHTMARE",
+    description: "Zero spazio per l'errore.",
+    isComingSoon: true
+  },
+  {
+    id: 10,
+    requiredLevel: 130,
+    title: "PHANTOM",
+    description: "Numeri che appaiono e scompaiono.",
+    isComingSoon: true
+  },
+  {
+    id: 11,
+    requiredLevel: 145,
+    title: "GLITCH",
+    description: "Domina il caos.",
+    isComingSoon: true
+  },
+  {
+    id: 12,
+    requiredLevel: 160,
+    title: "NEBULA",
+    description: "Oltre i confini del calcolo.",
+    isComingSoon: true
+  },
+  {
+    id: 13,
+    requiredLevel: 175,
+    title: "SUPERNOVA",
+    description: "Un'esplosione di cifre.",
+    isComingSoon: true
+  },
+  {
+    id: 14,
+    requiredLevel: 190,
+    title: "QUANTUM",
+    description: "Tutto e niente allo stesso tempo.",
+    isComingSoon: true
+  },
+  {
+    id: 15,
+    requiredLevel: 205,
+    title: "SINGULARITY",
+    description: "Il punto di non ritorno.",
+    isComingSoon: true
+  },
+  {
+    id: 16,
+    requiredLevel: 220,
+    title: "ORIGIN",
+    description: "Dove tutto ebbe inizio.",
+    isComingSoon: true
   }
 ];
 
@@ -3506,50 +3611,82 @@ const App: React.FC = () => {
         }
 
         {activeModal === 'boss_selection' && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-            <div className="bg-slate-900 border-[3px] border-emerald-500/50 w-full max-w-lg p-8 rounded-[2rem] shadow-[0_0_50px_rgba(16,185,129,0.2)] flex flex-col relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+          <div className="fixed inset-0 z-[6000] flex items-center justify-center p-6 overflow-hidden">
+            {/* Full Screen Green Background Layer */}
+            <div className="absolute inset-0 bg-[url('/sfondo_green.png')] bg-cover bg-center animate-pulse-slow pointer-events-auto" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}></div>
+
+            {/* Subtle Dark Overlay for contrast */}
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] pointer-events-none"></div>
+
+            <div className="bg-black/80 border-[4px] border-emerald-500/50 w-full max-w-3xl p-4 sm:p-10 rounded-[3rem] shadow-2xl flex flex-col relative overflow-hidden backdrop-blur-md" onPointerDown={e => e.stopPropagation()}>
+              {/* Animated Background Texture Removed */}
 
               <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase text-center relative z-10 flex items-center justify-center gap-3">
                 <Crown className="text-yellow-400" /> LIVELLI BOSS
               </h2>
-              <p className="text-slate-400 text-center text-sm mb-8 font-mono relative z-10">Sconfiggi i Boss per Bonus Epici</p>
+              <p className="text-emerald-400 text-center text-sm mb-8 font-orbitron font-black uppercase tracking-[0.2em] relative z-10 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse-slow">
+                SFIDALI • VINCI • DOMINA
+              </p>
 
-              <div className="flex flex-col gap-4 relative z-10 w-full overflow-y-auto max-h-[50vh]">
+              <div className="flex flex-col gap-4 relative z-10 w-full overflow-y-auto max-h-[60vh] custom-scroll pr-2">
                 {BOSS_LEVELS.map(boss => {
                   const isUnlocked = (userProfile?.max_level || 0) > boss.requiredLevel ||
                     gameState.level > boss.requiredLevel ||
                     (savedGame?.level || 0) > boss.requiredLevel;
                   const isCompleted = userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`);
+                  const isComingSoon = (boss as any).isComingSoon;
 
                   return (
                     <button
                       key={boss.id}
-                      disabled={!isUnlocked}
-                      className={`w-full p-4 rounded-xl flex items-center gap-4 border-2 transition-all group shadow-lg relative overflow-hidden
-                           ${isCompleted
-                          ? 'bg-slate-800/80 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.2)] cursor-default grayscale-[0.5]'
-                          : isUnlocked
-                            ? 'bg-gradient-to-r from-emerald-800 to-teal-900 border-emerald-500/30 hover:border-emerald-400 active:scale-95 cursor-pointer'
-                            : 'bg-slate-800 border-slate-700 opacity-60 cursor-not-allowed grayscale'}`}
+                      disabled={!isUnlocked || isComingSoon}
+                      className={`w-full min-h-[140px] p-8 rounded-[2.5rem] flex items-center gap-8 border-[3px] transition-all group shadow-2xl relative overflow-hidden
+                           ${isComingSoon
+                          ? 'bg-black/40 border-slate-700/30 cursor-not-allowed grayscale'
+                          : isCompleted
+                            ? 'bg-slate-800/80 border-emerald-500/30 cursor-default opacity-80'
+                            : isUnlocked
+                              ? 'bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-950 border-emerald-500/30 hover:border-emerald-400 active:scale-[0.98] cursor-pointer'
+                              : 'bg-slate-800/50 border-slate-700/50 opacity-60 cursor-not-allowed'}`}
                       onPointerDown={() => {
-                        if (isUnlocked && !isCompleted) {
+                        if (isUnlocked && !isCompleted && !isComingSoon) {
                           soundService.playUIClick();
                           startBossGame(boss.id);
                         }
                       }}
                     >
-                      <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 border-2 shadow-inner relative z-10
-                            ${isUnlocked ? (isCompleted ? 'bg-amber-500 border-amber-300 text-white' : 'bg-emerald-500 border-emerald-300 text-white') : 'bg-slate-700 border-slate-600 text-slate-500'}`}>
-                        {isCompleted ? <Trophy size={24} className="animate-bounce-slow" /> : (isUnlocked ? <Play size={24} fill="currentColor" /> : <Shield size={24} />)}
+                      {/* Coming Soon Overlay Layer */}
+                      {isComingSoon && (
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                          <span className="text-[12px] font-black font-orbitron text-white/40 tracking-[0.5em] uppercase border-y border-white/10 py-2 w-full text-center bg-black/20">COMING SOON</span>
+                        </div>
+                      )}
+
+                      <div className={`w-20 h-20 rounded-3xl flex items-center justify-center shrink-0 border-[3px] shadow-2xl relative z-10 transition-transform group-hover:scale-110
+                            ${(isUnlocked && !isComingSoon) ? (isCompleted ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-emerald-500 border-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]') : 'bg-slate-800 border-slate-700 text-slate-600'}`}>
+                        {isCompleted || isComingSoon ? <Lock size={32} /> : (isUnlocked ? <Play size={32} fill="currentColor" /> : <Lock size={32} />)}
                       </div>
 
-                      <div className="text-left flex-1 relative z-10">
-                        <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">{boss.title}</h3>
-                        <p className="text-[10px] text-emerald-200 font-bold uppercase tracking-wide mb-1">{boss.description}</p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] bg-black/40 px-2 py-0.5 rounded text-white font-mono">REQ: LIV {boss.requiredLevel}</span>
-                          <span className="text-[9px] bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded font-mono flex items-center gap-1"><Zap size={8} /> {boss.reward}</span>
+                      <div className="text-left flex-1 min-w-0 relative z-10 space-y-2">
+                        <h3 className="font-orbitron font-black text-white text-base sm:text-lg uppercase leading-tight tracking-[0.15em]">{boss.title}</h3>
+                        <p className="text-[10px] text-emerald-200/50 font-bold uppercase tracking-widest leading-relaxed max-w-[90%]">{boss.description}</p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {isComingSoon ? (
+                            <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                              <span className="text-[8px] text-white/30 font-bold uppercase">SBLOCCO A LIVELLO {boss.requiredLevel}</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded border border-white/5">
+                                <span className="text-[8px] text-slate-400 font-bold uppercase">REQ</span>
+                                <span className="text-[9px] text-white font-black font-orbitron">LIV {boss.requiredLevel}</span>
+                              </div>
+                              <div className="flex items-center gap-1 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
+                                <Zap size={8} className="text-yellow-400" />
+                                <span className="text-[9px] text-yellow-400 font-black uppercase tracking-tighter">{(boss as any).reward}</span>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </button>
@@ -3557,7 +3694,7 @@ const App: React.FC = () => {
                 })}
               </div>
 
-              <button onClick={() => setActiveModal(null)} className="mt-6 text-slate-500 text-xs hover:text-white uppercase font-bold tracking-widest relative z-10">
+              <button onClick={() => setActiveModal(null)} className="mt-6 text-white hover:text-emerald-400 text-xs uppercase font-black tracking-[0.3em] transition-colors relative z-10">
                 Chiudi
               </button>
             </div>
