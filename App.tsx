@@ -2698,7 +2698,7 @@ const App: React.FC = () => {
         } catch (e) { console.warn("Tutorial check skipped", e); }
       }} />}
       <div
-        className={`min-h-[100dvh] text-slate-100 font-sans overflow-x-hidden select-none transition-colors duration-1000`}
+        className={`fixed inset-0 w-full h-[100dvh] text-slate-100 font-sans overflow-hidden select-none transition-colors duration-1000`}
         style={{
           background: gameState.isBossLevel ? '#022c22' : 'linear-gradient(to top, #004488, #0088dd)'
         }}
@@ -2870,7 +2870,7 @@ const App: React.FC = () => {
         {gameState.status === 'idle' && (
           <>
             <CharacterHelper />
-            <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 py-12 animate-screen-in relative min-h-[100dvh] justify-center -translate-y-5">
+            <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 animate-screen-in relative h-full justify-center -translate-y-5">
 
               {/* TOP LEFT: User Auth */}
               <div className="fixed bottom-4 left-4 z-50 flex gap-3 items-center" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
