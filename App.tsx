@@ -3037,11 +3037,11 @@ const App: React.FC = () => {
                   <button
                     className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group"
                     id="challenges-btn-home"
-                    onPointerDown={() => { soundService.playUIClick(); showToast("Nessuna sfida attiva al momento"); }}
+                    onPointerDown={() => { soundService.playUIClick(); showToast("Nessun torneo attivo al momento"); }}
                   >
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
                     <Trophy className="w-5 h-5" />
-                    <span className="font-orbitron text-xs font-black uppercase tracking-widest relative z-10">Sfide</span>
+                    <span className="font-orbitron text-xs font-black uppercase tracking-widest relative z-10">Tornei</span>
                   </button>
 
                   <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
