@@ -3688,7 +3688,7 @@ const App: React.FC = () => {
         {/* BOSS SELECTION MODAL */}
         {activeModal === 'boss_selection' && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-            <div className="bg-slate-900/90 border-[3px] border-emerald-500/50 w-full max-w-2xl p-6 rounded-[2rem] shadow-[0_0_60px_rgba(16,185,129,0.4)] flex flex-col relative overflow-hidden h-[85vh] backdrop-blur-xl" onPointerDown={e => e.stopPropagation()}>
+            <div className="bg-slate-900/90 border-[3px] border-emerald-500/50 w-full max-w-2xl p-6 rounded-[2rem] shadow-[0_0_60px_rgba(16,185,129,0.4)] flex flex-col relative overflow-hidden h-[70vh] backdrop-blur-xl" onPointerDown={e => e.stopPropagation()}>
               {/* Background Decor */}
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
               <div className="absolute inset-0 bg-[url('/sfondo_green.png')] bg-cover bg-center opacity-30 pointer-events-none mix-blend-overlay"></div>
