@@ -56,8 +56,8 @@ const BOSS_LEVELS = [
   {
     id: 1,
     requiredLevel: 5,
-    title: "BOSS MATEMATICO",
-    description: "Indovina i risultati delle operazioni!",
+    title: "MATEMATICO",
+    description: "Risolvi i calcoli!",
     targets: 10,
     time: 90,
     reward: "30s BONUS",
@@ -3610,96 +3610,7 @@ const App: React.FC = () => {
           )
         }
 
-        {activeModal === 'boss_selection' && (
-          <div className="fixed inset-0 z-[6000] flex items-center justify-center p-6 overflow-hidden">
-            {/* Full Screen Green Background Layer */}
-            <div className="absolute inset-0 bg-[url('/sfondo_green.png')] bg-cover bg-center animate-pulse-slow pointer-events-auto" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}></div>
 
-            {/* Subtle Dark Overlay for contrast */}
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] pointer-events-none"></div>
-
-            <div className="bg-black/80 border-[4px] border-emerald-500/50 w-full max-w-3xl p-4 sm:p-10 rounded-[3rem] shadow-2xl flex flex-col relative overflow-hidden backdrop-blur-md" onPointerDown={e => e.stopPropagation()}>
-              {/* Animated Background Texture Removed */}
-
-              <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase text-center relative z-10 flex items-center justify-center gap-3">
-                <Crown className="text-yellow-400" /> LIVELLI BOSS
-              </h2>
-              <p className="text-emerald-400 text-center text-sm mb-8 font-orbitron font-black uppercase tracking-[0.2em] relative z-10 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse-slow">
-                SFIDALI • VINCI • DOMINA
-              </p>
-
-              <div className="flex flex-col gap-4 relative z-10 w-full overflow-y-auto max-h-[60vh] custom-scroll pr-2">
-                {BOSS_LEVELS.map(boss => {
-                  const isUnlocked = (userProfile?.max_level || 0) > boss.requiredLevel ||
-                    gameState.level > boss.requiredLevel ||
-                    (savedGame?.level || 0) > boss.requiredLevel;
-                  const isCompleted = userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`);
-                  const isComingSoon = (boss as any).isComingSoon;
-
-                  return (
-                    <button
-                      key={boss.id}
-                      disabled={!isUnlocked || isComingSoon}
-                      className={`w-full min-h-[140px] p-8 rounded-[2.5rem] flex items-center gap-8 border-[3px] transition-all group shadow-2xl relative overflow-hidden
-                           ${isComingSoon
-                          ? 'bg-black/40 border-slate-700/30 cursor-not-allowed grayscale'
-                          : isCompleted
-                            ? 'bg-slate-800/80 border-emerald-500/30 cursor-default opacity-80'
-                            : isUnlocked
-                              ? 'bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-950 border-emerald-500/30 hover:border-emerald-400 active:scale-[0.98] cursor-pointer'
-                              : 'bg-slate-800/50 border-slate-700/50 opacity-60 cursor-not-allowed'}`}
-                      onPointerDown={() => {
-                        if (isUnlocked && !isCompleted && !isComingSoon) {
-                          soundService.playUIClick();
-                          startBossGame(boss.id);
-                        }
-                      }}
-                    >
-                      {/* Coming Soon Overlay Layer */}
-                      {isComingSoon && (
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
-                          <span className="text-[12px] font-black font-orbitron text-white/40 tracking-[0.5em] uppercase border-y border-white/10 py-2 w-full text-center bg-black/20">COMING SOON</span>
-                        </div>
-                      )}
-
-                      <div className={`w-20 h-20 rounded-3xl flex items-center justify-center shrink-0 border-[3px] shadow-2xl relative z-10 transition-transform group-hover:scale-110
-                            ${(isUnlocked && !isComingSoon) ? (isCompleted ? 'bg-slate-700 border-slate-600 text-slate-400' : 'bg-emerald-500 border-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]') : 'bg-slate-800 border-slate-700 text-slate-600'}`}>
-                        {isCompleted || isComingSoon ? <Lock size={32} /> : (isUnlocked ? <Play size={32} fill="currentColor" /> : <Lock size={32} />)}
-                      </div>
-
-                      <div className="text-left flex-1 min-w-0 relative z-10 space-y-2">
-                        <h3 className="font-orbitron font-black text-white text-base sm:text-lg uppercase leading-tight tracking-[0.15em]">{boss.title}</h3>
-                        <p className="text-[10px] text-emerald-200/50 font-bold uppercase tracking-widest leading-relaxed max-w-[90%]">{boss.description}</p>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {isComingSoon ? (
-                            <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                              <span className="text-[8px] text-white/30 font-bold uppercase">SBLOCCO A LIVELLO {boss.requiredLevel}</span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded border border-white/5">
-                                <span className="text-[8px] text-slate-400 font-bold uppercase">REQ</span>
-                                <span className="text-[9px] text-white font-black font-orbitron">LIV {boss.requiredLevel}</span>
-                              </div>
-                              <div className="flex items-center gap-1 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
-                                <Zap size={8} className="text-yellow-400" />
-                                <span className="text-[9px] text-yellow-400 font-black uppercase tracking-tighter">{(boss as any).reward}</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button onClick={() => setActiveModal(null)} className="mt-6 text-white hover:text-emerald-400 text-xs uppercase font-black tracking-[0.3em] transition-colors relative z-10">
-                Chiudi
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* MODE SELECTION MODAL */}
         {activeModal === 'duel_selection' && (
@@ -3811,7 +3722,7 @@ const App: React.FC = () => {
                           if (canPlay) {
                             soundService.playUIClick();
                             if (!currentUser) {
-                              showToast('Accedi per giocare le sfide boss!');
+                              showToast('Accedi per sfidare il boss!');
                               setShowAuthModal(true);
                             } else {
                               startBossGame(boss.id);
@@ -3833,10 +3744,10 @@ const App: React.FC = () => {
                           <div className="absolute top-3 right-3 z-20">
                             <div className="relative">
                               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 border-4 border-white shadow-lg flex items-center justify-center animate-pulse">
-                                <Trophy className="w-6 h-6 text-white" strokeWidth={3} />
+                                <Trophy className="w-5 h-5 text-white" strokeWidth={3} />
                               </div>
-                              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-yellow-400 border-2 border-white flex items-center justify-center">
-                                <span className="text-[10px] font-black">✔</span>
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-yellow-400 border-2 border-white flex items-center justify-center">
+                                <span className="text-[8px] font-black">✔</span>
                               </div>
                             </div>
                           </div>
@@ -3861,7 +3772,7 @@ const App: React.FC = () => {
                                 : 'bg-slate-800 border-slate-700'
                             }
                           `}>
-                            <Crown className={`w-8 h-8 ${isDefeated ? 'text-green-400' : canPlay ? 'text-yellow-300' : 'text-slate-600'}`} />
+                            <Crown className={`w-6 h-6 sm:w-8 sm:h-8 ${isDefeated ? 'text-green-400' : canPlay ? 'text-yellow-300' : 'text-slate-600'}`} />
                           </div>
 
                           {/* Boss Info */}
@@ -3875,7 +3786,7 @@ const App: React.FC = () => {
                                     : 'bg-slate-700/50 text-slate-500'
                                 }
                               `}>
-                                Livello {boss.requiredLevel}
+                                LIV. {boss.requiredLevel}
                               </span>
                               {isDefeated && (
                                 <span className="text-[8px] font-bold uppercase text-green-400 bg-green-500/10 px-2 py-0.5 rounded animate-pulse">
@@ -3883,12 +3794,12 @@ const App: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            <h3 className={`font-orbitron font-black text-lg uppercase leading-none mb-2
+                            <h3 className={`font-orbitron font-black text-sm sm:text-lg uppercase leading-none mb-2
                               ${isDefeated ? 'text-green-400 line-through decoration-2' : 'text-white'}
                             `}>
                               {boss.title}
                             </h3>
-                            <p className="text-slate-400 text-xs mb-3">{boss.description}</p>
+                            <p className="text-slate-400 text-[10px] sm:text-xs mb-3">{boss.description}</p>
 
                             {/* Stats */}
                             <div className="flex gap-3 text-[10px]">
