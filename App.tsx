@@ -3615,14 +3615,16 @@ const App: React.FC = () => {
         {/* MODE SELECTION MODAL */}
         {activeModal === 'duel_selection' && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-            <div className="bg-slate-900 border-[3px] border-white/20 w-full max-w-lg p-8 rounded-[2rem] shadow-2xl flex flex-col relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
+            <div className="bg-slate-900/90 border-[3px] border-red-500/50 w-full max-w-lg p-8 rounded-[2rem] shadow-[0_0_60px_rgba(239,68,68,0.4)] flex flex-col relative overflow-hidden backdrop-blur-xl" onPointerDown={e => e.stopPropagation()}>
               {/* Background Decor */}
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
 
               <h2 className="text-3xl font-black font-orbitron text-white mb-2 uppercase text-center relative z-10 flex items-center justify-center gap-3">
-                <Swords className="text-[#FF8800]" /> SELEZIONA SFIDA
+                <Swords className="text-red-500 animate-bounce" /> SELEZIONA SFIDA
               </h2>
-              <p className="text-slate-400 text-center text-sm mb-8 font-mono relative z-10">Scegli il tuo stile di combattimento</p>
+              <p className="text-red-500 text-center text-sm mb-8 font-orbitron font-black uppercase tracking-[0.2em] relative z-10 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse-slow">
+                COMBATTI • VINCI • GLORIA
+              </p>
 
               <div className="flex flex-col gap-3 relative z-10 w-full">
                 {/* Option 1: STANDARD */}
@@ -3678,9 +3680,7 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              <button onClick={() => setActiveModal(null)} className="mt-8 text-slate-500 text-xs hover:text-white uppercase font-bold tracking-widest relative z-10">
-                Annulla
-              </button>
+
             </div>
           </div>
         )}
