@@ -137,11 +137,26 @@ const App: React.FC = () => {
 
   // Logo Animation Effect
   useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      // Silenziamo i falsi positivi di AbortError (spesso causati da Supabase quando si naviga velocemente)
+      const isAbortError = (event.reason?.name === 'AbortError' || event.reason?.message?.includes('signal is aborted without reason'));
+      if (isAbortError) {
+        event.preventDefault(); // Impedisce al browser di mostrare il banner di errore/overlay
+        console.debug("🔇 Silenziato AbortError:", event.reason.message);
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
     const interval = setInterval(() => {
       setLogoAnim(true);
       setTimeout(() => setLogoAnim(false), 2000); // Slower breath (2s)
     }, 8000); // Slightly more frequent
-    return () => clearInterval(interval);
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      clearInterval(interval);
+    };
   }, []);
   useEffect(() => {
     if (gameState.isBossLevel) {
@@ -696,8 +711,10 @@ const App: React.FC = () => {
           estimatedIQ: profile.estimated_iq || 100
         }));
       }
-    } catch (error) {
-      console.error("Error loading profile:", error);
+    } catch (error: any) {
+      if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted without reason')) {
+        console.error("Error loading profile:", error);
+      }
     }
   }, [checkAndUnlockBadges]);
 
@@ -709,6 +726,8 @@ const App: React.FC = () => {
         setCurrentUser(session.user);
         loadProfile(session.user.id);
       }
+    }).catch(e => {
+      // Silent error for session check
     });
 
     // 2. Listen for Auth Changes (Login, Logout, Email Confirmation Redirects)
@@ -738,7 +757,8 @@ const App: React.FC = () => {
         setCurrentUser(null);
         setUserProfile(null);
         setSavedGame(null);
-        setGameState(prev => ({ ...prev, status: 'intro' }));
+        resetDuelState(); // Ensure match state is cleared locally
+        setGameState(prev => ({ ...prev, status: 'idle' }));
         showToast("Disconnessione completata.");
       }
 
@@ -886,7 +906,7 @@ const App: React.FC = () => {
             {
               label: 'Rifiuta',
               onClick: async () => {
-                await matchService.declineInvite(inv.id, currentUser.id);
+                await matchService.declineInvite(inv.id, currentUser.id).catch(() => { });
                 showToast("Invito rifiutato.");
               },
               variant: 'secondary'
@@ -894,7 +914,7 @@ const App: React.FC = () => {
           ]);
         });
       }
-    });
+    }).catch(() => { });
   }, [currentUser, showToast]);
 
   // 4. URL DEEP LINKING (Invitation Handling)
@@ -967,9 +987,11 @@ const App: React.FC = () => {
             matchService.resetRoundStatus(match.id);
             soundService.playSuccess();
           }
-        } catch (e) {
-          console.error("Auto-join error:", e);
-          showToast("Impossibile caricare la sfida.");
+        } catch (e: any) {
+          if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+            console.error("Auto-join error:", e);
+            showToast("Impossibile caricare la sfida.");
+          }
         } finally {
           setIsJoiningPending(false);
           setPendingMatchInvite(null);
@@ -1588,7 +1610,11 @@ const App: React.FC = () => {
       };
 
       profileService.saveGameState(currentUser.id, initialSaveState)
-        .catch(e => console.error("Error saving initial game state:", e));
+        .catch(e => {
+          if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+            console.error("Error saving initial game state:", e);
+          }
+        });
       setSavedGame(initialSaveState);
     }
   };
@@ -1676,9 +1702,11 @@ const App: React.FC = () => {
       soundService.playSuccess();
       showToast('🎮 PARTITA RIAVVIATA! Si riparte dal Livello 1');
 
-    } catch (error) {
-      console.error('Errore durante il reset:', error);
-      showToast('❌ Errore durante il riavvio. Riprova.');
+    } catch (error: any) {
+      if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted without reason')) {
+        console.error('Errore durante il reset:', error);
+        showToast('❌ Errore durante il riavvio. Riprova.');
+      }
     }
   };
 
@@ -1791,8 +1819,10 @@ const App: React.FC = () => {
         handleError();
       }
       setPreviewResult(null);
-    } catch (err) {
-      console.error("Critical error in evaluatePath:", err);
+    } catch (err: any) {
+      if (err?.name !== 'AbortError' && !err?.message?.includes('signal is aborted without reason')) {
+        console.error("Critical error in evaluatePath:", err);
+      }
       // Prevent crash, reset selection
       setSelectedPath([]);
     }
@@ -1855,7 +1885,11 @@ const App: React.FC = () => {
       if (isTimeAttack) {
         // Sync Score Immediately
         matchService.updateScore(activeMatch.id, currentUser.id, newScore, activeMatch.isP1)
-          .catch(e => console.error("TA Score Sync Error", e));
+          .catch(e => {
+            if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+              console.error("TA Score Sync Error", e);
+            }
+          });
 
         setTimeout(() => {
           // Check if game is still playing
@@ -2033,7 +2067,9 @@ const App: React.FC = () => {
                 }, 800);
 
               } catch (error: any) {
-                console.error("Error finishing duel safely:", error);
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted without reason')) {
+                  console.error("Error finishing duel safely:", error);
+                }
                 setGameState(prev => ({ ...prev, status: 'idle' }));
                 setShowDuelRecap(true);
               }
@@ -2075,7 +2111,11 @@ const App: React.FC = () => {
             .catch(e => console.error("Error syncing progress:", e));
 
           profileService.saveGameState(currentUser.id, saveState)
-            .catch(e => console.error("Error saving game state:", e));
+            .catch(e => {
+              if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+                console.error("Error saving game state:", e);
+              }
+            });
           setSavedGame(saveState);
         }
       } else {
@@ -2171,8 +2211,10 @@ const App: React.FC = () => {
         }
       }
       setSelectedPath([]);
-    } catch (error) {
-      console.error("Critical error in handleSuccess:", error);
+    } catch (error: any) {
+      if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted without reason')) {
+        console.error("Critical error in handleSuccess:", error);
+      }
       setGameState(prev => ({ ...prev, status: 'idle' }));
       setSelectedPath([]);
     }
@@ -3848,6 +3890,8 @@ const App: React.FC = () => {
                     import('./services/supabaseClient').then(({ authService }) => authService.signOut());
                     setCurrentUser(null);
                     setUserProfile(null);
+                    resetDuelState();
+                    setGameState(prev => ({ ...prev, status: 'idle' }));
                     showToast(`Logout effettuato.`);
                     setActiveModal(null);
                   }}
