@@ -2693,8 +2693,7 @@ const App: React.FC = () => {
   const handleVideoClose = () => {
     // Terminazione immediata quando si clicca skip
     setIsVideoVisible(false);
-    soundService.stopBoss1vittoria();
-    soundService.stopBossBonus();
+    soundService.stopAllVideoSounds();
     setIsBossBonusPlaying(false);
 
     // Stop video immediately
@@ -2728,7 +2727,7 @@ const App: React.FC = () => {
   const handleLostVideoClose = () => {
     // Terminazione immediata quando si clicca skip
     setIsVideoVisible(false);
-    soundService.stopBoss1sconfitta();
+    soundService.stopAllVideoSounds();
 
     // Stop video immediately
     if (videoRef.current) {
@@ -2751,6 +2750,7 @@ const App: React.FC = () => {
     // Terminazione immediata quando si clicca skip
     setIsVideoVisible(false);
     setShowBossIntro(false);
+    soundService.stopAllVideoSounds();
 
     // Stop video immediately
     if (videoRef.current) {
@@ -2769,6 +2769,7 @@ const App: React.FC = () => {
   const handleSurrenderVideoClose = () => {
     // Terminazione immediata quando si clicca skip
     setIsVideoVisible(false);
+    soundService.stopAllVideoSounds();
 
     // Stop video immediately
     if (videoRef.current) {

@@ -17,6 +17,9 @@ class SoundService {
   private boss1vittoriaSource: AudioBufferSourceNode | null = null;
   private boss1sconfittaBuffer: AudioBuffer | null = null;
   private boss1sconfittaSource: AudioBufferSourceNode | null = null;
+  private winnerSource: AudioBufferSourceNode | null = null;
+  private loseSource: AudioBufferSourceNode | null = null;
+  private activeExternalAudio: HTMLAudioElement | null = null;
 
   /**
    * Inizializza l'AudioContext e sblocca l'hardware con un buffer silente.
@@ -274,12 +277,24 @@ class SoundService {
     }
 
     try {
+      this.stopExternalSound();
       const cleanName = filename.startsWith('/') ? filename.slice(1) : filename;
       const audio = new Audio(`/${cleanName}`);
       audio.volume = 0.7; // Volume più deciso
+      this.activeExternalAudio = audio;
       audio.play().catch(e => console.warn("Auto-play stopped:", e));
     } catch (e) {
       console.warn("External sound playback failed:", e);
+    }
+  }
+
+  stopExternalSound() {
+    if (this.activeExternalAudio) {
+      try {
+        this.activeExternalAudio.pause();
+        this.activeExternalAudio.currentTime = 0;
+      } catch (e) { }
+      this.activeExternalAudio = null;
     }
   }
 
@@ -294,6 +309,7 @@ class SoundService {
   playWinner(index?: number) {
     if (this.isMuted || this.winnerBuffers.length === 0 || !this.ctx || !this.masterGain) return;
 
+    this.stopWinner();
     // Use index if provided and valid, otherwise random
     let bufferToPlay = this.winnerBuffers[0];
     if (index !== undefined && index >= 0 && index < this.winnerBuffers.length) {
@@ -302,10 +318,17 @@ class SoundService {
       bufferToPlay = this.winnerBuffers[Math.floor(Math.random() * this.winnerBuffers.length)];
     }
 
-    const source = this.ctx.createBufferSource();
-    source.buffer = bufferToPlay;
-    source.connect(this.masterGain);
-    source.start(0);
+    this.winnerSource = this.ctx.createBufferSource();
+    this.winnerSource.buffer = bufferToPlay;
+    this.winnerSource.connect(this.masterGain);
+    this.winnerSource.start(0);
+  }
+
+  stopWinner() {
+    if (this.winnerSource) {
+      try { this.winnerSource.stop(); } catch (e) { }
+      this.winnerSource = null;
+    }
   }
 
   playLevelComplete() {
@@ -319,6 +342,7 @@ class SoundService {
   playLose(index?: number) {
     if (this.isMuted || this.loseBuffers.length === 0 || !this.ctx || !this.masterGain) return;
 
+    this.stopLose();
     // Use index if provided and valid, otherwise random
     let bufferToPlay = this.loseBuffers[0];
     if (index !== undefined && index >= 0 && index < this.loseBuffers.length) {
@@ -327,10 +351,27 @@ class SoundService {
       bufferToPlay = this.loseBuffers[Math.floor(Math.random() * this.loseBuffers.length)];
     }
 
-    const source = this.ctx.createBufferSource();
-    source.buffer = bufferToPlay;
-    source.connect(this.masterGain);
-    source.start(0);
+    this.loseSource = this.ctx.createBufferSource();
+    this.loseSource.buffer = bufferToPlay;
+    this.loseSource.connect(this.masterGain);
+    this.loseSource.start(0);
+  }
+
+  stopLose() {
+    if (this.loseSource) {
+      try { this.loseSource.stop(); } catch (e) { }
+      this.loseSource = null;
+    }
+  }
+
+  stopAllVideoSounds() {
+    this.stopBossIntro();
+    this.stopBossBonus();
+    this.stopBoss1vittoria();
+    this.stopBoss1sconfitta();
+    this.stopWinner();
+    this.stopLose();
+    this.stopExternalSound();
   }
 
   playBossIntro() {
