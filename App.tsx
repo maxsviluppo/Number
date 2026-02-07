@@ -8,7 +8,7 @@ import CharacterHelper from './components/CharacterHelper';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { matchService } from './services/matchService';
-import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward, Clock, Crown, Lock, Target } from 'lucide-react';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward, Clock, Crown, Lock, Target, Send } from 'lucide-react';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
 import NeuralDuelLobby from './components/NeuralDuelLobby';
@@ -1256,6 +1256,45 @@ const App: React.FC = () => {
     setPreviewResult(null);
     setSelectedPath([]);
     if (timerRef.current) window.clearInterval(timerRef.current);
+  };
+
+  const handleQuickInvite = async () => {
+    if (!currentUser) {
+      showToast("Accedi per invitare un amico!");
+      setShowAuthModal(true);
+      return;
+    }
+
+    soundService.playUIClick();
+    const mode = 'standard';
+    const seed = Math.random().toString(36).substring(7);
+
+    try {
+      const newMatch = await matchService.createMatch(currentUser.id, seed, mode);
+      if (newMatch) {
+        setDuelMode(mode);
+        const joinUrl = `${window.location.origin}${window.location.pathname}?joinMatch=${newMatch.id}`;
+        const text = `Ti sfido a Neural Duel! 🧠⚔️\nClicca qui per accettare la sfida: ${joinUrl}`;
+
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: "Sfida a Neural Duel!", text, url: joinUrl });
+          } catch (err) {
+            console.log('Share dismissed', err);
+          }
+        } else {
+          try {
+            await navigator.clipboard.writeText(text);
+            showToast("Link sfida copiato!");
+          } catch (err) {
+            showToast("Impossibile copiare il link.");
+          }
+        }
+        // Staying home after invite as requested
+      }
+    } catch (e: any) {
+      showToast(e.message || "Errore creazione invito");
+    }
   };
 
 
@@ -2992,6 +3031,16 @@ const App: React.FC = () => {
                   title="Tutorial"
                 >
                   <HelpCircle size={24} strokeWidth={2.5} />
+                </button>
+
+                {/* Quick Invite Button */}
+                <button
+                  onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); handleQuickInvite(); }}
+                  id="invite-btn-home"
+                  className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                  title="Invita Amico"
+                >
+                  <Send size={22} strokeWidth={3} className="ml-0.5" />
                 </button>
 
                 {/* Admin Access */}
