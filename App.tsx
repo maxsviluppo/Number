@@ -3028,7 +3028,7 @@ const App: React.FC = () => {
                 <button
                   onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
                   id="tutorial-btn-home"
-                  className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                  className="w-12 h-12 rounded-full bg-[#FF8800] text-white border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
                   title="Tutorial"
                 >
                   <HelpCircle size={24} strokeWidth={2.5} />
@@ -3038,7 +3038,7 @@ const App: React.FC = () => {
                 <button
                   onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); handleQuickInvite(); }}
                   id="invite-btn-home"
-                  className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                  className="w-12 h-12 rounded-full bg-[#FF8800] text-white border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
                   title="Invita Amico"
                 >
                   <Send size={22} strokeWidth={3} className="ml-0.5" />
@@ -3052,7 +3052,7 @@ const App: React.FC = () => {
                     soundService.playUIClick();
                     setActiveModal('admin');
                   }}
-                  className="w-12 h-12 rounded-full bg-white text-[#FF8800] border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                  className="w-12 h-12 rounded-full bg-[#FF8800] text-white border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
                   title="Admin Access"
                 >
                   <Shield size={24} strokeWidth={2.5} />
