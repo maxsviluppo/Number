@@ -1973,21 +1973,38 @@ const App: React.FC = () => {
           // 2. Delay the Victory Video (Win1/Win2) to let the first sound play
           setTimeout(() => {
             if (videoRef.current) {
-              // Randomly pick between Win1 and Win2
-              const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-              const vidSrc = WIN_VIDEOS[winIdx];
 
-              videoRef.current.src = vidSrc;
-              videoRef.current.muted = true;
-              videoRef.current.load();
-              videoRef.current.play().catch(e => console.warn("Video play blocked:", e));
+              if (gameState.bossLevelId === 1) {
+                // BOSS LEVEL 1 WIN SEQUENCE
+                const vidSrc = '/Bonus30secondiboss.mp4';
+                videoRef.current.src = vidSrc;
+                videoRef.current.muted = true;
+                videoRef.current.load();
+                videoRef.current.play().catch(e => console.warn("Boss Bonus video blocked:", e));
 
-              // Play Sync Win Audio (matching the video)
-              soundService.playWinner(winIdx);
+                setIsBossBonusPlaying(true);
+                soundService.playBossBonus(); // Specific Boss Audio
 
-              setWinVideoSrc(vidSrc);
-              setShowVideo(true);
-              setIsVideoVisible(true);
+                setWinVideoSrc(vidSrc);
+                setShowVideo(true);
+                setIsVideoVisible(true);
+              } else {
+                // STANDARD LEVEL WIN
+                const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
+                const vidSrc = WIN_VIDEOS[winIdx];
+
+                videoRef.current.src = vidSrc;
+                videoRef.current.muted = true; // Still muted for browser policy, user un-mutes
+                videoRef.current.load();
+                videoRef.current.play().catch(e => console.warn("Video play blocked:", e));
+
+                // Play Sync Win Audio (matching the video)
+                soundService.playWinner(winIdx);
+
+                setWinVideoSrc(vidSrc);
+                setShowVideo(true);
+                setIsVideoVisible(true);
+              }
             }
           }, 800); // 0.8 second delay
         }
@@ -2884,6 +2901,20 @@ const App: React.FC = () => {
                   }, 50);
                 } else {
                   // STEP 2 COMPLETE: Boss Victory Video Ended -> Close and return to lobby
+
+                  // AWARD BADGE HERE for Boss 1
+                  if (gameState.bossLevelId === 1 && currentUser) {
+                    const badgeId = 'boss_matematico';
+                    if (!userProfile?.badges?.includes(badgeId)) {
+                      const newBadges = [...(userProfile?.badges || []), badgeId];
+                      // Update Local
+                      setUserProfile(prev => prev ? ({ ...prev, badges: newBadges }) : null);
+                      // Update Remote
+                      profileService.updateProfile({ id: currentUser.id, badges: newBadges }).catch(e => console.error("Badge update failed", e));
+                      showToast("🏆 Medaglia Boss Sbloccata!");
+                    }
+                  }
+
                   handleVideoClose();
                 }
               }
