@@ -3762,13 +3762,13 @@ const App: React.FC = () => {
                       <div
                         key={boss.id}
                         className={`relative p-5 rounded-2xl border-2 transition-all overflow-hidden group
-                          ${isDefeated
-                            ? 'bg-slate-800/40 border-green-500/40 opacity-70'
+                            ${isDefeated
+                            ? 'bg-slate-900 border-green-500/30'
                             : canPlay
                               ? 'bg-gradient-to-r from-emerald-900/60 to-teal-900/60 border-emerald-500/50 hover:border-emerald-400 hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-emerald-500/30'
                               : 'bg-slate-900/50 border-slate-700 opacity-50 grayscale cursor-not-allowed'
                           }
-                        `}
+                          `}
                         onPointerDown={(e) => {
                           e.stopPropagation();
                           if (canPlay) {
@@ -3781,7 +3781,7 @@ const App: React.FC = () => {
                             }
                           } else if (isDefeated) {
                             soundService.playUIClick();
-                            showToast('Boss già sconfitto! Hai ottenuto il bonus.');
+                            showToast('Dominio Boss stabilito: ricompensa già riscossa!');
                           } else {
                             soundService.playUIClick();
                             showToast(`Raggiungi il livello ${boss.requiredLevel} per sbloccare questo boss!`);
@@ -3791,22 +3791,25 @@ const App: React.FC = () => {
                         {/* Background Pattern */}
                         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
 
+                        {/* Victory Overlay for Defeated Boss */}
+                        {isDefeated && (
+                          <div className="absolute inset-0 bg-green-500/5 pointer-events-none z-0"></div>
+                        )}
+
                         {/* Victory Badge */}
                         {isDefeated && (
-                          <div className="absolute top-3 right-3 z-20">
-                            <div className="relative">
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 border-4 border-white shadow-lg flex items-center justify-center animate-pulse">
-                                <Trophy className="w-5 h-5 text-white" strokeWidth={3} />
+                          <div className="absolute top-3 right-3 z-30">
+                            <div className="flex flex-col items-end gap-1">
+                              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-green-600 border-4 border-white shadow-[0_0_20px_rgba(34,197,94,0.4)] flex items-center justify-center animate-pulse">
+                                <Trophy className="w-6 h-6 text-white" strokeWidth={3} />
                               </div>
-                              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-yellow-400 border-2 border-white flex items-center justify-center">
-                                <span className="text-[8px] font-black">✔</span>
-                              </div>
+                              <span className="bg-green-500 text-white text-[7px] font-black px-2 py-0.5 rounded-full shadow-sm tracking-tighter uppercase">DOMINATO</span>
                             </div>
                           </div>
                         )}
 
                         {/* Lock Badge */}
-                        {!isUnlocked && (
+                        {!isUnlocked && !isDefeated && (
                           <div className="absolute top-3 right-3 z-20">
                             <div className="w-12 h-12 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center">
                               <Lock className="w-6 h-6 text-slate-500" />
@@ -3817,13 +3820,13 @@ const App: React.FC = () => {
                         <div className="relative z-10 flex items-start gap-4">
                           {/* Boss Icon */}
                           <div className={`w-16 h-16 rounded-xl flex items-center justify-center shrink-0 border-2 shadow-lg
-                            ${isDefeated
-                              ? 'bg-green-500/20 border-green-500/40'
+                              ${isDefeated
+                              ? 'bg-green-900/40 border-green-500/50'
                               : canPlay
                                 ? 'bg-emerald-500/20 border-emerald-500/50'
                                 : 'bg-slate-800 border-slate-700'
                             }
-                          `}>
+                            `}>
                             <Crown className={`w-6 h-6 sm:w-8 sm:h-8 ${isDefeated ? 'text-green-400' : canPlay ? 'text-yellow-300' : 'text-slate-600'}`} />
                           </div>
 
@@ -3831,41 +3834,43 @@ const App: React.FC = () => {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded
-                                ${isDefeated
-                                  ? 'bg-green-500/20 text-green-400'
+                                  ${isDefeated
+                                  ? 'bg-green-500/20 text-green-400 border border-green-500/30'
                                   : canPlay
                                     ? 'bg-emerald-500/20 text-emerald-400'
                                     : 'bg-slate-700/50 text-slate-500'
                                 }
-                              `}>
+                                `}>
                                 LIV. {boss.requiredLevel}
                               </span>
                               {isDefeated && (
-                                <span className="text-[8px] font-bold uppercase text-green-400 bg-green-500/10 px-2 py-0.5 rounded animate-pulse">
+                                <span className="text-[8px] font-black uppercase text-white bg-green-500 px-2 py-0.5 rounded-full animate-pulse shadow-sm">
                                   COMPLETATO
                                 </span>
                               )}
                             </div>
                             <h3 className={`font-orbitron font-black text-sm sm:text-lg uppercase leading-none mb-2
-                              ${isDefeated ? 'text-green-400 line-through decoration-2' : 'text-white'}
-                            `}>
+                                ${isDefeated ? 'text-green-300' : 'text-white'}
+                              `}>
                               {boss.title}
                             </h3>
-                            <p className="text-slate-400 text-[10px] sm:text-xs mb-3">{boss.description}</p>
+                            <p className={`text-[10px] sm:text-xs mb-3 ${isDefeated ? 'text-slate-500 italic' : 'text-slate-400'}`}>
+                              {isDefeated ? 'Operazione terminata: Intelligenza superiore confermata.' : boss.description}
+                            </p>
 
                             {/* Stats */}
                             <div className="flex gap-3 text-[10px]">
                               <div className="flex items-center gap-1">
-                                <Target className="w-3 h-3 text-emerald-400" />
-                                <span className="text-slate-300 font-bold">{boss.targets} Target</span>
+                                <Target className={`w-3 h-3 ${isDefeated ? 'text-green-600' : 'text-emerald-400'}`} />
+                                <span className={`${isDefeated ? 'text-slate-600' : 'text-slate-300'} font-bold`}>{boss.targets} Target</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <Timer className="w-3 h-3 text-cyan-400" />
-                                <span className="text-slate-300 font-bold">{boss.time}s</span>
+                                <Timer className={`w-3 h-3 ${isDefeated ? 'text-green-600' : 'text-cyan-400'}`} />
+                                <span className={`${isDefeated ? 'text-slate-600' : 'text-slate-300'} font-bold`}>{boss.time}s</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <Sparkles className="w-3 h-3 text-yellow-400" />
-                                <span className="text-yellow-300 font-bold">{boss.reward}</span>
+                                <Sparkles className="w-3 h-3 text-yellow-500" />
+                                <span className="text-yellow-400 font-bold">{isDefeated ? 'PREMIO RISCOSSO' : boss.reward}</span>
                               </div>
                             </div>
                           </div>
@@ -3873,6 +3878,12 @@ const App: React.FC = () => {
                           {/* Action Indicator */}
                           {canPlay && (
                             <ChevronRight className="w-6 h-6 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                          )}
+
+                          {isDefeated && (
+                            <div className="flex items-center justify-center">
+                              <Shield className="w-5 h-5 text-green-500/30 rotate-12" />
+                            </div>
                           )}
                         </div>
                       </div>
