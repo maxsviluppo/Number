@@ -310,14 +310,14 @@ export const profileService = {
     // Award Boss Completion Badge & Reward
     async completeBoss(userId: string, bossId: number) {
         const profile = await this.getProfile(userId);
-        if (!profile) return;
+        if (!profile) return null;
 
         const badgeId = bossId === 1 ? 'boss_matematico' : `boss_${bossId}_defeated`;
         const currentBadges = profile.badges || [];
 
         if (!currentBadges.includes(badgeId)) {
             const updatedBadges = [...currentBadges, badgeId];
-            await this.updateProfile({
+            const updatedProfile = await this.updateProfile({
                 id: userId,
                 badges: updatedBadges,
                 // Also give a score bonus for first completion
@@ -326,9 +326,9 @@ export const profileService = {
                 career_time_bonus: (profile.career_time_bonus || 0) + (bossId === 1 ? 30 : 0)
             });
             console.log(`🏆 Boss ${bossId} completed! Badge awarded: ${badgeId}`);
-            return true; // Newly awarded
+            return updatedProfile; // Return the FULL updated profile
         }
-        return false; // Already had it
+        return profile; // Return existing profile if already completed
     }
 };
 
