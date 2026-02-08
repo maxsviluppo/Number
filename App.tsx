@@ -4361,7 +4361,7 @@ const App: React.FC = () => {
 
         {activeModal === 'admin' && <AdminPanel onClose={() => setActiveModal(null)} />}
 
-        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={handleLoginSuccess} />}
+        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={handleLoginSuccess} showToast={showToast} />}
 
         {activeModal === 'profile' && (
           <UserProfileModal
