@@ -996,14 +996,18 @@ const App: React.FC = () => {
         setShowLostVideo(true);
         setIsVideoVisible(true);
 
-        if (videoRef.current) {
-          videoRef.current.src = loseVid;
-          videoRef.current.muted = true; // REQUIRED for auto-play without click
-          videoRef.current.load();
-          videoRef.current.play().catch(e => {
-            console.warn("Loss video blocked (timeout):", e);
-          });
-        }
+        // Force ref update in next tick to ensure element exists
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.src = loseVid;
+            videoRef.current.muted = true; // REQUIRED for auto-play without click
+            videoRef.current.load();
+            const playPromise = videoRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(e => console.warn("Loss video autoplay blocked:", e));
+            }
+          }
+        }, 0);
       }
     } else if (gameState.status === 'playing' && !activeMatch?.isDuel && gameState.timeLeft <= 5 && gameState.timeLeft > 0) {
       // LOW TIME WARNING (Single Player Only)
@@ -1996,10 +2000,17 @@ const App: React.FC = () => {
                 videoRef.current.src = vidSrc;
                 videoRef.current.muted = true; // Still muted for browser policy, user un-mutes
                 videoRef.current.load();
-                videoRef.current.play().catch(e => console.warn("Video play blocked:", e));
 
-                // Play Sync Win Audio (matching the video)
+                // Play Sync Win Audio (matching the video) instead of relying on video track
                 soundService.playWinner(winIdx);
+
+                const playPromise = videoRef.current.play();
+                if (playPromise !== undefined) {
+                  playPromise.catch(error => {
+                    console.warn("Video play blocked by browser policy:", error);
+                    // Fallback: If video blocked, at least we heard the audio
+                  });
+                }
 
                 setWinVideoSrc(vidSrc);
                 setShowVideo(true);
@@ -2196,13 +2207,25 @@ const App: React.FC = () => {
 
           // Boss 1 specific victory sequence
           if (gameState.bossLevelId === 1) {
+            // Wait for UI to update (0.5s)
             setTimeout(() => {
               if (videoRef.current) {
-                // Step 1: Trigger Bonus Video
+                const vidSrc = '/Bonus30secondiboss.mp4';
+                videoRef.current.src = vidSrc;
+                // Important: Mobile browsers block autoplay with sound. Muted first.
+                videoRef.current.muted = true;
+                videoRef.current.load();
+
+                const playPromise = videoRef.current.play();
+                if (playPromise !== undefined) {
+                  playPromise.catch(e => console.warn("Boss bonus video autoplay blocked:", e));
+                }
+
+                // Play audio separately if needed (soundService already handles BossBonus sound)
                 setIsBossBonusPlaying(true);
+                setWinVideoSrc(vidSrc);
                 setShowVideo(true);
                 setIsVideoVisible(true);
-                // React render will handle src update to Bonus video
               }
             }, 500);
           } else {
@@ -3590,8 +3613,16 @@ const App: React.FC = () => {
                       <button onPointerDown={async (e) => {
                         e.stopPropagation();
                         if (currentUser && gameState.bossLevelId) {
-                          await profileService.completeBoss(currentUser.id, gameState.bossLevelId);
-                          loadProfile(currentUser.id);
+                          try {
+                            const updatedProfile = await profileService.completeBoss(currentUser.id, gameState.bossLevelId);
+                            if (updatedProfile) {
+                              setUserProfile(updatedProfile); // Force immediate update
+                            } else {
+                              loadProfile(currentUser.id); // Fallback
+                            }
+                          } catch (err) {
+                            console.error("Error saving boss victory:", err);
+                          }
                         }
                         setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null, status: 'idle' }));
                       }}

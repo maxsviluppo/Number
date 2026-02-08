@@ -1,4 +1,4 @@
-const fs = require('fs');
+apri dama const fs = require('fs');
 
 const filename = 'c:\\Users\\Max\\Downloads\\A Codici Main\\Number-main\\Number-main\\App.tsx';
 
