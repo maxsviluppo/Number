@@ -827,6 +827,14 @@ const App: React.FC = () => {
       if (profile) {
         setUserProfile(profile);
 
+        // Sync Bonus State from DB (Source of Truth) to LocalStorage
+        if (profile.career_time_bonus !== undefined) {
+          localStorage.setItem('career_time_bonus', profile.career_time_bonus.toString());
+        } else {
+          // If undefined (new user?), clear it to be safe
+          localStorage.removeItem('career_time_bonus');
+        }
+
         // Check for Badges on Load (In case of missed updates or offline play sync)
         checkAndUnlockBadges(profile);
 
@@ -882,6 +890,7 @@ const App: React.FC = () => {
         setCurrentUser(null);
         setUserProfile(null);
         setSavedGame(null);
+        localStorage.removeItem('career_time_bonus'); // Clear sensitive session data
         resetDuelState(); // Ensure match state is cleared locally
         setGameState(prev => ({ ...prev, status: 'idle' }));
         showToast("Disconnessione completata.");
@@ -1837,7 +1846,6 @@ const App: React.FC = () => {
 
     // Generate Grid for the SAVED Level
     setTimeout(() => generateGrid(savedGame.level), 0);
-    if (careerBonus === 0) showToast("Partita Ripristinata");
   };
 
 
@@ -1851,6 +1859,7 @@ const App: React.FC = () => {
       // 1. Cancella la partita salvata (resume state)
       await profileService.saveGameState(currentUser.id, null);
       setSavedGame(null);
+      localStorage.setItem('career_time_bonus', '0'); // Clear any local bonus
 
       // 2. Reset solo del livello nel profilo (mantiene badge, score totale, ecc.)
       await profileService.updateProfile({
@@ -4154,7 +4163,7 @@ const App: React.FC = () => {
               {/* Confirmation Buttons */}
               <div className="space-y-3 relative z-10">
                 <button
-                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); handleFullReset(); }}
+                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); localStorage.setItem('career_time_bonus', '0'); handleFullReset(); }}
                   className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg shadow-red-500/50 active:scale-95 transition-all border-2 border-white/30 hover:shadow-red-500/70 flex items-center justify-center gap-3 group"
                 >
                   <AlertTriangle className="w-5 h-5 group-hover:scale-110 transition-transform" />
