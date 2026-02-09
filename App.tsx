@@ -1497,10 +1497,22 @@ const App: React.FC = () => {
               setShowLostVideo(true);
               setIsVideoVisible(true);
 
+              // FORCE SOUND PLAYBACK
+              soundService.playLose();
+
               videoRef.current.src = loseVid;
               videoRef.current.muted = false;
               videoRef.current.load();
-              videoRef.current.play().catch(e => console.warn("Loss video blocked:", e));
+              videoRef.current.play().catch(e => {
+                console.warn("Loss video blocked:", e);
+                // Fallback if video fails to play
+                setTimeout(() => setShowDuelRecap(true), 2000);
+              });
+            } else if (isFirstProcess) {
+              // Fallback if video element is missing
+              soundService.playLose();
+              setGameState(prev => ({ ...prev, status: 'idle' })); // RE-FORCE IDLE
+              setShowDuelRecap(true);
             }
           }
         }
@@ -1611,18 +1623,18 @@ const App: React.FC = () => {
   // SYNC WATCHDOG (Fallback for missed events) - DISABLED temporarily as requested
   useEffect(() => {
     let syncInterval: NodeJS.Timeout;
-
+  
     if (activeMatch?.id && gameStateRef.current.status === 'playing') {
       syncInterval = setInterval(async () => {
         const status = await matchService.verifyMatchStatus(activeMatch.id);
-
+  
         // SAFETY CHECK: If transient error, skip this cycle
         if (status && status.status === 'ERROR') return;
-
+  
         const isMatchGone = status === null;
         const isCancelled = status && status.status === 'cancelled';
         const isFinished = status && status.status === 'finished';
-
+  
         // CASE 1: SURRENDER / ABNORMAL END
         // Match deleted or explicitly cancelled -> Force Surrender Win
         if (isMatchGone || isCancelled) {
@@ -1630,12 +1642,12 @@ const App: React.FC = () => {
             console.warn("SYNC WATCHDOG: Match abandoned/missing. Triggering Surrender Win.");
             if (timerRef.current) window.clearInterval(timerRef.current);
             setGameState(prev => ({ ...prev, status: 'idle' }));
-
+  
             const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
             setSurrenderVideoSrc(randomSurrender);
             setShowSurrenderVideo(true);
             setIsVideoVisible(false);
-
+  
             if (videoRef.current) {
               videoRef.current.muted = false;
               videoRef.current.src = randomSurrender;
@@ -1652,10 +1664,10 @@ const App: React.FC = () => {
           if (gameStateRef.current.status === 'playing') {
             console.log("SYNC WATCHDOG: Match finished normally. Syncing state.");
             if (timerRef.current) window.clearInterval(timerRef.current);
-
+  
             // Determine if I won or lost based on DB
             const amIWinner = status.winner_id === currentUser?.id;
-
+  
             // If I lost, show Lost Sound/Flow. If I won, handle Win.
             // Since we are lagging, easiest is to go to idle and let DuelRecap component show result.
             setGameState(prev => ({ ...prev, status: 'idle' }));
@@ -1665,7 +1677,7 @@ const App: React.FC = () => {
         }
       }, 3000); // Check every 3 seconds
     }
-
+  
     return () => {
       if (syncInterval) clearInterval(syncInterval);
     };
@@ -4280,6 +4292,8 @@ const App: React.FC = () => {
               setOpponentScore(0);
               // Clean ready status just in case
               matchService.resetRoundStatus(matchId);
+              // CRITICAL: Reset Processed Win/Loss Ref to ensure new match logic runs cleanly
+              processedWinRef.current = null;
             }}
           />
         )}
