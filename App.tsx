@@ -2151,13 +2151,16 @@ const App: React.FC = () => {
       const localTargetsFound = newTargets.filter(t => t.completed).length;
       const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
 
-      // TIME ATTACK: REGENERATE TARGET AFTER 5 SECONDS
+      // TIME ATTACK: REGENERATE TARGET AFTER 3 SECONDS
       if (isTimeAttack) {
-        // Sync Score Immediately
-        matchService.updateScore(activeMatch.id, currentUser.id, newScore, activeMatch.isP1)
+        // Increment Rounds (Total Targets Found) and Sync Score
+        const amIP1 = activeMatch!.isP1;
+        const currentRounds = amIP1 ? (latestMatchData?.p1_rounds || 0) : (latestMatchData?.p2_rounds || 0);
+
+        matchService.updateMatchStats(activeMatch!.id, amIP1, newScore, currentRounds + 1)
           .catch(e => {
             if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
-              console.error("TA Score Sync Error", e);
+              console.error("TA Stats Sync Error", e);
             }
           });
 
@@ -2186,7 +2189,7 @@ const App: React.FC = () => {
               return { ...prev, levelTargets: updatedTargets };
             });
           }
-        }, 5000); // 5 Seconds delay (As requested)
+        }, 3000); // 3 Seconds delay (As requested)
       }
 
       if (activeMatch?.isDuel && duelMode === 'blitz') {
@@ -2571,9 +2574,23 @@ const App: React.FC = () => {
           }
         }
       } else {
-        // TIME ATTACK Logic (Score based)
-        if (myScore > oppScore) winnerId = currentUser.id;
-        else if (oppScore > myScore) winnerId = activeMatch.opponentId;
+        // TIME ATTACK Logic (Targets based)
+        const amIP1 = activeMatch.isP1;
+        const myTargets = amIP1 ? (latestMatchData?.p1_rounds || 0) : (latestMatchData?.p2_rounds || 0);
+        const oppTargets = amIP1 ? (latestMatchData?.p2_rounds || 0) : (latestMatchData?.p1_rounds || 0);
+
+        console.log(`🏁 TimeAttack End: Me(${myTargets} targets, ${myScore} pts) vs Opp(${oppTargets} targets, ${oppScore} pts)`);
+
+        if (myTargets > oppTargets) {
+          winnerId = currentUser.id;
+        } else if (oppTargets > myTargets) {
+          winnerId = activeMatch.opponentId;
+        } else {
+          // Tie-Breaker: Points
+          if (myScore > oppScore) winnerId = currentUser.id;
+          else if (oppScore > myScore) winnerId = activeMatch.opponentId;
+          else winnerId = null;
+        }
       }
 
       const iWon = winnerId === currentUser.id;
@@ -2582,7 +2599,7 @@ const App: React.FC = () => {
       // If I won, I pass my Local Match Points (totalScore) to global.
       const pointsToSync = gameStateRef.current.totalScore + 100; // +100 Bonus
 
-      // Sync Stats: Score (Points) AND Targets (Owned Count)
+      // Sync Stats: Score (Points) AND Targets (Owned Count or Found Count)
       matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, myTargetsForSync)
         .then(async () => {
           // DECLARE WINNER (COMPETITIVE)
@@ -4465,15 +4482,15 @@ const App: React.FC = () => {
             isWinnerProp={
               latestMatchData.winner_id
                 ? latestMatchData.winner_id === currentUser?.id
-                : (latestMatchData.mode === 'blitz'
-                  ? ( // BLITZ LOGIC: Targets > Points
+                : (latestMatchData.mode === 'blitz' || latestMatchData.mode === 'time_attack'
+                  ? ( // BLITZ & TIME ATTACK LOGIC: Targets > Points
                     // Calculate my targets (pX_rounds) vs opp targets
                     (() => {
                       const isP1 = latestMatchData.player1_id === currentUser?.id;
                       const myTargets = isP1 ? latestMatchData.p1_rounds : latestMatchData.p2_rounds;
                       const oppTargets = isP1 ? latestMatchData.p2_rounds : latestMatchData.p1_rounds;
-                      const myPoints = gameState.score;
-                      const oppPoints = opponentScore;
+                      const myPoints = isP1 ? latestMatchData.player1_score : latestMatchData.player2_score;
+                      const oppPoints = isP1 ? latestMatchData.player2_score : latestMatchData.player1_score;
 
                       if (myTargets > oppTargets) return true;
                       if (oppTargets > myTargets) return false;
@@ -4481,7 +4498,7 @@ const App: React.FC = () => {
                       return myPoints > oppPoints;
                     })()
                   )
-                  : (gameState.score > opponentScore) // Standard/TimeAttack
+                  : (gameState.score > opponentScore) // Standard mode
                 )
             }
             myScore={gameState.score}
