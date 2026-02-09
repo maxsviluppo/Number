@@ -183,6 +183,7 @@ const App: React.FC = () => {
     lastLevelPerfect: true,
     basePoints: BASE_POINTS_START,
     levelTargets: [],
+    targetsFound: 0,
     isBossLevel: false,
     bossLevelId: null as number | null,
   });
@@ -1453,14 +1454,14 @@ const App: React.FC = () => {
         // Use new values for loss check
         const opponentRoundWins = amIP1 ? currentP2Rounds : currentP1Rounds;
 
-        // LOSS DETECTION
         // ROBUST CHECK: "Wins who first reaches 5 points"
         // We use the match target_score (default 5 for Standard) to determine immediate loss.
         const targetScore = newData.target_score || (currentMode === 'blitz' ? 3 : 5);
         const isScoreConditionMet = opRounds >= targetScore;
 
-        // Standard/TimeAttack Loss Condition: Opponent reached target score
-        const isStandardLoss = (currentMode === 'standard' || currentMode === 'time_attack') && isScoreConditionMet;
+        // Standard Loss Condition: Opponent reached target score (5)
+        // TIME ATTACK & BLITZ: Ignored, game only ends when time is up
+        const isStandardLoss = (currentMode === 'standard') && isScoreConditionMet;
 
         // PREDICTIVE LOSS: If opponent has enough rounds/points, I lost. Don't wait for DB status update.
         // We also check DB status as a fallback.
@@ -2134,6 +2135,7 @@ const App: React.FC = () => {
         score: newScore,
         totalScore: prev.totalScore + currentPoints,
         streak: prev.streak + 1,
+        targetsFound: prev.targetsFound + 1,
         estimatedIQ: Math.min(200, prev.estimatedIQ + 0.5),
         levelTargets: newTargets
       }));
@@ -2147,17 +2149,19 @@ const App: React.FC = () => {
       setScoreAnimKey(k => k + 1);
 
       const isTimeAttack = !!activeMatch && (duelMode === 'time_attack' || activeMatch.mode === 'time_attack');
-      // For Time Attack, we don't care about 'allDone' in the traditional sense, targets regenerate
+      const isBlitz = !!activeMatch && (duelMode === 'blitz' || activeMatch.mode === 'blitz');
+
+      // For Time Attack/Blitz, we don't care about 'allDone' in the traditional sense
       const localTargetsFound = newTargets.filter(t => t.completed).length;
-      const allDone = newTargets.every(t => t.completed) && !isTimeAttack;
+      const allDone = newTargets.every(t => t.completed) && (!isTimeAttack && !isBlitz);
 
       // TIME ATTACK: REGENERATE TARGET AFTER 3 SECONDS
       if (isTimeAttack) {
-        // Increment Rounds (Total Targets Found) and Sync Score
+        // Calculate new total target count manually to avoid async state lag
+        const newTargetsFound = gameStateRef.current.targetsFound + 1;
         const amIP1 = activeMatch!.isP1;
-        const currentRounds = amIP1 ? (latestMatchData?.p1_rounds || 0) : (latestMatchData?.p2_rounds || 0);
 
-        matchService.updateMatchStats(activeMatch!.id, amIP1, newScore, currentRounds + 1)
+        matchService.updateMatchStats(activeMatch!.id, amIP1, newScore, newTargetsFound)
           .catch(e => {
             if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
               console.error("TA Stats Sync Error", e);
@@ -2573,11 +2577,13 @@ const App: React.FC = () => {
             winnerId = null; // Perfect Draw
           }
         }
-      } else {
-        // TIME ATTACK Logic (Targets based)
+      } else if (activeMatch.mode === 'time_attack') {
         const amIP1 = activeMatch.isP1;
-        const myTargets = amIP1 ? (latestMatchData?.p1_rounds || 0) : (latestMatchData?.p2_rounds || 0);
+        const myTargets = gameStateRef.current.targetsFound; // LOCAL ACCUMULATED TARGETS AS SOURCE OF TRUTH
         const oppTargets = amIP1 ? (latestMatchData?.p2_rounds || 0) : (latestMatchData?.p1_rounds || 0);
+
+        // SYNC THIS VALUE TO DB
+        myTargetsForSync = myTargets;
 
         console.log(`🏁 TimeAttack End: Me(${myTargets} targets, ${myScore} pts) vs Opp(${oppTargets} targets, ${oppScore} pts)`);
 
@@ -3471,6 +3477,15 @@ const App: React.FC = () => {
                 {/* RIGHT SIDE: SCORE / ROUNDS */}
                 {activeMatch?.isDuel ? (
                   <div className="flex items-center gap-3 pl-20 sm:pl-0">
+                    {/* TARGETS COUNTER (Time Attack Specific) */}
+                    {duelMode === 'time_attack' && (
+                      <div id="targets-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-all">
+                        <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">TGT</span>
+                        <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
+                          {gameState.targetsFound}
+                        </span>
+                      </div>
+                    )}
 
                     <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
                       {duelMode === 'blitz' ? (
@@ -4345,6 +4360,7 @@ const App: React.FC = () => {
                 level: 1,
                 timeLeft: duelMode === 'time_attack' ? 60 : INITIAL_TIME,
                 targetResult: 0,
+                targetsFound: 0,
                 status: 'playing',
                 estimatedIQ: prev.estimatedIQ,
                 lastLevelPerfect: true,

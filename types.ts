@@ -23,6 +23,7 @@ export interface GameState {
 
   // targetQueue: number[]; // Deprecated in favor of levelTargets
   levelTargets: { value: number; displayValue?: string; completed: boolean; owner?: 'p1' | 'p2' }[];
+  targetsFound: number;
   isBossLevel?: boolean;
   bossLevelId?: number | null;
 }
