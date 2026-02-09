@@ -2180,10 +2180,10 @@ const App: React.FC = () => {
 
           if (targetIndex >= 0 && targetIndex < currentTargetsRef.length) {
             // Generate new Random Target Logic
-            const lvl = gameStateRef.current.level; // Use current level data
-            // Approximate range based on level (same as createLevelData logic roughly)
-            const min = 1 + (lvl * 2);
-            const max = 20 + (lvl * 5);
+            const lvl = gameStateRef.current.level;
+            const diff = getDifficultyRange(lvl);
+            const min = diff.min;
+            const max = Math.min(22, diff.max); // CAP for Time Attack to keep it fast and reachable
             const newTargetValue = Math.floor(Math.random() * (max - min + 1)) + min;
 
             // Functional State Update
