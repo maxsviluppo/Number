@@ -1116,7 +1116,7 @@ const App: React.FC = () => {
               ...prev,
               score: 0,
               streak: 0,
-              level: 1,
+              level: userProfile?.max_level || 1,
               timeLeft: match.mode === 'time_attack' ? 60 : INITIAL_TIME,
               status: 'playing',
               levelTargets: [],
@@ -1757,7 +1757,7 @@ const App: React.FC = () => {
                       score: 0,
                       totalScore: prev.totalScore,
                       streak: 0,
-                      level: 1,
+                      level: userProfile?.max_level || 1,
                       timeLeft: mode === 'time_attack' ? 60 : INITIAL_TIME,
                       targetResult: 0,
                       status: 'playing',
@@ -2397,26 +2397,30 @@ const App: React.FC = () => {
         }));
 
         if (currentUser) {
-          const saveState = {
-            totalScore: gameStateRef.current.totalScore + currentPoints + totalWinBonuses,
-            streak: 0,
-            level: gameState.level + 1,
-            timeLeft: gameState.timeLeft + 60,
-            estimatedIQ: Math.min(200, gameState.estimatedIQ + 4)
-          };
+          // 3. LEVEL UP & SAVE (SINGLE PLAYER ONLY)
+          // CRITICAL FIX: Do NOT save state or increment level if in a DUEL or BOSS LEVEL
+          if (!activeMatch && !gameState.isBossLevel) {
+            const saveState = {
+              totalScore: gameStateRef.current.totalScore + currentPoints + totalWinBonuses,
+              streak: 0,
+              level: gameState.level + 1,
+              timeLeft: gameState.timeLeft + 60,
+              estimatedIQ: Math.min(200, gameState.estimatedIQ + 4)
+            };
 
-          // SYNC TO GLOBAL PROFILE
-          profileService.syncProgress(currentUser.id, finalPointsToSync, saveState.level, saveState.estimatedIQ)
-            .then(() => loadProfile(currentUser.id))
-            .catch(e => console.error("Error syncing progress:", e));
+            // SYNC TO GLOBAL PROFILE
+            profileService.syncProgress(currentUser.id, finalPointsToSync, saveState.level, saveState.estimatedIQ)
+              .then(() => loadProfile(currentUser.id))
+              .catch(e => console.error("Error syncing progress:", e));
 
-          profileService.saveGameState(currentUser.id, saveState)
-            .catch(e => {
-              if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
-                console.error("Error saving game state:", e);
-              }
-            });
-          setSavedGame(saveState);
+            profileService.saveGameState(currentUser.id, saveState)
+              .catch(e => {
+                if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
+                  console.error("Error saving game state:", e);
+                }
+              });
+            setSavedGame(saveState);
+          }
         }
       } else {
         // NOT ALL DONE - CONTINUE PLAYING
@@ -4357,7 +4361,7 @@ const App: React.FC = () => {
                 score: 0,
                 totalScore: prev.totalScore, // Preserve points during duel
                 streak: 0,
-                level: 1,
+                level: userProfile?.max_level || 1,
                 timeLeft: duelMode === 'time_attack' ? 60 : INITIAL_TIME,
                 targetResult: 0,
                 targetsFound: 0,
