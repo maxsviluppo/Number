@@ -489,6 +489,7 @@ export const matchService = {
         channel
             .on('broadcast', { event: 'match_abandoned' }, (payload: any) => onEvent('match_abandoned', payload.payload))
             .on('broadcast', { event: 'rematch_started' }, (payload: any) => onEvent('rematch_started', payload.payload))
+            .on('broadcast', { event: 'match_won' }, (payload: any) => onEvent('match_won', payload.payload))
             .subscribe();
 
         return channel;
@@ -523,6 +524,28 @@ export const matchService = {
                     });
                 } catch (e) {
                     console.error("Rematch broadcast failed:", e);
+                }
+            }
+        });
+    },
+
+    async sendWinSignal(matchId: string, winnerId: string, score: number) {
+        // FAST PATH: Broadcast "I WON" immediately.
+        // This is caught by the opponent to trigger defeat sequence instantly,
+        // bypassing DB latency.
+        const channel = (supabase as any).channel(`match_${matchId}_events`);
+        channel.subscribe(async (status: string) => {
+            if (status === 'SUBSCRIBED') {
+                try {
+                    await channel.send({
+                        type: 'broadcast',
+                        event: 'match_won',
+                        payload: { winnerId, score }
+                    });
+                    console.log("⚡ Broadcast: Win Signal sent!", { winnerId });
+                    // Only need to send once, can unsubscribe or let it persist briefly
+                } catch (e) {
+                    console.error("Win broadcast failed:", e);
                 }
             }
         });

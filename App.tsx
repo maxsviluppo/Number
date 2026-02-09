@@ -1613,6 +1613,42 @@ const App: React.FC = () => {
 
           // 2. Add Points (Optional logic, using current score)
           // The recap will show current score + bonus if handled there.
+        } else if (event === 'match_won' && payload.winnerId !== currentUser?.id) {
+          // BROADCAST LOSS SIGNAL RECEIVED
+          // This is a fast-path "I Lost" trigger sent directly by the winner's client
+          console.log("⚡ Broadcast: Match WON by opponent. Triggering Defeat immediately.");
+
+          if (processedWinRef.current !== activeMatch?.id || gameStateRef.current.status === 'playing') {
+            processedWinRef.current = activeMatch?.id;
+
+            if (timerRef.current) window.clearInterval(timerRef.current);
+            setGameState(prev => ({ ...prev, status: 'idle' }));
+            setIsDragging(false);
+            setSelectedPath([]);
+
+            // Force visual update of score (Optional, but good for UI consistency)
+            setOpponentTargets(duelMode === 'blitz' ? 3 : 5);
+
+            if (videoRef.current) {
+              const loseVid = LOSE_VIDEOS[Math.floor(Math.random() * LOSE_VIDEOS.length)];
+              setLoseVideoSrc(loseVid);
+              setShowLostVideo(true);
+              setIsVideoVisible(true);
+
+              soundService.playLose();
+
+              videoRef.current.src = loseVid;
+              videoRef.current.muted = false;
+              videoRef.current.load();
+              videoRef.current.play().catch(e => {
+                console.warn("Loss video blocked (via broadcast):", e);
+                setTimeout(() => setShowDuelRecap(true), 2000);
+              });
+            } else {
+              soundService.playLose();
+              setShowDuelRecap(true);
+            }
+          }
         }
       });
       return () => { if (channel) (supabase as any).removeChannel(channel); };
@@ -2275,15 +2311,15 @@ const App: React.FC = () => {
             // Otherwise, send regular stats update.
             if (localTargetsFound >= 5) {
               try {
-                // ATOMIC FINISH: Update stats AND declare winner in one go
-                // This triggers ONE realtime event with both (p_rounds=5, status=finished)
-                await matchService.finishMatch(
-                  activeMatch.id,
-                  currentUser.id,
-                  activeMatch.isP1,
-                  finalScore,
-                  localTargetsFound
-                );
+                // FORCE SYNC FINAL STATS FIRST (Ensure 5 is broadcasted)
+                // We revert to 2-step process to double-ensure opponent receives the "5" rounds count
+                await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, finalScore, localTargetsFound);
+
+                // THEN DECLARE WINNER
+                await matchService.declareWinner(activeMatch.id, currentUser.id);
+
+                // BROADCAST WIN SIGNAL (FAST PATH)
+                matchService.sendWinSignal(activeMatch.id, currentUser.id, finalScore);
 
                 processedWinRef.current = activeMatch.id;
 
@@ -2539,10 +2575,11 @@ const App: React.FC = () => {
       const pointsToSync = gameStateRef.current.totalScore + 100; // +100 Bonus
 
       // Sync Stats: Score (Points) AND Targets (Rounds)
-      // ATOMIC UPDATE for Time Attack End (replaces updateMatchStats + declareWinner)
-      matchService.finishMatch(activeMatch.id, winnerId, activeMatch.isP1, myScore, myTargetsForSync)
+      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, myTargetsForSync)
+        .then(() => matchService.declareWinner(activeMatch.id, winnerId))
         .then(() => {
           if (iWon) {
+            matchService.sendWinSignal(activeMatch.id, currentUser.id, myScore);
             // SYNC TO GLOBAL PROFILE - Score + Win Bonus
             // Use 'pointsToSync' calculated above (Local Points + Bonus)
             profileService.syncProgress(currentUser.id, pointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
