@@ -388,20 +388,25 @@ export const matchService = {
         if (error) console.error('Error incrementing round:', error);
     },
 
-    // Dichiara vittoria
-    async declareWinner(matchId: string, winnerId: string) {
-        const { error } = await (supabase as any)
+    // Dichiara vittoria in modo competitivo (solo se il match è ancora attivo)
+    async declareWinner(matchId: string, winnerId: string): Promise<boolean> {
+        const { data, error } = await (supabase as any)
             .from('matches')
             .update({
                 status: 'finished',
                 winner_id: winnerId
             })
-            .eq('id', matchId);
+            .eq('id', matchId)
+            .eq('status', 'active') // COMPETITIVE: Solo se non è già finito!
+            .select('id');
 
         if (error) {
             console.error('Error declaring winner:', error);
-            throw error;
+            return false;
         }
+
+        // Se data ha elementi, significa che l'update è andato a buon fine (siamo i primi!)
+        return !!(data && data.length > 0);
     },
 
     // [OPTIMIZATION] Update Stats AND Finish Match in ONE atomic DB call

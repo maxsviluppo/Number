@@ -1486,6 +1486,10 @@ const App: React.FC = () => {
             console.log("🏁 MATCH FINISHED: I am the LOSER. Playing Defeat Sequence.");
             processedWinRef.current = newData.id;
 
+            // FORCE UI SYNC: Ensure the opponent's winning score is visible
+            setOpponentTargets(targetScore);
+            setOpponentScore(amIP1 ? newData.player2_score : newData.player1_score);
+
             if (timerRef.current) window.clearInterval(timerRef.current);
             setGameState(prev => ({ ...prev, status: 'idle' }));
             setIsDragging(false);
@@ -1548,6 +1552,10 @@ const App: React.FC = () => {
 
         if (!amIWinner) {
           // Play Defeat Video
+          // FORCE UI SYNC here too as a fallback
+          const targetScore = latestMatchData.target_score || (currentMode === 'blitz' ? 3 : 5);
+          setOpponentTargets(targetScore);
+
           if (videoRef.current) {
             const loseVid = LOSE_VIDEOS[0];
             videoRef.current.src = loseVid;
@@ -2315,8 +2323,13 @@ const App: React.FC = () => {
                 // We revert to 2-step process to double-ensure opponent receives the "5" rounds count
                 await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, finalScore, localTargetsFound);
 
-                // THEN DECLARE WINNER
-                await matchService.declareWinner(activeMatch.id, currentUser.id);
+                // THEN DECLARE WINNER (COMPETITIVE)
+                const wonRace = await matchService.declareWinner(activeMatch.id, currentUser.id);
+
+                if (!wonRace) {
+                  console.log("🏁 Race lost: Opponent won first. Aborting victory sequence.");
+                  return;
+                }
 
                 // BROADCAST WIN SIGNAL (FAST PATH)
                 matchService.sendWinSignal(activeMatch.id, currentUser.id, finalScore);
@@ -2432,7 +2445,18 @@ const App: React.FC = () => {
             if (localTargetsFound >= 5) {
               (async () => {
                 try {
-                  await matchService.declareWinner(activeMatch.id, currentUser.id);
+                  // FORCE SYNC FINAL STATS (Ensure 5 is broadcasted)
+                  await matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, newScore, localTargetsFound);
+
+                  const wonRace = await matchService.declareWinner(activeMatch.id, currentUser.id);
+                  if (!wonRace) {
+                    console.log("🏁 Race lost (secondary): Opponent won first.");
+                    return;
+                  }
+
+                  // BROADCAST WIN SIGNAL
+                  matchService.sendWinSignal(activeMatch.id, currentUser.id, newScore);
+
                   processedWinRef.current = activeMatch.id;
 
                   // Optimistic Data Update
