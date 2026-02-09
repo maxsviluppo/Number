@@ -404,6 +404,34 @@ export const matchService = {
         }
     },
 
+    // [OPTIMIZATION] Update Stats AND Finish Match in ONE atomic DB call
+    // This reduces latency by sending only 1 Realtime event instead of 2
+    async finishMatch(matchId: string, winnerId: string | null, isPlayer1: boolean, finalScore: number, finalRounds: number) {
+        const updateData = isPlayer1
+            ? {
+                status: 'finished',
+                winner_id: winnerId,
+                player1_score: finalScore,
+                p1_rounds: finalRounds
+            }
+            : {
+                status: 'finished',
+                winner_id: winnerId,
+                player2_score: finalScore,
+                p2_rounds: finalRounds
+            };
+
+        const { error } = await (supabase as any)
+            .from('matches')
+            .update(updateData)
+            .eq('id', matchId);
+
+        if (error) {
+            console.error('Error finishing match atomically:', error);
+            throw error;
+        }
+    },
+
     // Imposta lo stato "Pronto" per il round successivo
     async setPlayerReady(matchId: string, isPlayer1: boolean, ready: boolean) {
         const updateData = isPlayer1

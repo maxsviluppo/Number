@@ -737,17 +737,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                                                     </div>
                                                     <div className="flex gap-2 shrink-0">
                                                         {/* SHARE BUTTON (Replaces Email) */}
-                                                        <button
-                                                            onClick={() => handleShareInvite(user)}
-                                                            disabled={myHostedMatch !== null && myHostedMatch.player2_id !== user.id}
-                                                            className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all active:scale-95
-                                                                    ${(myHostedMatch !== null && myHostedMatch.player2_id !== user.id)
-                                                                    ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
-                                                                    : 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/30 hover:text-white'}`}
-                                                            title="Condividi Link Sfida (WhatsApp, Telegram, etc.)"
-                                                        >
-                                                            <Send size={14} />
-                                                        </button>
+
 
                                                         <button
                                                             onClick={() => handleInvite(user)}

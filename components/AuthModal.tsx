@@ -1,16 +1,17 @@
 
 import React, { useState } from 'react';
-import { authService } from '../services/supabaseClient';
+import { authService, supabase } from '../services/supabaseClient';
 import { X, Mail, Lock, User, KeyRound, AlertCircle, CheckCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 
 interface AuthModalProps {
     onClose: () => void;
     onSuccess: (user: any) => void;
+    showToast: (msg: string) => void;
 }
 
 type AuthMode = 'login' | 'signup' | 'forgot-password';
 
-const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess, showToast }) => {
     const [mode, setMode] = useState<AuthMode>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -29,6 +30,22 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
 
         try {
             if (mode === 'signup') {
+                // Check if username exists FIRST
+                const { data: existingUser } = await (supabase as any)
+                    .from('profiles')
+                    .select('username')
+                    .ilike('username', username)
+                    .maybeSingle();
+
+                if (existingUser) {
+                    // Use toast as requested
+                    showToast(`Il nome "${username}" è già in uso. Scegline un altro!`);
+                    // Also set error for visual feedback in modal
+                    setError('Username non disponibile');
+                    setLoading(false);
+                    return;
+                }
+
                 const { data, error } = await authService.signUp(email, username, password);
                 if (error) throw error;
                 if (data.user) {
@@ -51,7 +68,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                 setSuccessMsg('Ti abbiamo inviato una email per reimpostare la password.');
             }
         } catch (err: any) {
-            setError(err.message || 'Si è verificato un errore.');
+            let msg = err.message || 'Si è verificato un errore.';
+            if (msg.includes('User already registered')) msg = 'Utente già registrato. Prova ad accedere!';
+            if (msg.includes('Invalid login credentials')) msg = 'Credenziali non valide.';
+            if (msg.includes('Password should be at least')) msg = 'La password deve avere almeno 6 caratteri.';
+            if (msg.includes('Email not confirmed')) msg = 'Email non confermata. Controlla la posta.';
+            setError(msg);
         } finally {
             setLoading(false);
         }

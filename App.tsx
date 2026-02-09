@@ -1467,10 +1467,12 @@ const App: React.FC = () => {
         // Blitz loss disabled
         // const isBlitzLoss = currentMode === 'blitz' && opponentRoundWins >= 3;
 
-        if (newData.status === 'finished') {
+        // PREDICTIVE LOSS: If opponent has 5 rounds, I lost. Don't wait for DB status update.
+        const isDefiniteLoss = isStandardLoss || (newData.status === 'finished' && newData.winner_id !== currentUser?.id);
+
+        if (isDefiniteLoss) {
           // Ensure processedWinRef blocks duplicate execution but allow UI cleanup
-          // Check if I am the loser
-          if (newData.winner_id !== currentUser?.id && processedWinRef.current !== newData.id) {
+          if (processedWinRef.current !== newData.id) {
             console.log("🏁 MATCH FINISHED: I am the LOSER. Playing Defeat Sequence.");
             processedWinRef.current = newData.id;
 
@@ -2251,12 +2253,21 @@ const App: React.FC = () => {
           // CRITICAL FIX: Ensure this NEVER runs for Blitz mode
           if (duelMode === 'standard') {
             const finalScore = newScore;
-            matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, finalScore, localTargetsFound)
-              .catch(e => console.error("Error syncing final duel stats:", e));
 
+            // OPTIMIZATION: If we win (5 targets), send ONE atomic update to finish match.
+            // Otherwise, send regular stats update.
             if (localTargetsFound >= 5) {
               try {
-                await matchService.declareWinner(activeMatch.id, currentUser.id);
+                // ATOMIC FINISH: Update stats AND declare winner in one go
+                // This triggers ONE realtime event with both (p_rounds=5, status=finished)
+                await matchService.finishMatch(
+                  activeMatch.id,
+                  currentUser.id,
+                  activeMatch.isP1,
+                  finalScore,
+                  localTargetsFound
+                );
+
                 processedWinRef.current = activeMatch.id;
 
                 // Optimistic Update
@@ -2268,6 +2279,8 @@ const App: React.FC = () => {
                   player2_score: !activeMatch.isP1 ? finalScore : prev?.player2_score,
                   p1_rounds: activeMatch.isP1 ? 5 : prev?.p1_rounds,
                   p2_rounds: !activeMatch.isP1 ? 5 : prev?.p2_rounds,
+                  player1_id: activeMatch.isP1 ? currentUser.id : prev?.player1_id, // Ensure IDs are robust
+                  player2_id: !activeMatch.isP1 ? currentUser.id : prev?.player2_id,
                   last_time_bonus: finalTimeBonus,
                   last_victory_bonus: finalVictoryBonus
                 }));
@@ -2302,6 +2315,10 @@ const App: React.FC = () => {
               }
               setSelectedPath([]);
               return;
+            } else {
+              // Regular update (Not a win yet)
+              matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, finalScore, localTargetsFound)
+                .catch(e => console.error("Error syncing duel stats:", e));
             }
           }
           // BLITZ DOMINION LOGIC:
@@ -2505,8 +2522,8 @@ const App: React.FC = () => {
       const pointsToSync = gameStateRef.current.totalScore + 100; // +100 Bonus
 
       // Sync Stats: Score (Points) AND Targets (Rounds)
-      matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, myTargetsForSync)
-        .then(() => matchService.declareWinner(activeMatch.id, winnerId))
+      // ATOMIC UPDATE for Time Attack End (replaces updateMatchStats + declareWinner)
+      matchService.finishMatch(activeMatch.id, winnerId, activeMatch.isP1, myScore, myTargetsForSync)
         .then(() => {
           if (iWon) {
             // SYNC TO GLOBAL PROFILE - Score + Win Bonus
