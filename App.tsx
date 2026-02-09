@@ -768,7 +768,7 @@ const App: React.FC = () => {
       ...prev,
       score: 0, // CRITICAL: Reset level points when generating new grid
       targetResult: 0,
-      levelTargets: nextLevelData.targets.map(t => ({ value: t, completed: false }))
+      levelTargets: nextLevelData.targets.map(t => ({ value: t, completed: false, owner: undefined as any }))
     }));
     setTargetAnimKey(k => k + 1);
   }, [levelBuffer, createLevelData, gameState.level]);
@@ -1318,8 +1318,8 @@ const App: React.FC = () => {
       ...prev,
       levelTargets: [],
       score: 0, // Reset score (targets found) for new round
-      // FORCE 60s for Time Attack when round actually starts
-      timeLeft: (matchData.mode === 'time_attack') ? 60 : INITIAL_TIME,
+      // FORCE 60s for Time Attack AND Blitz when round actually starts
+      timeLeft: (matchData.mode === 'time_attack' || matchData.mode === 'blitz') ? 60 : INITIAL_TIME,
       status: 'playing'
     }));
 
@@ -1409,21 +1409,12 @@ const App: React.FC = () => {
 
           console.log(`🏴 DOMINION SIGNAL: Target ${stolenValue} captured by ${newOwner}`);
 
-          // Update UI Targets
+          // Update UI Targets Ownership
           setGameState(prev => {
             const updated = prev.levelTargets.map(t => {
               if (t.value === stolenValue) {
                 return { ...t, completed: true, owner: newOwner };
               }
-              // PING PONG SCORING: 
-              // We update the owner. The scores are updated via the standard 'newData.playerX_score' update below.
-              // But we must visually update the owner immediately for the "Green/Red" feedback.
-              if (t.value === stolenValue) {
-                return { ...t, completed: true, owner: newOwner };
-              }
-
-              // CRITICAL: If I owned it, and now newOwner is NOT me, I lost it.
-              // The 'owner' property on the target is the source of truth for color.
               return t;
             });
             return { ...prev, levelTargets: updated };
@@ -2204,34 +2195,27 @@ const App: React.FC = () => {
         // DOMINION LOGIC: Steal the target!
         const signalValue = matchedValue; // The number itself
 
-        // Check if the target was owned by the opponent
-        const targetObj = gameState.levelTargets.find(t => t.value === matchedValue);
-        const wasEnemyOwned = targetObj?.owner && ((isP1 && targetObj.owner === 'p2') || (!isP1 && targetObj.owner === 'p1'));
+        // 1. Calculate new ownership status locally
+        const updatedTargets = newTargets.map(t => {
+          if (t.value === matchedValue) {
+            return { ...t, completed: true, owner: isP1 ? 'p1' : 'p2' };
+          }
+          return t;
+        });
 
-        // Calculate New Scores
-        let myCurrentCount = isP1 ? duelRounds.p1 : duelRounds.p2;
-        let opCurrentCount = isP1 ? duelRounds.p2 : duelRounds.p1;
+        // 2. Calculate current count of owned targets
+        const myOwnerId = isP1 ? 'p1' : 'p2';
+        const oppOwnerId = isP1 ? 'p2' : 'p1';
 
-        // If I didn't own it already, I gain a point
-        if (targetObj?.owner !== (isP1 ? 'p1' : 'p2')) {
-          myCurrentCount += 1;
-        }
-
-        // If the enemy owned it, they lose a point
-        if (wasEnemyOwned) {
-          opCurrentCount = Math.max(0, opCurrentCount - 1);
-        }
-
-        const myNewTargetCount = myCurrentCount;
-        const opNewTargetCount = opCurrentCount;
+        const myNewTargetCount = updatedTargets.filter(t => t.owner === myOwnerId).length;
+        const opNewTargetCount = updatedTargets.filter(t => t.owner === oppOwnerId).length;
 
         // Sync Points as well for Tie-Breaker
-        // My Points: Calculated above (newScore) which includes 10 + streak
         const myPoints = newScore;
-        // Opponent Points: We use what we have cached in 'opponentScore'.
-        // This relies on 'opponentScore' being accurate (synced via subscription).
         const opPoints = opponentScore;
 
+        // 3. Update DB
+        // targetsP1, targetsP2, pointsP1, pointsP2
         await matchService.stealTarget(activeMatch.id, isP1, signalValue,
           isP1 ? myNewTargetCount : opNewTargetCount, // Targets P1
           isP1 ? opNewTargetCount : myNewTargetCount, // Targets P2
@@ -2239,9 +2223,8 @@ const App: React.FC = () => {
           isP1 ? opPoints : myPoints                  // Points P2
         );
 
-        // DOMINION TOAST REMOVED (Too spammy)
-
-        // We do NOT declare winner here. Winner is declared only on Time Over.
+        // Update local state with the final ownership (so UI turns green)
+        setGameState(prev => ({ ...prev, levelTargets: updatedTargets }));
       }
 
 
@@ -2559,22 +2542,26 @@ const App: React.FC = () => {
       let myTargetsForSync = gameStateRef.current.levelTargets.filter(t => t.completed).length; // Default
 
       if (activeMatch.mode === 'blitz') {
-        const myOwnerId = activeMatch.isP1 ? 'p1' : 'p2';
-        const oppOwnerId = activeMatch.isP1 ? 'p2' : 'p1';
+        const isP1 = activeMatch.isP1;
+        const myOwnerId = isP1 ? 'p1' : 'p2';
+        const oppOwnerId = isP1 ? 'p2' : 'p1';
 
+        // SOURCE OF TRUTH: Local Target State (synced via signals)
         const myOwned = gameStateRef.current.levelTargets.filter(t => t.owner === myOwnerId).length;
         const oppOwned = gameStateRef.current.levelTargets.filter(t => t.owner === oppOwnerId).length;
 
         // Use THESE for win calculation
         myTargetsForSync = myOwned;
 
-        // 1. PRIMARY: Who has more TARGETS?
+        console.log(`🏁 Blitz End Analysis: Me(${myOwned}) vs Opp(${oppOwned})`);
+
+        // 1. PRIMARY: Who has more TARGETS owned?
         if (myOwned > oppOwned) {
           winnerId = currentUser.id;
         } else if (oppOwned > myOwned) {
           winnerId = activeMatch.opponentId;
         } else {
-          // 2. SECONDARY: Tie-Breaker (Points)
+          // 2. SECONDARY: Tie-Breaker (Points gathered)
           if (myScore > oppScore) {
             winnerId = currentUser.id;
           } else if (oppScore > myScore) {
@@ -2584,10 +2571,7 @@ const App: React.FC = () => {
           }
         }
       } else {
-        // STANDARD / TIME ATTACK Logic (Score based)
-        // Score (Points) is primary here too usually?
-        // Standard: "Vince chi fa 5 punti". We handle that in handleSuccess usually.
-        // Time Attack: "Vince chi fa più punti".
+        // TIME ATTACK Logic (Score based)
         if (myScore > oppScore) winnerId = currentUser.id;
         else if (oppScore > myScore) winnerId = activeMatch.opponentId;
       }
@@ -2598,19 +2582,22 @@ const App: React.FC = () => {
       // If I won, I pass my Local Match Points (totalScore) to global.
       const pointsToSync = gameStateRef.current.totalScore + 100; // +100 Bonus
 
-      // Sync Stats: Score (Points) AND Targets (Rounds)
+      // Sync Stats: Score (Points) AND Targets (Owned Count)
       matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, myTargetsForSync)
-        .then(() => matchService.declareWinner(activeMatch.id, winnerId))
-        .then(() => {
-          if (iWon) {
-            matchService.sendWinSignal(activeMatch.id, currentUser.id, myScore);
-            // SYNC TO GLOBAL PROFILE - Score + Win Bonus
-            // Use 'pointsToSync' calculated above (Local Points + Bonus)
-            profileService.syncProgress(currentUser.id, pointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
-              .then(() => loadProfile(currentUser.id));
+        .then(async () => {
+          // DECLARE WINNER (COMPETITIVE)
+          const wonRace = await matchService.declareWinner(activeMatch.id, winnerId || '');
+
+          if (wonRace || (winnerId === null)) { // If draw, we don't care who writes first
+            if (iWon) {
+              matchService.sendWinSignal(activeMatch.id, currentUser.id, myScore);
+              // SYNC TO GLOBAL PROFILE - Score + Win Bonus
+              profileService.syncProgress(currentUser.id, pointsToSync, gameStateRef.current.level, gameStateRef.current.estimatedIQ)
+                .then(() => loadProfile(currentUser.id));
+            }
           }
         })
-        .catch(e => console.error("Error ending time attack:", e));
+        .catch(e => console.error("Error ending time attack/blitz:", e));
 
       // 3. Play Video before Recap
       if (iWon) {
@@ -3471,9 +3458,9 @@ const App: React.FC = () => {
                     <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
                       {duelMode === 'blitz' ? (
                         <>
-                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">SCORE</span>
+                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">TARGETS</span>
                           <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
-                            {gameState.score}
+                            {gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p1' : 'p2')).length}
                           </span>
                         </>
                       ) : (
