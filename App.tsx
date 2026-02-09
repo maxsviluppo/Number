@@ -1463,16 +1463,26 @@ const App: React.FC = () => {
         const opponentRoundWins = amIP1 ? currentP2Rounds : currentP1Rounds;
 
         // LOSS DETECTION
-        const isStandardLoss = currentMode === 'standard' && opRounds >= 5;
-        // Blitz loss disabled
-        // const isBlitzLoss = currentMode === 'blitz' && opponentRoundWins >= 3;
+        // ROBUST CHECK: "Wins who first reaches 5 points"
+        // We use the match target_score (default 5 for Standard) to determine immediate loss.
+        const targetScore = newData.target_score || (currentMode === 'blitz' ? 3 : 5);
+        const isScoreConditionMet = opRounds >= targetScore;
 
-        // PREDICTIVE LOSS: If opponent has 5 rounds, I lost. Don't wait for DB status update.
-        const isDefiniteLoss = isStandardLoss || (newData.status === 'finished' && newData.winner_id !== currentUser?.id);
+        // Standard/TimeAttack Loss Condition: Opponent reached target score
+        const isStandardLoss = (currentMode === 'standard' || currentMode === 'time_attack') && isScoreConditionMet;
+
+        // PREDICTIVE LOSS: If opponent has enough rounds/points, I lost. Don't wait for DB status update.
+        // We also check DB status as a fallback.
+        const isDefiniteLoss = isStandardLoss || (newData.status === 'finished' && newData.winner_id && newData.winner_id !== currentUser?.id);
 
         if (isDefiniteLoss) {
           // Ensure processedWinRef blocks duplicate execution but allow UI cleanup
-          if (processedWinRef.current !== newData.id) {
+          // We allow re-entry if we are still 'playing' to ensure we force-quit the game loop
+          if (processedWinRef.current !== newData.id || gameStateRef.current.status === 'playing') {
+
+            // Only play video/sound if this is the FIRST time processing this loss
+            const isFirstProcess = processedWinRef.current !== newData.id;
+
             console.log("🏁 MATCH FINISHED: I am the LOSER. Playing Defeat Sequence.");
             processedWinRef.current = newData.id;
 
@@ -1481,7 +1491,7 @@ const App: React.FC = () => {
             setIsDragging(false);
             setSelectedPath([]);
 
-            if (videoRef.current) {
+            if (videoRef.current && isFirstProcess) {
               const loseVid = LOSE_VIDEOS[Math.floor(Math.random() * LOSE_VIDEOS.length)];
               setLoseVideoSrc(loseVid);
               setShowLostVideo(true);
@@ -1492,11 +1502,6 @@ const App: React.FC = () => {
               videoRef.current.load();
               videoRef.current.play().catch(e => console.warn("Loss video blocked:", e));
             }
-          } else if (gameStateRef.current.status === 'playing') {
-            // Just force exit if I was playing (e.g. Winner who hasn't transitioned yet? Winner usually handles it in handleSuccess)
-            // But usually Winner sets 'finished' in handleSuccess.
-            if (timerRef.current) window.clearInterval(timerRef.current);
-            setGameState(prev => ({ ...prev, status: 'idle' }));
           }
         }
 
