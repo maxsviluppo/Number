@@ -356,16 +356,23 @@ const App: React.FC = () => {
 
 
   const getDifficultyRange = (level: number) => {
-    // NUOVA CURVA: Progressione molto più graduale - difficoltà livello 20 ora al livello 80
-    if (level <= 10) return { min: 1, max: 12 };       // Inizio molto facile (solo somme/sottrazioni)
-    if (level <= 20) return { min: 3, max: 18 };       // Ancora facile, preparazione per ×
-    if (level <= 40) return { min: 5, max: 25 };       // Introduzione graduale di ×
-    if (level <= 60) return { min: 8, max: 35 };       // × più frequente
-    if (level <= 80) return { min: 10, max: 50 };      // Preparazione per ÷ (era livello 20)
-    if (level <= 100) return { min: 15, max: 65 };     // ÷ più frequente
+    // NUOVA CURVA NEURAL 2.0: Molto più graduale
+    // La difficoltà che prima era al liv 70 ora è al liv 200 (min 15, max 55)
 
-    // Progressione lineare molto graduale per livelli avanzati
-    return { min: 20 + Math.floor((level - 100) * 1.5), max: 65 + Math.floor((level - 100) * 3) };
+    if (level <= 30) return { min: 1, max: 15 };       // Flow iniziale
+    if (level <= 60) return { min: 3, max: 22 };       // Introduzione x
+    if (level <= 90) return { min: 5, max: 30 };       // Consolidamento x
+    if (level <= 150) return { min: 8, max: 42 };      // Introduzione /
+    if (level <= 200) return { min: 12, max: 55 };     // Raggiungimento soglia "sfida"
+
+    // PLATEAU: Dal livello 200 al 900 la difficoltà resta costante
+    if (level <= 900) return { min: 15, max: 58 };
+
+    // Dopo il livello 900 riprende in modo quasi impercettibile
+    return {
+      min: 15 + Math.floor((level - 900) * 0.5),
+      max: 58 + Math.floor((level - 900) * 1.5)
+    };
   };
 
   // Helper: Calculate result from a cell path (for solver)
@@ -475,12 +482,12 @@ const App: React.FC = () => {
 
     // Helper: Weighted numbers for early levels
     const getWeightedNumber = () => {
-      // Numeri più piccoli per molti più livelli (fino al 60)
-      if (level <= 60) {
+      // Numeri più piccoli per molto più tempo (fino al liv 150)
+      if (level <= 150) {
         const r = rng();
-        // 60% chance of small numbers (1-4), 30% mid (5-7), 10% high (8-9) or 0
-        if (r < 0.60) return Math.floor(rng() * 4) + 1;
-        if (r < 0.90) return Math.floor(rng() * 3) + 5;
+        // 70% small (1-4), 25% mid (5-7), 5% high (8-9) or 0
+        if (r < 0.70) return Math.floor(rng() * 4) + 1;
+        if (r < 0.95) return Math.floor(rng() * 3) + 5;
         return Math.floor(rng() * 3) + 7;
       }
       return Math.floor(rng() * 10);
@@ -491,37 +498,29 @@ const App: React.FC = () => {
       const pool = [];
       let weights = { '+': 0.35, '-': 0.35, '×': 0.20, '÷': 0.10 };
 
-      // NUOVA PROGRESSIONE: Introduzione molto più graduale degli operatori
-      if (level <= 15) {
-        // Livelli 1-15: Solo addizione e sottrazione
+      // NUOVA PROGRESSIONE NEURAL 2.0
+      if (level <= 30) {
+        // Solo + e -
         weights = { '+': 0.50, '-': 0.50, '×': 0.0, '÷': 0.0 };
       }
-      else if (level <= 25) {
-        // Livelli 16-25: Prima introduzione della moltiplicazione (10%)
+      else if (level <= 60) {
+        // Introduzione x (10%)
         weights = { '+': 0.45, '-': 0.45, '×': 0.10, '÷': 0.0 };
       }
-      else if (level <= 40) {
-        // Livelli 26-40: Moltiplicazione aumenta gradualmente (20%)
+      else if (level <= 90) {
+        // Incremento x (20%)
         weights = { '+': 0.40, '-': 0.40, '×': 0.20, '÷': 0.0 };
       }
-      else if (level <= 50) {
-        // Livelli 41-50: Moltiplicazione più frequente (30%), ancora niente divisione
-        weights = { '+': 0.35, '-': 0.35, '×': 0.30, '÷': 0.0 };
+      else if (level <= 150) {
+        // Introduzione / (5%) rarest
+        weights = { '+': 0.375, '-': 0.375, '×': 0.20, '÷': 0.05 };
       }
-      else if (level <= 65) {
-        // Livelli 51-65: Prima introduzione della divisione (5%)
-        weights = { '+': 0.35, '-': 0.30, '×': 0.30, '÷': 0.05 };
+      else if (level <= 900) {
+        // Bilanciamento plateau
+        weights = { '+': 0.35, '-': 0.35, '×': 0.20, '÷': 0.10 };
       }
-      else if (level <= 80) {
-        // Livelli 66-80: Divisione aumenta (10%)
-        weights = { '+': 0.30, '-': 0.30, '×': 0.30, '÷': 0.10 };
-      }
-      else if (level <= 100) {
-        // Livelli 81-100: Bilanciamento verso operatori complessi
-        weights = { '+': 0.25, '-': 0.30, '×': 0.30, '÷': 0.15 };
-      }
-      // Livelli 100+: Massima difficoltà
       else {
+        // Oltre il 900
         weights = { '+': 0.25, '-': 0.25, '×': 0.30, '÷': 0.20 };
       }
 
