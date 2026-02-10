@@ -3380,7 +3380,7 @@ const App: React.FC = () => {
 
         {gameState.status !== 'idle' && (
           <div className="w-full h-full flex flex-col items-center z-10 p-4 pt-12 sm:pt-4 max-w-4xl animate-screen-in">
-            {gameState.status !== 'won' && gameState.status !== 'level-complete' && gameState.status !== 'game-over' && (
+            {gameState.status !== 'won' && gameState.status !== 'level-complete' && gameState.status !== 'game-over' && gameState.status !== 'opponent-surrendered' && (
               <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
                 <div className={`
                 relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.15)]
@@ -3778,30 +3778,76 @@ const App: React.FC = () => {
 
               {/* SURRENDER RECAP SCREEN */}
               {gameState.status === 'opponent-surrendered' && (
-                <div className="glass-panel p-8 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-sm mt-12 relative overflow-hidden border-[3px] border-cyan-500 shadow-[0_0_60px_rgba(6,182,212,0.4)]">
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+                <div className="bg-slate-900/60 p-5 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md relative overflow-hidden border-[4px] border-cyan-500/50 shadow-[0_40px_100px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
+                  {/* Background Texture Removed */}
 
-                  <Trophy className="w-16 h-16 text-cyan-400 mx-auto mb-4 animate-[bounce_2s_infinite]" />
-                  <h2 className="text-3xl font-black font-orbitron mb-2 text-cyan-400 tracking-wider drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]">HAI VINTO</h2>
-                  <div className="text-xs font-bold text-white mb-6 uppercase tracking-[0.1em] bg-cyan-500/10 py-1 rounded">Vittoria per Ritiro</div>
-
-                  <div className="bg-slate-900/60 p-5 rounded-2xl mb-6 border border-cyan-500/20">
-                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block mb-2">Punteggio Ottenuto</span>
-                    <div className="text-4xl font-black font-orbitron text-white text-shadow-neon-cyan">
-                      +{gameState.score + (duelMode === 'blitz' ? 50 : 100)} {/* Bonus for win */}
+                  <div className="relative z-10">
+                    {/* Header */}
+                    <div className="text-center mb-4">
+                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl border-2 border-white/30 mb-2 bg-gradient-to-br from-cyan-500 to-cyan-700 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+                        <Trophy className="w-7 h-7 text-white" />
+                      </div>
+                      <h2 className="text-2xl font-black font-orbitron uppercase tracking-widest mb-1 drop-shadow-lg text-cyan-400">
+                        HAI VINTO
+                      </h2>
+                      <div className="h-0.5 w-24 bg-gradient-to-r from-transparent via-cyan-500 to-transparent mx-auto rounded-full"></div>
                     </div>
-                    <span className="text-[8px] text-slate-500 uppercase font-bold mt-1 block">Accumulati nel Profilo Globale</span>
-                  </div>
 
-                  <button onPointerDown={(e) => {
-                    e.stopPropagation();
-                    // Just reset local, match is already gone/cancelled if we are here (surrender screen)
-                    resetDuelState();
-                    setActiveModal('duel_selection');
-                  }}
-                    className="w-full bg-cyan-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border border-cyan-400 hover:bg-cyan-500">
-                    TORNA ALLA LOBBY
-                  </button>
+                    {/* Info Card */}
+                    <div className="bg-black/40 border-2 rounded-2xl p-4 mb-4 backdrop-blur-md border-cyan-500/20">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-5 h-5 text-cyan-400" />
+                          <span className="text-xs font-black text-white/70 uppercase tracking-wider">
+                            Vittoria per Ritiro
+                          </span>
+                        </div>
+
+                        <div className="w-full bg-white/5 rounded-xl p-3 border border-white/5">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-1.5">
+                              <Award size={14} className="text-amber-400" />
+                              <span className="text-xs font-black text-white/70 uppercase tracking-wider">Punteggio</span>
+                            </div>
+                            <span className="text-2xl font-orbitron font-black text-white">+{gameState.score + (duelMode === 'blitz' ? 50 : 100)}</span>
+                          </div>
+                        </div>
+
+                        <div className="w-full bg-white/5 rounded-xl p-3 border border-white/5">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-1.5">
+                              <Swords size={14} className="text-cyan-400" />
+                              <span className="text-xs font-black text-white/70 uppercase tracking-wider">Modalità</span>
+                            </div>
+                            <span className="text-lg font-orbitron font-black text-white uppercase">{duelMode === 'blitz' ? 'Blitz' : (duelMode === 'time_attack' ? 'Time Attack' : 'Standard')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="space-y-2.5">
+                      <button onPointerDown={(e) => {
+                        e.stopPropagation();
+                        resetDuelState();
+                        setActiveModal('duel_selection');
+                      }}
+                        className="w-full text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-base shadow-[0_8px_16px_rgba(255,255,255,0.2)] active:translate-y-1 transition-all border-b-4 flex items-center justify-center gap-3 group bg-gradient-to-r from-cyan-500 to-cyan-700 border-cyan-900">
+                        <Swords className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        <span>NUOVA SFIDA</span>
+                      </button>
+
+                      <button onPointerDown={(e) => {
+                        e.stopPropagation();
+                        resetDuelState();
+                        goToHome();
+                      }}
+                        className="w-full bg-slate-800 text-slate-400 py-3.5 rounded-lg font-orbitron font-black uppercase tracking-widest text-xs border border-slate-700 active:scale-95 transition-all hover:bg-white/5 hover:text-white flex items-center justify-center gap-2">
+                        <Home size={14} />
+                        TORNA ALLA HOME
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
