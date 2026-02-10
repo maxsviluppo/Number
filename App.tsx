@@ -304,9 +304,9 @@ const App: React.FC = () => {
     if (showIntro) {
       const timer = setTimeout(() => {
         console.warn("⚠️ BOOT SYSTEM: Intro sequence timed out - Force entering app");
-        setShowIntro(false);
-        setGameState(prev => ({ ...prev, status: 'idle' }));
-      }, 6000);
+        // Extended timeout to 120s to allow full video playback without forced skip
+        // Only acts as a true failsafe if video engine crashes
+      }, 120000);
       return () => clearTimeout(timer);
     }
   }, [showIntro]);
@@ -3953,7 +3953,7 @@ const App: React.FC = () => {
                         key={boss.id}
                         className={`relative p-5 rounded-2xl border-2 transition-all overflow-hidden group
                             ${isDefeated
-                            ? 'bg-slate-900 border-green-500/30'
+                            ? 'bg-slate-900 border-green-500/30 opacity-80' // Added opacity to simulate block
                             : canPlay
                               ? 'bg-gradient-to-r from-emerald-900/60 to-teal-900/60 border-emerald-500/50 hover:border-emerald-400 hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-emerald-500/30'
                               : 'bg-slate-900/50 border-slate-700 opacity-50 grayscale cursor-not-allowed'
@@ -3983,22 +3983,27 @@ const App: React.FC = () => {
 
                         {/* Victory Overlay for Defeated Boss */}
                         {isDefeated && (
-                          <div className="absolute inset-0 bg-green-500/5 pointer-events-none z-0"></div>
+                          <div className="absolute inset-0 bg-green-900/20 z-0 pointer-events-none flex items-center justify-center">
+                            {/* Centered BLOCK text/icon if needed, but side badge is usually cleaner. Adding subtle lock overlay */}
+                            <div className="absolute right-4 bottom-4 opacity-10 rotate-[-20deg]">
+                              <Lock size={80} className="text-green-500" />
+                            </div>
+                          </div>
                         )}
 
-                        {/* Victory Badge */}
+                        {/* Victory Badge - TROPHY */}
                         {isDefeated && (
                           <div className="absolute top-3 right-3 z-30">
                             <div className="flex flex-col items-end gap-1">
                               <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-green-600 border-4 border-white shadow-[0_0_20px_rgba(34,197,94,0.4)] flex items-center justify-center animate-pulse">
                                 <Trophy className="w-6 h-6 text-white" strokeWidth={3} />
                               </div>
-                              <span className="bg-green-500 text-white text-[7px] font-black px-2 py-0.5 rounded-full shadow-sm tracking-tighter uppercase">DOMINATO</span>
+                              <span className="bg-green-500 text-white text-[7px] font-black px-2 py-0.5 rounded-full shadow-sm tracking-tighter uppercase">COMPLETATO</span>
                             </div>
                           </div>
                         )}
 
-                        {/* Lock Badge */}
+                        {/* Lock Badge for Unlocked */}
                         {!isUnlocked && !isDefeated && (
                           <div className="absolute top-3 right-3 z-20">
                             <div className="w-12 h-12 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center">
@@ -4035,7 +4040,7 @@ const App: React.FC = () => {
                               </span>
                               {isDefeated && (
                                 <span className="text-[8px] font-black uppercase text-white bg-green-500 px-2 py-0.5 rounded-full animate-pulse shadow-sm">
-                                  COMPLETATO
+                                  BLOCCATO
                                 </span>
                               )}
                             </div>
