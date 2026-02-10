@@ -3562,7 +3562,7 @@ const App: React.FC = () => {
                   <div className="flex flex-col items-center gap-2 mb-5">
                     {/* Level Targets List */}
                     {/* Level Targets List */}
-                    <div className="flex gap-2 items-center flex-wrap justify-center max-w-[300px]" id="targets-display-tutorial">
+                    <div className="flex gap-2 items-center flex-wrap justify-center max-w-[340px]" id="targets-display-tutorial">
                       {gameState.isBossLevel ? (
                         // BOSS MODE: Display only CURRENT target (Large)
                         (() => {
@@ -3606,7 +3606,7 @@ const App: React.FC = () => {
 
                           return (
                             <div key={i} data-target-value={t.value} className={`
-                                            flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 border-2
+                                            flex items-center justify-center w-14 h-14 rounded-xl transition-all duration-300 border-2
                                             ${bgClass}
                                              font-orbitron font-black text-white shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
                                          ${t.displayValue ? 'text-xs sm:text-sm leading-tight whitespace-nowrap px-1' : 'text-3xl'} 

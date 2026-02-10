@@ -20,6 +20,7 @@ class SoundService {
   private winnerSource: AudioBufferSourceNode | null = null;
   private loseSource: AudioBufferSourceNode | null = null;
   private activeExternalAudio: HTMLAudioElement | null = null;
+  private beepSecondBuffer: AudioBuffer | null = null;
 
   /**
    * Inizializza l'AudioContext e sblocca l'hardware con un buffer silente.
@@ -128,6 +129,14 @@ class SoundService {
         this.boss1sconfittaBuffer = await this.ctx.decodeAudioData(boss1LoseArr);
       } catch (e) {
         console.warn("Failed to load boss 1 loss sound:", e);
+      }
+
+      try {
+        const beepRes = await fetch('/beepsecond.mp3');
+        const beepArr = await beepRes.arrayBuffer();
+        this.beepSecondBuffer = await this.ctx.decodeAudioData(beepArr);
+      } catch (e) {
+        console.warn("Failed to load beepsecond sound:", e);
       }
     } catch (e) {
       console.warn("Failed to load sounds:", e);
@@ -299,7 +308,15 @@ class SoundService {
   }
 
   playTick() {
-    this.playFMSound(600, 300, 200, 0.05, 0.3, 'square');
+    if (this.isMuted) return;
+    if (this.beepSecondBuffer && this.ctx && this.masterGain) {
+      const source = this.ctx.createBufferSource();
+      source.buffer = this.beepSecondBuffer;
+      source.connect(this.masterGain);
+      source.start(0);
+    } else {
+      this.playFMSound(600, 300, 200, 0.05, 0.3, 'square');
+    }
   }
 
   playPop() {
