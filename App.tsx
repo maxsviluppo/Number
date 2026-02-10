@@ -1231,8 +1231,7 @@ const App: React.FC = () => {
 
       if (!someoneWon) {
         // Se esco durante un duello ATTIVO, dichiaro l'avversario vincitore (Abbandono)
-        matchService.sendAbandonment(activeMatch.id, currentUser.id).catch(() => { });
-        matchService.declareWinner(activeMatch.id, activeMatch.opponentId).catch(() => { });
+        matchService.abandonMatch(activeMatch.id, currentUser.id).catch(() => { });
         showToast("Sfida abbandonata.");
       }
     }
@@ -1591,9 +1590,16 @@ const App: React.FC = () => {
     if (activeMatch?.id && currentUser) {
       const channel = matchService.subscribeToMatchEvents(activeMatch.id, currentUser.id, (event, payload) => {
         const handleSurrender = () => {
+          if (processedWinRef.current === activeMatch.id) {
+            console.log("⏭️ Surrender already processed for this match.");
+            return;
+          }
+          processedWinRef.current = activeMatch.id;
+          console.log("🏳️ Handling Surrender/Abandonment Flow...");
+
           if (timerRef.current) window.clearInterval(timerRef.current);
           setGameState(prev => {
-            if (prev.status === 'idle' || prev.status === 'opponent-surrendered') return prev;
+            if (prev.status === 'opponent-surrendered') return prev;
             return { ...prev, status: 'idle' };
           });
 
@@ -1601,15 +1607,18 @@ const App: React.FC = () => {
           const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
           setSurrenderVideoSrc(randomSurrender);
           setShowSurrenderVideo(true);
-          setIsVideoVisible(false);
+          setIsVideoVisible(true);
 
           if (videoRef.current) {
             videoRef.current.muted = true;
             videoRef.current.src = randomSurrender;
-            videoRef.current.play().catch(e => {
-              console.warn("Surrender video blocked:", e);
-              setIsVideoVisible(false);
-            });
+            videoRef.current.load();
+            videoRef.current.play()
+              .then(() => console.log("🎬 Surrender video playing..."))
+              .catch(e => {
+                console.warn("⚠️ Surrender video blocked:", e);
+                setIsVideoVisible(true);
+              });
             soundService.playExternalSound('Resa1.mp3');
           }
         };
@@ -1618,9 +1627,15 @@ const App: React.FC = () => {
           console.log("⚡ Broadcast: Match Abandoned by opponent.");
           handleSurrender();
         } else if (event === 'presence_leave') {
-          // payload is leftPresences array
+          console.log("👥 Presence Leave Event:", payload);
           const opponentId = activeMatch.opponentId;
-          const hasOpponentLeft = payload.some((p: any) => p.user_id === opponentId);
+          // Robust check for various presence formats
+          const hasOpponentLeft = payload.some((p: any) =>
+            p.user_id === opponentId ||
+            p.key === opponentId ||
+            (p.presence_ref && p.user_id === opponentId)
+          );
+
           if (hasOpponentLeft && (gameStateRef.current.status === 'playing' || gameStateRef.current.status === 'round-won')) {
             console.log("⚡ Presence: Opponent Disconnected/Left. Triggering Surrender Win.");
             handleSurrender();

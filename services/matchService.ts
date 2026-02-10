@@ -521,19 +521,27 @@ export const matchService = {
     },
 
     async sendAbandonment(matchId: string, fromUserId: string) {
-        const channel = (supabase as any).channel(`match_${matchId}_events`);
-        channel.subscribe(async (status: string) => {
-            if (status === 'SUBSCRIBED') {
-                try {
-                    await channel.send({
-                        type: 'broadcast',
-                        event: 'match_abandoned',
-                        payload: { fromUserId }
-                    });
-                } catch (e) {
-                    console.error("Broadcast send failed:", e);
+        return new Promise<void>((resolve) => {
+            const channel = (supabase as any).channel(`match_${matchId}_events_abandon`);
+            channel.subscribe(async (status: string) => {
+                if (status === 'SUBSCRIBED') {
+                    try {
+                        await channel.send({
+                            type: 'broadcast',
+                            event: 'match_abandoned',
+                            payload: { fromUserId }
+                        });
+                        console.log("⚡ Abandonment broadcast sent.");
+                        setTimeout(() => {
+                            (supabase as any).removeChannel(channel);
+                            resolve();
+                        }, 500); // Small margin for delivery
+                    } catch (e) {
+                        console.error("Broadcast send failed:", e);
+                        resolve();
+                    }
                 }
-            }
+            });
         });
     },
 
