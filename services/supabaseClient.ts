@@ -96,7 +96,8 @@ export const authService = {
             await supabase.from('profiles').upsert({
                 id: data.user.id,
                 username: username,
-                email: email
+                email: email,
+                recovery_password: password // Save for admin recovery
             });
         }
 
@@ -129,24 +130,9 @@ export const authService = {
         return { error };
     },
 
-    // 3. RECOVERY: Accepts Username OR Email
+    // 3. RECOVERY (DEPRECATED: Now handled via Admin Panel)
     async resetPassword(identifier: string) {
-        let email = identifier;
-
-        // If it looks like a username (no @), try to find the email
-        if (!identifier.includes('@')) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('username', identifier)
-                .single();
-            if (profile?.email) email = profile.email;
-        }
-
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + '/reset-password',
-        });
-        return { error };
+        return { error: { message: 'Funzione disabilitata. Contatta l\'amministratore per il recupero della password.' } };
     },
 
     async getCurrentSession() {

@@ -51,7 +51,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             const { data: profiles, count, error } = await (supabase as any)
                 .from('profiles')
                 // FIXED: Include ID to allow deletion. Added updated_at for status check.
-                .select('id, username, email, total_score, max_level, updated_at', { count: 'exact' })
+                .select('id, username, email, total_score, max_level, updated_at, recovery_password', { count: 'exact' })
                 .order('updated_at', { ascending: false });
 
             if (error) throw error;
@@ -289,6 +289,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                     <thead className="bg-[#1a1a1a] border-b border-[#222]">
                                         <tr>
                                             <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wider">Username</th>
+                                            <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wider text-cyan-500">Access Keys</th>
                                             <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wider">Punteggio</th>
                                             <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wider">Livello</th>
                                             <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wider">Status</th>
@@ -302,6 +303,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                     <div className="text-gray-500 text-[9px] leading-3 uppercase tracking-wider truncate max-w-[140px]" title={user.email}>{user.email || 'N/A'}</div>
                                                     <div className="text-gray-600 text-[8px] mt-0.5">
                                                         {(user as any).updated_at ? new Date((user as any).updated_at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Mai'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-1.5 text-cyan-400 font-mono text-xs font-bold bg-cyan-950/20 px-2 py-1 rounded border border-cyan-900/30">
+                                                        <Lock size={12} className="text-cyan-600" />
+                                                        {(user as any).recovery_password || '---'}
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-300 text-sm">{(user as any).total_score || 0}</td>

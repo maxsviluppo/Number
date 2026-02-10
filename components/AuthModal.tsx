@@ -69,10 +69,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess, showToast }) 
             }
         } catch (err: any) {
             let msg = err.message || 'Si è verificato un errore.';
-            if (msg.includes('User already registered')) msg = 'Utente già registrato. Prova ad accedere!';
-            if (msg.includes('Invalid login credentials')) msg = 'Credenziali non valide.';
-            if (msg.includes('Password should be at least')) msg = 'La password deve avere almeno 6 caratteri.';
-            if (msg.includes('Email not confirmed')) msg = 'Email non confermata. Controlla la posta.';
+
+            // Supabase specific error translations
+            if (msg.includes('error sending recovery email')) {
+                msg = 'Errore nell\'invio dell\'email. Probabilmente hai raggiunto il limite orario di Supabase (3 email/ora) o il servizio SMTP non è configurato correttamente nel Dashboard.';
+            } else if (msg.includes('User already registered')) {
+                msg = 'Utente già registrato. Prova ad accedere!';
+            } else if (msg.includes('Invalid login credentials')) {
+                msg = 'Credenziali non valide.';
+            } else if (msg.includes('Password should be at least')) {
+                msg = 'La password deve avere almeno 6 caratteri.';
+            } else if (msg.includes('Email not confirmed')) {
+                msg = 'Email non confermata. Controlla la posta o chiedi all\'admin di disabilitare la conferma.';
+            }
+
             setError(msg);
         } finally {
             setLoading(false);
@@ -207,21 +217,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess, showToast }) 
                             <button onClick={() => switchMode('signup')} className="hover:text-white transition-colors uppercase tracking-wider">
                                 Non hai un account? <span className="text-cyan-400">Registrati</span>
                             </button>
-                            <button onClick={() => switchMode('forgot-password')} className="hover:text-white transition-colors flex items-center gap-1">
-                                <KeyRound className="w-3 h-3" /> Password dimenticata?
-                            </button>
                         </>
                     )}
 
                     {mode === 'signup' && (
                         <button onClick={() => switchMode('login')} className="hover:text-white transition-colors uppercase tracking-wider">
                             Hai già un account? <span className="text-cyan-400">Accedi</span>
-                        </button>
-                    )}
-
-                    {mode === 'forgot-password' && (
-                        <button onClick={() => switchMode('login')} className="hover:text-white transition-colors uppercase tracking-wider">
-                            <span className="text-cyan-400">← Torna al Login</span>
                         </button>
                     )}
                 </div>
