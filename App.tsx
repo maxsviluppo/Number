@@ -1514,7 +1514,7 @@ const App: React.FC = () => {
 
 
         // ADDITIONAL CHECK: Handle CANCELLED explicitly (Surrender/Abandon)
-        if (newData.status === 'cancelled') {
+        if (newData.status === 'cancelled' && !showSurrenderVideo && gameStateRef.current.status !== 'opponent-surrendered') {
           console.log("⚡ Realtime: Match Cancelled (Opponent Surrendered)");
           if (timerRef.current) window.clearInterval(timerRef.current);
           setGameState(prev => ({ ...prev, status: 'idle' }));
@@ -1524,13 +1524,15 @@ const App: React.FC = () => {
           setSurrenderVideoSrc(randomSurrender);
           setShowSurrenderVideo(true);
           setIsVideoVisible(false);
+
           if (videoRef.current) {
-            videoRef.current.muted = false;
+            videoRef.current.muted = true;
             videoRef.current.src = randomSurrender;
             videoRef.current.play().catch(e => {
               console.warn("Surrender video blocked:", e);
               setIsVideoVisible(false);
             });
+            soundService.playExternalSound('Resa1.mp3');
           }
         }
       });
@@ -1584,37 +1586,47 @@ const App: React.FC = () => {
   // BLITZ ROUND TRANSITION EFFECT
   // BLITZ ROUND TRANSITION EFFECT REMOVED (Legacy Round Logic)
 
-  // MATCH BROADCAST LOGIC (Abandonment)
+  // MATCH BROADCAST LOGIC (Abandonment & Presence)
   useEffect(() => {
-    if (activeMatch?.id) {
-      const channel = matchService.subscribeToMatchEvents(activeMatch.id, (event, payload) => {
-        if (event === 'match_abandoned' && payload.fromUserId !== currentUser?.id) {
+    if (activeMatch?.id && currentUser) {
+      const channel = matchService.subscribeToMatchEvents(activeMatch.id, currentUser.id, (event, payload) => {
+        const handleSurrender = () => {
           if (timerRef.current) window.clearInterval(timerRef.current);
-          setGameState(prev => ({ ...prev, status: 'idle' })); // Temporarily idle before recap
+          setGameState(prev => {
+            if (prev.status === 'idle' || prev.status === 'opponent-surrendered') return prev;
+            return { ...prev, status: 'idle' };
+          });
 
           // SURRENDER FLOW:
-          // 1. Random Video
           const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
           setSurrenderVideoSrc(randomSurrender);
           setShowSurrenderVideo(true);
           setIsVideoVisible(false);
 
           if (videoRef.current) {
-            videoRef.current.muted = true; // Video has no audio
+            videoRef.current.muted = true;
             videoRef.current.src = randomSurrender;
             videoRef.current.play().catch(e => {
-              console.warn("Surrender (abandon) video blocked:", e);
+              console.warn("Surrender video blocked:", e);
               setIsVideoVisible(false);
             });
-            // Play Surrender Audio
             soundService.playExternalSound('Resa1.mp3');
           }
+        };
 
-          // 2. Add Points (Optional logic, using current score)
-          // The recap will show current score + bonus if handled there.
+        if (event === 'match_abandoned' && payload.fromUserId !== currentUser?.id) {
+          console.log("⚡ Broadcast: Match Abandoned by opponent.");
+          handleSurrender();
+        } else if (event === 'presence_leave') {
+          // payload is leftPresences array
+          const opponentId = activeMatch.opponentId;
+          const hasOpponentLeft = payload.some((p: any) => p.user_id === opponentId);
+          if (hasOpponentLeft && (gameStateRef.current.status === 'playing' || gameStateRef.current.status === 'round-won')) {
+            console.log("⚡ Presence: Opponent Disconnected/Left. Triggering Surrender Win.");
+            handleSurrender();
+          }
         } else if (event === 'match_won' && payload.winnerId !== currentUser?.id) {
           // BROADCAST LOSS SIGNAL RECEIVED
-          // This is a fast-path "I Lost" trigger sent directly by the winner's client
           console.log("⚡ Broadcast: Match WON by opponent. Triggering Defeat immediately.");
 
           if (processedWinRef.current !== activeMatch?.id || gameStateRef.current.status === 'playing') {
@@ -1625,7 +1637,6 @@ const App: React.FC = () => {
             setIsDragging(false);
             setSelectedPath([]);
 
-            // Force visual update of score (Optional, but good for UI consistency)
             setOpponentTargets(duelMode === 'blitz' ? 3 : 5);
 
             if (videoRef.current) {
@@ -1633,9 +1644,7 @@ const App: React.FC = () => {
               setLoseVideoSrc(loseVid);
               setShowLostVideo(true);
               setIsVideoVisible(true);
-
               soundService.playLose();
-
               videoRef.current.src = loseVid;
               videoRef.current.muted = false;
               videoRef.current.load();
@@ -1650,9 +1659,12 @@ const App: React.FC = () => {
           }
         }
       });
-      return () => { if (channel) (supabase as any).removeChannel(channel); };
+
+      return () => {
+        (supabase as any).removeChannel(channel);
+      };
     }
-  }, [activeMatch, currentUser]);
+  }, [activeMatch, currentUser, duelMode]);
 
   /* 
   // SYNC WATCHDOG (Fallback for missed events) - DISABLED temporarily as requested

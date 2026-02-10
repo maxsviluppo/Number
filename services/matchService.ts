@@ -487,15 +487,35 @@ export const matchService = {
         }
     },
 
-    // --- MATCH SIGNALING (BROADCAST) ---
-    subscribeToMatchEvents(matchId: string, onEvent: (event: string, payload: any) => void) {
-        const channel = (supabase as any).channel(`match_${matchId}_events`);
+    // --- MATCH SIGNALING (BROADCAST & PRESENCE) ---
+    subscribeToMatchEvents(matchId: string, userId: string, onEvent: (event: string, payload: any) => void) {
+        const channel = (supabase as any).channel(`match_${matchId}_events`, {
+            config: {
+                presence: {
+                    key: userId,
+                },
+            },
+        });
 
         channel
             .on('broadcast', { event: 'match_abandoned' }, (payload: any) => onEvent('match_abandoned', payload.payload))
             .on('broadcast', { event: 'rematch_started' }, (payload: any) => onEvent('rematch_started', payload.payload))
             .on('broadcast', { event: 'match_won' }, (payload: any) => onEvent('match_won', payload.payload))
-            .subscribe();
+            .on('presence', { event: 'sync' }, () => {
+                const state = channel.presenceState();
+                onEvent('presence_sync', state);
+            })
+            .on('presence', { event: 'leave' }, ({ leftPresences }: any) => {
+                onEvent('presence_leave', leftPresences);
+            })
+            .subscribe(async (status: string) => {
+                if (status === 'SUBSCRIBED') {
+                    await channel.track({
+                        user_id: userId,
+                        online_at: new Date().toISOString(),
+                    });
+                }
+            });
 
         return channel;
     },
