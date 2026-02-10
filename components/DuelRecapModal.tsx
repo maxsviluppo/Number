@@ -94,7 +94,7 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                                 <div className="w-full h-[1px] bg-white/10 my-1"></div>
                                 <div className="flex flex-col items-center justify-center leading-none">
                                     <span className="text-[7px] font-black text-white/30 uppercase">PTS</span>
-                                    <span className={`font-orbitron font-bold text-xl ${isWinner ? 'text-[#FF8800]/80' : 'text-white/50'}`}>{myScore}</span>
+                                    <span className={`font-orbitron font-bold text-2xl ${isWinner ? 'text-[#FF8800]/80' : 'text-white/50'}`}>{myScore}</span>
                                 </div>
                             </div>
                         ) : (
@@ -151,7 +151,7 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                                 <div className="w-full h-[1px] bg-white/10 my-1"></div>
                                 <div className="flex flex-col items-center justify-center leading-none">
                                     <span className="text-[7px] font-black text-white/30 uppercase">PTS</span>
-                                    <span className={`font-orbitron font-bold text-xl ${!isWinner ? 'text-green-500/80' : 'text-white/50'}`}>{opponentScore}</span>
+                                    <span className={`font-orbitron font-bold text-2xl ${!isWinner ? 'text-green-500/80' : 'text-white/50'}`}>{opponentScore}</span>
                                 </div>
                             </div>
                         ) : (

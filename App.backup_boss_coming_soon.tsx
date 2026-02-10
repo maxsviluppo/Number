@@ -8,7 +8,7 @@ import CharacterHelper from './components/CharacterHelper';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { matchService } from './services/matchService';
-import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward, Clock, Crown, Lock, Target, Send, XCircle } from 'lucide-react';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward, Clock, Crown, Lock, Target, Send } from 'lucide-react';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
 import NeuralDuelLobby from './components/NeuralDuelLobby';
@@ -23,28 +23,28 @@ import { authService, profileService, leaderboardService, supabase, UserProfile 
 const TUTORIAL_STEPS = [
   {
     title: "OBIETTIVO & GRIGLIA",
-    description: "Collega i numeri per raggiungere i Target in alto. La griglia è fissa: trova tutte le combinazioni per avanzare di livello. Usa i numeri e gli operatori (+, -, ×, ÷) saggiamente!",
+    description: "Trova i 5 Target numerici usando le tessere a disposizione. La griglia è FISSA per ogni livello: trova tutte le combinazioni per avanzare.",
     icon: <Brain className="w-12 h-12 text-[#FF8800]" />
   },
   {
     title: "REGOLE DI CONNESSIONE",
-    description: "Trascina il dito/mouse tra le celle. Segui sempre la sequenza: Numero → Operatore → Numero. La selezione diventerà VERDE se corretta, ROSSA se sbagliata.",
+    description: "Trascina dai Numeri. Alterna sempre: Numero → Operatore → Numero. Non puoi collegare due tipi uguali consecutivamente.",
     icon: <RefreshCw className="w-12 h-12 text-[#FF8800]" />
   },
   {
-    title: "BOSS LEVELS",
-    description: "Ogni 5 livelli affronterai un Boss! Sfide a tempo limitato con premi speciali come Bonus di Tempo e Punti Extra. Sconfiggi il Guardiano per continuare!",
-    icon: <Crown className="w-12 h-12 text-[#FF8800]" />
+    title: "PUNTEGGIO & STREAK",
+    description: "La precisione premia! Ogni risposta corretta consecutiva aumenta il moltiplicatore. Un errore azzera il moltiplicatore base.",
+    icon: <Zap className="w-12 h-12 text-[#FF8800]" />
   },
   {
-    title: "NEURAL DUEL (1VS1)",
-    description: "Sfida altri giocatori in tempo reale! Scegli tra modalità STANDARD (punti) o BLITZ (velocità). Vinci i round per dominare la Classifica Neurale.",
+    title: "SFIDE & CLASSIFICHE",
+    description: "Oltre alla modalità Classica, competi in NEURAL DUEL (1vs1) e scala la Classifica Globale per Punti e Livello Massimo.",
     icon: <Swords className="w-12 h-12 text-[#FF8800]" />
   },
   {
     title: "QI RANKING AI",
-    description: "La nostra AI analizza la tua velocità e precisione matematica ad ogni mossa per calcolare il tuo QI di gioco. Punta all'Eccellenza!",
-    icon: <Zap className="w-12 h-12 text-[#FF8800]" />
+    description: "L'AI analizza la tua velocità e precisione per stimare il tuo QI di gioco. Punta all'Eccellenza Neurale.",
+    icon: <Award className="w-12 h-12 text-[#FF8800]" />
   }
 ];
 
@@ -1181,7 +1181,7 @@ const App: React.FC = () => {
   useEffect(() => {
     // MODIFIED: Timer disabled for Standard, ENABLED for Time Attack AND Blitz
     const isTimeDuel = activeMatch?.mode === 'time_attack' || activeMatch?.mode === 'blitz';
-    // ADDED: !showGameTutorial blocks timer during tutorials
+    // ADDED: !showGameTutorial blocks timer during tutorial
     if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && !showGameTutorial && (!activeMatch?.isDuel || isTimeDuel)) {
       timerRef.current = window.setInterval(() => {
         setGameState(prev => {
@@ -1545,7 +1545,7 @@ const App: React.FC = () => {
         if (!amIWinner) {
           // Play Defeat Video
           // FORCE UI SYNC here too as a fallback
-          const targetScore = latestMatchData.target_score || (duelMode === 'blitz' ? 3 : 5);
+          const targetScore = latestMatchData.target_score || (currentMode === 'blitz' ? 3 : 5);
           setOpponentTargets(targetScore);
 
           if (videoRef.current) {
@@ -3198,13 +3198,7 @@ const App: React.FC = () => {
               <div className="fixed bottom-4 right-4 z-[2000] flex gap-3" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
                 {/* Tutorial Icon */}
                 <button
-                  onPointerDown={async (e) => {
-                    e.stopPropagation();
-                    await handleUserInteraction();
-                    soundService.playUIClick();
-                    setTutorialStep(0);
-                    setActiveModal('tutorial');
-                  }}
+                  onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setTutorialStep(0); setActiveModal('tutorial'); }}
                   id="tutorial-btn-home"
                   className="w-12 h-12 rounded-full bg-[#FF8800] text-white border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
                   title="Tutorial"
@@ -3354,185 +3348,183 @@ const App: React.FC = () => {
 
         {gameState.status !== 'idle' && (
           <div className="w-full h-full flex flex-col items-center z-10 p-4 pt-12 sm:pt-4 max-w-4xl animate-screen-in">
-            {gameState.status !== 'won' && gameState.status !== 'level-complete' && gameState.status !== 'game-over' && (
-              <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
-                <div className={`
+            <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
+              <div className={`
                 relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.15)]
                 ${gameState.isBossLevel
-                    ? 'bg-gradient-to-r from-lime-500 via-green-500 to-lime-600'
-                    : 'bg-gradient-to-r from-orange-400 via-[#FF5500] to-orange-600'}
+                  ? 'bg-gradient-to-r from-lime-500 via-green-500 to-lime-600'
+                  : 'bg-gradient-to-r from-orange-400 via-[#FF5500] to-orange-600'}
                 transition-all duration-300
               `}>
-                  {/* Left Group: Buttons */}
-                  <div className="flex items-center gap-3">
-                    <button
-                      onPointerDown={(e) => {
-                        goToHome(e);
-                        setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
-                      }}
-                      className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
+                {/* Left Group: Buttons */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onPointerDown={(e) => {
+                      goToHome(e);
+                      setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
+                    }}
+                    className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
                       ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
-                      title="Home"
-                    >
-                      <Home className="w-6 h-6" />
-                    </button>
-                    <button
-                      onPointerDown={toggleMute}
-                      className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
+                    title="Home"
+                  >
+                    <Home className="w-6 h-6" />
+                  </button>
+                  <button
+                    onPointerDown={toggleMute}
+                    className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
                       ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
-                    >
-                      {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-                    </button>
-                  </div>
+                  >
+                    {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+                  </button>
+                </div>
 
-                  {/* Center: Floating Timer (Half-In/Half-Out) */}
-                  {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
-                  <div id="timer-display-game" className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
-                    {/* Round Indicator - Only for Blitz - Now handled in Right Side Score */}
-                    {activeMatch?.isDuel && duelMode === 'blitz' && false && (
-                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-amber-400/50 text-amber-100 text-[11px] font-black font-orbitron px-5 py-1.5 rounded-full z-[110] whitespace-nowrap shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pulse-slow">
-                        ROUND {duelRounds.p1 + duelRounds.p2 + 1} / 5
-                      </div>
-                    )}
+                {/* Center: Floating Timer (Half-In/Half-Out) */}
+                {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
+                <div id="timer-display-game" className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
+                  {/* Round Indicator - Only for Blitz - Now handled in Right Side Score */}
+                  {activeMatch?.isDuel && duelMode === 'blitz' && false && (
+                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-amber-400/50 text-amber-100 text-[11px] font-black font-orbitron px-5 py-1.5 rounded-full z-[110] whitespace-nowrap shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pulse-slow">
+                      ROUND {duelRounds.p1 + duelRounds.p2 + 1} / 5
+                    </div>
+                  )}
 
-                    {gameState.isBossLevel ? (
-                      <div className={`relative w-24 h-24 flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110' : 'hover:scale-105'}`}>
-                        {/* External White Frame */}
-                        <div className="absolute -inset-1 rotate-45 rounded-xl border-[4px] border-white pointer-events-none"></div>
+                  {gameState.isBossLevel ? (
+                    <div className={`relative w-24 h-24 flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110' : 'hover:scale-105'}`}>
+                      {/* External White Frame */}
+                      <div className="absolute -inset-1 rotate-45 rounded-xl border-[4px] border-white pointer-events-none"></div>
 
-                        <div className="absolute inset-0 bg-slate-900 rotate-45 rounded-xl border-[4px] border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]"></div>
+                      <div className="absolute inset-0 bg-slate-900 rotate-45 rounded-xl border-[4px] border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]"></div>
 
-                        {/* BOSS TIMER PROGRESS DIAMOND */}
-                        <svg className="absolute inset-0 w-full h-full rotate-45 pointer-events-none z-20 overflow-visible">
-                          <defs>
-                            <filter id="bossGlow" x="-20%" y="-20%" width="140%" height="140%">
-                              <feGaussianBlur stdDeviation="2" result="blur" />
-                              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                            </filter>
-                          </defs>
+                      {/* BOSS TIMER PROGRESS DIAMOND */}
+                      <svg className="absolute inset-0 w-full h-full rotate-45 pointer-events-none z-20 overflow-visible">
+                        <defs>
+                          <filter id="bossGlow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="2" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                          </filter>
+                        </defs>
+                        <rect
+                          x="2" y="2" width="92" height="92" rx="12"
+                          stroke="rgba(16, 185, 129, 0.2)"
+                          strokeWidth="6"
+                          fill="none"
+                        />
+                        {!isPaused && (
                           <rect
                             x="2" y="2" width="92" height="92" rx="12"
-                            stroke="rgba(16, 185, 129, 0.2)"
+                            stroke="#10b981"
                             strokeWidth="6"
                             fill="none"
+                            pathLength="100"
+                            strokeDasharray="100"
+                            strokeDashoffset={100 * (1 - (gameState.timeLeft / 90))}
+                            strokeLinecap="round"
+                            className="transition-all duration-1000 ease-linear"
+                            filter="url(#bossGlow)"
                           />
-                          {!isPaused && (
-                            <rect
-                              x="2" y="2" width="92" height="92" rx="12"
-                              stroke="#10b981"
-                              strokeWidth="6"
-                              fill="none"
-                              pathLength="100"
-                              strokeDasharray="100"
-                              strokeDashoffset={100 * (1 - (gameState.timeLeft / 90))}
-                              strokeLinecap="round"
-                              className="transition-all duration-1000 ease-linear"
-                              filter="url(#bossGlow)"
-                            />
-                          )}
-                        </svg>
-
-                        <div className="relative z-10 flex flex-col items-center justify-center text-white">
-                          {isPaused ? (
-                            <Pause className="w-8 h-8 text-emerald-400 animate-pulse" />
-                          ) : (
-                            <>
-                              <span className="text-[8px] font-black text-emerald-400 uppercase leading-none mb-1 tracking-widest">BOSS</span>
-                              <span className="font-black font-orbitron text-3xl leading-none drop-shadow-md">{gameState.timeLeft}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${(activeMatch?.isDuel && duelMode !== 'time_attack') ? 'border-red-500/50 grayscale-0 opacity-100 flex flex-col' : ''}`}>
-                        <svg className="absolute inset-0 w-full h-full -rotate-90 scale-90">
-                          <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
-                          {!isPaused && (
-                            <circle
-                              cx="50%" cy="50%" r="45%"
-                              stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                                ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
-                                : (gameState.timeLeft <= 10 ? '#ef4444' : '#FF8800')}
-                              strokeWidth="8"
-                              fill="none"
-                              strokeDasharray="283"
-                              strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                                ? 283 - (283 * (opponentTargets || 0) / 5)
-                                : (283 * (1 - gameState.timeLeft / 60))
-                              }
-                              strokeLinecap="round"
-                              className="transition-all duration-1000"
-                            />
-                          )}
-                        </svg>
-                        {isPaused ? (
-                          <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
-                        ) : (
-                          <>
-                            {activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz' && (
-                              <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">
-                                AVV
-                              </span>
-                            )}
-                            <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
-                              {activeMatch?.isDuel
-                                ? ((duelMode === 'time_attack' || duelMode === 'blitz') ? gameState.timeLeft : opponentTargets)
-                                : gameState.timeLeft}
-                            </span>
-                          </>
                         )}
-                      </div>
-                    )}
-                  </div>
+                      </svg>
 
-                  {/* RIGHT SIDE: SCORE / ROUNDS */}
-                  {activeMatch?.isDuel ? (
-                    <div className="flex items-center gap-3 pl-20 sm:pl-0">
-                      {/* TARGETS COUNTER (Time Attack Specific) */}
-                      {duelMode === 'time_attack' && (
-                        <div id="targets-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-all">
-                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">TGT</span>
-                          <span className="text-2xl font-black font-orbitron text-[#FF8800] leading-none">
-                            {gameState.targetsFound}
-                          </span>
-                        </div>
-                      )}
-
-                      <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
-                        {duelMode === 'blitz' ? (
-                          <>
-                            <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">TARGETS</span>
-                            <span className="text-2xl font-black font-orbitron text-[#FF8800] leading-none">
-                              {gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p1' : 'p2')).length}
-                            </span>
-                          </>
+                      <div className="relative z-10 flex flex-col items-center justify-center text-white">
+                        {isPaused ? (
+                          <Pause className="w-8 h-8 text-emerald-400 animate-pulse" />
                         ) : (
                           <>
-                            <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
-                            <span className="text-2xl font-black font-orbitron text-[#FF8800] leading-none">
-                              {gameState.score}
-                            </span>
+                            <span className="text-[8px] font-black text-emerald-400 uppercase leading-none mb-1 tracking-widest">BOSS</span>
+                            <span className="font-black font-orbitron text-3xl leading-none drop-shadow-md">{gameState.timeLeft}</span>
                           </>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-3">
-                        <div id="score-display-game" className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
-                          <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
-                          <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
-                        </div>
-                        <div className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
-                          <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">{gameState.isBossLevel ? 'BOSS' : 'LV'}</span>
-                          <span className="text-sm font-black font-orbitron leading-none">{gameState.isBossLevel ? gameState.bossLevelId : gameState.level}</span>
-                        </div>
-                      </div>
+                    <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${(activeMatch?.isDuel && duelMode !== 'time_attack') ? 'border-red-500/50 grayscale-0 opacity-100 flex flex-col' : ''}`}>
+                      <svg className="absolute inset-0 w-full h-full -rotate-90 scale-90">
+                        <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
+                        {!isPaused && (
+                          <circle
+                            cx="50%" cy="50%" r="45%"
+                            stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                              ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
+                              : (gameState.timeLeft <= 10 ? '#ef4444' : '#FF8800')}
+                            strokeWidth="8"
+                            fill="none"
+                            strokeDasharray="283"
+                            strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                              ? 283 - (283 * (opponentTargets || 0) / 5)
+                              : (283 * (1 - gameState.timeLeft / 60))
+                            }
+                            strokeLinecap="round"
+                            className="transition-all duration-1000"
+                          />
+                        )}
+                      </svg>
+                      {isPaused ? (
+                        <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
+                      ) : (
+                        <>
+                          {activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz' && (
+                            <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">
+                              AVV
+                            </span>
+                          )}
+                          <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
+                            {activeMatch?.isDuel
+                              ? ((duelMode === 'time_attack' || duelMode === 'blitz') ? gameState.timeLeft : opponentTargets)
+                              : gameState.timeLeft}
+                          </span>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
-              </header>
-            )}
+
+                {/* RIGHT SIDE: SCORE / ROUNDS */}
+                {activeMatch?.isDuel ? (
+                  <div className="flex items-center gap-3 pl-20 sm:pl-0">
+                    {/* TARGETS COUNTER (Time Attack Specific) */}
+                    {duelMode === 'time_attack' && (
+                      <div id="targets-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-all">
+                        <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">TGT</span>
+                        <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
+                          {gameState.targetsFound}
+                        </span>
+                      </div>
+                    )}
+
+                    <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
+                      {duelMode === 'blitz' ? (
+                        <>
+                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">TARGETS</span>
+                          <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
+                            {gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p1' : 'p2')).length}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
+                          <span className="text-xl font-black font-orbitron text-[#FF8800] leading-none">
+                            {gameState.score}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3">
+                      <div id="score-display-game" className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
+                        <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
+                        <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
+                      </div>
+                      <div className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
+                        <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">{gameState.isBossLevel ? 'BOSS' : 'LV'}</span>
+                        <span className="text-sm font-black font-orbitron leading-none">{gameState.isBossLevel ? gameState.bossLevelId : gameState.level}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </header>
 
             <main className="relative flex-grow w-full flex flex-col items-center justify-center">
               {gameState.status === 'playing' && (
@@ -3552,7 +3544,7 @@ const App: React.FC = () => {
                             ? 'bg-white border-emerald-600 text-emerald-600'
                             : 'bg-white border-[#FF8800] text-[#FF8800]')}`}>
                         <span className="text-[10px] font-black uppercase tracking-wider opacity-80">Totale:</span>
-                        <span className="text-3xl font-black font-orbitron leading-none">
+                        <span className="text-2xl font-black font-orbitron leading-none">
                           {previewResult !== null ? previewResult : '...'}
                         </span>
                       </div>
@@ -3574,12 +3566,12 @@ const App: React.FC = () => {
 
                           return (
                             <div className="flex flex-col items-center animate-bounce-short w-full">
-                              <div data-target-value={activeTarget.value} className="flex flex-col items-center justify-center w-full max-w-[240px] h-24 px-4 rounded-xl border-[4px] border-emerald-400 bg-emerald-900/80 shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all duration-300 transform hover:scale-105">
+                              <div className="flex flex-col items-center justify-center w-full max-w-[240px] h-24 px-4 rounded-xl border-[4px] border-emerald-400 bg-emerald-900/80 shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all duration-300 transform hover:scale-105">
                                 <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-[0.2em] mb-1">
                                   TARGET {currentIndex}/{totalCount}
                                 </span>
                                 <span className={`font-orbitron font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none
-                                  ${activeTarget.displayValue ? 'text-3xl tracking-widest' : 'text-6xl'}`}>
+                                  ${activeTarget.displayValue ? 'text-2xl tracking-widest' : 'text-5xl'}`}>
                                   {activeTarget.displayValue || activeTarget.value}
                                 </span>
                               </div>
@@ -3605,12 +3597,12 @@ const App: React.FC = () => {
                           }
 
                           return (
-                            <div key={i} data-target-value={t.value} className={`
-                                            flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 border-2
-                                            ${bgClass}
-                                             font-orbitron font-black text-white shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
-                                         ${t.displayValue ? 'text-xs sm:text-sm leading-tight whitespace-nowrap px-1' : 'text-3xl'} 
-                                         `}>
+                            <div key={i} className={`
+                                    flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 border-2
+                                    ${bgClass}
+                                     font-orbitron font-black text-white text-xl shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
+                                 ${t.displayValue ? 'text-[10px] sm:text-xs leading-tight whitespace-nowrap px-1' : 'text-xl'} 
+                                 `}>
                               {t.displayValue || t.value}
                             </div>
                           );
@@ -3662,90 +3654,37 @@ const App: React.FC = () => {
 
 
               {gameState.status === 'game-over' && (
-                <div className={`bg-slate-900/60 p-5 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md relative overflow-hidden border-[4px] shadow-[0_40px_100px_rgba(0,0,0,0.6)] backdrop-blur-2xl
+                <div className={`bg-slate-900/60 p-8 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-sm mt-20 relative overflow-hidden border-[4px] shadow-[0_40px_100px_rgba(0,0,0,0.6)] backdrop-blur-2xl
                   ${gameState.isBossLevel
                     ? 'border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.3)]'
-                    : 'border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.3)]'}`}>
+                    : 'border-[#FF8800] shadow-[0_0_50px_rgba(255,136,0,0.2)]'}`}>
                   {/* Background Texture Removed */}
 
-                  <div className="relative z-10">
-                    {/* Header */}
-                    <div className="text-center mb-4">
-                      <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl border-2 border-white/30 mb-2 ${gameState.isBossLevel
-                        ? 'bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
-                        : 'bg-gradient-to-br from-red-500 to-red-700 shadow-[0_0_20px_rgba(239,68,68,0.4)]'
-                        }`}>
-                        <XCircle className="w-7 h-7 text-white" />
-                      </div>
-                      <h2 className={`text-2xl font-black font-orbitron uppercase tracking-widest mb-1 drop-shadow-lg ${gameState.isBossLevel ? 'text-emerald-400' : 'text-red-400'
-                        }`}>
-                        HAI PERSO
-                      </h2>
-                      <div className="h-0.5 w-24 bg-gradient-to-r from-transparent via-red-500 to-transparent mx-auto rounded-full"></div>
-                    </div>
+                  <AlertTriangle className={`w-12 h-12 mx-auto mb-2 animate-pulse ${gameState.isBossLevel ? 'text-emerald-400' : 'text-[#FF8800]'}`} />
+                  <h2 className={`text-3xl font-black font-orbitron mb-1 tracking-wider ${gameState.isBossLevel ? 'text-emerald-400' : 'text-[#FF8800]'}`}>HAI PERSO</h2>
+                  <div className="text-[10px] font-bold text-white mb-6 uppercase tracking-[0.2em]">{gameState.isBossLevel ? 'Boss Sfidato' : 'Livello Non Superato'}</div>
 
-                    {/* Info Card */}
-                    <div className={`bg-black/40 border-2 rounded-2xl p-4 mb-4 backdrop-blur-md ${gameState.isBossLevel ? 'border-emerald-500/20' : 'border-red-500/20'
-                      }`}>
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          <Target className={`w-5 h-5 ${gameState.isBossLevel ? 'text-emerald-400' : 'text-red-400'}`} />
-                          <span className="text-xs font-black text-white/70 uppercase tracking-wider">
-                            {gameState.isBossLevel ? 'Boss Sfidato' : 'Livello Non Superato'}
-                          </span>
-                        </div>
-
-                        <div className="w-full bg-white/5 rounded-xl p-3 border border-white/5">
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-1.5">
-                              <Trophy size={14} className="text-amber-400" />
-                              <span className="text-xs font-black text-white/70 uppercase tracking-wider">Livello</span>
-                            </div>
-                            <span className="text-2xl font-orbitron font-black text-white">{gameState.level}</span>
-                          </div>
-                        </div>
-
-                        <div className="w-full bg-white/5 rounded-xl p-3 border border-white/5">
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-1.5">
-                              <Award size={14} className="text-amber-400" />
-                              <span className="text-xs font-black text-white/70 uppercase tracking-wider">Punteggio</span>
-                            </div>
-                            <span className="text-2xl font-orbitron font-black text-white">{gameState.totalScore}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="space-y-2.5">
-                      <button onPointerDown={(e) => {
-                        e.stopPropagation();
-                        resetDuelState();
-                        if (gameState.isBossLevel && gameState.bossLevelId) {
-                          startBossGame(gameState.bossLevelId);
-                        } else {
-                          startGame(gameState.level);
-                        }
-                      }}
-                        className={`w-full text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-base shadow-[0_8px_16px_rgba(255,255,255,0.2)] active:translate-y-1 transition-all border-b-4 flex items-center justify-center gap-3 group ${gameState.isBossLevel
-                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-700 border-emerald-900'
-                          : 'bg-gradient-to-r from-[#FF8800] to-orange-600 border-orange-800'
-                          }`}>
-                        <RefreshCw className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        <span>{gameState.isBossLevel ? 'RIPROVA BOSS' : 'RIGIOCA'}</span>
-                      </button>
-
-                      <button onPointerDown={(e) => {
-                        e.stopPropagation();
-                        resetDuelState(activeMatch?.id, currentUser?.id);
-                        goToHome();
-                      }}
-                        className="w-full bg-slate-800 text-slate-400 py-3.5 rounded-lg font-orbitron font-black uppercase tracking-widest text-xs border border-slate-700 active:scale-95 transition-all hover:bg-white/5 hover:text-white flex items-center justify-center gap-2">
-                        <Home size={14} />
-                        TORNA ALLA HOME
-                      </button>
-                    </div>
+                  <div className="space-y-3 relative z-10">
+                    <button onPointerDown={(e) => {
+                      e.stopPropagation();
+                      resetDuelState();
+                      if (gameState.isBossLevel && gameState.bossLevelId) {
+                        startBossGame(gameState.bossLevelId);
+                      } else {
+                        startGame(gameState.level);
+                      }
+                    }}
+                      className="w-full bg-white text-slate-950 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all border-2 border-slate-200">
+                      {gameState.isBossLevel ? 'RIPROVA BOSS' : `RIGIOCA LIVELLO ${gameState.level}`}
+                    </button>
+                    <button onPointerDown={(e) => {
+                      e.stopPropagation();
+                      resetDuelState(activeMatch?.id, currentUser?.id);
+                      goToHome();
+                    }}
+                      className="w-full bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm border border-slate-700 active:scale-95 transition-all hover:bg-slate-700 hover:text-white">
+                      TORNA ALLA HOME
+                    </button>
                   </div>
                 </div>
               )}
@@ -3780,7 +3719,7 @@ const App: React.FC = () => {
               )}
 
               {gameState.status === 'level-complete' && (
-                <div className="bg-slate-900/60 p-5 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md relative overflow-hidden border-[4px] border-[#FF8800] shadow-[0_40px_100px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
+                <div className="bg-slate-900/60 p-8 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-md mt-12 relative overflow-hidden border-[4px] border-[#FF8800] shadow-[0_40px_100px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
                   {/* Background Texture Removed */}
 
                   {gameState.isBossLevel ? (
@@ -3821,91 +3760,54 @@ const App: React.FC = () => {
                   ) : (
                     // STANDARD LEVEL WIN
                     <div className="relative z-10">
-                      {/* Header with Level Progression */}
-                      <div className="text-center mb-4">
-                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-2 border-white/30 shadow-[0_0_20px_rgba(255,136,0,0.4)] mb-2">
-                          <Trophy className="w-7 h-7 text-white" />
+                      <div className="flex justify-center items-center gap-6 mb-6">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[9px] uppercase font-black text-white/70 tracking-wider">Livello</span>
+                          <span className="text-3xl font-black font-orbitron text-white">{gameState.level}</span>
                         </div>
-                        <h2 className="text-2xl font-black font-orbitron text-white uppercase tracking-widest mb-1 drop-shadow-lg">
-                          LIVELLO <span className="text-[#FF8800]">COMPLETATO</span>
-                        </h2>
-                        <div className="h-0.5 w-24 bg-gradient-to-r from-transparent via-[#FF8800] to-transparent mx-auto rounded-full"></div>
+                        <ChevronRight className="w-8 h-8 text-[#FF8800] animate-pulse" strokeWidth={3} />
+                        <div className="flex flex-col items-center">
+                          <span className="text-[9px] uppercase font-black text-[#FF8800] tracking-wider">Prossimo</span>
+                          <span className="text-4xl font-black font-orbitron text-[#FF8800] drop-shadow-[0_0_10px_rgba(255,136,0,0.5)]">{gameState.level + 1}</span>
+                        </div>
                       </div>
 
-                      {/* Level Progression Card */}
-                      <div className="bg-black/40 border-2 border-[#FF8800]/20 rounded-2xl p-4 mb-4 backdrop-blur-md">
-                        <div className="flex justify-center items-center gap-4 mb-3">
-                          <div className="flex flex-col items-center">
-                            <span className="text-[8px] uppercase font-black text-white/40 tracking-[0.2em] mb-0.5">COMPLETATO</span>
-                            <div className="w-16 h-16 rounded-xl bg-white/5 border-2 border-white/10 flex items-center justify-center">
-                              <span className="text-2xl font-black font-orbitron text-white">{gameState.level}</span>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-8 h-8 text-[#FF8800] animate-pulse" strokeWidth={3} />
-                          <div className="flex flex-col items-center">
-                            <span className="text-[8px] uppercase font-black text-[#FF8800] tracking-[0.2em] mb-0.5">PROSSIMO</span>
-                            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-2 border-white/20 flex items-center justify-center shadow-lg">
-                              <span className="text-3xl font-black font-orbitron text-white drop-shadow-md">{gameState.level + 1}</span>
-                            </div>
-                          </div>
+                      <div className="bg-black/30 p-5 rounded-2xl mb-6 border border-white/20 space-y-3">
+                        <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                          <span className="text-[10px] font-bold text-white uppercase tracking-wider">Punti Livello</span>
+                          <span className="text-lg font-orbitron font-black text-[#FF8800] animate-pulse">
+                            +{gameState.score > 0 ? (gameState.timeLeft * 2) + 50 + (10 * 5) : '...'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                          <span className="text-[10px] font-bold text-white uppercase tracking-wider">Punteggio Totale</span>
+                          <span className="text-lg font-orbitron font-black text-white">{gameState.totalScore}</span>
                         </div>
 
-                        {/* Stats Grid */}
-                        <div className="space-y-2">
-                          <div className="bg-white/5 rounded-xl p-2.5 border border-white/5">
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-center gap-1.5">
-                                <Sparkles size={12} className="text-[#FF8800]" />
-                                <span className="text-[9px] font-black text-white/70 uppercase tracking-wider">Punti Livello</span>
-                              </div>
-                              <span className="text-lg font-orbitron font-black text-[#FF8800]">
-                                +{gameState.score > 0 ? (gameState.timeLeft * 2) + 50 + (10 * 5) : '...'}
-                              </span>
-                            </div>
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <div className="bg-green-500/10 rounded-lg p-2 flex flex-col items-center">
+                            <span className="text-[8px] font-black uppercase text-green-400 tracking-wider">Residuo</span>
+                            <span className="text-sm font-orbitron font-black text-green-300">{gameState.timeLeft}s</span>
                           </div>
-
-                          <div className="bg-white/5 rounded-xl p-2.5 border border-white/5">
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-center gap-1.5">
-                                <Trophy size={12} className="text-amber-400" />
-                                <span className="text-[9px] font-black text-white/70 uppercase tracking-wider">Punteggio Totale</span>
-                              </div>
-                              <span className="text-lg font-orbitron font-black text-white">{gameState.totalScore}</span>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-emerald-500/10 rounded-xl p-2.5 border border-emerald-500/20 flex flex-col items-center">
-                              <div className="flex items-center gap-1 mb-1">
-                                <Timer size={10} className="text-emerald-400" />
-                                <span className="text-[8px] font-black uppercase text-emerald-400 tracking-wider">Residuo</span>
-                              </div>
-                              <span className="text-base font-orbitron font-black text-emerald-300">{gameState.timeLeft}s</span>
-                            </div>
-                            <div className="bg-emerald-500/20 rounded-xl p-2.5 border border-emerald-500/30 flex flex-col items-center">
-                              <div className="flex items-center gap-1 mb-1">
-                                <Zap size={10} className="text-emerald-300" />
-                                <span className="text-[8px] font-black uppercase text-emerald-300 tracking-wider">Nuovo Totale</span>
-                              </div>
-                              <span className="text-base font-orbitron font-black text-white">{gameState.timeLeft + 60}s</span>
-                            </div>
+                          <div className="bg-green-500/20 rounded-lg p-2 flex flex-col items-center border border-green-500/30">
+                            <span className="text-[8px] font-black uppercase text-green-300 tracking-wider">Totale</span>
+                            <span className="text-sm font-orbitron font-black text-white">{gameState.timeLeft + 60}s</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="space-y-2.5">
+                      <div className="space-y-3">
                         <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }}
-                          className="w-full bg-gradient-to-r from-[#FF8800] to-orange-600 text-white py-3.5 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-base shadow-[0_8px_16px_rgba(255,136,0,0.3)] active:translate-y-1 transition-all border-b-4 border-orange-800 flex items-center justify-center gap-3 group">
-                          <Play className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" />
-                          <span>PROSSIMO LIVELLO</span>
+                          className="w-full bg-gradient-to-r from-[#FF8800] to-[#FF5500] text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-lg shadow-[0_8px_20px_rgba(255,136,0,0.4)] active:scale-95 transition-all flex items-center justify-center gap-2 border-[3px] border-white group relative overflow-hidden">
+                          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                          <Play className="w-5 h-5 fill-current" />
+                          <span className="relative z-10">Prossimo Livello</span>
                         </button>
 
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-3">
                           <button onPointerDown={(e) => { e.stopPropagation(); startGame(gameState.level); }}
-                            className="bg-slate-800 text-slate-400 py-3 rounded-lg font-orbitron font-black uppercase tracking-widest text-[9px] border border-slate-700 active:scale-95 transition-all hover:bg-white/5 hover:text-white flex items-center justify-center gap-1.5">
-                            <RefreshCw size={12} />
-                            RIGIOCA
+                            className="bg-slate-800 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-700 hover:text-white hover:bg-slate-700">
+                            Rigioca
                           </button>
                           <button onPointerDown={(e) => {
                             e.stopPropagation();
@@ -3913,16 +3815,14 @@ const App: React.FC = () => {
                             goToHome(e);
                             setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
                           }}
-                            className="bg-slate-800 text-slate-400 py-3 rounded-lg font-orbitron font-black uppercase tracking-widest text-[9px] border border-slate-700 active:scale-95 transition-all hover:bg-white/5 hover:text-white flex items-center justify-center gap-1.5">
-                            <Home size={12} />
-                            HOME
+                            className="bg-slate-800 text-slate-300 py-3 rounded-xl font-bold uppercase text-xs active:scale-95 transition-all border border-slate-700 hover:text-white hover:bg-slate-700">
+                            Home
                           </button>
                         </div>
 
-                        <div className="flex items-center justify-center gap-2 pt-1 opacity-50">
-                          <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
-                          <span className="text-[8px] text-cyan-400 uppercase font-black tracking-[0.2em]">Salvataggio Automatico</span>
-                        </div>
+                        <button className="text-[9px] text-cyan-500/40 uppercase font-black tracking-[0.2em] hover:text-cyan-400 transition-colors pt-1 animate-pulse">
+                          Salvataggio Automatico Attivo
+                        </button>
                       </div>
                     </div>
                   )}
@@ -4044,31 +3944,23 @@ const App: React.FC = () => {
                 {/* Boss Grid */}
                 <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[55vh] pr-2 custom-scroll">
                   {BOSS_LEVELS.map((boss) => {
-                    const isComingSoon = boss.id > 1;
-                    const isDefeated = !isComingSoon && (userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`) || false);
-                    const isUnlocked = !isComingSoon && (userProfile?.max_level || 1) >= boss.requiredLevel;
-                    const canPlay = !isComingSoon && isUnlocked && !isDefeated;
+                    const isDefeated = userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`) || false;
+                    const isUnlocked = (userProfile?.max_level || 1) >= boss.requiredLevel;
+                    const canPlay = isUnlocked && !isDefeated;
 
                     return (
                       <div
                         key={boss.id}
                         className={`relative p-5 rounded-2xl border-2 transition-all overflow-hidden group
-                            ${isComingSoon
-                            ? 'bg-slate-950/40 border-slate-800 opacity-70 cursor-default'
-                            : isDefeated
-                              ? 'bg-slate-900 border-green-500/30 opacity-80'
-                              : canPlay
-                                ? 'bg-gradient-to-r from-emerald-900/60 to-teal-900/60 border-emerald-500/50 hover:border-emerald-400 hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-emerald-500/30'
-                                : 'bg-slate-900/50 border-slate-700 opacity-50 grayscale cursor-not-allowed'
+                            ${isDefeated
+                            ? 'bg-slate-900 border-green-500/30 opacity-80' // Added opacity to simulate block
+                            : canPlay
+                              ? 'bg-gradient-to-r from-emerald-900/60 to-teal-900/60 border-emerald-500/50 hover:border-emerald-400 hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-emerald-500/30'
+                              : 'bg-slate-900/50 border-slate-700 opacity-50 grayscale cursor-not-allowed'
                           }
                           `}
                         onPointerDown={(e) => {
                           e.stopPropagation();
-                          if (isComingSoon) {
-                            soundService.playError();
-                            showToast("Quest'area Neurale è ancora in fase di calcolo... Torna presto!");
-                            return;
-                          }
                           if (canPlay) {
                             soundService.playUIClick();
                             if (!currentUser) {
@@ -4092,17 +3984,9 @@ const App: React.FC = () => {
                         {/* Victory Overlay for Defeated Boss */}
                         {isDefeated && (
                           <div className="absolute inset-0 bg-green-900/20 z-0 pointer-events-none flex items-center justify-center">
+                            {/* Centered BLOCK text/icon if needed, but side badge is usually cleaner. Adding subtle lock overlay */}
                             <div className="absolute right-4 bottom-4 opacity-10 rotate-[-20deg]">
                               <Lock size={80} className="text-green-500" />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Coming Soon Overlay */}
-                        {isComingSoon && (
-                          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] z-0 pointer-events-none flex items-center justify-center overflow-hidden">
-                            <div className="absolute -right-8 -bottom-8 opacity-5 rotate-[15deg] scale-150">
-                              <Sparkles size={120} className="text-emerald-500" />
                             </div>
                           </div>
                         )}
@@ -4119,20 +4003,11 @@ const App: React.FC = () => {
                           </div>
                         )}
 
-                        {/* Lock Badge for Unlocked Level 1 */}
-                        {!isComingSoon && !isUnlocked && !isDefeated && (
+                        {/* Lock Badge for Unlocked */}
+                        {!isUnlocked && !isDefeated && (
                           <div className="absolute top-3 right-3 z-20">
                             <div className="w-12 h-12 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center">
                               <Lock className="w-6 h-6 text-slate-500" />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Coming Soon Badge */}
-                        {isComingSoon && (
-                          <div className="absolute top-3 right-3 z-30">
-                            <div className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg backdrop-blur-md animate-pulse">
-                              IN ARRIVO
                             </div>
                           </div>
                         )}
@@ -4153,71 +4028,56 @@ const App: React.FC = () => {
                           {/* Boss Info */}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              {!isComingSoon && (
-                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded
-                                    ${isDefeated
-                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                    : canPlay
-                                      ? 'bg-emerald-500/20 text-emerald-400'
-                                      : 'bg-slate-700/50 text-slate-500'
-                                  }
-                                  `}>
-                                  LIV. {boss.requiredLevel}
-                                </span>
-                              )}
+                              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded
+                                  ${isDefeated
+                                  ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                  : canPlay
+                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                    : 'bg-slate-700/50 text-slate-500'
+                                }
+                                `}>
+                                LIV. {boss.requiredLevel}
+                              </span>
                               {isDefeated && (
                                 <span className="text-[8px] font-black uppercase text-white bg-green-500 px-2 py-0.5 rounded-full animate-pulse shadow-sm">
                                   BLOCCATO
                                 </span>
                               )}
-                              {isComingSoon && (
-                                <span className="text-[10px] font-black uppercase text-emerald-400 tracking-tighter">
-                                  PROSSIMAMENTE
-                                </span>
-                              )}
                             </div>
                             <h3 className={`font-orbitron font-black text-sm sm:text-lg uppercase leading-none mb-2
-                                ${isDefeated ? 'text-green-300' : isComingSoon ? 'text-slate-500' : 'text-white'}
+                                ${isDefeated ? 'text-green-300' : 'text-white'}
                               `}>
                               {boss.title}
                             </h3>
                             <p className={`text-[10px] sm:text-xs mb-3 ${isDefeated ? 'text-slate-500 italic' : 'text-slate-400'}`}>
-                              {isComingSoon ? "Nuova sfida in fase di configurazione neurale..." : (isDefeated ? 'Operazione terminata: Intelligenza superiore confermata.' : boss.description)}
+                              {isDefeated ? 'Operazione terminata: Intelligenza superiore confermata.' : boss.description}
                             </p>
 
                             {/* Stats */}
-                            {!isComingSoon && (
-                              <div className="flex gap-3 text-[10px]">
-                                <div className="flex items-center gap-1">
-                                  <Target className={`w-3 h-3 ${isDefeated ? 'text-green-600' : 'text-emerald-400'}`} />
-                                  <span className={`${isDefeated ? 'text-slate-600' : 'text-slate-300'} font-bold`}>{boss.targets} Target</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Timer className={`w-3 h-3 ${isDefeated ? 'text-green-600' : 'text-cyan-400'}`} />
-                                  <span className={`${isDefeated ? 'text-slate-600' : 'text-slate-300'} font-bold`}>{boss.time}s</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Sparkles className="w-3 h-3 text-yellow-500" />
-                                  <span className="text-yellow-400 font-bold">{isDefeated ? 'PREMIO RISCOSSO' : boss.reward}</span>
-                                </div>
+                            <div className="flex gap-3 text-[10px]">
+                              <div className="flex items-center gap-1">
+                                <Target className={`w-3 h-3 ${isDefeated ? 'text-green-600' : 'text-emerald-400'}`} />
+                                <span className={`${isDefeated ? 'text-slate-600' : 'text-slate-300'} font-bold`}>{boss.targets} Target</span>
                               </div>
-                            )}
+                              <div className="flex items-center gap-1">
+                                <Timer className={`w-3 h-3 ${isDefeated ? 'text-green-600' : 'text-cyan-400'}`} />
+                                <span className={`${isDefeated ? 'text-slate-600' : 'text-slate-300'} font-bold`}>{boss.time}s</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-yellow-500" />
+                                <span className="text-yellow-400 font-bold">{isDefeated ? 'PREMIO RISCOSSO' : boss.reward}</span>
+                              </div>
+                            </div>
                           </div>
 
                           {/* Action Indicator */}
-                          {canPlay && !isComingSoon && (
+                          {canPlay && (
                             <ChevronRight className="w-6 h-6 text-emerald-400 group-hover:translate-x-1 transition-transform" />
                           )}
 
                           {isDefeated && (
                             <div className="flex items-center justify-center">
                               <Shield className="w-5 h-5 text-green-500/30 rotate-12" />
-                            </div>
-                          )}
-
-                          {isComingSoon && (
-                            <div className="flex items-center justify-center opacity-20">
-                              <fastForward className="w-5 h-5 text-slate-500" />
                             </div>
                           )}
                         </div>
@@ -4242,93 +4102,131 @@ const App: React.FC = () => {
         )}
 
         {activeModal === 'resume_confirm' && (
-          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => setActiveModal(null)}>
-            <div className="bg-slate-900/90 border-[3px] border-[#FF8800]/50 w-full max-w-md p-8 rounded-[2.5rem] shadow-[0_0_60px_rgba(255,136,0,0.3)] flex flex-col relative overflow-hidden backdrop-blur-xl" onPointerDown={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 modal-overlay overflow-hidden" onPointerDown={() => setActiveModal(null)}>
+            {/* Background Image Layer - Direct Visibility */}
+            <div className="absolute inset-0 bg-[url('/sfondoblu.png')] bg-cover bg-center z-[-1] animate-pulse-slow"></div>
 
-              {/* Premium Background Decor */}
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+            <div className="bg-slate-900/60 border-[4px] border-[#FF8800] w-full max-w-md p-8 rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,0.6)] flex flex-col relative overflow-hidden backdrop-blur-2xl" onPointerDown={e => e.stopPropagation()}>
+              {/* Animated Background - Line Removed */}
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#FF8800] to-transparent animate-pulse"></div>
 
-              {/* Header Section */}
-              <div className="relative z-10 text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-2 border-white/20 shadow-lg mb-4">
-                  <Brain className="w-8 h-8 text-white animate-pulse" />
-                </div>
-                <h2 className="text-3xl font-black font-orbitron text-white uppercase tracking-widest mb-1 drop-shadow-md">
-                  MISSIONE <span className="text-[#FF8800]">CARRIERA</span>
-                </h2>
-                <div className="h-0.5 w-24 bg-[#FF8800]/50 mx-auto rounded-full"></div>
-              </div>
-
-              {/* Main Info Card */}
-              <div className="bg-black/40 border-2 border-[#FF8800]/20 rounded-3xl p-6 mb-8 relative z-10 backdrop-blur-md">
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] mb-2">LIVELLO ATTUALE</span>
-                  <div className="text-8xl font-black font-orbitron text-white drop-shadow-[0_0_30px_rgba(255,136,0,0.4)] mb-6">
-                    {savedGame?.level || 1}
+              {/* Header Icon - Hexagon Shape (like game cells) */}
+              <div className="relative z-10 mb-6">
+                <div className="w-24 h-24 mx-auto relative">
+                  {/* Hexagon SVG Background */}
+                  <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full drop-shadow-[0_0_20px_rgba(255,136,0,0.6)]">
+                    <defs>
+                      <linearGradient id="hexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style={{ stopColor: '#FF8800', stopOpacity: 1 }} />
+                        <stop offset="100%" style={{ stopColor: '#D97706', stopOpacity: 1 }} />
+                      </linearGradient>
+                    </defs>
+                    <polygon
+                      points="50,5 90,27.5 90,72.5 50,95 10,72.5 10,27.5"
+                      fill="url(#hexGradient)"
+                      stroke="#FFB347"
+                      strokeWidth="2"
+                      className="animate-pulse"
+                    />
+                  </svg>
+                  {/* Play Icon Centered */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Play className="w-10 h-10 text-white drop-shadow-lg" fill="white" />
                   </div>
-
-                  {/* Progress Stats */}
-                  <div className="grid grid-cols-2 gap-4 w-full">
-                    <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex flex-col items-center">
-                      <div className="flex items-center gap-2 mb-1 text-amber-400">
-                        <Trophy size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-wider">Punti Globali</span>
-                      </div>
-                      <span className="text-xl font-black font-orbitron text-white">{savedGame?.totalScore || 0}</span>
-                    </div>
-
-                    <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex flex-col items-center">
-                      <div className="flex items-center gap-2 mb-1 text-blue-400">
-                        <Timer size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-wider">Tempo</span>
-                      </div>
-                      <span className="text-xl font-black font-orbitron text-white">
-                        {(savedGame?.timeLeft || 0) + parseInt(localStorage.getItem('career_time_bonus') || '0')}s
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Bonus Indicator */}
-                  {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (
-                    <div className="mt-4 w-full bg-orange-500/10 border border-orange-500/20 rounded-xl py-2 px-4 flex items-center justify-center gap-2 animate-pulse">
-                      <Sparkles size={14} className="text-[#FF8800]" />
-                      <span className="text-[10px] font-black text-[#FF8800] uppercase tracking-wider">
-                        Bonus Boss Attivo (+{localStorage.getItem('career_time_bonus')}s)
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* Actions Section */}
-              <div className="space-y-4 relative z-10">
+              {/* Title Removed as requested */}
+
+              {/* Saved Game Info */}
+              <div className="bg-black/30 border border-[#FF8800]/30 rounded-xl p-4 mb-6 relative z-10">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-white/60 font-black text-[9px] tracking-[0.15em] uppercase">{savedGame ? 'LIVELLO SALVATO' : 'LIVELLO INIZIALE'}</span>
+                </div>
+                <div className="text-8xl font-black font-orbitron text-[#FF8800] text-center drop-shadow-[0_0_30px_rgba(255,136,0,0.5)] animate-pulse-slow">
+                  {savedGame?.level || 1}
+                </div>
+
+                {/* Detailed Stats Grid */}
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  {/* Time Info - Now shows total available time */}
+                  <div className="bg-black/20 rounded-lg p-2 border border-white/10">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Timer className="w-3 h-3 text-blue-400" />
+                      <span className="text-[10px] text-white uppercase font-bold">Tempo Totale</span>
+                    </div>
+                    <div className="text-lg font-black font-orbitron text-white text-center">
+                      {(savedGame?.timeLeft || 0) + parseInt(localStorage.getItem('career_time_bonus') || '0')}s
+                    </div>
+                    {/* Breakdown if bonus exists */}
+                    {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (
+                      <div className="text-[9px] text-white/70 text-center mt-0.5">
+                        ({savedGame?.timeLeft || 0}s + {localStorage.getItem('career_time_bonus')}s bonus)
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-black/20 rounded-lg p-2 border border-white/10">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Trophy className="w-3 h-3 text-amber-400" />
+                      <span className="text-[10px] text-white uppercase font-bold">Punti</span>
+                    </div>
+                    <div className="text-lg font-black font-orbitron text-white text-center">
+                      {savedGame?.totalScore || 0}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bonus Time Highlight (if exists) */}
+                {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (
+                  <div className="mt-3 bg-gradient-to-r from-amber-900/40 to-orange-900/40 border border-amber-500/40 rounded-lg p-2.5">
+                    <div className="flex items-center justify-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                      <span className="text-xs text-amber-300 font-bold">
+                        BONUS BOSS ATTIVO: +{localStorage.getItem('career_time_bonus')}s
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3 relative z-10">
+                {/* Resume/Start Button */}
                 <button
                   onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); savedGame ? restoreGame() : startGame(); }}
-                  className="w-full bg-gradient-to-r from-[#FF8800] to-orange-600 text-white py-5 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-lg shadow-[0_10px_20px_rgba(255,136,0,0.3)] active:translate-y-1 transition-all border-b-4 border-orange-800 flex items-center justify-center gap-4 group"
+                  className="w-full bg-gradient-to-r from-[#FF8800] to-orange-600 text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg shadow-[#FF8800]/30 active:scale-95 transition-all border-2 border-white/20 hover:shadow-[#FF8800]/50 flex items-center justify-center gap-3 group"
                 >
-                  <Play className="w-6 h-6 fill-current group-hover:scale-110 transition-transform" />
-                  <span>{savedGame ? 'RIPRENDI' : 'INIZIA'} PARTITA</span>
+                  <Play className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  {savedGame ? 'RIPRENDI PARTITA' : 'INIZIA ORA'}
                 </button>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal('full_reset_confirm'); }}
-                    className="bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border border-slate-700 active:scale-95 transition-all hover:bg-red-900/20 hover:text-red-400 hover:border-red-900/50 flex items-center justify-center gap-2"
-                  >
-                    <AlertTriangle size={14} />
-                    NUOVA PARTITA
-                  </button>
-                  <button
-                    onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
-                    className="bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border border-slate-700 active:scale-95 transition-all hover:bg-white/5 hover:text-white flex items-center justify-center gap-2"
-                  >
-                    <Home size={14} />
-                    INDIETRO
-                  </button>
+                {/* Divider */}
+                <div className="flex items-center gap-3 py-2">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                  <span className="text-white text-[10px] font-bold uppercase tracking-widest">Opzioni Avanzate</span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
                 </div>
-              </div>
 
+                {/* Full Reset Button */}
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal('full_reset_confirm'); }}
+                  className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border-2 border-white/20 shadow-lg shadow-red-900/40 active:scale-95 transition-all hover:from-red-500 hover:to-red-600 flex items-center justify-center gap-2 group"
+                >
+                  <AlertTriangle className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  RESET TOTALE
+                </button>
+
+                {/* Back Button */}
+                <button
+                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
+                  className="w-full py-3 text-white/60 font-black uppercase text-xs tracking-[0.2em] hover:text-white transition-all flex items-center justify-center gap-2 group"
+                >
+                  <Home className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  TORNA ALLA HOME
+                </button>
+              </div>
             </div>
           </div>
         )}
