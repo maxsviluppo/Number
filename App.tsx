@@ -1628,8 +1628,9 @@ const App: React.FC = () => {
           handleSurrender();
         } else if (event === 'presence_leave') {
           console.log("👥 Presence Leave Event:", payload);
+          // DISABILITATO: Evita false rese per disconnessioni temporanee
+          /*
           const opponentId = activeMatch.opponentId;
-          // Robust check for various presence formats
           const hasOpponentLeft = payload.some((p: any) =>
             p.user_id === opponentId ||
             p.key === opponentId ||
@@ -1637,9 +1638,11 @@ const App: React.FC = () => {
           );
 
           if (hasOpponentLeft && (gameStateRef.current.status === 'playing' || gameStateRef.current.status === 'round-won')) {
-            console.log("⚡ Presence: Opponent Disconnected/Left. Triggering Surrender Win.");
-            handleSurrender();
+            console.log("⚡ Presence: Opponent Disconnected/Left. Waiting for explicit abandon.");
+            // Non triggerare handleSurrender() automaticamente per evitare falsi positivi
+            showToast("⚠️ Connessione avversario instabile...", [], 2000);
           }
+          */
         } else if (event === 'match_won' && payload.winnerId !== currentUser?.id) {
           // BROADCAST LOSS SIGNAL RECEIVED
           console.log("⚡ Broadcast: Match WON by opponent. Triggering Defeat immediately.");
@@ -2462,7 +2465,8 @@ const App: React.FC = () => {
               .catch(e => console.error("Error syncing duel stats:", e));
 
             // CHECK WIN CONDITION HERE TOO
-            if (localTargetsFound >= 5) {
+            // CRITICAL: Ensure we are explicitly in STANDARD mode
+            if (localTargetsFound >= 5 && duelMode === 'standard') {
               (async () => {
                 try {
                   // FORCE SYNC FINAL STATS (Ensure 5 is broadcasted)
@@ -2504,14 +2508,19 @@ const App: React.FC = () => {
                       videoRef.current.src = vidSrc;
                       videoRef.current.muted = false;
                       videoRef.current.load();
-                      videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
+                      videoRef.current.play().catch(e => console.warn("Duel win video blocked (safe):", e)); // SAFE CATCH
                       setWinVideoSrc(vidSrc);
                       setShowVideo(true);
                       setIsVideoVisible(true);
                     }
                   }, 800);
-                } catch (e) { console.error(e); }
-              })();
+                } catch (e: any) {
+                  console.error("Duel Win Error (Handled):", e); // CATCH ALL ASYNC ERRORS
+                  // Fallback recap
+                  setGameState(prev => ({ ...prev, status: 'idle' }));
+                  setShowDuelRecap(true);
+                }
+              })().catch(err => console.error("Unhandled async closure error:", err)); // OVERALL CATCH
               setSelectedPath([]);
               return;
             }
