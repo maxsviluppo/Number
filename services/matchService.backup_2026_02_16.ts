@@ -709,33 +709,5 @@ export const matchService = {
             console.error("Exception in H2H stats:", e);
             return {};
         }
-    },
-
-    // Calcola il totale degli XP guadagnati ESCLUSIVAMENTE nei duelli
-    async getTotalDuelXp(userId: string): Promise<number> {
-        // Somma punti come player 1
-        const { data: p1Data, error: p1Error } = await (supabase as any)
-            .from('matches')
-            .select('player1_score')
-            .eq('player1_id', userId)
-            .eq('status', 'finished');
-
-        // Somma punti come player 2
-        const { data: p2Data, error: p2Error } = await (supabase as any)
-            .from('matches')
-            .select('player2_score')
-            .eq('player2_id', userId)
-            .eq('status', 'finished');
-
-        if (p1Error || p2Error) {
-            console.error("Error calculating duel XP:", p1Error || p2Error);
-            return 0;
-        }
-
-        const p1Total = p1Data?.reduce((acc: number, curr: any) => acc + (curr.player1_score || 0), 0) || 0;
-        const p2Total = p2Data?.reduce((acc: number, curr: any) => acc + (curr.player2_score || 0), 0) || 0;
-
-        console.log(`📊 Total Duel XP for ${userId}: ${p1Total + p2Total}`);
-        return p1Total + p2Total;
     }
 };

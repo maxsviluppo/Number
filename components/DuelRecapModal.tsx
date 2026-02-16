@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Swords, CheckCircle2, Clock, Trophy, XCircle, RotateCw, Home, User, Play } from 'lucide-react';
+import { Swords, Home } from 'lucide-react';
 import { matchService } from '../services/matchService';
 import { soundService } from '../services/soundService';
 
@@ -37,7 +37,6 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
 
     // Sync Ready State from Match Data (if someone else sets it)
     const remoteReady = amIP1 ? matchData.p1_ready : matchData.p2_ready;
-    const otherReady = amIP1 ? matchData.p2_ready : matchData.p1_ready;
 
     useEffect(() => {
         if (remoteReady) setIsLocalReady(true);
@@ -50,14 +49,6 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
             soundService.playExternalSound('Fine_partita_win.mp3');
         }
     }, [isFinal, isWinner]);
-
-    const handleReadyClick = async () => {
-        if (isLocalReady) return;
-        setIsLocalReady(true);
-        soundService.playSuccess();
-        // Update DB
-        await matchService.setPlayerReady(matchData.id, amIP1, true);
-    };
 
     const isAbandonment = (matchData?.status === 'finished' || matchData?.status === 'cancelled') &&
         matchData?.winner_id &&
@@ -107,28 +98,6 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
 
                         <div className="flex flex-col items-center">
                             <span className="text-white font-black uppercase text-[11px] tracking-wider">TU</span>
-                            <div className="flex flex-col items-center">
-                                {/* Only show XP gain if not Blitz (since Blitz shows Points inside box or we can duplicate) */}
-                                {matchData?.mode !== 'blitz' && <span className="text-[#FF8800] font-bold text-[9px] mt-0.5">+{myScore} XP</span>}
-                                {matchData?.mode === 'blitz' && <span className="text-[#FF8800] font-bold text-[9px] mt-0.5">+{myScore} XP</span>}
-
-                                {isWinner && (matchData?.last_time_bonus > 0 || matchData?.last_victory_bonus > 0) && (
-                                    <div className="mt-2 space-y-0.5 bg-black/20 p-2 rounded-lg border border-white/5 w-full min-w-[120px]">
-                                        {matchData.last_victory_bonus > 0 && (
-                                            <div className="flex justify-between items-center text-[7px] font-black tracking-tighter uppercase">
-                                                <span className="text-white/40">BONUS VITTORIA</span>
-                                                <span className="text-green-400">+{matchData.last_victory_bonus}</span>
-                                            </div>
-                                        )}
-                                        {matchData.last_time_bonus > 0 && (
-                                            <div className="flex justify-between items-center text-[7px] font-black tracking-tighter uppercase">
-                                                <span className="text-white/40">BONUS TEMPO</span>
-                                                <span className="text-green-400">+{matchData.last_time_bonus}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
                         </div>
                     </div>
 
@@ -175,34 +144,6 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
 
                 </div>
 
-                {/* XP PROGRESS BAR SECTION */}
-                <div className="relative z-10 px-8 pb-6">
-                    <div className="bg-black/40 p-5 rounded-2xl border border-white/5 space-y-3 shadow-inner">
-                        <div className="flex justify-between items-end text-[10px] font-black uppercase tracking-widest">
-                            <div className="flex flex-col gap-0.5">
-                                <span className="text-white/40 text-[8px]">RANGO ATTUALE</span>
-                                <span className="text-cyan-400">LIVELLO {amIP1 ? matchData.player1?.max_level || 1 : matchData.player2?.max_level || 1}</span>
-                            </div>
-                            <div className="flex flex-col items-end gap-0.5">
-                                <span className="text-white/40 text-[8px]">XP GUADAGNATI</span>
-                                <span className="text-[#FF8800] text-sm animate-pulse">+{myScore} XP</span>
-                            </div>
-                        </div>
-                        <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden border border-white/10 p-[1px]">
-                            <div
-                                className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 rounded-full transition-all duration-[2000ms] ease-out shadow-[0_0_15px_rgba(6,182,212,0.4)] relative"
-                                style={{ width: `${Math.min(100, ((myScore % 1000) / 1000) * 100)}%` }}
-                            >
-                                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                            </div>
-                        </div>
-                        <div className="flex justify-between items-center text-[7px] font-black text-white/20 uppercase tracking-widest">
-                            <span>RANK BASE</span>
-                            <span>PROSSIMO LIVELLO: 1000 XP</span>
-                        </div>
-                    </div>
-                </div>
-
                 {/* FOOTER ACTIONS */}
                 <div className="relative z-10 bg-black/40 p-6 flex gap-3 border-t border-white/5">
                     <button
@@ -211,13 +152,10 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                     >
                         <Home size={16} /> LOBBY
                     </button>
-
-
                 </div>
             </div>
         </div>
     );
 };
-
 
 export default DuelRecapModal;

@@ -797,9 +797,13 @@ const App: React.FC = () => {
     if (!boss) return;
 
     // Safety check: Don't allow re-playing defeated bosses (BYPASS FOR TEST ON BOSS 2)
-    const isDefeated = userProfile?.badges?.includes(bossId === 1 ? 'boss_matematico' : `boss_${bossId}_defeated`);
-    if (isDefeated && bossId !== 2) {
-      showToast('Hai già sconfitto questo boss!');
+    // Safety check: Don't allow re-playing defeated bosses
+    const badgeToCheck = bossId === 1 ? 'boss_matematico' : `boss_${bossId}_defeated`;
+    const hasBadge = (userProfile?.badges || []).includes(badgeToCheck);
+
+    if (hasBadge) {
+      console.log(`⛔ Boss ${bossId} bloccato. Badge presente:`, badgeToCheck);
+      showToast('Hai già sconfitto questo boss! Sfida completata.');
       return;
     }
 
@@ -2576,7 +2580,6 @@ const App: React.FC = () => {
           setIsVictoryAnimating(true);
 
           // Reward: +30s to career time bonus (Persistent via localStorage for now)
-          // We don't stack it indefinitely, we set it to 30 for the next classic game
           localStorage.setItem('career_time_bonus', '30');
 
           // Sync score to global profile AND award boss completion
@@ -2585,16 +2588,22 @@ const App: React.FC = () => {
 
             // Award Boss Badge + Time Bonus AND Sync points sequentially
             profileService.completeBoss(currentUser.id, gameState.bossLevelId!)
-              .then(isNewCompletion => {
-                if (isNewCompletion) console.log('✅ Boss completion badge awarded!');
+              .then(updatedProfile => {
+                if (updatedProfile) {
+                  console.log('✅ Boss completato! Profilo aggiornato:', updatedProfile);
+                  // OPTIMISTIC UPDATE: Aggiorna subito lo stato locale per bloccare il livello
+                  setUserProfile(updatedProfile);
+                }
+
                 // Chain syncProgress after boss completion
                 return profileService.syncProgress(currentUser.id, bossFinalPoints, gameState.level, gameState.estimatedIQ);
               })
               .then(() => {
-                console.log('✅ Boss progress and badge synced!');
+                console.log('✅ Progressi salvati correttamente.');
+                // Ricarica per sicurezza (ma l'update locale ha già gestito il blocco)
                 loadProfile(currentUser.id);
               })
-              .catch(e => console.error("Error updating boss completion:", e));
+              .catch(e => console.error("Errore durante il salvataggio vittoria boss:", e));
           }
 
           // Boss 1 specific victory sequence
