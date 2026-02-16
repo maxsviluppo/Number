@@ -137,7 +137,8 @@ const HexCell: React.FC<HexCellProps> = ({
                 ? 'bg-slate-800/95 border-white/10 active:scale-95 hover:bg-slate-700/95'
                 : `${operatorTheme.bg} ${operatorTheme.border} active:scale-95 hover:brightness-125`
         }
-        ${(!isSelectable && !isSelected) || data.isFallen ? 'opacity-20 pointer-events-none' : ''}
+        ${data.isFallen ? 'opacity-0 scale-50 pointer-events-none translate-y-20' : ''}
+        ${(!isSelectable && !isSelected) && !data.isFallen ? 'opacity-20 pointer-events-none' : ''}
       `}
       style={{
         top: `calc(${topValue}px * var(--hex-scale))`,

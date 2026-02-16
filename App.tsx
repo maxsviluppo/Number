@@ -1340,51 +1340,42 @@ const App: React.FC = () => {
       return;
     }
 
-    // 1. VIBRATION LOGIC: Randomly shake unstable cells
-    boss2VibrationRef.current = window.setInterval(() => {
+    // Cycle: Pick victim -> Vibrate (3s) -> Fall -> Wait -> Repeat
+    const startVictimCycle = () => {
+      // 1. Pick a "victim" cell (Junk only, not already fallen)
+      const pathCells = new Set(gameState.levelTargets.map(t => t.path || []).flat());
       setGrid(prev => {
-        // First clear all vibrations
-        const resetGrid = prev.map(c => ({ ...c, isVibrating: false }));
-        // Identify "unstable" cells (those NOT in targets path)
-        const pathCells = new Set(gameState.levelTargets.map(t => t.path || []).flat());
-        const unstableCells = resetGrid.filter(c => !pathCells.has(c.id) && !c.isFallen);
+        const available = prev.filter(c => !pathCells.has(c.id) && !c.isFallen && !c.isVibrating);
+        if (available.length === 0) return prev;
 
-        if (unstableCells.length === 0) return prev;
+        const victim = available[Math.floor(Math.random() * available.length)];
 
-        // Pick 2-3 random cells to vibrate
-        const toVibrate = [];
-        const count = Math.min(3, unstableCells.length);
-        for (let i = 0; i < count; i++) {
-          const idx = Math.floor(Math.random() * unstableCells.length);
-          toVibrate.push(unstableCells[idx].id);
-        }
+        // 2. Start vibrating the victim
+        const gridWithVibrator = prev.map(c => c.id === victim.id ? { ...c, isVibrating: true } : c);
 
-        return resetGrid.map(c => toVibrate.includes(c.id) ? { ...c, isVibrating: true } : c);
+        // 3. Schedule the fall after 3 seconds
+        boss2TimerRef.current = window.setTimeout(() => {
+          setGrid(currentGrid => {
+            soundService.playTick(); // Sound cue for the structural collapse
+            return currentGrid.map(c =>
+              c.id === victim.id ? { ...c, isFallen: true, isVibrating: false } : c
+            );
+          });
+
+          // 4. Schedule next cycle 5 seconds after the fall (8 seconds total interval)
+          boss2VibrationRef.current = window.setTimeout(startVictimCycle, 5000);
+        }, 3000);
+
+        return gridWithVibrator;
       });
-    }, 1500);
+    };
 
-    // 2. FALLING LOGIC: Drop an unused cell every 7s (starting after 3s)
-    let dropCount = 0;
-    boss2TimerRef.current = window.setInterval(() => {
-      dropCount += 1;
-      // Start dropping after 3 seconds, then every 7 seconds
-      // 3s, 10s, 17s...
-      if (dropCount === 3 || (dropCount > 3 && (dropCount - 3) % 7 === 0)) {
-        setGrid(prev => {
-          const pathCells = new Set(gameState.levelTargets.map(t => t.path || []).flat());
-          const available = prev.filter(c => !pathCells.has(c.id) && !c.isFallen);
-          if (available.length === 0) return prev;
-
-          const target = available[Math.floor(Math.random() * available.length)];
-          soundService.playTick(); // Use tick as subtle warning
-          return prev.map(c => c.id === target.id ? { ...c, isFallen: true, isVibrating: false } : c);
-        });
-      }
-    }, 1000);
+    // Initial delay: start first cycle after 5 seconds
+    boss2VibrationRef.current = window.setTimeout(startVictimCycle, 5000);
 
     return () => {
-      if (boss2TimerRef.current) clearInterval(boss2TimerRef.current);
-      if (boss2VibrationRef.current) clearInterval(boss2VibrationRef.current);
+      if (boss2TimerRef.current) clearTimeout(boss2TimerRef.current);
+      if (boss2VibrationRef.current) clearTimeout(boss2VibrationRef.current);
     };
   }, [gameState.status, gameState.isBossLevel, gameState.bossLevelId, isPaused, gameState.levelTargets]);
 
