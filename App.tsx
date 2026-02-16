@@ -3677,7 +3677,11 @@ const App: React.FC = () => {
                         {/* External White Frame */}
                         <div className="absolute -inset-1 rounded-xl border-[4px] border-white pointer-events-none"></div>
 
-                        <div className="absolute inset-0 bg-slate-900 rounded-xl border-[4px] border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]"></div>
+                        <div className={`absolute inset-0 bg-slate-900 rounded-xl border-[4px] shadow-lg
+                          ${gameState.bossLevelId === 2
+                            ? 'border-amber-600 shadow-[0_0_20px_rgba(217,119,6,0.4)]'
+                            : 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+                          }`}></div>
 
                         {/* BOSS TIMER PROGRESS SQUARE */}
                         <svg className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
@@ -3689,7 +3693,7 @@ const App: React.FC = () => {
                           </defs>
                           <rect
                             x="2" y="2" width="92" height="92" rx="12"
-                            stroke="rgba(16, 185, 129, 0.2)"
+                            stroke={gameState.bossLevelId === 2 ? 'rgba(217, 119, 6, 0.2)' : 'rgba(16, 185, 129, 0.2)'}
                             strokeWidth="6"
                             fill="none"
                           />
@@ -4375,8 +4379,8 @@ const App: React.FC = () => {
                   {BOSS_LEVELS.map((boss) => {
                     const isComingSoon = boss.isComingSoon;
                     const isDefeated = (userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`) || false);
-                    const isUnlocked = ((userProfile?.max_level || 1) >= boss.requiredLevel || boss.id === 2);
-                    const canPlay = !isComingSoon && (isUnlocked || boss.id === 2) && (!isDefeated || boss.id === 2);
+                    const isUnlocked = ((userProfile?.max_level || 1) >= boss.requiredLevel);
+                    const canPlay = !isComingSoon && isUnlocked && !isDefeated;
 
                     return (
                       <div
