@@ -11,13 +11,19 @@ class SoundService {
   private loseBuffers: AudioBuffer[] = [];
   private bossIntroBuffer: AudioBuffer | null = null;
   private bossIntroSource: AudioBufferSourceNode | null = null;
+  private boss2IntroBuffer: AudioBuffer | null = null;
+  private boss2IntroSource: AudioBufferSourceNode | null = null;
   private bossBonusBuffer: AudioBuffer | null = null;
   private bossBonusSource: AudioBufferSourceNode | null = null;
   private boss1vittoriaBuffer: AudioBuffer | null = null;
   private boss1vittoriaSource: AudioBufferSourceNode | null = null;
   private boss1sconfittaBuffer: AudioBuffer | null = null;
   private boss1sconfittaSource: AudioBufferSourceNode | null = null;
+  private boss2sconfittaBuffer: AudioBuffer | null = null;
+  private boss2sconfittaSource: AudioBufferSourceNode | null = null;
   private winnerSource: AudioBufferSourceNode | null = null;
+  private boss2vittoriaBuffer: AudioBuffer | null = null;
+  private boss2vittoriaSource: AudioBufferSourceNode | null = null;
   private loseSource: AudioBufferSourceNode | null = null;
   private activeExternalAudio: HTMLAudioElement | null = null;
   private beepSecondBuffer: AudioBuffer | null = null;
@@ -108,6 +114,14 @@ class SoundService {
       }
 
       try {
+        const boss2IntroRes = await fetch('/PresentBoss2audiosolo1.mp3');
+        const boss2IntroArr = await boss2IntroRes.arrayBuffer();
+        this.boss2IntroBuffer = await this.ctx.decodeAudioData(boss2IntroArr);
+      } catch (e) {
+        console.warn("Failed to load boss 2 intro sound:", e);
+      }
+
+      try {
         const bossBonusRes = await fetch('/Bonus30secondiboss.mp3');
         const bossBonusArr = await bossBonusRes.arrayBuffer();
         this.bossBonusBuffer = await this.ctx.decodeAudioData(bossBonusArr);
@@ -124,11 +138,27 @@ class SoundService {
       }
 
       try {
+        const boss2WinRes = await fetch('/FinalBoss2audio.mp3');
+        const boss2WinArr = await boss2WinRes.arrayBuffer();
+        this.boss2vittoriaBuffer = await this.ctx.decodeAudioData(boss2WinArr);
+      } catch (e) {
+        console.warn("Failed to load boss 2 victory sound:", e);
+      }
+
+      try {
         const boss1LoseRes = await fetch('/Boss1sconfitta.mp3');
         const boss1LoseArr = await boss1LoseRes.arrayBuffer();
         this.boss1sconfittaBuffer = await this.ctx.decodeAudioData(boss1LoseArr);
       } catch (e) {
         console.warn("Failed to load boss 1 loss sound:", e);
+      }
+
+      try {
+        const boss2LoseRes = await fetch('/RiprovaBoss2audiosolo.mp3');
+        const boss2LoseArr = await boss2LoseRes.arrayBuffer();
+        this.boss2sconfittaBuffer = await this.ctx.decodeAudioData(boss2LoseArr);
+      } catch (e) {
+        console.warn("Failed to load boss 2 loss sound:", e);
       }
 
       try {
@@ -389,6 +419,9 @@ class SoundService {
     this.stopWinner();
     this.stopLose();
     this.stopExternalSound();
+    this.stopBoss2Intro();
+    this.stopBoss2sconfitta();
+    this.stopBoss2vittoria();
   }
 
   playBossIntro() {
@@ -454,6 +487,56 @@ class SoundService {
     if (this.boss1sconfittaSource) {
       try { this.boss1sconfittaSource.stop(); } catch (e) { }
       this.boss1sconfittaSource = null;
+    }
+  }
+
+  playBoss2Intro() {
+    if (this.isMuted || !this.boss2IntroBuffer || !this.ctx || !this.masterGain) return;
+    this.stopBoss2Intro();
+    this.boss2IntroSource = this.ctx.createBufferSource();
+    this.boss2IntroSource.buffer = this.boss2IntroBuffer;
+    this.boss2IntroSource.connect(this.masterGain);
+    this.boss2IntroSource.start(0);
+  }
+
+  stopBoss2Intro() {
+    if (this.boss2IntroSource) {
+      try {
+        this.boss2IntroSource.stop();
+      } catch (e) { }
+      this.boss2IntroSource = null;
+    }
+  }
+
+  playBoss2sconfitta() {
+    if (this.isMuted || !this.boss2sconfittaBuffer || !this.ctx || !this.masterGain) return;
+    this.stopBoss2sconfitta();
+    this.boss2sconfittaSource = this.ctx.createBufferSource();
+    this.boss2sconfittaSource.buffer = this.boss2sconfittaBuffer;
+    this.boss2sconfittaSource.connect(this.masterGain);
+    this.boss2sconfittaSource.start(0);
+  }
+
+  stopBoss2sconfitta() {
+    if (this.boss2sconfittaSource) {
+      try { this.boss2sconfittaSource.stop(); } catch (e) { }
+      this.boss2sconfittaSource = null;
+    }
+  }
+
+  playBoss2vittoria() {
+    if (this.isMuted || !this.boss2vittoriaBuffer || !this.ctx || !this.masterGain) return;
+    this.stopBoss2vittoria();
+    this.boss2vittoriaSource = this.ctx.createBufferSource();
+    this.boss2vittoriaSource.buffer = this.boss2vittoriaBuffer;
+    this.boss2vittoriaSource.connect(this.masterGain);
+    this.boss2vittoriaSource.start(0);
+  }
+
+  stopBoss2vittoria() {
+    if (this.boss2vittoriaSource) {
+      try { this.boss2vittoriaSource.stop(); } catch (e) { this.boss2vittoriaSource = null; }
+      this.boss2vittoriaSource = null;
     }
   }
 }

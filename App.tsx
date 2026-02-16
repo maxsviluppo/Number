@@ -2309,16 +2309,20 @@ const App: React.FC = () => {
           setTimeout(() => {
             if (videoRef.current) {
 
-              if (gameState.bossLevelId === 1) {
-                // BOSS LEVEL 1 WIN SEQUENCE
-                const vidSrc = '/Bonus30secondiboss.mp4';
+              const currentBossId = gameStateRef.current.bossLevelId;
+              if (currentBossId === 1 || currentBossId === 2) {
+                // BOSS LEVEL WIN SEQUENCE
+                const vidSrc = currentBossId === 1
+                  ? '/Bonus30secondiboss.mp4'
+                  : '/Bonus45secondiboss.MP4';
                 videoRef.current.src = vidSrc;
                 videoRef.current.muted = true;
                 videoRef.current.load();
                 videoRef.current.play().catch(e => console.warn("Boss Bonus video blocked:", e));
 
                 setIsBossBonusPlaying(true);
-                soundService.playBossBonus(); // Specific Boss Audio
+                // Boss 1 uses soundService.playBossBonus(), Boss 2 uses integrated audio
+                if (currentBossId === 1) soundService.playBossBonus();
 
                 setWinVideoSrc(vidSrc);
                 setShowVideo(true);
@@ -2620,14 +2624,17 @@ const App: React.FC = () => {
               .catch(e => console.error("Errore durante il salvataggio vittoria boss:", e));
           }
 
-          // Boss 1 specific victory sequence
-          if (gameState.bossLevelId === 1) {
+          // Boss level specific victory sequence
+          if (gameState.bossLevelId === 1 || gameState.bossLevelId === 2) {
             // Wait for UI to update (0.5s)
             setTimeout(() => {
               if (videoRef.current) {
-                const vidSrc = '/Bonus30secondiboss.mp4';
+                const vidSrc = gameState.bossLevelId === 1
+                  ? '/Bonus30secondiboss.mp4'
+                  : '/Bonus45secondiboss.MP4';
                 videoRef.current.src = vidSrc;
                 // Important: Mobile browsers block autoplay with sound. Muted first.
+                // For Boss 2 bonus we unmute in onPlay
                 videoRef.current.muted = true;
                 videoRef.current.load();
 
@@ -2636,7 +2643,6 @@ const App: React.FC = () => {
                   playPromise.catch(e => console.warn("Boss bonus video autoplay blocked:", e));
                 }
 
-                // Play audio separately if needed (soundService already handles BossBonus sound)
                 setIsBossBonusPlaying(true);
                 setWinVideoSrc(vidSrc);
                 setShowVideo(true);
@@ -3391,7 +3397,7 @@ const App: React.FC = () => {
             className="w-full h-full object-cover"
             playsInline
             autoPlay
-            onPlay={() => {
+            onPlaying={() => {
               if (videoRef.current) videoRef.current.volume = 0.7;
               setIsVideoVisible(true);
 
@@ -3416,6 +3422,23 @@ const App: React.FC = () => {
                 if (showBossIntro) {
                   soundService.stopBoss2Intro();
                   soundService.playBoss2Intro();
+                } else if (showVideo) {
+                  if (isBossBonusPlaying) {
+                    // Bonus 45s: "audio integrato" - Respect Mute toggle
+                    if (videoRef.current) {
+                      videoRef.current.muted = isMuted;
+                      // Ensure audio is audible
+                      videoRef.current.volume = 0.8;
+                    }
+                  } else {
+                    // Final Boss 2 Video: "sincronizzati"
+                    // Ensure perfect sync by resetting video and stopping audio first
+                    if (videoRef.current) {
+                      videoRef.current.muted = true;
+                    }
+                    soundService.stopBoss2vittoria();
+                    soundService.playBoss2vittoria();
+                  }
                 } else if (showLostVideo) {
                   soundService.stopBoss2sconfitta();
                   soundService.playBoss2sconfitta();
@@ -3432,22 +3455,32 @@ const App: React.FC = () => {
                   setTimeout(() => {
                     if (videoRef.current) {
                       videoRef.current.load();
-                      videoRef.current.play().catch(e => console.warn("Boss victory video blocked:", e));
+                      videoRef.current.play().catch(e => console.warn("Boss 1 victory video blocked:", e));
+                    }
+                  }, 50);
+                } else if (gameState.bossLevelId === 2 && isBossBonusPlaying) {
+                  // STEP 1 COMPLETE: Bonus 45s Ended -> Play Boss 2 Victory Video
+                  setIsBossBonusPlaying(false);
+                  setWinVideoSrc('/FinalBoss2video.mp4');
+                  setTimeout(() => {
+                    if (videoRef.current) {
+                      videoRef.current.load();
+                      videoRef.current.play().catch(e => console.warn("Boss 2 victory video blocked:", e));
                     }
                   }, 50);
                 } else {
                   // STEP 2 COMPLETE: Boss Victory Video Ended -> Close and return to lobby
 
-                  // AWARD BADGE HERE for Boss 1
-                  if (gameState.bossLevelId === 1 && currentUser) {
-                    const badgeId = 'boss_matematico';
+                  // AWARD BADGE HERE for Boss 1 or 2
+                  if (currentUser) {
+                    const badgeId = gameState.bossLevelId === 1 ? 'boss_matematico' : `boss_${gameState.bossLevelId}_defeated`;
                     if (!userProfile?.badges?.includes(badgeId)) {
                       const newBadges = [...(userProfile?.badges || []), badgeId];
                       // Update Local
                       setUserProfile(prev => prev ? ({ ...prev, badges: newBadges }) : null);
                       // Update Remote
                       profileService.updateProfile({ id: currentUser.id, badges: newBadges }).catch(e => console.error("Badge update failed", e));
-                      showToast("🏆 Medaglia Boss Sbloccata!");
+                      showToast(`🏆 Medaglia Boss ${gameState.bossLevelId} Sbloccata!`);
                     }
                   }
 
