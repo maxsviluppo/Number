@@ -845,6 +845,36 @@ const App: React.FC = () => {
           console.warn("Boss intro blocked:", e);
         });
       }
+    } else if (bossId === 2) {
+      // PREPARE BOSS 2 LEVEL
+      setGameState(prev => ({
+        ...prev,
+        score: 0,
+        totalScore: 0,
+        streak: 0,
+        level: careerLevel,
+        isBossLevel: true,
+        bossLevelId: bossId,
+        timeLeft: boss.time || 90,
+        targetResult: 0,
+        status: 'idle', // Wait for video
+        levelTargets: levelData.targets,
+        targetsFound: 0
+      }));
+
+      // SHOW BOSS 2 INTRO
+      setShowBossIntro(true);
+      setIsVideoVisible(true);
+      if (videoRef.current) {
+        videoRef.current.src = '/PresentBoss2noaudio.mp4';
+        videoRef.current.muted = true;
+        videoRef.current.load();
+        videoRef.current.play().catch(e => {
+          console.warn("Boss 2 intro blocked:", e);
+        });
+        soundService.playBoss2Intro(); // SYNC AUDIO
+      }
+
     } else {
       setGameState(prev => ({
         ...prev,

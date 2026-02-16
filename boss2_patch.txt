@@ -1,0 +1,71 @@
+  // BOSS 2: FALLEN MECHANICS (Vibrations & Falling Debris)
+  useEffect(() => {
+    if (gameState.status !== 'playing' || !gameState.isBossLevel || gameState.bossLevelId !== 2 || isPaused) {
+      if (boss2TimerRef.current) clearTimeout(boss2TimerRef.current);
+      if (boss2VibrationRef.current) clearTimeout(boss2VibrationRef.current);
+      return;
+    }
+
+    const startVictimCycle = () => {
+      // 1. Access latest grid via Ref to make decision
+      const currentGrid = gridRef.current;
+      const targets = gameStateRef.current.levelTargets || [];
+      const pathCells = new Set(targets.map(t => t.path || []).flat());
+      
+      // 2. Pick a "victim" cell (STRICTLY NUMBERS that are not in the solution path)
+      const survivors = currentGrid.filter(c => !pathCells.has(c.id) && !c.isFallen && !c.isVibrating && c.type === 'number');
+      
+      if (survivors.length === 0) {
+        // Retry soon if no victim found
+        boss2VibrationRef.current = window.setTimeout(startVictimCycle, 2000);
+        return;
+      }
+
+      const victim = survivors[Math.floor(Math.random() * survivors.length)];
+
+      // 3. Update State: Start Vibrating
+      setGrid(prev => prev.map(c => c.id === victim.id ? { ...c, isVibrating: true } : c));
+      soundService.playSelect(); // Subtle cue for vibration start
+
+      // 4. Schedule Fall (3s later)
+      boss2TimerRef.current = window.setTimeout(() => {
+        setGrid(prev => {
+          soundService.playTick(); // Sound cue for collapse
+          
+          // Mark victim as fallen
+          let nextGrid = prev.map(c =>
+            c.id === victim.id ? { ...c, isFallen: true, isVibrating: false } : c
+          );
+
+          // Cascade Effect logic
+          let changed = true;
+          while (changed) {
+            changed = false;
+            const nonFallen = nextGrid.filter(c => !c.isFallen);
+            nextGrid = nextGrid.map(c => {
+              if (c.type === 'operator' && !c.isFallen) {
+                const hasNeighbors = nonFallen.some(other => other.id !== c.id && areCellsAdjacent(c, other));
+                if (!hasNeighbors) {
+                  changed = true;
+                  return { ...c, isFallen: true };
+                }
+              }
+              return c;
+            });
+          }
+          return nextGrid;
+        });
+
+        // 5. Schedule Next Cycle (9s wait after fall = 12s total cycle)
+        boss2VibrationRef.current = window.setTimeout(startVictimCycle, 9000);
+      }, 3000);
+    };
+
+    // Initial delay: start first cycle after 5 seconds
+    boss2VibrationRef.current = window.setTimeout(startVictimCycle, 5000);
+
+    return () => {
+      if (boss2TimerRef.current) clearTimeout(boss2TimerRef.current);
+      if (boss2VibrationRef.current) clearTimeout(boss2VibrationRef.current);
+    };
+  }, [gameState.status, gameState.isBossLevel, gameState.bossLevelId, isPaused]);
