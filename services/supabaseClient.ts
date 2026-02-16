@@ -306,10 +306,10 @@ export const profileService = {
             const updatedProfile = await this.updateProfile({
                 id: userId,
                 badges: updatedBadges,
-                // Also give a score bonus for first completion
-                total_score: (profile.total_score || 0) + 1000,
-                // Award 30 second time bonus for Boss 1
-                career_time_bonus: (profile.career_time_bonus || 0) + (bossId === 1 ? 30 : 0)
+                // Award 45 second time bonus for Boss 2, 30 for Boss 1
+                career_time_bonus: (profile.career_time_bonus || 0) + (bossId === 2 ? 45 : (bossId === 1 ? 30 : 0)),
+                // Also give a score bonus for first completion: 1500 for Boss 2, 1000 for others
+                total_score: (profile.total_score || 0) + (bossId === 2 ? 1500 : 1000),
             });
             console.log(`🏆 Boss ${bossId} completed! Badge awarded: ${badgeId}`);
             return updatedProfile; // Return the FULL updated profile

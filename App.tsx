@@ -66,9 +66,12 @@ const BOSS_LEVELS = [
   {
     id: 2,
     requiredLevel: 10,
-    title: "IL GUARDIANO",
-    description: "Riflessi pronti, calcoli fulminei.",
-    isComingSoon: true
+    title: "FALLEN",
+    description: "Celle instabili! Ogni mossa corretta le farà cadere nel vuoto. Trova le combinazioni programmate.",
+    targets: 5,
+    time: 60,
+    reward: "45s BONUS",
+    bg: "bg-red-950"
   },
   {
     id: 3,
@@ -218,6 +221,8 @@ const App: React.FC = () => {
   const timerRef = useRef<number | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   const winAudioRef = useRef<HTMLAudioElement | null>(null);
+  const boss2TimerRef = useRef<number | null>(null);
+  const boss2VibrationRef = useRef<number | null>(null);
 
   // Supabase Integration
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -621,62 +626,132 @@ const App: React.FC = () => {
     if (!boss) return null;
 
     const targetCount = boss.targets;
-    const newGrid: HexCellData[] = [];
     const rng = Math.random;
 
-    // 1. Create balanced Grid first
-    for (let r = 0; r < GRID_ROWS; r++) {
-      for (let c = 0; c < GRID_COLS; c++) {
-        const isOperator = (r + c) % 2 !== 0;
-        newGrid.push({
-          id: `${r}-${c}`,
-          row: r,
-          col: c,
-          type: isOperator ? 'operator' : 'number',
-          value: isOperator
-            ? (rng() > 0.5 ? '+' : '-')
-            : Math.floor(rng() * 10).toString(), // 0-9
+    if (bossId === 2) {
+      // BOSS 2: FALLEN MECHANICS - Retry logic to ensure 5 targets
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const newGrid: HexCellData[] = [];
+        for (let r = 0; r < GRID_ROWS; r++) {
+          for (let c = 0; c < GRID_COLS; c++) {
+            const isOperator = (r + c) % 2 !== 0;
+            newGrid.push({
+              id: `${r}-${c}`,
+              row: r,
+              col: c,
+              type: isOperator ? 'operator' : 'number',
+              value: isOperator
+                ? (rng() > 0.5 ? '+' : '-')
+                : (Math.floor(rng() * 9) + 1).toString(), // 1-9
+              isFallen: false
+            });
+          }
+        }
+
+        // Find ALL possible paths of length 3 (N-Op-N)
+        const allPaths: { result: number, path: string[] }[] = [];
+        const numberCells = newGrid.filter(c => c.type === 'number');
+
+        for (const startCell of numberCells) {
+          for (const opCell of newGrid.filter(c => c.type === 'operator' && areCellsAdjacent(startCell, c))) {
+            for (const endCell of newGrid.filter(c => c.type === 'number' && c.id !== startCell.id && areCellsAdjacent(opCell, c))) {
+              const res = calculateResultFromCells([startCell, opCell, endCell]);
+              if (res !== null && res >= 2 && res <= 12) {
+                allPaths.push({ result: res, path: [startCell.id, opCell.id, endCell.id] });
+              }
+            }
+          }
+        }
+
+        // Greedy select disjoint paths
+        const finalTargets: { value: number, displayValue: string, completed: boolean, path: string[] }[] = [];
+        const usedCells = new Set<string>();
+        const shuffledPaths = allPaths.sort(() => rng() - 0.5);
+
+        for (const p of shuffledPaths) {
+          if (finalTargets.length >= targetCount) break;
+          if (!p.path.some(id => usedCells.has(id))) {
+            p.path.forEach(id => usedCells.add(id));
+            finalTargets.push({
+              value: p.result,
+              displayValue: "",
+              completed: false,
+              path: p.path
+            });
+          }
+        }
+
+        // Only return if we found enough targets
+        if (finalTargets.length === targetCount) {
+          newGrid.forEach(cell => {
+            if (!usedCells.has(cell.id)) {
+              if (cell.type === 'number') {
+                cell.value = "9";
+              } else {
+                cell.value = "+";
+              }
+            }
+          });
+          return { grid: newGrid, targets: finalTargets };
+        }
+      }
+      return null; // Should not happen easily with 10 attempts
+    } else {
+      // BOSS 1 & OTHERS: Legacy Generation
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          const isOperator = (r + c) % 2 !== 0;
+          newGrid.push({
+            id: `${r}-${c}`,
+            row: r,
+            col: c,
+            type: isOperator ? 'operator' : 'number',
+            value: isOperator
+              ? (rng() > 0.5 ? '+' : '-')
+              : Math.floor(rng() * 10).toString(),
+            isFallen: false
+          });
+        }
+      }
+
+      const allSolutions = findAllSolutions(newGrid);
+      const validSolutions = Array.from(allSolutions).filter(n => n >= 1 && n <= 18);
+
+      const finalTargets: any[] = [];
+      const shuffledSolutions = validSolutions.sort(() => rng() - 0.5);
+
+      for (const sol of shuffledSolutions) {
+        if (finalTargets.length >= targetCount) break;
+        let a = Math.floor(rng() * 9) + 1;
+        let b = sol - a;
+        let op = '+';
+
+        if (rng() > 0.5 || b < 1) {
+          b = Math.floor(rng() * 9) + 1;
+          a = sol + b;
+          op = '-';
+        }
+        if (op === '+' && b <= 0) { b = 1; a = sol - 1; }
+
+        finalTargets.push({
+          value: sol,
+          displayValue: `${a} ${op} ${b}`,
+          completed: false
         });
       }
-    }
 
-    // 2. Find all solutions
-    const allSolutions = findAllSolutions(newGrid);
-    const validSolutions = Array.from(allSolutions).filter(n => n >= 1 && n <= 18);
-
-    // 3. Create Targets
-    const finalTargets: { value: number, displayValue: string, completed: boolean }[] = [];
-    const shuffledSolutions = validSolutions.sort(() => rng() - 0.5);
-
-    for (const sol of shuffledSolutions) {
-      if (finalTargets.length >= targetCount) break;
-      let a = Math.floor(rng() * 9) + 1; // 1-9
-      let b = sol - a;
-      let op = '+';
-
-      // If subtraction or if addition would result in negative b
-      if (rng() > 0.5 || b < 1) {
-        b = Math.floor(rng() * 9) + 1; // 1-9
-        a = sol + b;
-        op = '-';
+      while (finalTargets.length < targetCount) {
+        finalTargets.push({ value: 5, displayValue: "3 + 2", completed: false });
       }
-      if (op === '+' && b <= 0) { b = 1; a = sol - 1; }
 
-      finalTargets.push({
-        value: sol,
-        displayValue: `${a} ${op} ${b}`,
-        completed: false
-      });
+      return { grid: newGrid, targets: finalTargets };
     }
-
-    while (finalTargets.length < targetCount) {
-      finalTargets.push({ value: 5, displayValue: "3 + 2", completed: false });
-    }
-
-    return { grid: newGrid, targets: finalTargets };
-  }, [findAllSolutions]);
+  }, [findAllSolutions, areCellsAdjacent, calculateResultFromCells]);
 
   const startBossGame = (bossId: number) => {
+    const boss = BOSS_LEVELS.find(b => b.id === bossId);
+    if (!boss) return;
+
     // Safety check: Don't allow re-playing defeated bosses
     const isDefeated = userProfile?.badges?.includes(bossId === 1 ? 'boss_matematico' : `boss_${bossId}_defeated`);
     if (isDefeated) {
@@ -704,10 +779,11 @@ const App: React.FC = () => {
         level: careerLevel, // PRESERVE CAREER LEVEL
         isBossLevel: true,
         bossLevelId: bossId,
-        timeLeft: 90,
+        timeLeft: boss.time || 90,
         targetResult: 0,
         status: 'idle', // Stay idle until video ends
         levelTargets: levelData.targets,
+        targetsFound: 0
       }));
 
       // SHOW BOSS INTRO
@@ -730,10 +806,11 @@ const App: React.FC = () => {
         level: careerLevel, // PRESERVE CAREER LEVEL
         isBossLevel: true,
         bossLevelId: bossId,
-        timeLeft: 90,
+        timeLeft: boss.time || 90,
         targetResult: 0,
         status: 'playing',
         levelTargets: levelData.targets,
+        targetsFound: 0
       }));
       soundService.playSuccess();
     }
@@ -1254,6 +1331,62 @@ const App: React.FC = () => {
     if (timerRef.current) window.clearInterval(timerRef.current);
     if (currentUser) loadProfile(currentUser.id);
   };
+
+  // BOSS 2: FALLEN MECHANICS (Vibrations & Falling Debris)
+  useEffect(() => {
+    if (gameState.status !== 'playing' || !gameState.isBossLevel || gameState.bossLevelId !== 2 || isPaused) {
+      if (boss2TimerRef.current) clearInterval(boss2TimerRef.current);
+      if (boss2VibrationRef.current) clearInterval(boss2VibrationRef.current);
+      return;
+    }
+
+    // 1. VIBRATION LOGIC: Randomly shake unstable cells
+    boss2VibrationRef.current = window.setInterval(() => {
+      setGrid(prev => {
+        // First clear all vibrations
+        const resetGrid = prev.map(c => ({ ...c, isVibrating: false }));
+        // Identify "unstable" cells (those NOT in targets path)
+        const pathCells = new Set(gameState.levelTargets.map(t => t.path || []).flat());
+        const unstableCells = resetGrid.filter(c => !pathCells.has(c.id) && !c.isFallen);
+
+        if (unstableCells.length === 0) return prev;
+
+        // Pick 2-3 random cells to vibrate
+        const toVibrate = [];
+        const count = Math.min(3, unstableCells.length);
+        for (let i = 0; i < count; i++) {
+          const idx = Math.floor(Math.random() * unstableCells.length);
+          toVibrate.push(unstableCells[idx].id);
+        }
+
+        return resetGrid.map(c => toVibrate.includes(c.id) ? { ...c, isVibrating: true } : c);
+      });
+    }, 1500);
+
+    // 2. FALLING LOGIC: Drop an unused cell every 7s (starting after 3s)
+    let dropCount = 0;
+    boss2TimerRef.current = window.setInterval(() => {
+      dropCount += 1;
+      // Start dropping after 3 seconds, then every 7 seconds
+      // 3s, 10s, 17s...
+      if (dropCount === 3 || (dropCount > 3 && (dropCount - 3) % 7 === 0)) {
+        setGrid(prev => {
+          const pathCells = new Set(gameState.levelTargets.map(t => t.path || []).flat());
+          const available = prev.filter(c => !pathCells.has(c.id) && !c.isFallen);
+          if (available.length === 0) return prev;
+
+          const target = available[Math.floor(Math.random() * available.length)];
+          soundService.playTick(); // Use tick as subtle warning
+          return prev.map(c => c.id === target.id ? { ...c, isFallen: true, isVibrating: false } : c);
+        });
+      }
+    }, 1000);
+
+    return () => {
+      if (boss2TimerRef.current) clearInterval(boss2TimerRef.current);
+      if (boss2VibrationRef.current) clearInterval(boss2VibrationRef.current);
+    };
+  }, [gameState.status, gameState.isBossLevel, gameState.bossLevelId, isPaused, gameState.levelTargets]);
 
   const goToDuelLobby = async () => {
     soundService.playReset();
@@ -2048,7 +2181,21 @@ const App: React.FC = () => {
         // Only the FIRST uncompleted target is valid. Any other uncompleted target is ignored.
         const activeTarget = currentTargets.find(t => !t.completed);
         if (activeTarget && activeTarget.value === result) {
-          matchedTarget = activeTarget;
+          // BOSS 2 SPECIAL CHECK: Path must match
+          if (gameState.bossLevelId === 2) {
+            const path = activeTarget.path || [];
+            // Check path forwards OR backwards
+            const isForward = path.length === pathIds.length && path.every((id, idx) => id === pathIds[idx]);
+            const isBackward = path.length === pathIds.length && [...path].reverse().every((id, idx) => id === pathIds[idx]);
+
+            if (isForward || isBackward) {
+              matchedTarget = activeTarget;
+            } else {
+              matchedTarget = undefined;
+            }
+          } else {
+            matchedTarget = activeTarget;
+          }
         } else {
           matchedTarget = undefined;
         }
@@ -2147,7 +2294,12 @@ const App: React.FC = () => {
       const isBlitzDominion = activeMatch?.mode === 'blitz' || duelMode === 'blitz';
 
       // BLITZ DOMINION FIX: Allow finding completed targets too
-      const targetIndex = currentTargets.findIndex(t => t.value === matchedValue && (!t.completed || isBlitzDominion));
+      let targetIndex = -1;
+      if (gameStateRef.current.isBossLevel) {
+        targetIndex = currentTargets.findIndex(t => !t.completed && t.value === matchedValue);
+      } else {
+        targetIndex = currentTargets.findIndex(t => t.value === matchedValue && (!t.completed || isBlitzDominion));
+      }
 
       if (targetIndex === -1) {
         console.warn("⚠️ Target already completed or not found:", matchedValue);
@@ -2157,6 +2309,16 @@ const App: React.FC = () => {
       const newTargets = [...currentTargets];
       // Mark as completed. In Dominion, the 'owner' update (later) is what really counts.
       newTargets[targetIndex] = { ...newTargets[targetIndex], completed: true };
+
+      // BOSS 2 FALLEN EFFECT
+      if (gameStateRef.current.isBossLevel && gameStateRef.current.bossLevelId === 2) {
+        const path = newTargets[targetIndex].path;
+        if (path) {
+          setGrid(prev => prev.map(cell =>
+            path.includes(cell.id) ? { ...cell, isFallen: true } : cell
+          ));
+        }
+      }
 
       // Update Local Game State right away for UI feedback
       setGameState(prev => ({
@@ -2722,6 +2884,14 @@ const App: React.FC = () => {
     soundService.playUIClick();
     setIsVictoryAnimating(false);
     const nextLvl = gameState.level + 1;
+
+    // Check for boss unlocks
+    const unlockedBoss = BOSS_LEVELS.find(b => b.requiredLevel === nextLvl && !b.isComingSoon);
+    if (unlockedBoss) {
+      showToast(`🏆 NUOVA SFIDA BOSS SBLOCCATA: ${unlockedBoss.title}!`);
+      soundService.playSuccess();
+    }
+
     setGameState(prev => ({
       ...prev,
       level: nextLvl,
@@ -3598,11 +3768,11 @@ const App: React.FC = () => {
                     {/* Level Targets List */}
                     {/* Level Targets List */}
                     <div className="flex gap-2 items-center flex-wrap justify-center max-w-[340px]" id="targets-display-tutorial">
-                      {gameState.isBossLevel ? (
-                        // BOSS MODE: Display only CURRENT target (Large)
+                      {gameState.isBossLevel && gameState.bossLevelId === 1 ? (
+                        // BOSS 1: Sequential Large Target
                         (() => {
                           const activeTarget = gameState.levelTargets.find(t => !t.completed);
-                          if (!activeTarget) return null; // All done (handled by win screen usually)
+                          if (!activeTarget) return null;
                           const remainingCount = gameState.levelTargets.filter(t => !t.completed).length;
                           const totalCount = gameState.levelTargets.length;
                           const currentIndex = totalCount - remainingCount + 1;
@@ -3622,21 +3792,18 @@ const App: React.FC = () => {
                           );
                         })()
                       ) : (
-                        // STANDARD MODE: Display All
+                        // STANDARD & BOSS 2+: Career-style Target List
                         gameState.levelTargets.map((t, i) => {
                           const isDominion = activeMatch?.isDuel && duelMode === 'blitz';
-                          let bgClass = 'bg-[#0055AA] border-white/50'; // Default Blue
+                          let bgClass = gameState.isBossLevel ? 'bg-emerald-900 border-emerald-500/50' : 'bg-[#0055AA] border-white/50';
 
                           if (isDominion) {
-                            // Dominion Styling
                             const isMyTarget = (t.owner === 'p1' && activeMatch?.isP1) || (t.owner === 'p2' && !activeMatch?.isP1);
                             const isEnemyTarget = (t.owner === 'p1' && !activeMatch?.isP1) || (t.owner === 'p2' && activeMatch?.isP1);
-
                             if (isMyTarget) bgClass = 'bg-emerald-500 border-white scale-110 shadow-[0_0_15px_rgba(16,185,129,0.6)] z-10';
                             else if (isEnemyTarget) bgClass = 'bg-rose-600 border-white/80 opacity-90 scale-95';
                           } else {
-                            // Standard Styling
-                            if (t.completed) bgClass = 'bg-[#FF8800] border-white scale-110 shadow-[0_0_15px_rgba(255,136,0,0.6)]';
+                            if (t.completed) bgClass = (gameState.isBossLevel ? 'bg-emerald-500' : 'bg-[#FF8800]') + ' border-white scale-110 shadow-[0_0_15px_rgba(255,136,0,0.6)]';
                           }
 
                           return (
@@ -3644,7 +3811,7 @@ const App: React.FC = () => {
                                             flex items-center justify-center w-14 h-14 rounded-xl transition-all duration-300 border-2
                                             ${bgClass}
                                              font-orbitron font-black text-white shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
-                                         ${t.displayValue ? 'text-xs sm:text-sm leading-tight whitespace-nowrap px-1' : 'text-3xl'} 
+                                         ${t.displayValue ? 'text-[10px] sm:text-[11px] leading-tight whitespace-nowrap px-1' : 'text-3xl'} 
                                          `}>
                               {t.displayValue || t.value}
                             </div>
@@ -3874,8 +4041,8 @@ const App: React.FC = () => {
                       <div className="bg-slate-900/60 p-5 rounded-2xl mb-6 border border-yellow-500/20">
                         <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block mb-2">Ricompensa</span>
                         <div className="text-3xl font-black font-orbitron text-white text-shadow-neon-yellow flex flex-col items-center gap-1">
-                          <span>30s BONUS</span>
-                          <span className="text-xs text-yellow-500 font-bold">+1000 PUNTI</span>
+                          <span>{BOSS_LEVELS.find(b => b.id === gameState.bossLevelId)?.reward || "BOUNTY"}</span>
+                          <span className="text-xs text-yellow-500 font-bold">+{gameState.bossLevelId === 2 ? '1500' : '1000'} PUNTI</span>
                         </div>
                       </div>
 
@@ -4125,9 +4292,9 @@ const App: React.FC = () => {
                 {/* Boss Grid */}
                 <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[55vh] pr-2 custom-scroll">
                   {BOSS_LEVELS.map((boss) => {
-                    const isComingSoon = boss.id > 1;
-                    const isDefeated = !isComingSoon && (userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`) || false);
-                    const isUnlocked = !isComingSoon && (userProfile?.max_level || 1) >= boss.requiredLevel;
+                    const isComingSoon = boss.isComingSoon;
+                    const isDefeated = (userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`) || false);
+                    const isUnlocked = ((userProfile?.max_level || 1) >= boss.requiredLevel);
                     const canPlay = !isComingSoon && isUnlocked && !isDefeated;
 
                     return (

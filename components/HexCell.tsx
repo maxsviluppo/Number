@@ -121,7 +121,8 @@ const HexCell: React.FC<HexCellProps> = ({
       className={`absolute transition-all duration-300 cursor-pointer flex items-center justify-center 
         ${isOrangeTheme && isNumber ? '' : shapeClass} 
         ${!isOrangeTheme ? 'border-2' : ''} 
-        ${animationClass}
+        ${data.isFallen ? 'animate-fallen' : animationClass}
+        ${data.isVibrating ? 'animate-vibrate' : ''}
         ${isOrangeTheme && isNumber ? 'w-[calc(64px*var(--hex-scale))] h-[calc(64px*var(--hex-scale))]' : ''}
         ${isOrangeTheme && !isNumber ? 'w-[calc(40px*var(--hex-scale))] h-[calc(40px*var(--hex-scale))]' : ''}
         ${!isOrangeTheme ? 'w-[calc(64px*var(--hex-scale))] h-[calc(72px*var(--hex-scale))]' : ''}
@@ -136,12 +137,12 @@ const HexCell: React.FC<HexCellProps> = ({
                 ? 'bg-slate-800/95 border-white/10 active:scale-95 hover:bg-slate-700/95'
                 : `${operatorTheme.bg} ${operatorTheme.border} active:scale-95 hover:brightness-125`
         }
-        ${!isSelectable && !isSelected ? 'opacity-20 pointer-events-none' : ''}
+        ${(!isSelectable && !isSelected) || data.isFallen ? 'opacity-20 pointer-events-none' : ''}
       `}
       style={{
         top: `calc(${topValue}px * var(--hex-scale))`,
         left: `calc(${leftValue}px * var(--hex-scale))`,
-        animationDelay: animationClass === 'animate-hex-entry' ? `${data.row * 0.12}s` : '0s'
+        animationDelay: (animationClass === 'animate-hex-entry' && !data.isFallen) ? `${data.row * 0.12}s` : '0s'
       }}
       data-cell-id={data.id}
       onMouseDown={() => onMouseDown(data.id)}

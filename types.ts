@@ -7,6 +7,8 @@ export interface HexCellData {
   value: string;
   row: number;
   col: number;
+  isFallen?: boolean;
+  isVibrating?: boolean;
 }
 
 export interface GameState {
@@ -22,7 +24,7 @@ export interface GameState {
   basePoints: number;
 
   // targetQueue: number[]; // Deprecated in favor of levelTargets
-  levelTargets: { value: number; displayValue?: string; completed: boolean; owner?: 'p1' | 'p2' }[];
+  levelTargets: { value: number; displayValue?: string; completed: boolean; owner?: 'p1' | 'p2'; path?: string[] }[];
   targetsFound: number;
   isBossLevel?: boolean;
   bossLevelId?: number | null;
