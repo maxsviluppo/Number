@@ -234,6 +234,11 @@ const App: React.FC = () => {
   const prevRoundRef = useRef(1);
   const processedWinRef = useRef<string | null>(null);
   const selectionTimeoutRef = useRef<number | null>(null);
+  const gridRef = useRef(grid);
+
+  useEffect(() => {
+    gridRef.current = grid;
+  }, [grid]);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -413,47 +418,66 @@ const App: React.FC = () => {
 
   // Helper: Check adjacency (rectilinear for orange theme)
   const areCellsAdjacent = (cell1: HexCellData, cell2: HexCellData): boolean => {
+    if (theme === 'orange') {
+      const dr = Math.abs(cell1.row - cell2.row);
+      const dc = Math.abs(cell1.col - cell2.col);
+      return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
+    }
+
+    // Default Hex Adjacency
     const dr = Math.abs(cell1.row - cell2.row);
-    const dc = Math.abs(cell1.col - cell2.col);
-    return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
+    const dc = cell2.col - cell1.col;
+    if (dr === 0) return Math.abs(dc) === 1;
+    if (dr === 1) {
+      if (cell1.row % 2 === 0) return dc === 0 || dc === -1;
+      else return dc === 0 || dc === 1;
+    }
+    return false;
   };
 
-  // SOLVER: Find all valid paths and their results
-  const findAllSolutions = (gridCells: HexCellData[]): Set<number> => {
-    if (!gridCells) return new Set();
-    const solutions = new Set<number>();
-    const maxPathLength = 7; // N-Op-N-Op-N-Op-N = 7 cells max
 
-    const explorePath = (currentPath: HexCellData[], visited: Set<string>) => {
+  // SOLVER: Find all valid paths and their results - RETURNS MAP WITH PATHS
+  // UPDATED to return Map<number, string[]> so we can protect cells in Boss Levels
+  const findAllSolutions = (gridCells: HexCellData[]): Map<number, string[]> => {
+    if (!gridCells) return new Map();
+    const solutions = new Map<number, string[]>();
+    const maxPathLength = 5; // Reduced max depth for perf, enough for standard solutions
+
+    const explorePath = (currentPath: HexCellData[]) => {
       const lastCell = currentPath[currentPath.length - 1];
 
       // Calculate if path is valid (at least 3 cells: N-Op-N)
       if (currentPath.length >= 3 && currentPath.length % 2 === 1) {
         const result = calculateResultFromCells(currentPath);
         if (result !== null && result > 0) {
-          solutions.add(result);
+          // Save the path IDs for this result if not already found
+          if (!solutions.has(result)) {
+            solutions.set(result, currentPath.map(c => c.id));
+          }
         }
       }
 
       if (currentPath.length >= maxPathLength) return;
 
-      // Try all adjacent cells
-      for (const nextCell of gridCells) {
-        if (visited.has(nextCell.id)) continue;
-        if (lastCell.type === nextCell.type) continue;
-        if (!areCellsAdjacent(lastCell, nextCell)) continue;
+      // Optimization: Get neighbors efficiently
+      // In a real grid search, we should pre-calculate neighbors, but here we scan.
+      // Filter strictly by adjacency
+      const neighbors = gridCells.filter(n =>
+        n.id !== lastCell.id &&
+        !currentPath.some(c => c.id === n.id) &&
+        n.type !== lastCell.type &&
+        areCellsAdjacent(lastCell, n)
+      );
 
-        const newVisited = new Set(visited);
-        newVisited.add(nextCell.id);
-        explorePath([...currentPath, nextCell], newVisited);
+      for (const nextCell of neighbors) {
+        explorePath([...currentPath, nextCell]);
       }
     };
 
-    // Start from every number cell
-    const numberCells = gridCells.filter(c => c.type === 'number');
-    for (const startCell of numberCells) {
-      explorePath([startCell], new Set([startCell.id]));
-    }
+    // Start DFS from each number
+    gridCells.filter(c => c.type === 'number').forEach(startCell => {
+      explorePath([startCell]);
+    });
 
     return solutions;
   };
@@ -656,7 +680,8 @@ const App: React.FC = () => {
           for (const opCell of newGrid.filter(c => c.type === 'operator' && areCellsAdjacent(startCell, c))) {
             for (const endCell of newGrid.filter(c => c.type === 'number' && c.id !== startCell.id && areCellsAdjacent(opCell, c))) {
               const res = calculateResultFromCells([startCell, opCell, endCell]);
-              if (res !== null && res >= 2 && res <= 12) {
+              // Target numbers 1-10 for Boss 2
+              if (res !== null && res >= 1 && res <= 10) {
                 allPaths.push({ result: res, path: [startCell.id, opCell.id, endCell.id] });
               }
             }
@@ -670,6 +695,11 @@ const App: React.FC = () => {
 
         for (const p of shuffledPaths) {
           if (finalTargets.length >= targetCount) break;
+
+          // Ensure unique values for Boss 2 targets
+          const isDuplicateValue = finalTargets.some(t => t.value === p.result);
+          if (isDuplicateValue) continue;
+
           if (!p.path.some(id => usedCells.has(id))) {
             p.path.forEach(id => usedCells.add(id));
             finalTargets.push({
@@ -698,10 +728,11 @@ const App: React.FC = () => {
       return null; // Should not happen easily with 10 attempts
     } else {
       // BOSS 1 & OTHERS: Legacy Generation
+      const localGrid: HexCellData[] = [];
       for (let r = 0; r < GRID_ROWS; r++) {
         for (let c = 0; c < GRID_COLS; c++) {
           const isOperator = (r + c) % 2 !== 0;
-          newGrid.push({
+          localGrid.push({
             id: `${r}-${c}`,
             row: r,
             col: c,
@@ -714,18 +745,22 @@ const App: React.FC = () => {
         }
       }
 
-      const allSolutions = findAllSolutions(newGrid);
-      const validSolutions = Array.from(allSolutions).filter(n => n >= 1 && n <= 18);
+      const allSolutionsMap = findAllSolutions(localGrid);
+      const validSolutions = Array.from(allSolutionsMap.keys()).filter(n => n >= 1 && n <= 18);
 
       const finalTargets: any[] = [];
       const shuffledSolutions = validSolutions.sort(() => rng() - 0.5);
 
       for (const sol of shuffledSolutions) {
         if (finalTargets.length >= targetCount) break;
+
+        const solPath = allSolutionsMap.get(sol); // RETRIEVE THE PATH!
+
         let a = Math.floor(rng() * 9) + 1;
         let b = sol - a;
         let op = '+';
 
+        // Display logic (just for show, the real requirement is the Value 'sol')
         if (rng() > 0.5 || b < 1) {
           b = Math.floor(rng() * 9) + 1;
           a = sol + b;
@@ -735,16 +770,18 @@ const App: React.FC = () => {
 
         finalTargets.push({
           value: sol,
-          displayValue: `${a} ${op} ${b}`,
-          completed: false
+          displayValue: `${a} ${op} ${b}`, // This is just a hint, user can solve 'sol' any way
+          completed: false,
+          path: solPath // CRITICAL: Save the path so Boss 2 knows what to protect
         });
       }
 
       while (finalTargets.length < targetCount) {
-        finalTargets.push({ value: 5, displayValue: "3 + 2", completed: false });
+        // Fallback targets (might not have path, but 5 is usually easy)
+        finalTargets.push({ value: 5, displayValue: "3 + 2", completed: false, path: [] });
       }
 
-      return { grid: newGrid, targets: finalTargets };
+      return { grid: localGrid, targets: finalTargets };
     }
   }, [findAllSolutions, areCellsAdjacent, calculateResultFromCells]);
 
@@ -752,9 +789,9 @@ const App: React.FC = () => {
     const boss = BOSS_LEVELS.find(b => b.id === bossId);
     if (!boss) return;
 
-    // Safety check: Don't allow re-playing defeated bosses
+    // Safety check: Don't allow re-playing defeated bosses (BYPASS FOR TEST ON BOSS 2)
     const isDefeated = userProfile?.badges?.includes(bossId === 1 ? 'boss_matematico' : `boss_${bossId}_defeated`);
-    if (isDefeated) {
+    if (isDefeated && bossId !== 2) {
       showToast('Hai già sconfitto questo boss!');
       return;
     }
@@ -1335,39 +1372,64 @@ const App: React.FC = () => {
   // BOSS 2: FALLEN MECHANICS (Vibrations & Falling Debris)
   useEffect(() => {
     if (gameState.status !== 'playing' || !gameState.isBossLevel || gameState.bossLevelId !== 2 || isPaused) {
-      if (boss2TimerRef.current) clearInterval(boss2TimerRef.current);
-      if (boss2VibrationRef.current) clearInterval(boss2VibrationRef.current);
+      if (boss2TimerRef.current) clearTimeout(boss2TimerRef.current);
+      if (boss2VibrationRef.current) clearTimeout(boss2VibrationRef.current);
       return;
     }
 
-    // Cycle: Pick victim -> Vibrate (3s) -> Fall -> Wait -> Repeat
     const startVictimCycle = () => {
-      // 1. Pick a "victim" cell (Junk only, not already fallen)
-      const pathCells = new Set(gameState.levelTargets.map(t => t.path || []).flat());
-      setGrid(prev => {
-        const available = prev.filter(c => !pathCells.has(c.id) && !c.isFallen && !c.isVibrating);
-        if (available.length === 0) return prev;
+      // 1. Access latest grid via Ref to make decision
+      const currentGrid = gridRef.current;
+      const targets = gameStateRef.current.levelTargets || [];
+      const pathCells = new Set(targets.map(t => t.path || []).flat());
 
-        const victim = available[Math.floor(Math.random() * available.length)];
+      // 2. Pick a "victim" cell (STRICTLY NUMBERS that are not in the solution path)
+      const survivors = currentGrid.filter(c => !pathCells.has(c.id) && !c.isFallen && !c.isVibrating && c.type === 'number');
 
-        // 2. Start vibrating the victim
-        const gridWithVibrator = prev.map(c => c.id === victim.id ? { ...c, isVibrating: true } : c);
+      if (survivors.length === 0) {
+        // Retry soon if no victim found
+        boss2VibrationRef.current = window.setTimeout(startVictimCycle, 2000);
+        return;
+      }
 
-        // 3. Schedule the fall after 3 seconds
-        boss2TimerRef.current = window.setTimeout(() => {
-          setGrid(currentGrid => {
-            soundService.playTick(); // Sound cue for the structural collapse
-            return currentGrid.map(c =>
-              c.id === victim.id ? { ...c, isFallen: true, isVibrating: false } : c
-            );
-          });
+      const victim = survivors[Math.floor(Math.random() * survivors.length)];
 
-          // 4. Schedule next cycle 5 seconds after the fall (8 seconds total interval)
-          boss2VibrationRef.current = window.setTimeout(startVictimCycle, 5000);
-        }, 3000);
+      // 3. Update State: Start Vibrating
+      setGrid(prev => prev.map(c => c.id === victim.id ? { ...c, isVibrating: true } : c));
+      soundService.playSelect(); // Subtle cue for vibration start
 
-        return gridWithVibrator;
-      });
+      // 4. Schedule Fall (3s later)
+      boss2TimerRef.current = window.setTimeout(() => {
+        setGrid(prev => {
+          soundService.playTick(); // Sound cue for collapse
+
+          // Mark victim as fallen
+          let nextGrid = prev.map(c =>
+            c.id === victim.id ? { ...c, isFallen: true, isVibrating: false } : c
+          );
+
+          // Cascade Effect logic
+          let changed = true;
+          while (changed) {
+            changed = false;
+            const nonFallen = nextGrid.filter(c => !c.isFallen);
+            nextGrid = nextGrid.map(c => {
+              if (c.type === 'operator' && !c.isFallen) {
+                const hasNeighbors = nonFallen.some(other => other.id !== c.id && areCellsAdjacent(c, other));
+                if (!hasNeighbors) {
+                  changed = true;
+                  return { ...c, isFallen: true };
+                }
+              }
+              return c;
+            });
+          }
+          return nextGrid;
+        });
+
+        // 5. Schedule Next Cycle (9s wait after fall = 12s total cycle)
+        boss2VibrationRef.current = window.setTimeout(startVictimCycle, 9000);
+      }, 3000);
     };
 
     // Initial delay: start first cycle after 5 seconds
@@ -1377,7 +1439,7 @@ const App: React.FC = () => {
       if (boss2TimerRef.current) clearTimeout(boss2TimerRef.current);
       if (boss2VibrationRef.current) clearTimeout(boss2VibrationRef.current);
     };
-  }, [gameState.status, gameState.isBossLevel, gameState.bossLevelId, isPaused, gameState.levelTargets]);
+  }, [gameState.status, gameState.isBossLevel, gameState.bossLevelId, isPaused]);
 
   const goToDuelLobby = async () => {
     soundService.playReset();
@@ -1760,7 +1822,7 @@ const App: React.FC = () => {
             p.key === opponentId ||
             (p.presence_ref && p.user_id === opponentId)
           );
-
+   
           if (hasOpponentLeft && (gameStateRef.current.status === 'playing' || gameStateRef.current.status === 'round-won')) {
             console.log("⚡ Presence: Opponent Disconnected/Left. Waiting for explicit abandon.");
             // Non triggerare handleSurrender() automaticamente per evitare falsi positivi
@@ -1812,18 +1874,18 @@ const App: React.FC = () => {
   // SYNC WATCHDOG (Fallback for missed events) - DISABLED temporarily as requested
   useEffect(() => {
     let syncInterval: NodeJS.Timeout;
-  
+   
     if (activeMatch?.id && gameStateRef.current.status === 'playing') {
       syncInterval = setInterval(async () => {
         const status = await matchService.verifyMatchStatus(activeMatch.id);
-  
+   
         // SAFETY CHECK: If transient error, skip this cycle
         if (status && status.status === 'ERROR') return;
-  
+   
         const isMatchGone = status === null;
         const isCancelled = status && status.status === 'cancelled';
         const isFinished = status && status.status === 'finished';
-  
+   
         // CASE 1: SURRENDER / ABNORMAL END
         // Match deleted or explicitly cancelled -> Force Surrender Win
         if (isMatchGone || isCancelled) {
@@ -1831,12 +1893,12 @@ const App: React.FC = () => {
             console.warn("SYNC WATCHDOG: Match abandoned/missing. Triggering Surrender Win.");
             if (timerRef.current) window.clearInterval(timerRef.current);
             setGameState(prev => ({ ...prev, status: 'idle' }));
-  
+   
             const randomSurrender = SURRENDER_VIDEOS[Math.floor(Math.random() * SURRENDER_VIDEOS.length)];
             setSurrenderVideoSrc(randomSurrender);
             setShowSurrenderVideo(true);
             setIsVideoVisible(false);
-  
+   
             if (videoRef.current) {
               videoRef.current.muted = false;
               videoRef.current.src = randomSurrender;
@@ -1853,10 +1915,10 @@ const App: React.FC = () => {
           if (gameStateRef.current.status === 'playing') {
             console.log("SYNC WATCHDOG: Match finished normally. Syncing state.");
             if (timerRef.current) window.clearInterval(timerRef.current);
-  
+   
             // Determine if I won or lost based on DB
             const amIWinner = status.winner_id === currentUser?.id;
-  
+   
             // If I lost, show Lost Sound/Flow. If I won, handle Win.
             // Since we are lagging, easiest is to go to idle and let DuelRecap component show result.
             setGameState(prev => ({ ...prev, status: 'idle' }));
@@ -1866,7 +1928,7 @@ const App: React.FC = () => {
         }
       }, 3000); // Check every 3 seconds
     }
-  
+   
     return () => {
       if (syncInterval) clearInterval(syncInterval);
     };
@@ -2168,27 +2230,21 @@ const App: React.FC = () => {
       let matchedTarget;
 
       if (gameState.isBossLevel) {
-        // BOSS MODE STRICT SEQUENTIAL LOGIC
-        // Only the FIRST uncompleted target is valid. Any other uncompleted target is ignored.
-        const activeTarget = currentTargets.find(t => !t.completed);
-        if (activeTarget && activeTarget.value === result) {
-          // BOSS 2 SPECIAL CHECK: Path must match
-          if (gameState.bossLevelId === 2) {
-            const path = activeTarget.path || [];
+        // BOSS MODE - Any uncompleted target can be matched (not sequential)
+        if (gameState.bossLevelId === 2) {
+          // BOSS 2: Must match value AND specific path of one of the available targets
+          matchedTarget = currentTargets.find(t => {
+            if (t.completed) return false;
+            if (t.value !== result) return false;
+            const path = t.path || [];
             // Check path forwards OR backwards
             const isForward = path.length === pathIds.length && path.every((id, idx) => id === pathIds[idx]);
             const isBackward = path.length === pathIds.length && [...path].reverse().every((id, idx) => id === pathIds[idx]);
-
-            if (isForward || isBackward) {
-              matchedTarget = activeTarget;
-            } else {
-              matchedTarget = undefined;
-            }
-          } else {
-            matchedTarget = activeTarget;
-          }
+            return isForward || isBackward;
+          });
         } else {
-          matchedTarget = undefined;
+          // OTHER BOSSES: Any uncompleted target with matching value
+          matchedTarget = currentTargets.find(t => !t.completed && t.value === result);
         }
       } else {
         // STANDARD MODE LOGIC (Any uncompleted target is valid)
@@ -2301,13 +2357,33 @@ const App: React.FC = () => {
       // Mark as completed. In Dominion, the 'owner' update (later) is what really counts.
       newTargets[targetIndex] = { ...newTargets[targetIndex], completed: true };
 
-      // BOSS 2 FALLEN EFFECT
+      // BOSS 2 FALLEN EFFECT - Immediate cascade for solved path
       if (gameStateRef.current.isBossLevel && gameStateRef.current.bossLevelId === 2) {
         const path = newTargets[targetIndex].path;
         if (path) {
-          setGrid(prev => prev.map(cell =>
-            path.includes(cell.id) ? { ...cell, isFallen: true } : cell
-          ));
+          setGrid(prev => {
+            let nextGrid = prev.map(cell =>
+              path.includes(cell.id) ? { ...cell, isFallen: true } : cell
+            );
+
+            // Immediate Cascade: If an operator is left without neighbors, it falls
+            let changed = true;
+            while (changed) {
+              changed = false;
+              const nonFallen = nextGrid.filter(c => !c.isFallen);
+              nextGrid = nextGrid.map(c => {
+                if (c.type === 'operator' && !c.isFallen) {
+                  const hasNeighbors = nonFallen.some(other => other.id !== c.id && areCellsAdjacent(c, other));
+                  if (!hasNeighbors) {
+                    changed = true;
+                    return { ...c, isFallen: true };
+                  }
+                }
+                return c;
+              });
+            }
+            return nextGrid;
+          });
         }
       }
 
@@ -3169,14 +3245,17 @@ const App: React.FC = () => {
         {/* MAIN BLUE BACKGROUND IMAGE LAYER */}
         <div className={`fixed inset-0 bg-[url('/sfondoblu.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
 
-        {/* BOSS BACKGROUND FALLBACK LAYER (Solid Green) - Ensures no blue leaks ever */}
-        <div className={`fixed inset-0 bg-emerald-950 z-[-1] transition-opacity duration-300 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0'}`}></div>
+        {/* BOSS 2 BACKGROUND IMAGE LAYER */}
+        <div className={`fixed -inset-[20%] w-[140%] h-[140%] bg-[url('/sfondomarrone.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.bossLevelId === 2 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
+
+        {/* BOSS 1 BACKGROUND IMAGE LAYER */}
+        <div className={`fixed -inset-[20%] w-[140%] h-[140%] bg-[url('/sfondo_green.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.bossLevelId === 1 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
+
+        {/* BOSS BACKGROUND FALLBACK LAYER (Solid Green/Dark) - Ensures no blue leaks ever */}
+        <div className={`fixed inset-0 ${gameState.bossLevelId === 2 ? 'bg-[#2a1a0a]' : 'bg-emerald-950'} z-[-1] transition-opacity duration-300 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0'}`}></div>
 
         {/* BOSS BOTTOM PATCH - Extra safety for safe-area */}
-        <div className={`fixed -bottom-40 left-0 w-full h-80 bg-emerald-950 z-[-1] ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0'}`}></div>
-
-        {/* BOSS BACKGROUND IMAGE LAYER - Extreme bleed to cover everything */}
-        <div className={`fixed -inset-[20%] w-[140%] h-[140%] bg-[url('/sfondo_green.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
+        <div className={`fixed -bottom-40 left-0 w-full h-80 ${gameState.bossLevelId === 2 ? 'bg-[#2a1a0a]' : 'bg-emerald-950'} z-[-1] ${gameState.isBossLevel ? 'opacity-100' : 'opacity-0'}`}></div>
 
 
 
@@ -3554,9 +3633,11 @@ const App: React.FC = () => {
               <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
                 <div className={`
                 relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.15)]
-                ${gameState.isBossLevel
-                    ? 'bg-gradient-to-r from-lime-500 via-green-500 to-lime-600'
-                    : 'bg-gradient-to-r from-orange-400 via-[#FF5500] to-orange-600'}
+                ${gameState.bossLevelId === 2
+                    ? 'bg-gradient-to-r from-amber-800 via-amber-900 to-amber-950'
+                    : gameState.isBossLevel
+                      ? 'bg-gradient-to-r from-lime-500 via-green-500 to-lime-600'
+                      : 'bg-gradient-to-r from-orange-400 via-[#FF5500] to-orange-600'}
                 transition-all duration-300
               `}>
                   {/* Left Group: Buttons */}
@@ -3567,7 +3648,7 @@ const App: React.FC = () => {
                         setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
                       }}
                       className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
-                      ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
+                      ${gameState.bossLevelId === 2 ? 'text-amber-800' : gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
                       title="Home"
                     >
                       <Home className="w-6 h-6" />
@@ -3575,7 +3656,7 @@ const App: React.FC = () => {
                     <button
                       onPointerDown={toggleMute}
                       className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
-                      ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
+                      ${gameState.bossLevelId === 2 ? 'text-amber-800' : gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
                     >
                       {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
                     </button>
@@ -3594,12 +3675,12 @@ const App: React.FC = () => {
                     {gameState.isBossLevel ? (
                       <div className={`relative w-24 h-24 flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110' : 'hover:scale-105'}`}>
                         {/* External White Frame */}
-                        <div className="absolute -inset-1 rotate-45 rounded-xl border-[4px] border-white pointer-events-none"></div>
+                        <div className="absolute -inset-1 rounded-xl border-[4px] border-white pointer-events-none"></div>
 
-                        <div className="absolute inset-0 bg-slate-900 rotate-45 rounded-xl border-[4px] border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]"></div>
+                        <div className="absolute inset-0 bg-slate-900 rounded-xl border-[4px] border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]"></div>
 
-                        {/* BOSS TIMER PROGRESS DIAMOND */}
-                        <svg className="absolute inset-0 w-full h-full rotate-45 pointer-events-none z-20 overflow-visible">
+                        {/* BOSS TIMER PROGRESS SQUARE */}
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
                           <defs>
                             <filter id="bossGlow" x="-20%" y="-20%" width="140%" height="140%">
                               <feGaussianBlur stdDeviation="2" result="blur" />
@@ -3612,28 +3693,25 @@ const App: React.FC = () => {
                             strokeWidth="6"
                             fill="none"
                           />
-                          {!isPaused && (
-                            <rect
-                              x="2" y="2" width="92" height="92" rx="12"
-                              stroke="#10b981"
-                              strokeWidth="6"
-                              fill="none"
-                              pathLength="100"
-                              strokeDasharray="100"
-                              strokeDashoffset={100 * (1 - (gameState.timeLeft / 90))}
-                              strokeLinecap="round"
-                              className="transition-all duration-1000 ease-linear"
-                              filter="url(#bossGlow)"
-                            />
-                          )}
+                          <rect
+                            x="2" y="2" width="92" height="92" rx="12"
+                            stroke={gameState.bossLevelId === 2 ? '#DEB887' : '#10b981'}
+                            strokeWidth="6"
+                            fill="none"
+                            pathLength="100"
+                            strokeDasharray="100"
+                            strokeDashoffset={100 * (1 - (gameState.timeLeft / (BOSS_LEVELS.find(b => b.id === gameState.bossLevelId)?.time || 90)))}
+                            strokeLinecap="round"
+                            className="transition-all duration-1000 ease-linear"
+                          />
                         </svg>
 
                         <div className="relative z-10 flex flex-col items-center justify-center text-white">
                           {isPaused ? (
-                            <Pause className="w-8 h-8 text-emerald-400 animate-pulse" />
+                            <Pause className={`w-8 h-8 animate-pulse ${gameState.bossLevelId === 2 ? 'text-amber-500' : 'text-emerald-400'}`} />
                           ) : (
                             <>
-                              <span className="text-[8px] font-black text-emerald-400 uppercase leading-none mb-1 tracking-widest">BOSS</span>
+                              <span className={`text-[8px] font-black uppercase leading-none mb-1 tracking-widest ${gameState.bossLevelId === 2 ? 'text-amber-500' : 'text-emerald-400'}`}>BOSS</span>
                               <span className="font-black font-orbitron text-3xl leading-none drop-shadow-md">{gameState.timeLeft}</span>
                             </>
                           )}
@@ -3715,11 +3793,11 @@ const App: React.FC = () => {
                   ) : (
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-3">
-                        <div id="score-display-game" className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
+                        <div id="score-display-game" className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.bossLevelId === 2 ? 'text-amber-800' : gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
                           <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
                           <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
                         </div>
-                        <div className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
+                        <div className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.bossLevelId === 2 ? 'text-amber-800' : gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
                           <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">{gameState.isBossLevel ? 'BOSS' : 'LV'}</span>
                           <span className="text-sm font-black font-orbitron leading-none">{gameState.isBossLevel ? gameState.bossLevelId : gameState.level}</span>
                         </div>
@@ -3741,12 +3819,16 @@ const App: React.FC = () => {
                           ${(previewResult !== null && (gameState.isBossLevel
                           ? (gameState.levelTargets.find(t => !t.completed)?.value === previewResult)
                           : gameState.levelTargets.some(t => t.value === previewResult && !t.completed)))
-                          ? (gameState.isBossLevel
-                            ? 'bg-emerald-600 border-white text-white scale-105 shadow-[0_0_20px_rgba(16,185,129,0.5)]'
-                            : 'bg-[#FF8800] border-white text-white scale-105')
-                          : (gameState.isBossLevel
-                            ? 'bg-white border-emerald-600 text-emerald-600'
-                            : 'bg-white border-[#FF8800] text-[#FF8800]')}`}>
+                          ? (gameState.bossLevelId === 2
+                            ? 'bg-amber-400 border-white text-amber-900 scale-105 shadow-[0_0_20px_rgba(251,191,36,0.5)]'
+                            : gameState.isBossLevel
+                              ? 'bg-emerald-600 border-white text-white scale-105 shadow-[0_0_20px_rgba(16,185,129,0.5)]'
+                              : 'bg-[#FF8800] border-white text-white scale-105')
+                          : (gameState.bossLevelId === 2
+                            ? 'bg-white border-amber-400 text-amber-800 shadow-inner'
+                            : gameState.isBossLevel
+                              ? 'bg-white border-emerald-600 text-emerald-600'
+                              : 'bg-white border-[#FF8800] text-[#FF8800]')}`}>
                         <span className="text-[10px] font-black uppercase tracking-wider opacity-80">Totale:</span>
                         <span className="text-3xl font-black font-orbitron leading-none">
                           {previewResult !== null ? previewResult : '...'}
@@ -3786,7 +3868,11 @@ const App: React.FC = () => {
                         // STANDARD & BOSS 2+: Career-style Target List
                         gameState.levelTargets.map((t, i) => {
                           const isDominion = activeMatch?.isDuel && duelMode === 'blitz';
-                          let bgClass = gameState.isBossLevel ? 'bg-emerald-900 border-emerald-500/50' : 'bg-[#0055AA] border-white/50';
+                          let bgClass = gameState.bossLevelId === 2
+                            ? 'bg-amber-950 border-amber-600 shadow-inner'
+                            : gameState.isBossLevel
+                              ? 'bg-emerald-900 border-emerald-500/50'
+                              : 'bg-[#0055AA] border-white/50';
 
                           if (isDominion) {
                             const isMyTarget = (t.owner === 'p1' && activeMatch?.isP1) || (t.owner === 'p2' && !activeMatch?.isP1);
@@ -3794,7 +3880,7 @@ const App: React.FC = () => {
                             if (isMyTarget) bgClass = 'bg-emerald-500 border-white scale-110 shadow-[0_0_15px_rgba(16,185,129,0.6)] z-10';
                             else if (isEnemyTarget) bgClass = 'bg-rose-600 border-white/80 opacity-90 scale-95';
                           } else {
-                            if (t.completed) bgClass = (gameState.isBossLevel ? 'bg-emerald-500' : 'bg-[#FF8800]') + ' border-white scale-110 shadow-[0_0_15px_rgba(255,136,0,0.6)]';
+                            if (t.completed) bgClass = (gameState.bossLevelId === 2 ? 'bg-amber-600' : gameState.isBossLevel ? 'bg-emerald-500' : 'bg-[#FF8800]') + ' border-white scale-110 shadow-[0_0_15px_rgba(251,191,36,0.6)]';
                           }
 
                           return (
@@ -3830,7 +3916,7 @@ const App: React.FC = () => {
                         : 'w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))]'
                       }`}>
                       {grid.map(cell => (
-                        <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} />
+                        <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} bossLevelId={gameState.bossLevelId} />
                       ))}
                     </div>
                   </div>
@@ -3856,21 +3942,25 @@ const App: React.FC = () => {
 
               {gameState.status === 'game-over' && (
                 <div className={`bg-slate-900/60 p-5 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md relative overflow-hidden border-[4px] shadow-[0_40px_100px_rgba(0,0,0,0.6)] backdrop-blur-2xl
-                  ${gameState.isBossLevel
-                    ? 'border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.3)]'
-                    : 'border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.3)]'}`}>
+                  ${gameState.bossLevelId === 2
+                    ? 'border-amber-600/50 shadow-[0_0_50px_rgba(120,53,15,0.4)]'
+                    : gameState.isBossLevel
+                      ? 'border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.3)]'
+                      : 'border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.3)]'}`}>
                   {/* Background Texture Removed */}
 
                   <div className="relative z-10">
                     {/* Header */}
                     <div className="text-center mb-4">
-                      <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl border-2 border-white/30 mb-2 ${gameState.isBossLevel
-                        ? 'bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
-                        : 'bg-gradient-to-br from-red-500 to-red-700 shadow-[0_0_20px_rgba(239,68,68,0.4)]'
+                      <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl border-2 border-white/30 mb-2 ${gameState.bossLevelId === 2
+                        ? 'bg-gradient-to-br from-amber-600 to-amber-800 shadow-[0_0_20px_rgba(120,53,15,0.5)]'
+                        : gameState.isBossLevel
+                          ? 'bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+                          : 'bg-gradient-to-br from-red-500 to-red-700 shadow-[0_0_20px_rgba(239,68,68,0.4)]'
                         }`}>
                         <XCircle className="w-7 h-7 text-white" />
                       </div>
-                      <h2 className={`text-2xl font-black font-orbitron uppercase tracking-widest mb-1 drop-shadow-lg ${gameState.isBossLevel ? 'text-emerald-400' : 'text-red-400'
+                      <h2 className={`text-2xl font-black font-orbitron uppercase tracking-widest mb-1 drop-shadow-lg ${gameState.bossLevelId === 2 ? 'text-amber-400' : gameState.isBossLevel ? 'text-emerald-400' : 'text-red-400'
                         }`}>
                         HAI PERSO
                       </h2>
@@ -3878,11 +3968,11 @@ const App: React.FC = () => {
                     </div>
 
                     {/* Info Card */}
-                    <div className={`bg-black/40 border-2 rounded-2xl p-4 mb-4 backdrop-blur-md ${gameState.isBossLevel ? 'border-emerald-500/20' : 'border-red-500/20'
+                    <div className={`bg-black/40 border-2 rounded-2xl p-4 mb-4 backdrop-blur-md ${gameState.bossLevelId === 2 ? 'border-amber-600/20' : gameState.isBossLevel ? 'border-emerald-500/20' : 'border-red-500/20'
                       }`}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="flex items-center gap-2">
-                          <Target className={`w-5 h-5 ${gameState.isBossLevel ? 'text-emerald-400' : 'text-red-400'}`} />
+                          <Target className={`w-5 h-5 ${gameState.bossLevelId === 2 ? 'text-amber-400' : gameState.isBossLevel ? 'text-emerald-400' : 'text-red-400'}`} />
                           <span className="text-xs font-black text-white/70 uppercase tracking-wider">
                             {gameState.isBossLevel ? 'Boss Sfidato' : 'Livello Non Superato'}
                           </span>
@@ -3922,7 +4012,7 @@ const App: React.FC = () => {
                         }
                       }}
                         className={`w-full text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-base shadow-[0_8px_16px_rgba(255,255,255,0.2)] active:translate-y-1 transition-all border-b-4 flex items-center justify-center gap-3 group ${gameState.isBossLevel
-                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-700 border-emerald-900'
+                          ? (gameState.bossLevelId === 2 ? 'bg-gradient-to-r from-amber-600 to-amber-800 border-amber-900' : 'bg-gradient-to-r from-emerald-500 to-emerald-700 border-emerald-900')
                           : 'bg-gradient-to-r from-[#FF8800] to-orange-600 border-orange-800'
                           }`}>
                         <RefreshCw className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -4285,8 +4375,8 @@ const App: React.FC = () => {
                   {BOSS_LEVELS.map((boss) => {
                     const isComingSoon = boss.isComingSoon;
                     const isDefeated = (userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`) || false);
-                    const isUnlocked = ((userProfile?.max_level || 1) >= boss.requiredLevel);
-                    const canPlay = !isComingSoon && isUnlocked && !isDefeated;
+                    const isUnlocked = ((userProfile?.max_level || 1) >= boss.requiredLevel || boss.id === 2);
+                    const canPlay = !isComingSoon && (isUnlocked || boss.id === 2) && (!isDefeated || boss.id === 2);
 
                     return (
                       <div
@@ -4297,7 +4387,9 @@ const App: React.FC = () => {
                             : isDefeated
                               ? 'bg-slate-900 border-green-500/30 opacity-80'
                               : canPlay
-                                ? 'bg-gradient-to-r from-emerald-900/60 to-teal-900/60 border-emerald-500/50 hover:border-emerald-400 hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-emerald-500/30'
+                                ? boss.id === 2
+                                  ? 'bg-gradient-to-r from-amber-900/60 to-orange-950/60 border-amber-600/50 hover:border-amber-400 hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-amber-600/30'
+                                  : 'bg-gradient-to-r from-emerald-900/60 to-teal-900/60 border-emerald-500/50 hover:border-emerald-400 hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-emerald-500/30'
                                 : 'bg-slate-900/50 border-slate-700 opacity-50 grayscale cursor-not-allowed'
                           }
                           `}
@@ -4395,9 +4487,9 @@ const App: React.FC = () => {
                               {!isComingSoon && (
                                 <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded
                                     ${isDefeated
-                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                    ? (boss.id === 2 ? 'bg-amber-800/20 text-amber-600 border border-amber-700/30' : 'bg-green-500/20 text-green-400 border border-green-500/30')
                                     : canPlay
-                                      ? 'bg-emerald-500/20 text-emerald-400'
+                                      ? (boss.id === 2 ? 'bg-amber-600/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400')
                                       : 'bg-slate-700/50 text-slate-500'
                                   }
                                   `}>
@@ -4416,7 +4508,7 @@ const App: React.FC = () => {
                               )}
                             </div>
                             <h3 className={`font-orbitron font-black text-sm sm:text-lg uppercase leading-none mb-2
-                                ${isDefeated ? 'text-green-300' : isComingSoon ? 'text-slate-500' : 'text-white'}
+                                ${isDefeated ? (boss.id === 2 ? 'text-amber-500' : 'text-green-300') : isComingSoon ? 'text-slate-500' : 'text-white'}
                               `}>
                               {boss.title}
                             </h3>
@@ -4428,7 +4520,7 @@ const App: React.FC = () => {
                             {!isComingSoon && (
                               <div className="flex gap-3 text-[10px]">
                                 <div className="flex items-center gap-1">
-                                  <Target className={`w-3 h-3 ${isDefeated ? 'text-green-600' : 'text-emerald-400'}`} />
+                                  <Target className={`w-3 h-3 ${isDefeated ? (boss.id === 2 ? 'text-amber-700' : 'text-green-600') : (boss.id === 2 ? 'text-amber-400' : 'text-emerald-400')}`} />
                                   <span className={`${isDefeated ? 'text-slate-600' : 'text-slate-300'} font-bold`}>{boss.targets} Target</span>
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -4445,7 +4537,7 @@ const App: React.FC = () => {
 
                           {/* Action Indicator */}
                           {canPlay && !isComingSoon && (
-                            <ChevronRight className="w-6 h-6 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                            <ChevronRight className={`w-6 h-6 group-hover:translate-x-1 transition-transform ${boss.id === 2 ? 'text-amber-400' : 'text-emerald-400'}`} />
                           )}
 
                           {isDefeated && (

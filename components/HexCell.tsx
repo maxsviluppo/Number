@@ -10,6 +10,7 @@ interface HexCellProps {
   onMouseDown: (id: string) => void;
   theme?: 'default' | 'orange';
   isBossLevel?: boolean;
+  bossLevelId?: number | null;
 }
 
 const HexCell: React.FC<HexCellProps> = ({
@@ -20,6 +21,7 @@ const HexCell: React.FC<HexCellProps> = ({
   onMouseDown,
   theme = 'default',
   isBossLevel = false,
+  bossLevelId = null,
 }) => {
   const [animationClass, setAnimationClass] = useState('animate-hex-entry');
   const prevSelected = useRef(isSelected);
@@ -84,7 +86,9 @@ const HexCell: React.FC<HexCellProps> = ({
     : '';
   const orangeOperatorStyle = isOrangeTheme && !isNumber
     ? isBossLevel
-      ? 'bg-gradient-to-br from-green-800 to-emerald-950 border-[3px] border-emerald-700 shadow-[0_2px_0_rgba(0,50,0,0.5)]'
+      ? bossLevelId === 2
+        ? 'bg-gradient-to-br from-amber-900 to-amber-950 border-[3px] border-amber-700 shadow-[0_2px_0_rgba(120,53,15,0.5)]' // Brown for Boss 2
+        : 'bg-gradient-to-br from-green-800 to-emerald-950 border-[3px] border-emerald-700 shadow-[0_2px_0_rgba(0,50,0,0.5)]' // Green for other bosses
       : 'bg-gradient-to-br from-[#E65100] to-[#B71C1C] border-[3px] border-white shadow-[0_2px_0_rgba(0,0,0,0.2)]'
     : '';
 
@@ -121,8 +125,7 @@ const HexCell: React.FC<HexCellProps> = ({
       className={`absolute transition-all duration-300 cursor-pointer flex items-center justify-center 
         ${isOrangeTheme && isNumber ? '' : shapeClass} 
         ${!isOrangeTheme ? 'border-2' : ''} 
-        ${data.isFallen ? 'animate-fallen' : animationClass}
-        ${data.isVibrating ? 'animate-vibrate' : ''}
+        ${data.isFallen ? 'animate-fallen' : (data.isVibrating ? 'animate-vibrate' : animationClass)}
         ${isOrangeTheme && isNumber ? 'w-[calc(64px*var(--hex-scale))] h-[calc(64px*var(--hex-scale))]' : ''}
         ${isOrangeTheme && !isNumber ? 'w-[calc(40px*var(--hex-scale))] h-[calc(40px*var(--hex-scale))]' : ''}
         ${!isOrangeTheme ? 'w-[calc(64px*var(--hex-scale))] h-[calc(72px*var(--hex-scale))]' : ''}
@@ -134,8 +137,12 @@ const HexCell: React.FC<HexCellProps> = ({
             : isOrangeTheme && !isNumber
               ? `${orangeOperatorStyle} active:scale-95 shadow-md`
               : isNumber
-                ? 'bg-slate-800/95 border-white/10 active:scale-95 hover:bg-slate-700/95'
-                : `${operatorTheme.bg} ${operatorTheme.border} active:scale-95 hover:brightness-125`
+                ? bossLevelId === 2
+                  ? 'bg-gradient-to-br from-amber-700 to-amber-500 border-amber-600 active:scale-95 shadow-[0_5px_15px_rgba(146,64,14,0.4)] text-amber-50'
+                  : 'bg-slate-800/95 border-white/10 active:scale-95 hover:bg-slate-700/95'
+                : bossLevelId === 2
+                  ? 'bg-gradient-to-br from-amber-800 to-amber-600 border-amber-700 active:scale-95 shadow-md text-amber-100'
+                  : `${operatorTheme.bg} ${operatorTheme.border} active:scale-95 hover:brightness-125`
         }
         ${data.isFallen ? 'opacity-0 scale-50 pointer-events-none translate-y-20' : ''}
         ${(!isSelectable && !isSelected) && !data.isFallen ? 'opacity-20 pointer-events-none' : ''}
@@ -161,7 +168,9 @@ const HexCell: React.FC<HexCellProps> = ({
             filter: isSelected
               ? 'hue-rotate(100deg) brightness(1.1) saturate(1.2)'
               : isBossLevel
-                ? 'hue-rotate(100deg) saturate(1.5) brightness(0.7)' // Dark Green for Boss
+                ? bossLevelId === 2
+                  ? 'brightness(0.6) sepia(0.8) saturate(1.5)' // Dark Brown/Amber for Boss 2
+                  : 'hue-rotate(100deg) saturate(1.5) brightness(0.7)' // Dark Green for other Bosses
                 : 'none',
             transition: 'filter 0.3s ease'
           }}
@@ -185,8 +194,12 @@ const HexCell: React.FC<HexCellProps> = ({
             : isOrangeTheme && !isNumber
               ? 'text-white text-[calc(1.4rem*var(--hex-scale))] drop-shadow-md'
               : isNumber
-                ? 'text-cyan-400 text-[calc(2.6rem*var(--hex-scale))] drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]'
-                : `${operatorTheme.text} text-[calc(3.4rem*var(--hex-scale))]`
+                ? bossLevelId === 2
+                  ? 'text-amber-50 text-[calc(2.6rem*var(--hex-scale))] drop-shadow-[0_2px_10px_rgba(0,0,0,0.4)]'
+                  : 'text-cyan-400 text-[calc(2.6rem*var(--hex-scale))] drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]'
+                : bossLevelId === 2
+                  ? 'text-amber-200 text-[calc(3.4rem*var(--hex-scale))] drop-shadow-[0_0_15px_rgba(120,53,15,0.5)]'
+                  : `${operatorTheme.text} text-[calc(3.4rem*var(--hex-scale))]`
         }`}>
         {data.value}
       </span>
