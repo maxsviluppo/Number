@@ -501,6 +501,7 @@ export const matchService = {
             .on('broadcast', { event: 'match_abandoned' }, (payload: any) => onEvent('match_abandoned', payload.payload))
             .on('broadcast', { event: 'rematch_started' }, (payload: any) => onEvent('rematch_started', payload.payload))
             .on('broadcast', { event: 'match_won' }, (payload: any) => onEvent('match_won', payload.payload))
+            .on('broadcast', { event: 'time_sync' }, (payload: any) => onEvent('time_sync', payload.payload))
             .on('presence', { event: 'sync' }, () => {
                 const state = channel.presenceState();
                 onEvent('presence_sync', state);
@@ -560,6 +561,15 @@ export const matchService = {
                 }
             }
         });
+    },
+
+    async sendTimeSync(matchId: string, timeLeft: number) {
+        const channel = (supabase as any).channel(`match_${matchId}_events`);
+        channel.send({
+            type: 'broadcast',
+            event: 'time_sync',
+            payload: { timeLeft }
+        }).catch((e: any) => console.error("Time sync broadcast failed:", e));
     },
 
     async sendWinSignal(matchId: string, winnerId: string, score: number) {

@@ -3815,18 +3815,18 @@ const App: React.FC = () => {
                           )}
                         </svg>
                         {isPaused ? (
-                          <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
+                          <Pause className="w-10 h-10 text-white animate-pulse absolute z-10" fill="white" />
                         ) : (
                           <div className="relative z-10 flex flex-col items-center justify-center text-white">
                             {activeMatch?.isDuel && duelMode === 'blitz' ? (
                               <>
                                 <div className="flex items-center gap-1.5 mb-1 scale-90 opacity-90 font-orbitron font-black">
                                   <span className="text-cyan-400 text-sm drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]">
-                                    {gameState.levelTargets.filter(t => t.owner === (activeMatch.isP1 ? 'p1' : 'p2')).length}
+                                    {gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p1' : 'p2')).length}
                                   </span>
                                   <span className="text-white/20 text-[6px]">VS</span>
                                   <span className="text-red-500 text-sm drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
-                                    {gameState.levelTargets.filter(t => t.owner === (activeMatch.isP1 ? 'p2' : 'p1')).length}
+                                    {gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p2' : 'p1')).length}
                                   </span>
                                 </div>
                                 <span className="font-black font-orbitron text-2xl leading-none tracking-tighter shadow-sm">{gameState.timeLeft}</span>

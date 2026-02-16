@@ -135,7 +135,10 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                     {/* VS */}
                     <div className="flex flex-col items-center gap-2 px-2">
                         <div className="h-12 w-[1px] bg-gradient-to-b from-transparent via-white/20 to-transparent"></div>
-                        <span className="font-black font-orbitron text-2xl text-white/10 italic">VS</span>
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-[#FF8800] blur-md opacity-20 animate-pulse"></div>
+                            <span className="relative font-black font-orbitron text-2xl text-white italic drop-shadow-lg">VS</span>
+                        </div>
                         <div className="h-12 w-[1px] bg-gradient-to-b from-transparent via-white/20 to-transparent"></div>
                     </div>
 
@@ -170,6 +173,34 @@ const DuelRecapModal: React.FC<DuelRecapProps> = ({
                         </div>
                     </div>
 
+                </div>
+
+                {/* XP PROGRESS BAR SECTION */}
+                <div className="relative z-10 px-8 pb-6">
+                    <div className="bg-black/40 p-5 rounded-2xl border border-white/5 space-y-3 shadow-inner">
+                        <div className="flex justify-between items-end text-[10px] font-black uppercase tracking-widest">
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-white/40 text-[8px]">RANGO ATTUALE</span>
+                                <span className="text-cyan-400">LIVELLO {amIP1 ? matchData.player1?.max_level || 1 : matchData.player2?.max_level || 1}</span>
+                            </div>
+                            <div className="flex flex-col items-end gap-0.5">
+                                <span className="text-white/40 text-[8px]">XP GUADAGNATI</span>
+                                <span className="text-[#FF8800] text-sm animate-pulse">+{myScore} XP</span>
+                            </div>
+                        </div>
+                        <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden border border-white/10 p-[1px]">
+                            <div
+                                className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 rounded-full transition-all duration-[2000ms] ease-out shadow-[0_0_15px_rgba(6,182,212,0.4)] relative"
+                                style={{ width: `${Math.min(100, ((myScore % 1000) / 1000) * 100)}%` }}
+                            >
+                                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-center text-[7px] font-black text-white/20 uppercase tracking-widest">
+                            <span>RANK BASE</span>
+                            <span>PROSSIMO LIVELLO: 1000 XP</span>
+                        </div>
+                    </div>
                 </div>
 
                 {/* FOOTER ACTIONS */}
