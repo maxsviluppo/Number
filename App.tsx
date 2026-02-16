@@ -233,6 +233,7 @@ const App: React.FC = () => {
   const gameStateRef = useRef<GameState>(gameState);
   const prevRoundRef = useRef(1);
   const processedWinRef = useRef<string | null>(null);
+  const isProcessingSuccessRef = useRef(false);
   const selectionTimeoutRef = useRef<number | null>(null);
   const gridRef = useRef(grid);
 
@@ -602,7 +603,7 @@ const App: React.FC = () => {
 
       // Find all possible solutions
       const allSolutions = findAllSolutions(newGrid);
-      const validSolutions = Array.from(allSolutions).filter(n => n >= min && n <= max);
+      const validSolutions = Array.from(allSolutions.keys()).filter(n => n >= min && n <= max);
 
       // Need at least 5 unique solutions. 
       // Ensure we pick solution targets that are somewhat spread out (numerically) if possible, or just shuffle well.
@@ -638,9 +639,12 @@ const App: React.FC = () => {
         });
       }
     }
-    // Generate simple targets for fallback
-    const targets = [];
-    for (let i = 0; i < targetCount; i++) targets.push(Math.floor(rng() * (max - min + 1)) + min);
+    // Generate simple UNIQUE targets for fallback
+    const targetSet = new Set<number>();
+    while (targetSet.size < Math.min(targetCount, max - min + 1)) {
+      targetSet.add(Math.floor(rng() * (max - min + 1)) + min);
+    }
+    const targets = Array.from(targetSet);
 
     return { grid: newGrid, targets };
   }, []);
@@ -777,8 +781,11 @@ const App: React.FC = () => {
       }
 
       while (finalTargets.length < targetCount) {
-        // Fallback targets (might not have path, but 5 is usually easy)
-        finalTargets.push({ value: 5, displayValue: "3 + 2", completed: false, path: [] });
+        // Fallback targets (ensure uniqueness)
+        let val = Math.floor(rng() * 18) + 1;
+        if (!finalTargets.some(t => t.value === val)) {
+          finalTargets.push({ value: val, displayValue: "??", completed: false, path: [] });
+        }
       }
 
       return { grid: localGrid, targets: finalTargets };
@@ -1299,7 +1306,14 @@ const App: React.FC = () => {
       timerRef.current = window.setInterval(() => {
         setGameState(prev => {
           if (prev.timeLeft <= 0) return prev;
-          return { ...prev, timeLeft: prev.timeLeft - 1 };
+          const newTime = prev.timeLeft - 1;
+
+          // TIME SYNC BROADCAST (Role: Host/P1)
+          if (activeMatch?.isDuel && activeMatch.isP1 && newTime % 5 === 0) {
+            matchService.sendTimeSync(activeMatch.id, newTime);
+          }
+
+          return { ...prev, timeLeft: newTime };
         });
       }, 1000);
     } else {
@@ -1771,10 +1785,22 @@ const App: React.FC = () => {
   // BLITZ ROUND TRANSITION EFFECT
   // BLITZ ROUND TRANSITION EFFECT REMOVED (Legacy Round Logic)
 
-  // MATCH BROADCAST LOGIC (Abandonment & Presence)
+  // MATCH BROADCAST LOGIC (Abandonment & Presence & Time Sync)
   useEffect(() => {
     if (activeMatch?.id && currentUser) {
       const channel = matchService.subscribeToMatchEvents(activeMatch.id, currentUser.id, (event, payload) => {
+        // TIME SYNC HANDLER (Role: Client/P2)
+        if (event === 'time_sync' && !activeMatch.isP1) {
+          const serverTime = payload.timeLeft;
+          const drift = Math.abs(gameStateRef.current.timeLeft - serverTime);
+          // Only sync if significant drift (> 2s) to avoid UI jumping on jitter
+          if (drift > 2) {
+            console.log(`⏱️ Sync: Host at ${serverTime}s, Local at ${gameStateRef.current.timeLeft}s. Adjusting.`);
+            setGameState(prev => ({ ...prev, timeLeft: serverTime }));
+          }
+          return;
+        }
+
         const handleSurrender = () => {
           if (processedWinRef.current === activeMatch.id) {
             console.log("⏭️ Surrender already processed for this match.");
@@ -2323,18 +2349,15 @@ const App: React.FC = () => {
   };
 
   const handleSuccess = async (matchedValue: number) => {
+    if (isProcessingSuccessRef.current) return;
     try {
+      isProcessingSuccessRef.current = true;
       console.log("🎯 SUCCESS: Target Found:", matchedValue);
       // RACE CONDITION FIX: Do not process win if game is already over
-      if (gameStateRef.current.status !== 'playing') return;
-
-      soundService.playSuccess();
-
-      // SCORED POINTS
-      const basePoints = 10;
-      const streakBonus = gameStateRef.current.streak * 1;
-      const currentPoints = basePoints + streakBonus;
-      const newScore = gameStateRef.current.score + currentPoints;
+      if (gameStateRef.current.status !== 'playing') {
+        isProcessingSuccessRef.current = false;
+        return;
+      }
 
       // Update targets state
       const currentTargets = gameStateRef.current.levelTargets;
@@ -2352,6 +2375,25 @@ const App: React.FC = () => {
         console.warn("⚠️ Target already completed or not found:", matchedValue);
         return;
       }
+
+      // BLITZ OPTIMIZATION: Prevent stealing from self
+      if (isBlitzDominion) {
+        const t = currentTargets[targetIndex];
+        const amIP1 = activeMatch?.isP1;
+        const myOwner = amIP1 ? 'p1' : 'p2';
+        if (t.completed && t.owner === myOwner) {
+          console.log("⚠️ Target already owned by me: IGNORED");
+          return;
+        }
+      }
+
+      soundService.playSuccess();
+
+      // SCORED POINTS
+      const basePoints = 10;
+      const streakBonus = gameStateRef.current.streak * 1;
+      const currentPoints = basePoints + streakBonus;
+      const newScore = gameStateRef.current.score + currentPoints;
 
       const newTargets = [...currentTargets];
       // Mark as completed. In Dominion, the 'owner' update (later) is what really counts.
@@ -2437,17 +2479,40 @@ const App: React.FC = () => {
           // Better: just replace the specific index we touched 'targetIndex'.
 
           if (targetIndex >= 0 && targetIndex < currentTargetsRef.length) {
-            // Generate new Random Target Logic
+            // Generate new UNIQUE Random Target Logic
             const lvl = gameStateRef.current.level;
             const diff = getDifficultyRange(lvl);
             const min = diff.min;
-            const max = Math.min(22, diff.max); // CAP for Time Attack to keep it fast and reachable
-            const newTargetValue = Math.floor(Math.random() * (max - min + 1)) + min;
+            const max = Math.min(25, diff.max); // CAP for Time Attack to keep it reachable
 
-            // Functional State Update
+            // Find all valid unique solutions on the CURRENT grid
+            const allSols = Array.from(findAllSolutions(gridRef.current).keys());
+            const currentTargetValues = currentTargetsRef.map(t => t.value);
+
+            // Candidates: valid on grid AND not currently on screen
+            const candidates = allSols.filter(v => v >= min && v <= max && !currentTargetValues.includes(v));
+
+            let newTargetValue;
+            if (candidates.length > 0) {
+              // Pick a guaranteed valid unique solution
+              newTargetValue = candidates[Math.floor(Math.random() * candidates.length)];
+            } else {
+              // Extreme Fallback: Ensure it's at least unique even if we have to ignore grid validity for a moment
+              // (This shouldn't happen often as grids usually have 50+ solutions)
+              let fallbackVal;
+              let retry = 0;
+              do {
+                fallbackVal = Math.floor(Math.random() * (max - min + 1)) + min;
+                retry++;
+              } while (currentTargetValues.includes(fallbackVal) && retry < 10);
+              newTargetValue = fallbackVal;
+            }
+
             setGameState(prev => {
               const updatedTargets = [...prev.levelTargets];
-              updatedTargets[targetIndex] = { value: newTargetValue, completed: false };
+              if (updatedTargets[targetIndex]) {
+                updatedTargets[targetIndex] = { value: newTargetValue, completed: false };
+              }
               return { ...prev, levelTargets: updatedTargets };
             });
           }
@@ -2770,7 +2835,7 @@ const App: React.FC = () => {
 
             const currentGrid = currentState.grid;
             const currentRefTargets = currentState.levelTargets || [];
-            const allSols = Array.from(findAllSolutions(currentGrid));
+            const allSols = Array.from(findAllSolutions(currentGrid).keys());
             const activeValues = currentRefTargets.filter(t => !t.completed).map(t => t.value);
             const candidates = allSols.filter(v => !activeValues.includes(v));
 
@@ -2796,6 +2861,11 @@ const App: React.FC = () => {
       }
       setGameState(prev => ({ ...prev, status: 'idle' }));
       setSelectedPath([]);
+    } finally {
+      // Small Delay before allowing next success to prevent rapid-fire detection issues
+      setTimeout(() => {
+        isProcessingSuccessRef.current = false;
+      }, 100);
     }
   };
 
@@ -3640,6 +3710,7 @@ const App: React.FC = () => {
                       : 'bg-gradient-to-r from-orange-400 via-[#FF5500] to-orange-600'}
                 transition-all duration-300
               `}>
+                  {/* SERIES SCOREBOARD REMOVED PER USER REQUEST */}
                   {/* Left Group: Buttons */}
                   <div className="flex items-center gap-3">
                     <button
@@ -3722,16 +3793,16 @@ const App: React.FC = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${(activeMatch?.isDuel && duelMode !== 'time_attack') ? 'border-red-500/50 grayscale-0 opacity-100 flex flex-col' : ''}`}>
-                        <svg className="absolute inset-0 w-full h-full -rotate-90 scale-90">
-                          <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="none" />
+                      <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${activeMatch?.isDuel ? 'border-amber-400/30' : ''}`}>
+                        <svg className="absolute inset-0 w-full h-full -rotate-90 scale-95">
+                          <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.05)" strokeWidth="10" fill="none" />
                           {!isPaused && (
                             <circle
                               cx="50%" cy="50%" r="45%"
                               stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
                                 ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
                                 : (gameState.timeLeft <= 10 ? '#ef4444' : '#FF8800')}
-                              strokeWidth="8"
+                              strokeWidth="10"
                               fill="none"
                               strokeDasharray="283"
                               strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
@@ -3739,25 +3810,42 @@ const App: React.FC = () => {
                                 : (283 * (1 - gameState.timeLeft / 60))
                               }
                               strokeLinecap="round"
-                              className="transition-all duration-1000"
+                              className="transition-all duration-1000 ease-linear shadow-inner"
                             />
                           )}
                         </svg>
                         {isPaused ? (
                           <Pause className="w-10 h-10 text-white animate-pulse" fill="white" />
                         ) : (
-                          <>
-                            {activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz' && (
-                              <span className="text-[8px] font-black text-slate-500 uppercase leading-none mb-1">
-                                AVV
-                              </span>
+                          <div className="relative z-10 flex flex-col items-center justify-center text-white">
+                            {activeMatch?.isDuel && duelMode === 'blitz' ? (
+                              <>
+                                <div className="flex items-center gap-1.5 mb-1 scale-90 opacity-90 font-orbitron font-black">
+                                  <span className="text-cyan-400 text-sm drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]">
+                                    {gameState.levelTargets.filter(t => t.owner === (activeMatch.isP1 ? 'p1' : 'p2')).length}
+                                  </span>
+                                  <span className="text-white/20 text-[6px]">VS</span>
+                                  <span className="text-red-500 text-sm drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
+                                    {gameState.levelTargets.filter(t => t.owner === (activeMatch.isP1 ? 'p2' : 'p1')).length}
+                                  </span>
+                                </div>
+                                <span className="font-black font-orbitron text-2xl leading-none tracking-tighter shadow-sm">{gameState.timeLeft}</span>
+                              </>
+                            ) : (
+                              <>
+                                {activeMatch?.isDuel && duelMode !== 'time_attack' && (
+                                  <span className="text-[8px] font-black text-white/30 uppercase leading-none mb-1 tracking-widest">
+                                    {duelMode === 'time_attack' ? 'TIME' : 'ENEMY'}
+                                  </span>
+                                )}
+                                <span className={`font-black font-orbitron text-white leading-none ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
+                                  {activeMatch?.isDuel
+                                    ? ((duelMode === 'time_attack' || duelMode === 'blitz') ? gameState.timeLeft : opponentTargets)
+                                    : gameState.timeLeft}
+                                </span>
+                              </>
                             )}
-                            <span className={`font-black font-orbitron text-white ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
-                              {activeMatch?.isDuel
-                                ? ((duelMode === 'time_attack' || duelMode === 'blitz') ? gameState.timeLeft : opponentTargets)
-                                : gameState.timeLeft}
-                            </span>
-                          </>
+                          </div>
                         )}
                       </div>
                     )}
