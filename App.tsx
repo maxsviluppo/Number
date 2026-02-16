@@ -2483,7 +2483,8 @@ const App: React.FC = () => {
             const lvl = gameStateRef.current.level;
             const diff = getDifficultyRange(lvl);
             const min = diff.min;
-            const max = Math.min(25, diff.max); // CAP for Time Attack to keep it reachable
+            // Ensure max is valid (at least 10 numbers range) and respects the cap only if min is low
+            const max = Math.max(min + 10, Math.min(25, diff.max));
 
             // Find all valid unique solutions on the CURRENT grid
             const allSols = Array.from(findAllSolutions(gridRef.current).keys());
@@ -2497,15 +2498,21 @@ const App: React.FC = () => {
               // Pick a guaranteed valid unique solution
               newTargetValue = candidates[Math.floor(Math.random() * candidates.length)];
             } else {
-              // Extreme Fallback: Ensure it's at least unique even if we have to ignore grid validity for a moment
-              // (This shouldn't happen often as grids usually have 50+ solutions)
-              let fallbackVal;
-              let retry = 0;
-              do {
-                fallbackVal = Math.floor(Math.random() * (max - min + 1)) + min;
-                retry++;
-              } while (currentTargetValues.includes(fallbackVal) && retry < 10);
-              newTargetValue = fallbackVal;
+              // Extreme Fallback: deterministic unique selection
+              // Create pool of all available integers in range
+              const rangePool: number[] = [];
+              for (let i = min; i <= max; i++) {
+                if (!currentTargetValues.includes(i)) rangePool.push(i);
+              }
+
+              if (rangePool.length > 0) {
+                newTargetValue = rangePool[Math.floor(Math.random() * rangePool.length)];
+              } else {
+                // Absolute failsafe (expand range upwards until unique)
+                let emergencyVal = min;
+                while (currentTargetValues.includes(emergencyVal)) emergencyVal++;
+                newTargetValue = emergencyVal;
+              }
             }
 
             setGameState(prev => {
@@ -3712,7 +3719,7 @@ const App: React.FC = () => {
               `}>
                   {/* SERIES SCOREBOARD REMOVED PER USER REQUEST */}
                   {/* Left Group: Buttons */}
-                  <div className="flex items-center gap-3">
+                  <div className={`flex items-center gap-3 ${activeMatch?.isDuel && duelMode === 'blitz' ? 'opacity-0 pointer-events-none' : ''}`}>
                     <button
                       onPointerDown={(e) => {
                         goToHome(e);
@@ -3853,7 +3860,7 @@ const App: React.FC = () => {
 
                   {/* RIGHT SIDE: SCORE / ROUNDS */}
                   {activeMatch?.isDuel ? (
-                    <div className="flex items-center gap-3 pl-20 sm:pl-0">
+                    <div className={`flex items-center gap-3 pl-20 sm:pl-0 ${duelMode === 'blitz' ? 'opacity-0 pointer-events-none' : ''}`}>
                       {/* TARGETS COUNTER (Time Attack Specific) */}
                       {duelMode === 'time_attack' && (
                         <div id="targets-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-all">
@@ -4534,10 +4541,10 @@ const App: React.FC = () => {
                         {isDefeated && (
                           <div className="absolute top-3 right-3 z-30">
                             <div className="flex flex-col items-end gap-1">
-                              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-green-600 border-4 border-white shadow-[0_0_20px_rgba(34,197,94,0.4)] flex items-center justify-center animate-pulse">
-                                <Trophy className="w-6 h-6 text-white" strokeWidth={3} />
+                              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 border-4 border-slate-500 shadow-[0_0_20px_rgba(100,116,139,0.4)] flex items-center justify-center">
+                                <Lock className="w-6 h-6 text-slate-400" strokeWidth={3} />
                               </div>
-                              <span className="bg-green-500 text-white text-[7px] font-black px-2 py-0.5 rounded-full shadow-sm tracking-tighter uppercase">COMPLETATO</span>
+                              <span className="bg-slate-600 text-white text-[7px] font-black px-2 py-0.5 rounded-full shadow-sm tracking-tighter uppercase">BLOCCATO</span>
                             </div>
                           </div>
                         )}
