@@ -837,14 +837,6 @@ const App: React.FC = () => {
       // SHOW BOSS INTRO
       setShowBossIntro(true);
       setIsVideoVisible(true);
-      if (videoRef.current) {
-        videoRef.current.src = '/Boss1intro.mp4';
-        videoRef.current.muted = true; // REQUIRED for browser autoplay policy
-        videoRef.current.load();
-        videoRef.current.play().catch(e => {
-          console.warn("Boss intro blocked:", e);
-        });
-      }
     } else if (bossId === 2) {
       // PREPARE BOSS 2 LEVEL
       setGameState(prev => ({
@@ -865,16 +857,6 @@ const App: React.FC = () => {
       // SHOW BOSS 2 INTRO
       setShowBossIntro(true);
       setIsVideoVisible(true);
-      if (videoRef.current) {
-        videoRef.current.src = '/PresentBoss2noaudio.mp4';
-        videoRef.current.muted = true;
-        videoRef.current.load();
-        videoRef.current.play().catch(e => {
-          console.warn("Boss 2 intro blocked:", e);
-        });
-        soundService.playBoss2Intro(); // SYNC AUDIO
-      }
-
     } else {
       setGameState(prev => ({
         ...prev,
@@ -1149,6 +1131,8 @@ const App: React.FC = () => {
         let loseVid = '';
         if (gameState.bossLevelId === 1) {
           loseVid = '/Boss1sconfitta.mp4';
+        } else if (gameState.bossLevelId === 2) {
+          loseVid = '/RiprovaBoss2noaudio.mp4';
         } else {
           const loseIdx = Math.floor(Math.random() * LOSE_VIDEOS.length);
           loseVid = LOSE_VIDEOS[loseIdx];
@@ -3267,7 +3251,7 @@ const App: React.FC = () => {
           status: 'level-complete'
         }));
       }
-    }, 2000);
+    }, 300);
   };
 
   const handleLostVideoClose = () => {
@@ -3289,7 +3273,7 @@ const App: React.FC = () => {
         setShowDuelRecap(true);
         setGameState(prev => ({ ...prev, status: 'idle' }));
       }
-    }, 2000);
+    }, 300);
   };
 
   const handleBossIntroClose = () => {
@@ -3307,7 +3291,7 @@ const App: React.FC = () => {
 
     setTimeout(() => {
       setShowBossIntro(false);
-      setGameState(prev => ({ ...prev, status: 'playing', timeLeft: 90 }));
+      setGameState(prev => ({ ...prev, status: 'playing' }));
       soundService.playSuccess();
     }, 1000);
   };
@@ -3391,7 +3375,19 @@ const App: React.FC = () => {
         >
           <video
             ref={videoRef}
-            src={isBossBonusPlaying ? '/Bonus30secondiboss.mp4' : (showVideo ? winVideoSrc : (showLostVideo ? loseVideoSrc : (showSurrenderVideo ? surrenderVideoSrc : (showBossIntro ? '/Boss1intro.mp4' : ''))))}
+            src={
+              isBossBonusPlaying
+                ? '/Bonus30secondiboss.mp4'
+                : showVideo
+                  ? winVideoSrc
+                  : showLostVideo
+                    ? loseVideoSrc
+                    : showSurrenderVideo
+                      ? surrenderVideoSrc
+                      : showBossIntro
+                        ? (gameState.bossLevelId === 2 ? '/PresentBoss2noaudio.mp4' : '/Boss1intro.mp4')
+                        : ''
+            }
             className="w-full h-full object-cover"
             playsInline
             autoPlay
@@ -3415,6 +3411,14 @@ const App: React.FC = () => {
                 } else if (showLostVideo) {
                   soundService.stopBoss1sconfitta();
                   soundService.playBoss1sconfitta();
+                }
+              } else if (gameState.bossLevelId === 2) {
+                if (showBossIntro) {
+                  soundService.stopBoss2Intro();
+                  soundService.playBoss2Intro();
+                } else if (showLostVideo) {
+                  soundService.stopBoss2sconfitta();
+                  soundService.playBoss2sconfitta();
                 }
               }
             }}
@@ -4580,10 +4584,10 @@ const App: React.FC = () => {
                         {isDefeated && (
                           <div className="absolute top-3 right-3 z-30">
                             <div className="flex flex-col items-end gap-1">
-                              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 border-4 border-slate-500 shadow-[0_0_20px_rgba(100,116,139,0.4)] flex items-center justify-center">
-                                <Lock className="w-6 h-6 text-slate-400" strokeWidth={3} />
+                              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-600 to-green-800 border-4 border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.4)] flex items-center justify-center">
+                                <Lock className="w-6 h-6 text-white" strokeWidth={3} />
                               </div>
-                              <span className="bg-slate-600 text-white text-[7px] font-black px-2 py-0.5 rounded-full shadow-sm tracking-tighter uppercase">BLOCCATO</span>
+                              <span className="bg-green-600 text-white text-[7px] font-black px-2 py-0.5 rounded-full shadow-sm tracking-tighter uppercase">BLOCCATO</span>
                             </div>
                           </div>
                         )}
