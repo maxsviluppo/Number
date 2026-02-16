@@ -3719,7 +3719,7 @@ const App: React.FC = () => {
               `}>
                   {/* SERIES SCOREBOARD REMOVED PER USER REQUEST */}
                   {/* Left Group: Buttons */}
-                  <div className={`flex items-center gap-3 ${activeMatch?.isDuel && duelMode === 'blitz' ? 'opacity-0 pointer-events-none' : ''}`}>
+                  <div className="flex items-center gap-3">
                     <button
                       onPointerDown={(e) => {
                         goToHome(e);
@@ -3860,7 +3860,7 @@ const App: React.FC = () => {
 
                   {/* RIGHT SIDE: SCORE / ROUNDS */}
                   {activeMatch?.isDuel ? (
-                    <div className={`flex items-center gap-3 pl-20 sm:pl-0 ${duelMode === 'blitz' ? 'opacity-0 pointer-events-none' : ''}`}>
+                    <div className="flex items-center gap-3 pl-20 sm:pl-0">
                       {/* TARGETS COUNTER (Time Attack Specific) */}
                       {duelMode === 'time_attack' && (
                         <div id="targets-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-all">
