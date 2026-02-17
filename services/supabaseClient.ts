@@ -312,9 +312,13 @@ export const profileService = {
                 total_score: (profile.total_score || 0) + (bossId === 2 ? 1500 : 1000),
             });
             console.log(`🏆 Boss ${bossId} completed! Badge awarded: ${badgeId}`);
+            console.log(`🔒 Updated badges:`, updatedProfile.badges);
             return updatedProfile; // Return the FULL updated profile
         }
-        return profile; // Return existing profile if already completed
+        // CRITICAL: If badge already exists, still return the current profile WITH the badge
+        console.log(`ℹ️ Boss ${bossId} already completed. Badge: ${badgeId} already present.`);
+        console.log(`📋 Current badges:`, profile.badges);
+        return profile; // Return current profile which ALREADY HAS the badge
     }
 };
 

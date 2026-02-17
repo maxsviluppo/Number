@@ -356,6 +356,20 @@
       background: #34d399;
       box-shadow: 0 0 15px #34d399, 0 0 30px #34d399;
     }
+
+    /* Hide scrollbars globally */
+    *::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    * {
+      -ms-overflow-style: none;
+      /* IE and Edge */
+      scrollbar-width: none;
+      /* Firefox */
+    }
   </style>
 
   <script type="importmap">
