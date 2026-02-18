@@ -317,6 +317,8 @@ const App: React.FC = () => {
         console.warn("⚠️ BOOT SYSTEM: Intro sequence timed out - Force entering app");
         // Extended timeout to 120s to allow full video playback without forced skip
         // Only acts as a true failsafe if video engine crashes
+        setShowIntro(false);
+        setGameState(prev => ({ ...prev, status: 'idle' }));
       }, 120000);
       return () => clearTimeout(timer);
     }
@@ -805,23 +807,37 @@ const App: React.FC = () => {
     }
 
     // Safety check: Don't allow re-playing defeated bosses
-    // Check BOTH localStorage (instant, set on victory) AND profile badges (from DB)
+    // Only check the NEW badge format (boss_X_defeated), NOT old 'boss_matematico'
     const badgeToCheck = `boss_${bossId}_defeated`;
     const localBossKey = `defeated_boss_${bossId}`;
     const hasBadgeInProfile = (userProfile?.badges || []).includes(badgeToCheck);
     const hasBadgeInLocal = localStorage.getItem(localBossKey) === 'true';
     const hasBadge = hasBadgeInProfile || hasBadgeInLocal;
 
-    console.log(`🔍 Controllo blocco Boss ${bossId}:`, {
+    // Also check if player has reached the required level
+    // (boss is already defined above at line 798)
+    const playerLevel = userProfile?.max_level || 1;
+    const isUnlocked = boss ? playerLevel >= boss.requiredLevel : false;
+
+    console.log(`🔍 Controllo Boss ${bossId}:`, {
       badgeToCheck,
       hasBadgeInProfile,
       hasBadgeInLocal,
-      hasBadge
+      hasBadge,
+      playerLevel,
+      requiredLevel: boss?.requiredLevel,
+      isUnlocked
     });
 
     if (hasBadge) {
-      console.log(`⛔ Boss ${bossId} bloccato.`);
+      console.log(`⛔ Boss ${bossId} già completato.`);
       showToast('Hai già sconfitto questo boss! Sfida completata.');
+      return;
+    }
+
+    if (!isUnlocked) {
+      console.log(`🔒 Boss ${bossId} bloccato: livello ${playerLevel} < ${boss?.requiredLevel}`);
+      showToast(`Raggiungi il livello ${boss?.requiredLevel} in carriera per sbloccare questo boss!`);
       return;
     }
 
@@ -953,11 +969,27 @@ const App: React.FC = () => {
         }
 
         // Sync boss defeat badges from DB to localStorage (ensures cross-session consistency)
-        (profile.badges || []).forEach((badge: string) => {
+        // NOTE: Only sync the NEW badge format (boss_X_defeated), NOT old 'boss_matematico'
+        const profileBadges = profile.badges || [];
+
+        // CLEANUP: For each boss, if the user does NOT have the new badge in DB,
+        // clear any stale localStorage entry (could have been written by old migration code)
+        BOSS_LEVELS.forEach(boss => {
+          const newBadge = `boss_${boss.id}_defeated`;
+          const localKey = `defeated_boss_${boss.id}`;
+          if (!profileBadges.includes(newBadge)) {
+            // User hasn't actually beaten this boss in the new system — clear stale local flag
+            localStorage.removeItem(localKey);
+          }
+        });
+
+        // Now sync only the confirmed new-format badges to localStorage
+        profileBadges.forEach((badge: string) => {
           const match = badge.match(/^boss_(\d+)_defeated$/);
           if (match) {
             localStorage.setItem(`defeated_boss_${match[1]}`, 'true');
           }
+          // Old badge 'boss_matematico' is intentionally NOT synced to localStorage
         });
 
         // Check for Badges on Load (In case of missed updates or offline play sync)
@@ -4523,9 +4555,12 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[55vh] pr-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {BOSS_LEVELS.map((boss) => {
                     const isComingSoon = boss.isComingSoon;
+                    // isDefeated: only check NEW badge format (boss_X_defeated)
+                    // Old 'boss_matematico' badge is intentionally ignored here
                     const isDefeated = (userProfile?.badges || []).includes(`boss_${boss.id}_defeated`)
                       || localStorage.getItem(`defeated_boss_${boss.id}`) === 'true';
-                    const isUnlocked = ((userProfile?.max_level || 1) >= boss.requiredLevel);
+                    const playerCareerLevel = userProfile?.max_level || 1;
+                    const isUnlocked = playerCareerLevel >= boss.requiredLevel;
                     const canPlay = !isComingSoon && isUnlocked && !isDefeated;
 
                     return (
