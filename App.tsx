@@ -1303,6 +1303,15 @@ const App: React.FC = () => {
     }
   }, [activeModal]);
 
+  // 🔄 CROSS-DEVICE BOSS SYNC: Reload profile from DB every time boss_selection opens.
+  // This ensures that if a boss was defeated on another device/browser, the badge state
+  // is always fresh from the DB — no persistent connections needed.
+  useEffect(() => {
+    if (activeModal === 'boss_selection' && currentUser) {
+      loadProfile(currentUser.id);
+    }
+  }, [activeModal, currentUser, loadProfile]);
+
   // Timer: Dedicated Loop for decrementing time only
   useEffect(() => {
     // MODIFIED: Timer disabled for Standard, ENABLED for Time Attack AND Blitz
