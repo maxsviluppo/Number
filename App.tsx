@@ -324,6 +324,26 @@ const App: React.FC = () => {
     }
   }, [showIntro]);
 
+  // 🛟 SAFETY FAILSAFE: Ensure victory animation doesn't hang forever
+  useEffect(() => {
+    if (isVictoryAnimating) {
+      const timer = setTimeout(() => {
+        if (isVictoryAnimating) {
+          console.warn("⚠️ Victory Failsafe: Animation took too long, forcing recovery");
+          setIsVictoryAnimating(false);
+          setShowVideo(false);
+          setIsVideoVisible(false);
+          // If in boss level, return to idle
+          if (gameState.isBossLevel) {
+            setGameState(prev => ({ ...prev, status: 'idle', isBossLevel: false, bossLevelId: null }));
+            setActiveModal('boss_selection');
+          }
+        }
+      }, 45000); // 45s safety (longer than any boss video sequence)
+      return () => clearTimeout(timer);
+    }
+  }, [isVictoryAnimating, gameState.isBossLevel]);
+
   // FORCE SCROLL RESET ON IDLE (Home Screen Stability)
   useEffect(() => {
     if (gameState.status === 'idle' && !activeModal) {
@@ -870,6 +890,17 @@ const App: React.FC = () => {
     // SHOW BOSS INTRO (works for ALL boss levels)
     setShowBossIntro(true);
     setIsVideoVisible(true);
+
+    // Imperatively set video src for boss intro
+    setTimeout(() => {
+      if (videoRef.current) {
+        const introSrc = bossId === 2 ? '/PresentBoss2noaudio.mp4' : '/Boss1intro.mp4';
+        videoRef.current.src = introSrc;
+        videoRef.current.muted = true;
+        videoRef.current.load();
+        videoRef.current.play().catch(e => console.warn("Boss intro video blocked:", e));
+      }
+    }, 100);
   };
 
   const generateGrid = useCallback((forceStartLevel?: number, forcedSeed?: string) => {
@@ -1164,7 +1195,7 @@ const App: React.FC = () => {
         setShowLostVideo(true);
         setIsVideoVisible(true);
 
-        // Force ref update in next tick to ensure element exists
+        // Imperatively set video src and play
         setTimeout(() => {
           if (videoRef.current) {
             videoRef.current.src = loseVid;
@@ -1419,6 +1450,13 @@ const App: React.FC = () => {
     setSelectedPath([]);
     if (timerRef.current) window.clearInterval(timerRef.current);
     if (currentUser) loadProfile(currentUser.id);
+
+    // EMERGENCY RESET: If we were in victory animation, ensure we clear it definitely
+    setTimeout(() => {
+      setIsVictoryAnimating(false);
+      setShowVideo(false);
+      setIsVideoVisible(false);
+    }, 100);
   };
 
   // BOSS 2: FALLEN MECHANICS (Vibrations & Falling Debris)
@@ -2247,6 +2285,12 @@ const App: React.FC = () => {
     // Clear any leftover duel state when starting single player
     if (activeMatch) setActiveMatch(null);
 
+    // Show bonus toast if player has an active time bonus from boss victories
+    const activeBonus = parseInt(localStorage.getItem('career_time_bonus') || '0');
+    if (activeBonus > 0) {
+      showToast(`⏱️ BONUS BOSS ATTIVO: +${activeBonus}s di tempo extra per ogni livello carriera!`);
+    }
+
     // Always show briefing modal before starting
     setActiveModal('resume_confirm');
     return;
@@ -2379,7 +2423,7 @@ const App: React.FC = () => {
     if (isProcessingSuccessRef.current) return;
     try {
       isProcessingSuccessRef.current = true;
-      console.log("🎯 SUCCESS: Target Found:", matchedValue);
+      console.log("🎯 Nucleo: Obiettivo Trovato:", matchedValue);
       // RACE CONDITION FIX: Do not process win if game is already over
       if (gameStateRef.current.status !== 'playing') {
         isProcessingSuccessRef.current = false;
@@ -2486,7 +2530,7 @@ const App: React.FC = () => {
         ? newTargets.every(t => t.completed)
         : (newTargets.every(t => t.completed) && (!isTimeAttack && !isBlitz));
 
-      console.log(`🎯 [handleSuccess] Targets: ${localTargetsFound}/${newTargets.length} | allDone: ${allDone} | isBoss: ${isBoss}`);
+      console.log(`🎯 Avanzamento: ${localTargetsFound}/${newTargets.length} | Complessivo: ${allDone}`);
 
       // TIME ATTACK: REGENERATE TARGET AFTER 3 SECONDS
       if (isTimeAttack) {
@@ -2620,12 +2664,11 @@ const App: React.FC = () => {
               console.log(`🏆 [VICTORY] Boss ${currentBossId} Sconfitto! Badge: ${targetBadge}`);
 
               // ⚡ STEP 1: INSTANT LOCAL LOCK — write to localStorage immediately (synchronous)
-              // This guarantees the boss is blocked even before the DB responds
               const localBossKey = `defeated_boss_${currentBossId}`;
               localStorage.setItem(localBossKey, 'true');
               console.log(`✅ [LOCAL] Boss ${currentBossId} bloccato localmente: ${localBossKey}=true`);
 
-              // ⚡ STEP 2: Update local React state immediately (no await needed)
+              // ⚡ STEP 2: Update local React state immediately
               setUserProfile(prev => {
                 if (!prev) return prev;
                 const currentBadges = prev.badges || [];
@@ -2633,23 +2676,25 @@ const App: React.FC = () => {
                 return { ...prev, badges: [...currentBadges, targetBadge] };
               });
 
-              // ⚡ STEP 3: Sync to DB in background (non-blocking)
-              profileService.completeBoss(currentUser.id, currentBossId)
-                .then(updatedProfile => {
-                  if (updatedProfile) {
-                    setUserProfile(updatedProfile);
-                    if (updatedProfile.career_time_bonus !== undefined) {
-                      localStorage.setItem('career_time_bonus', updatedProfile.career_time_bonus.toString());
-                    }
-                    return profileService.syncProgress(currentUser.id, bossFinalPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
-                  }
-                })
-                .then(() => loadProfile(currentUser.id))
-                .catch(e => console.error("Errore salvataggio boss DB:", e));
+              // ⚡ STEP 3: AWAIT DB sync before starting video (ensures badge persists on refresh)
+              try {
+                const updatedProfile = await profileService.completeBoss(currentUser.id, currentBossId);
+                if (updatedProfile) {
+                  setUserProfile(updatedProfile);
+                  const bonusTime = updatedProfile.career_time_bonus ?? 0;
+                  localStorage.setItem('career_time_bonus', bonusTime.toString());
+                  console.log(`✅ [DB] Boss ${currentBossId} salvato nel DB. Bonus tempo: ${bonusTime}s`);
+                  await profileService.syncProgress(currentUser.id, bossFinalPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
+                  await loadProfile(currentUser.id);
+                }
+              } catch (e) {
+                console.error("Errore salvataggio boss DB:", e);
+                // Even if DB fails, localStorage already has the badge - continue with video
+              }
             }
           }
 
-          // START VIDEO SEQUENCE: STEP 1 (Bonus Video)
+          // START VIDEO SEQUENCE: STEP 1 (Bonus Video) - starts AFTER DB save confirmed
           setTimeout(() => {
             if (videoRef.current) {
               const vidSrc = gameStateRef.current.bossLevelId === 1
@@ -2657,7 +2702,7 @@ const App: React.FC = () => {
                 : '/Bonus45secondiboss.MP4';
 
               videoRef.current.src = vidSrc;
-              videoRef.current.muted = true; // Stay muted for bonus video as it has no audio usually
+              videoRef.current.muted = true;
               videoRef.current.load();
 
               const playPromise = videoRef.current.play();
@@ -3103,24 +3148,7 @@ const App: React.FC = () => {
     }
   }, [gameState.status, gameState.totalScore, gameState.level, gameState.timeLeft]); // Added dependencies
 
-  // BOSS UNLOCK CHECKER
-  useEffect(() => {
-    if (gameState.status === 'idle' && userProfile) {
-      // BOSS 1 UNLOCK (Level > 5)
-      if ((userProfile.max_level || 1) > 5) {
-        const key = `boss_unlock_seen_1_${userProfile.id}`;
-        if (localStorage.getItem(key) !== 'true') {
-          setTimeout(() => {
-            // Play Unlock Video (Placeholder for now)
-            setShowHomeTutorial(false); // Hide tutorial if overlapping
-            showToast("⚠️ LIVELLO BOSS SBLOCCATO!", [{ label: "GIOCA ORA", onClick: () => setActiveModal('boss_selection') }]);
-            soundService.playBadge(); // Alert Sound
-            localStorage.setItem(key, 'true');
-          }, 3000);
-        }
-      }
-    }
-  }, [gameState.status, userProfile, showToast]);
+
 
   /* INPUT BLOCKING LOGIC */
   const canInteract = () => {
@@ -3158,31 +3186,7 @@ const App: React.FC = () => {
     }
   };
 
-  const isAdjacent = (cell1: HexCellData, cell2: HexCellData): boolean => {
-    if (theme === 'orange') {
-      const dr = Math.abs(cell1.row - cell2.row);
-      const dc = Math.abs(cell1.col - cell2.col);
-      // Rectilinear adjacency: Up/Down OR Left/Right
-      return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
-    }
 
-    const dr = Math.abs(cell1.row - cell2.row);
-    const dc = cell2.col - cell1.col;
-
-    // Stessa riga
-    if (dr === 0) return Math.abs(dc) === 1;
-
-    // Righe adiacenti
-    if (dr === 1) {
-      // Per il sistema offset a righe pari
-      if (cell1.row % 2 === 0) {
-        return dc === 0 || dc === -1;
-      } else {
-        return dc === 0 || dc === 1;
-      }
-    }
-    return false;
-  };
 
   const onMoveInteraction = (id: string) => {
     if (!isDragging || !canInteract()) return;
@@ -3207,7 +3211,7 @@ const App: React.FC = () => {
       const typeCheck = lastCell.type !== currentCell.type;
 
       // Regola 2: Adiacenza Fisica (Deve essere un vicino diretto nell'esagono)
-      const adjacencyCheck = isAdjacent(lastCell, currentCell);
+      const adjacencyCheck = areCellsAdjacent(lastCell, currentCell);
 
       if (typeCheck && adjacencyCheck) {
         soundService.playSelect();
@@ -3290,12 +3294,19 @@ const App: React.FC = () => {
       videoRef.current.volume = 0;
     }
 
-    // 3. Unmount after fade and Show Recap if Duel
+    // Unmount after fade, handle different game modes
     setTimeout(() => {
       setShowLostVideo(false);
       if (activeMatch?.isDuel) {
         setShowDuelRecap(true);
         setGameState(prev => ({ ...prev, status: 'idle' }));
+      } else if (gameStateRef.current.isBossLevel) {
+        // Boss defeat: return to boss selection screen
+        setGameState(prev => ({ ...prev, status: 'idle', isBossLevel: false, bossLevelId: null }));
+        setActiveModal('boss_selection');
+      } else {
+        // Standard game over: stay on game-over screen
+        setGameState(prev => ({ ...prev, status: 'game-over' }));
       }
     }, 300);
   };
@@ -3400,22 +3411,8 @@ const App: React.FC = () => {
         >
           <video
             ref={videoRef}
-            src={
-              isBossBonusPlaying
-                ? '/Bonus30secondiboss.mp4'
-                : showVideo
-                  ? winVideoSrc
-                  : showLostVideo
-                    ? loseVideoSrc
-                    : showSurrenderVideo
-                      ? surrenderVideoSrc
-                      : showBossIntro
-                        ? (gameState.bossLevelId === 2 ? '/PresentBoss2noaudio.mp4' : '/Boss1intro.mp4')
-                        : ''
-            }
             className="w-full h-full object-cover"
             playsInline
-            autoPlay
             onPlaying={() => {
               if (videoRef.current) videoRef.current.volume = 0.7;
               setIsVideoVisible(true);
@@ -3478,10 +3475,12 @@ const App: React.FC = () => {
                 if (gameState.bossLevelId === 1 && isBossBonusPlaying) {
                   // STEP 1 COMPLETE: Bonus Video Ended -> Play Boss Victory Video
                   setIsBossBonusPlaying(false);
-                  setWinVideoSrc('/Boss1vittoria.mp4');
-                  // Force reload to ensure src update
+                  const nextVid = '/Boss1vittoria.mp4';
+                  setWinVideoSrc(nextVid);
+                  // Force reload with DIRECT path to avoid state lag
                   setTimeout(() => {
                     if (videoRef.current) {
+                      videoRef.current.src = nextVid;
                       videoRef.current.load();
                       videoRef.current.play().catch(e => console.warn("Boss 1 victory video blocked:", e));
                     }
@@ -3489,9 +3488,11 @@ const App: React.FC = () => {
                 } else if (gameState.bossLevelId === 2 && isBossBonusPlaying) {
                   // STEP 1 COMPLETE: Bonus 45s Ended -> Play Boss 2 Victory Video
                   setIsBossBonusPlaying(false);
-                  setWinVideoSrc('/FinalBoss2video.mp4');
+                  const nextVid = '/FinalBoss2video.mp4';
+                  setWinVideoSrc(nextVid);
                   setTimeout(() => {
                     if (videoRef.current) {
+                      videoRef.current.src = nextVid;
                       videoRef.current.load();
                       videoRef.current.play().catch(e => console.warn("Boss 2 victory video blocked:", e));
                     }
@@ -4809,14 +4810,28 @@ const App: React.FC = () => {
                   </div>
 
                   {/* Bonus Indicator */}
-                  {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (
-                    <div className="mt-4 w-full bg-orange-500/10 border border-orange-500/20 rounded-xl py-2 px-4 flex items-center justify-center gap-2 animate-pulse">
-                      <Sparkles size={14} className="text-[#FF8800]" />
-                      <span className="text-[10px] font-black text-[#FF8800] uppercase tracking-wider">
-                        Bonus Boss Attivo (+{localStorage.getItem('career_time_bonus')}s)
-                      </span>
-                    </div>
-                  )}
+                  {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (() => {
+                    const bonusAmt = parseInt(localStorage.getItem('career_time_bonus') || '0');
+                    const bossName = bonusAmt >= 45 ? 'Boss 2 FALLEN' : 'Boss 1 MATEMATICO';
+                    return (
+                      <div className="mt-4 w-full bg-emerald-500/10 border-2 border-emerald-500/40 rounded-xl py-3 px-4 flex flex-col items-center gap-1 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                        <div className="flex items-center gap-2">
+                          <Crown size={16} className="text-yellow-400 animate-bounce" />
+                          <span className="text-[11px] font-black text-emerald-400 uppercase tracking-widest">
+                            BONUS {bossName} ATTIVO
+                          </span>
+                          <Crown size={16} className="text-yellow-400 animate-bounce" />
+                        </div>
+                        <span className="text-2xl font-black font-orbitron text-white drop-shadow-[0_0_10px_rgba(16,185,129,0.6)]">
+                          +{bonusAmt}s
+                        </span>
+                        <span className="text-[9px] text-emerald-400/70 uppercase tracking-widest">
+                          Tempo extra per ogni livello carriera
+                        </span>
+                      </div>
+                    );
+                  })()}
+
                 </div>
               </div>
 
