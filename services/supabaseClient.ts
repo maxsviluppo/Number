@@ -3,36 +3,36 @@ import { createClient, User } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://bpyqazhiespiknhflowh.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_xMiHJsO79O5pUMGSDp6OJA_ZxVY_DMJ';
 
-// DUMMY CLIENT FACTORY (Safe Fallback)
-const createDummyClient = () => ({
-    auth: {
-        getSession: async () => ({ data: { session: null }, error: null }),
-        getUser: async () => ({ data: { user: null }, error: null }),
-        signUp: async () => ({ data: { user: null, session: null }, error: { message: 'Offline Mode: Missing API Keys' } }),
-        signInWithPassword: async () => ({ data: { user: null, session: null }, error: { message: 'Offline Mode: Missing API Keys' } }),
-        signOut: async () => ({ error: null }),
-        onAuthStateChange: (callback: any) => ({ data: { subscription: { unsubscribe: () => { } } } }),
-        resetPasswordForEmail: async () => ({ data: null, error: { message: 'Offline Mode' } }),
-    },
-    from: () => ({
-        select: () => ({
-            eq: () => ({
-                single: async () => ({ data: null, error: { message: 'Offline Mode', code: 'OFFLINE' } }),
-                maybeSingle: async () => ({ data: null, error: null })
-            }),
-            order: () => ({ limit: async () => ({ data: [], error: null }) }),
-            upsert: async () => ({ select: () => ({ single: async () => ({ data: null, error: null }) }) }), // Fix chain
-            insert: async () => ({ error: { message: 'Offline Mode' } }),
-            update: async () => ({ eq: async () => ({ error: null }) })
-        }),
-        upsert: async () => ({ select: () => ({ single: async () => ({ data: null, error: null }) }) }),
-        insert: async () => ({ error: null }),
-        update: async () => ({ eq: async () => ({ error: null }) })
-    }),
-    rpc: async () => ({ data: null, error: { message: 'Offline Mode: RPC not available' } })
-});
+// DUMMY CLIENT FACTORY (Safe Fallback to avoid lint errors and runtime crashes)
+const createDummyClient = () => {
+    const dummyRef: any = {
+        from: () => dummyRef,
+        select: () => dummyRef,
+        insert: () => Promise.resolve({ data: null, error: { message: 'Offline' } }),
+        upsert: () => dummyRef, // for .upsert().select().single()
+        update: () => dummyRef,
+        delete: () => dummyRef,
+        eq: () => dummyRef,
+        order: () => dummyRef,
+        limit: () => dummyRef,
+        single: () => Promise.resolve({ data: null, error: { message: 'Offline' } }),
+        maybeSingle: () => Promise.resolve({ data: null, error: null }),
+        ilike: () => dummyRef,
+        rpc: () => Promise.resolve({ data: null, error: { message: 'Offline' } }),
+        auth: {
+            getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+            getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+            signUp: () => Promise.resolve({ data: { user: null }, error: { message: 'Offline' } }),
+            signInWithPassword: () => Promise.resolve({ data: { user: null }, error: { message: 'Offline' } }),
+            signOut: () => Promise.resolve({ error: null }),
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
+            resetPasswordForEmail: () => Promise.resolve({ data: null, error: { message: 'Offline' } }),
+        }
+    };
+    return dummyRef;
+};
 
-let supabaseClient = createDummyClient(); // Default to Safe Mode
+let supabaseClient = createDummyClient() as any; // Default to Safe Mode
 
 // TRY REAL INITIALIZATION
 try {
@@ -298,11 +298,9 @@ export const profileService = {
         const profile = await this.getProfile(userId);
         if (!profile) return null;
 
-        // Bonus lookup table — add a row for each new boss
+        // Bonus lookup table — Boss 1 is now Fallen (30s / 1000pts)
         const BOSS_BONUSES: Record<number, { time: number; score: number }> = {
-            1: { time: 30, score: 1000 },
-            2: { time: 45, score: 1500 },
-            // Future bosses: just add { id: { time: X, score: Y } }
+            1: { time: 30, score: 1000 }
         };
         const bonus = BOSS_BONUSES[bossId] || { time: 0, score: 1000 };
 
@@ -312,18 +310,18 @@ export const profileService = {
 
         if (!currentBadges.includes(badgeId)) {
             const updatedBadges = [...currentBadges, badgeId];
+            console.log(`📡 [Supabase] Awarding Boss Badge: ${badgeId}`);
             const updatedProfile = await this.updateProfile({
                 id: userId,
                 badges: updatedBadges,
                 career_time_bonus: (profile.career_time_bonus || 0) + bonus.time,
                 total_score: (profile.total_score || 0) + bonus.score,
             });
-            console.log(`🏆 Boss ${bossId} completed! Badge awarded: ${badgeId}`);
-            console.log(`🔒 Updated badges:`, updatedProfile.badges);
-            return updatedProfile; // Return the FULL updated profile
+            console.log(`🏆 [Supabase] Boss ${bossId} completed! Badge and Bonus persistent.`);
+            return { profile: updatedProfile, isNew: true };
         }
-        console.log(`ℹ️ Boss ${bossId} already completed. Badge: ${badgeId} already present.`);
-        return profile;
+        console.log(`ℹ️ [Supabase] Boss ${bossId} already completed (Badge ${badgeId} present).`);
+        return { profile, isNew: false };
     }
 };
 
