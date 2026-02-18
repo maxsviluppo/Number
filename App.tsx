@@ -805,18 +805,22 @@ const App: React.FC = () => {
     }
 
     // Safety check: Don't allow re-playing defeated bosses
-    const badgeToCheck = bossId === 1 ? 'boss_matematico' : `boss_${bossId}_defeated`;
-    const hasBadge = (userProfile?.badges || []).includes(badgeToCheck);
+    // Check BOTH localStorage (instant, set on victory) AND profile badges (from DB)
+    const badgeToCheck = `boss_${bossId}_defeated`;
+    const localBossKey = `defeated_boss_${bossId}`;
+    const hasBadgeInProfile = (userProfile?.badges || []).includes(badgeToCheck);
+    const hasBadgeInLocal = localStorage.getItem(localBossKey) === 'true';
+    const hasBadge = hasBadgeInProfile || hasBadgeInLocal;
 
     console.log(`🔍 Controllo blocco Boss ${bossId}:`, {
       badgeToCheck,
-      userBadges: userProfile?.badges || [],
-      hasBadge,
-      isBlocked: hasBadge
+      hasBadgeInProfile,
+      hasBadgeInLocal,
+      hasBadge
     });
 
     if (hasBadge) {
-      console.log(`⛔ Boss ${bossId} bloccato. Badge presente:`, badgeToCheck);
+      console.log(`⛔ Boss ${bossId} bloccato.`);
       showToast('Hai già sconfitto questo boss! Sfida completata.');
       return;
     }
@@ -831,63 +835,25 @@ const App: React.FC = () => {
     // Boss levels are separate challenges and should NOT overwrite max_level
     const careerLevel = userProfile?.max_level || 1;
 
-    if (bossId === 1) {
-      // PREPARE LEVEL BUT DON'T START YET
-      setGameState(prev => ({
-        ...prev,
-        score: 0,
-        totalScore: 0,
-        streak: 0,
-        level: careerLevel, // PRESERVE CAREER LEVEL
-        isBossLevel: true,
-        bossLevelId: bossId,
-        timeLeft: boss.time || 90,
-        targetResult: 0,
-        status: 'idle', // Stay idle until video ends
-        levelTargets: levelData.targets,
-        targetsFound: 0
-      }));
+    // UNIFIED: All boss levels use the same initialization
+    setGameState(prev => ({
+      ...prev,
+      score: 0,
+      totalScore: 0,
+      streak: 0,
+      level: careerLevel, // PRESERVE CAREER LEVEL
+      isBossLevel: true,
+      bossLevelId: bossId,
+      timeLeft: boss.time || 90,
+      targetResult: 0,
+      status: 'idle', // Stay idle until intro video ends
+      levelTargets: levelData.targets,
+      targetsFound: 0
+    }));
 
-      // SHOW BOSS INTRO
-      setShowBossIntro(true);
-      setIsVideoVisible(true);
-    } else if (bossId === 2) {
-      // PREPARE BOSS 2 LEVEL
-      setGameState(prev => ({
-        ...prev,
-        score: 0,
-        totalScore: 0,
-        streak: 0,
-        level: careerLevel,
-        isBossLevel: true,
-        bossLevelId: bossId,
-        timeLeft: boss.time || 90,
-        targetResult: 0,
-        status: 'idle', // Wait for video
-        levelTargets: levelData.targets,
-        targetsFound: 0
-      }));
-
-      // SHOW BOSS 2 INTRO
-      setShowBossIntro(true);
-      setIsVideoVisible(true);
-    } else {
-      setGameState(prev => ({
-        ...prev,
-        score: 0,
-        totalScore: 0, // Boss level starts at 0 pts
-        streak: 0,
-        level: careerLevel, // PRESERVE CAREER LEVEL
-        isBossLevel: true,
-        bossLevelId: bossId,
-        timeLeft: boss.time || 90,
-        targetResult: 0,
-        status: 'playing',
-        levelTargets: levelData.targets,
-        targetsFound: 0
-      }));
-      soundService.playSuccess();
-    }
+    // SHOW BOSS INTRO (works for ALL boss levels)
+    setShowBossIntro(true);
+    setIsVideoVisible(true);
   };
 
   const generateGrid = useCallback((forceStartLevel?: number, forcedSeed?: string) => {
@@ -985,6 +951,14 @@ const App: React.FC = () => {
           // If undefined (new user?), clear it to be safe
           localStorage.removeItem('career_time_bonus');
         }
+
+        // Sync boss defeat badges from DB to localStorage (ensures cross-session consistency)
+        (profile.badges || []).forEach((badge: string) => {
+          const match = badge.match(/^boss_(\d+)_defeated$/);
+          if (match) {
+            localStorage.setItem(`defeated_boss_${match[1]}`, 'true');
+          }
+        });
 
         // Check for Badges on Load (In case of missed updates or offline play sync)
         checkAndUnlockBadges(profile);
@@ -2287,9 +2261,9 @@ const App: React.FC = () => {
 
       let matchedTarget;
 
-      if (gameState.isBossLevel) {
+      if (gameStateRef.current.isBossLevel) {
         // BOSS MODE - Any uncompleted target can be matched (not sequential)
-        if (gameState.bossLevelId === 2) {
+        if (gameStateRef.current.bossLevelId === 2) {
           // BOSS 2: Must match value AND specific path of one of the available targets
           matchedTarget = currentTargets.find(t => {
             if (t.completed) return false;
@@ -2323,24 +2297,9 @@ const App: React.FC = () => {
           setTimeout(() => {
             if (videoRef.current) {
 
-              const currentBossId = gameStateRef.current.bossLevelId;
-              if (currentBossId === 1 || currentBossId === 2) {
-                // BOSS LEVEL WIN SEQUENCE
-                const vidSrc = currentBossId === 1
-                  ? '/Bonus30secondiboss.mp4'
-                  : '/Bonus45secondiboss.MP4';
-                videoRef.current.src = vidSrc;
-                videoRef.current.muted = true;
-                videoRef.current.load();
-                videoRef.current.play().catch(e => console.warn("Boss Bonus video blocked:", e));
-
-                setIsBossBonusPlaying(true);
-                // Boss 1 uses soundService.playBossBonus() for the FIRST intro video
-                if (currentBossId === 1) soundService.playBossBonus();
-
-                setWinVideoSrc(vidSrc);
-                setShowVideo(true);
-                setIsVideoVisible(true);
+              if (gameStateRef.current.isBossLevel) {
+                // BOSS LEVELS: Skip video here — handleSuccess manages the full victory sequence
+                console.log('🎬 [evaluatePath] Boss level last target — delegating video to handleSuccess');
               } else {
                 // STANDARD LEVEL WIN
                 const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
@@ -2489,7 +2448,13 @@ const App: React.FC = () => {
 
       // For Time Attack/Blitz, we don't care about 'allDone' in the traditional sense
       const localTargetsFound = newTargets.filter(t => t.completed).length;
-      const allDone = newTargets.every(t => t.completed) && (!isTimeAttack && !isBlitz);
+      const isBoss = gameStateRef.current.isBossLevel;
+      // CRITICAL: Boss victory depends only on completing all targets in the level
+      const allDone = isBoss
+        ? newTargets.every(t => t.completed)
+        : (newTargets.every(t => t.completed) && (!isTimeAttack && !isBlitz));
+
+      console.log(`🎯 [handleSuccess] Targets: ${localTargetsFound}/${newTargets.length} | allDone: ${allDone} | isBoss: ${isBoss}`);
 
       // TIME ATTACK: REGENERATE TARGET AFTER 3 SECONDS
       if (isTimeAttack) {
@@ -2605,13 +2570,13 @@ const App: React.FC = () => {
         if (!videoRef.current) soundService.playExternalSound('Fine_partita_win.mp3');
 
         // BOSS LEVEL WIN LOGIC
-        if (gameState.isBossLevel) {
+        if (gameStateRef.current.isBossLevel) {
           if (timerRef.current) window.clearInterval(timerRef.current);
           setIsVictoryAnimating(true);
 
           // Reward calculation
-          const bonusAmt = gameState.bossLevelId === 2 ? 45 : 30;
-          const bonusPoints = gameState.bossLevelId === 2 ? 1500 : 1000;
+          const bonusAmt = gameStateRef.current.bossLevelId === 2 ? 45 : 30;
+          const bonusPoints = gameStateRef.current.bossLevelId === 2 ? 1500 : 1000;
 
           // Sync score to global profile AND award boss completion
           if (currentUser) {
@@ -2619,25 +2584,43 @@ const App: React.FC = () => {
             const currentBossId = gameStateRef.current.bossLevelId;
 
             if (currentBossId) {
-              console.log(`🏆 Salvataggio Boss ${currentBossId}...`);
-              // Save badge and bonus immediately
+              const targetBadge = `boss_${currentBossId}_defeated`;
+              console.log(`🏆 [VICTORY] Boss ${currentBossId} Sconfitto! Badge: ${targetBadge}`);
+
+              // ⚡ STEP 1: INSTANT LOCAL LOCK — write to localStorage immediately (synchronous)
+              // This guarantees the boss is blocked even before the DB responds
+              const localBossKey = `defeated_boss_${currentBossId}`;
+              localStorage.setItem(localBossKey, 'true');
+              console.log(`✅ [LOCAL] Boss ${currentBossId} bloccato localmente: ${localBossKey}=true`);
+
+              // ⚡ STEP 2: Update local React state immediately (no await needed)
+              setUserProfile(prev => {
+                if (!prev) return prev;
+                const currentBadges = prev.badges || [];
+                if (currentBadges.includes(targetBadge)) return prev;
+                return { ...prev, badges: [...currentBadges, targetBadge] };
+              });
+
+              // ⚡ STEP 3: Sync to DB in background (non-blocking)
               profileService.completeBoss(currentUser.id, currentBossId)
                 .then(updatedProfile => {
                   if (updatedProfile) {
                     setUserProfile(updatedProfile);
-                    // Sync points and other stats
-                    return profileService.syncProgress(currentUser.id, bossFinalPoints, gameState.level, gameState.estimatedIQ);
+                    if (updatedProfile.career_time_bonus !== undefined) {
+                      localStorage.setItem('career_time_bonus', updatedProfile.career_time_bonus.toString());
+                    }
+                    return profileService.syncProgress(currentUser.id, bossFinalPoints, gameStateRef.current.level, gameStateRef.current.estimatedIQ);
                   }
                 })
                 .then(() => loadProfile(currentUser.id))
-                .catch(e => console.error("Errore salvataggio boss:", e));
+                .catch(e => console.error("Errore salvataggio boss DB:", e));
             }
           }
 
           // START VIDEO SEQUENCE: STEP 1 (Bonus Video)
           setTimeout(() => {
             if (videoRef.current) {
-              const vidSrc = gameState.bossLevelId === 1
+              const vidSrc = gameStateRef.current.bossLevelId === 1
                 ? '/Bonus30secondiboss.mp4'
                 : '/Bonus45secondiboss.MP4';
 
@@ -2761,13 +2744,13 @@ const App: React.FC = () => {
         if (currentUser) {
           // 3. LEVEL UP & SAVE (SINGLE PLAYER ONLY)
           // CRITICAL FIX: Do NOT save state or increment level if in a DUEL or BOSS LEVEL
-          if (!activeMatch && !gameState.isBossLevel) {
+          if (!activeMatch && !gameStateRef.current.isBossLevel) {
             const saveState = {
               totalScore: gameStateRef.current.totalScore + currentPoints + totalWinBonuses,
               streak: 0,
-              level: gameState.level + 1,
-              timeLeft: gameState.timeLeft + 60,
-              estimatedIQ: Math.min(200, gameState.estimatedIQ + 4)
+              level: gameStateRef.current.level + 1,
+              timeLeft: gameStateRef.current.timeLeft + 60,
+              estimatedIQ: Math.min(200, gameStateRef.current.estimatedIQ + 4)
             };
 
             // SYNC TO GLOBAL PROFILE
@@ -4540,7 +4523,8 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[55vh] pr-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {BOSS_LEVELS.map((boss) => {
                     const isComingSoon = boss.isComingSoon;
-                    const isDefeated = (userProfile?.badges?.includes(boss.id === 1 ? 'boss_matematico' : `boss_${boss.id}_defeated`) || false);
+                    const isDefeated = (userProfile?.badges || []).includes(`boss_${boss.id}_defeated`)
+                      || localStorage.getItem(`defeated_boss_${boss.id}`) === 'true';
                     const isUnlocked = ((userProfile?.max_level || 1) >= boss.requiredLevel);
                     const canPlay = !isComingSoon && isUnlocked && !isDefeated;
 
@@ -4551,7 +4535,7 @@ const App: React.FC = () => {
                             ${isComingSoon
                             ? 'bg-slate-950/40 border-slate-800 opacity-70 cursor-default'
                             : isDefeated
-                              ? 'bg-slate-900 border-green-500/30 opacity-80'
+                              ? 'bg-slate-900 border-green-500/50 opacity-90 cursor-default'
                               : canPlay
                                 ? boss.id === 2
                                   ? 'bg-gradient-to-r from-amber-900/60 to-orange-950/60 border-amber-600/50 hover:border-amber-400 hover:scale-[1.02] cursor-pointer shadow-lg hover:shadow-amber-600/30'
@@ -4566,6 +4550,12 @@ const App: React.FC = () => {
                             showToast("Quest'area Neurale è ancora in fase di calcolo... Torna presto!");
                             return;
                           }
+                          if (isDefeated) {
+                            // Strictly blocked
+                            soundService.playError();
+                            showToast('Boss già sconfitto: bonus una-tantum riscattato con successo!');
+                            return;
+                          }
                           if (canPlay) {
                             soundService.playUIClick();
                             if (!currentUser) {
@@ -4574,9 +4564,6 @@ const App: React.FC = () => {
                             } else {
                               startBossGame(boss.id);
                             }
-                          } else if (isDefeated) {
-                            soundService.playUIClick();
-                            showToast('Dominio Boss stabilito: ricompensa già riscossa!');
                           } else {
                             soundService.playUIClick();
                             showToast(`Raggiungi il livello ${boss.requiredLevel} per sbloccare questo boss!`);
@@ -4608,10 +4595,10 @@ const App: React.FC = () => {
                         {isDefeated && (
                           <div className="absolute top-3 right-3 z-30">
                             <div className="flex flex-col items-end gap-1">
-                              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-600 to-green-800 border-4 border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.4)] flex items-center justify-center">
-                                <Lock className="w-6 h-6 text-white" strokeWidth={3} />
+                              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-500 to-amber-700 border-4 border-yellow-300 shadow-[0_0_20px_rgba(234,179,8,0.4)] flex items-center justify-center">
+                                <Award className="w-8 h-8 text-white animate-pulse" strokeWidth={2.5} />
                               </div>
-                              <span className="bg-green-600 text-white text-[7px] font-black px-2 py-0.5 rounded-full shadow-sm tracking-tighter uppercase">BLOCCATO</span>
+                              <span className="bg-yellow-600 text-white text-[7px] font-black px-2 py-0.5 rounded-full shadow-sm tracking-tighter uppercase">COMPLETATO</span>
                             </div>
                           </div>
                         )}
@@ -4663,8 +4650,8 @@ const App: React.FC = () => {
                                 </span>
                               )}
                               {isDefeated && (
-                                <span className="text-[8px] font-black uppercase text-white bg-green-500 px-2 py-0.5 rounded-full animate-pulse shadow-sm">
-                                  BLOCCATO
+                                <span className="text-[8px] font-black uppercase text-white bg-yellow-500 px-2 py-0.5 rounded-full shadow-sm">
+                                  CONQUISTATO
                                 </span>
                               )}
                               {isComingSoon && (

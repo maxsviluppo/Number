@@ -298,27 +298,39 @@ export const profileService = {
         const profile = await this.getProfile(userId);
         if (!profile) return null;
 
-        const badgeId = bossId === 1 ? 'boss_matematico' : `boss_${bossId}_defeated`;
-        const currentBadges = profile.badges || [];
+        // Bonus lookup table — add a row for each new boss
+        const BOSS_BONUSES: Record<number, { time: number; score: number }> = {
+            1: { time: 30, score: 1000 },
+            2: { time: 45, score: 1500 },
+            // Future bosses: just add { id: { time: X, score: Y } }
+        };
+        const bonus = BOSS_BONUSES[bossId] || { time: 0, score: 1000 };
+
+        const badgeId = `boss_${bossId}_defeated`;
+        // Migration: rename old badge format if present
+        let currentBadges = (profile.badges || []).map(
+            (b: string) => b === 'boss_matematico' ? 'boss_1_defeated' : b
+        );
 
         if (!currentBadges.includes(badgeId)) {
             const updatedBadges = [...currentBadges, badgeId];
             const updatedProfile = await this.updateProfile({
                 id: userId,
                 badges: updatedBadges,
-                // Award 45 second time bonus for Boss 2, 30 for Boss 1
-                career_time_bonus: (profile.career_time_bonus || 0) + (bossId === 2 ? 45 : (bossId === 1 ? 30 : 0)),
-                // Also give a score bonus for first completion: 1500 for Boss 2, 1000 for others
-                total_score: (profile.total_score || 0) + (bossId === 2 ? 1500 : 1000),
+                career_time_bonus: (profile.career_time_bonus || 0) + bonus.time,
+                total_score: (profile.total_score || 0) + bonus.score,
             });
             console.log(`🏆 Boss ${bossId} completed! Badge awarded: ${badgeId}`);
             console.log(`🔒 Updated badges:`, updatedProfile.badges);
             return updatedProfile; // Return the FULL updated profile
         }
         // CRITICAL: If badge already exists, still return the current profile WITH the badge
+        // Also save migrated badges if they changed
+        if (JSON.stringify(currentBadges) !== JSON.stringify(profile.badges)) {
+            await this.updateProfile({ id: userId, badges: currentBadges });
+        }
         console.log(`ℹ️ Boss ${bossId} already completed. Badge: ${badgeId} already present.`);
-        console.log(`📋 Current badges:`, profile.badges);
-        return profile; // Return current profile which ALREADY HAS the badge
+        return profile;
     }
 };
 
