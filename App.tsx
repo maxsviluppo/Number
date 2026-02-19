@@ -236,6 +236,7 @@ const App: React.FC = () => {
   const isProcessingSuccessRef = useRef(false);
   const selectionTimeoutRef = useRef<number | null>(null);
   const gridRef = useRef(grid);
+  const disconnectionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     gridRef.current = grid;
@@ -1850,23 +1851,37 @@ const App: React.FC = () => {
         if (event === 'match_abandoned' && payload.fromUserId !== currentUser?.id) {
           console.log("⚡ Broadcast: Match Abandoned by opponent.");
           handleSurrender();
+        } else if (event === 'presence_sync') {
+          const opponentId = activeMatch.opponentId;
+          const isOpponentPresent = payload[opponentId];
+          if (isOpponentPresent && disconnectionTimerRef.current) {
+            console.log("✅ Opponent reconnected. Clearing timer.");
+            clearTimeout(disconnectionTimerRef.current);
+            disconnectionTimerRef.current = null;
+            showToast("✅ AVVERSARIO RICONNESSO!", [], 3000);
+          }
         } else if (event === 'presence_leave') {
           console.log("👥 Presence Leave Event:", payload);
-          // DISABILITATO: Evita false rese per disconnessioni temporanee
-          /*
           const opponentId = activeMatch.opponentId;
           const hasOpponentLeft = payload.some((p: any) =>
             p.user_id === opponentId ||
-            p.key === opponentId ||
-            (p.presence_ref && p.user_id === opponentId)
+            p.key === opponentId
           );
-   
+
           if (hasOpponentLeft && (gameStateRef.current.status === 'playing' || gameStateRef.current.status === 'round-won')) {
-            console.log("⚡ Presence: Opponent Disconnected/Left. Waiting for explicit abandon.");
-            // Non triggerare handleSurrender() automaticamente per evitare falsi positivi
-            showToast("⚠️ Connessione avversario instabile...", [], 2000);
+            console.log("⚠️ Opponent left (silent). Starting 15s grace period.");
+            showToast("⚠️ AVVERSARIO DISCONNESSO! Vittoria a tavolino tra 15s...", [], 5000);
+
+            if (disconnectionTimerRef.current) clearTimeout(disconnectionTimerRef.current);
+            disconnectionTimerRef.current = setTimeout(async () => {
+              console.log("⏰ Disconnection timer expired. Winning by abandonment.");
+              const success = await matchService.declareWinner(activeMatch.id, currentUser.id);
+              if (success) {
+                handleSurrender();
+              }
+              disconnectionTimerRef.current = null;
+            }, 15000);
           }
-          */
         } else if (event === 'match_won' && payload.winnerId !== currentUser?.id) {
           // BROADCAST LOSS SIGNAL RECEIVED
           console.log("⚡ Broadcast: Match WON by opponent. Triggering Defeat immediately.");
@@ -1903,6 +1918,7 @@ const App: React.FC = () => {
       });
 
       return () => {
+        if (disconnectionTimerRef.current) clearTimeout(disconnectionTimerRef.current);
         (supabase as any).removeChannel(channel);
       };
     }
@@ -2363,6 +2379,9 @@ const App: React.FC = () => {
       // Update targets state
       const currentTargets = gameStateRef.current.levelTargets;
       const isBlitzDominion = activeMatch?.mode === 'blitz' || duelMode === 'blitz';
+      const amIP1 = activeMatch?.isP1;
+      const myOwner = amIP1 ? 'p1' : 'p2';
+      const timeBonus = gameStateRef.current.timeLeft || 0;
 
       // BLITZ DOMINION FIX: Allow finding completed targets too
       let targetIndex = -1;
@@ -2387,8 +2406,6 @@ const App: React.FC = () => {
       // BLITZ OPTIMIZATION: Prevent stealing from self
       if (isBlitzDominion) {
         const t = currentTargets[targetIndex];
-        const amIP1 = activeMatch?.isP1;
-        const myOwner = amIP1 ? 'p1' : 'p2';
         if (t.completed && t.owner === myOwner) {
           console.log("⚠️ Target already owned by me: IGNORED");
           return;
@@ -2622,8 +2639,9 @@ const App: React.FC = () => {
 
               // ⚡ STEP 3: Sync to DB in background (non-blocking)
               profileService.completeBoss(currentUser.id, currentBossId)
-                .then(updatedProfile => {
-                  if (updatedProfile) {
+                .then(result => {
+                  if (result && result.profile) {
+                    const updatedProfile = result.profile;
                     setUserProfile(updatedProfile);
                     if (updatedProfile.career_time_bonus !== undefined) {
                       localStorage.setItem('career_time_bonus', updatedProfile.career_time_bonus.toString());
