@@ -1678,7 +1678,7 @@ const App: React.FC = () => {
         // We also check DB status as a fallback.
         const isDefiniteLoss = isStandardLoss || (newData.status === 'finished' && newData.winner_id && newData.winner_id !== currentUser?.id);
 
-        if (isDefiniteLoss) {
+        if (isDefiniteLoss && gameStateRef.current.status !== 'opponent-surrendered') {
           // Ensure processedWinRef blocks duplicate execution but allow UI cleanup
           // We allow re-entry if we are still 'playing' to ensure we force-quit the game loop
           if (processedWinRef.current !== newData.id || gameStateRef.current.status === 'playing') {
@@ -1824,8 +1824,7 @@ const App: React.FC = () => {
 
           if (timerRef.current) window.clearInterval(timerRef.current);
           setGameState(prev => {
-            if (prev.status === 'opponent-surrendered') return prev;
-            return { ...prev, status: 'idle' };
+            return { ...prev, status: 'opponent-surrendered' };
           });
 
           // SURRENDER FLOW:
@@ -1875,10 +1874,15 @@ const App: React.FC = () => {
             if (disconnectionTimerRef.current) clearTimeout(disconnectionTimerRef.current);
             disconnectionTimerRef.current = setTimeout(async () => {
               console.log("⏰ Disconnection timer expired. Winning by abandonment.");
-              const success = await matchService.declareWinner(activeMatch.id, currentUser.id);
-              if (success) {
+
+              // Force local win state first to block other signals
+              if (processedWinRef.current !== activeMatch.id) {
+                // We call declareWinner to notify the DB/opponent
+                await matchService.declareWinner(activeMatch.id, currentUser.id);
+                // Trigger the UI victory flow
                 handleSurrender();
               }
+
               disconnectionTimerRef.current = null;
             }, 15000);
           }
