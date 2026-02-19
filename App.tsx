@@ -603,23 +603,20 @@ const App: React.FC = () => {
 
       // Find all possible solutions
       const allSolutions = findAllSolutions(newGrid);
-      const validSolutions = Array.from(allSolutions.keys()).filter(n => n >= min && n <= max);
+      const validSolutions = Array.from(allSolutions.keys())
+        .filter(n => n >= min && n <= max)
+        .sort((a, b) => a - b); // CRITICAL: Sort first for deterministic shuffle
 
       // Need at least 5 unique solutions. 
-      // Ensure we pick solution targets that are somewhat spread out (numerically) if possible, or just shuffle well.
       if (validSolutions.length >= 5) {
-        // Better shuffle for targets using deterministic RNG
-        const shuffled = validSolutions.sort(() => rng() - 0.5);
-        // Double shuffle
+        // USE PROPER FISHER-YATES SHUFFLE FOR DETERMINISTIC SELECTION
+        const shuffled = [...validSolutions];
         for (let i = shuffled.length - 1; i > 0; i--) {
           const j = Math.floor(rng() * (i + 1));
           [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
 
-        const targets = shuffled.slice(0, targetCount);
-
-        // Extra check: If low level, ensure targets aren't too close to each other? 
-        // No, randomness is fine as long as they are distinct.
+        const targets = shuffled.slice(0, targetCount).sort((a, b) => a - b);
         return { grid: newGrid, targets };
       }
     }
@@ -644,7 +641,7 @@ const App: React.FC = () => {
     while (targetSet.size < Math.min(targetCount, max - min + 1)) {
       targetSet.add(Math.floor(rng() * (max - min + 1)) + min);
     }
-    const targets = Array.from(targetSet);
+    const targets = Array.from(targetSet).sort((a, b) => a - b);
 
     return { grid: newGrid, targets };
   }, []);
@@ -862,7 +859,7 @@ const App: React.FC = () => {
 
     const currentLevel = forceStartLevel !== undefined ? forceStartLevel : gameState.level;
 
-    const targetCount = 5; // User requested 5 targets always valid, even for Blitz
+    const targetCount = (duelMode === 'blitz' || activeMatch?.mode === 'blitz') ? 5 : 5; // Always 5 for parity across modes now, specifically requested for Blitz
 
     if (newBuffer.length === 0 || forceStartLevel !== undefined || forcedSeed) {
       // If we have a forced seed (DUEL MODE), generate exactly that board
@@ -2372,7 +2369,14 @@ const App: React.FC = () => {
       if (gameStateRef.current.isBossLevel) {
         targetIndex = currentTargets.findIndex(t => !t.completed && t.value === matchedValue);
       } else {
-        targetIndex = currentTargets.findIndex(t => t.value === matchedValue && (!t.completed || isBlitzDominion));
+        // TARGET SELECTION LOGIC: Fix for Dominion/Blitz
+        // 1. Try to find an UNCOMPLETED target with this value
+        targetIndex = currentTargets.findIndex(t => t.value === matchedValue && !t.completed);
+
+        // 2. If all targets with this value are completed, but it's Blitz Dominion, try to steal one FROM THE OPPONENT
+        if (targetIndex === -1 && isBlitzDominion) {
+          targetIndex = currentTargets.findIndex(t => t.value === matchedValue && t.completed && t.owner !== myOwner);
+        }
       }
 
       if (targetIndex === -1) {
@@ -2393,7 +2397,13 @@ const App: React.FC = () => {
 
       soundService.playSuccess();
 
-      // SCORED POINTS
+      // 2. Calculate Rewards
+      const alreadyCompleted = currentTargets[targetIndex].completed;
+
+      // Points only for the FIRST capture, to avoid infinite points exploit in Blitz
+      const myPoints = (alreadyCompleted && isBlitzDominion)
+        ? (gameState.score || 0) // No new points for stealing
+        : (gameState.score || 0) + (timeBonus * 2) + 50 + (gameState.streak * 10);
       const basePoints = 10;
       const streakBonus = gameStateRef.current.streak * 1;
       const currentPoints = basePoints + streakBonus;

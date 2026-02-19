@@ -60,7 +60,7 @@ export const matchService = {
                     grid_seed: seed,
                     mode: mode,
                     status: 'pending', // Explicitly set pending
-                    target_score: mode === 'blitz' ? 3 : 5, // Blitz rounds are shorter (3 targets), Standard match is 5 targets
+                    target_score: mode === 'blitz' ? 5 : 5, // Blitz rounds are shorter (3 targets), Standard match is 5 targets
                     p1_rounds: 0,
                     p2_rounds: 0,
                     current_round: 1
