@@ -20,6 +20,7 @@ import RegistrationSuccess from './components/RegistrationSuccess';
 import BonusChallengeModal from './components/BonusChallengeModal';
 import { BADGES } from './constants/badges';
 import { authService, profileService, leaderboardService, supabase, UserProfile } from './services/supabaseClient'; // Moved this import here
+import { BOSS_LEVELS } from './constants/boss_levels';
 
 const TUTORIAL_STEPS = [
   {
@@ -53,126 +54,8 @@ const WIN_VIDEOS = ['/Win1noaudio.mp4', '/Win2noaudioe.mp4', '/Win3noaudio.mp4',
 const LOSE_VIDEOS = ['/Lose1noaudio.mp4', '/Lose2noaudio.mp4'];
 const SURRENDER_VIDEOS = ['/Resa1noaudio.mp4'];
 
-const BOSS_LEVELS = [
-  {
-    id: 1,
-    requiredLevel: 5,
-    title: "MATEMATICO",
-    description: "Risolvi i calcoli!",
-    targets: 10,
-    time: 90,
-    reward: "30s BONUS",
-    bg: "bg-emerald-900"
-  },
-  {
-    id: 2,
-    requiredLevel: 10,
-    title: "FALLEN",
-    description: "Celle instabili! Ogni mossa corretta le farà cadere nel vuoto. Trova le combinazioni programmate.",
-    targets: 5,
-    time: 60,
-    reward: "45s BONUS",
-    bg: "bg-red-950"
-  },
-  {
-    id: 3,
-    requiredLevel: 25,
-    title: "L'ARCHITETTO",
-    description: "La struttura è tutto.",
-    isComingSoon: true
-  },
-  {
-    id: 4,
-    requiredLevel: 40,
-    title: "CERCATORE D'ORO",
-    description: "Sequenze perfette o nulla.",
-    isComingSoon: true
-  },
-  {
-    id: 5,
-    requiredLevel: 55,
-    title: "CYBER DEMON",
-    description: "Sconfiggi il codice.",
-    isComingSoon: true
-  },
-  {
-    id: 6,
-    requiredLevel: 70,
-    title: "VIBRANIUM",
-    description: "Infrangibile come la tua logica.",
-    isComingSoon: true
-  },
-  {
-    id: 7,
-    requiredLevel: 85,
-    title: "ORACLE",
-    description: "Prevedi il risultato.",
-    isComingSoon: true
-  },
-  {
-    id: 8,
-    requiredLevel: 100,
-    title: "TITANO",
-    description: "Il peso della matematica.",
-    isComingSoon: true
-  },
-  {
-    id: 9,
-    requiredLevel: 115,
-    title: "NIGHTMARE",
-    description: "Zero spazio per l'errore.",
-    isComingSoon: true
-  },
-  {
-    id: 10,
-    requiredLevel: 130,
-    title: "PHANTOM",
-    description: "Numeri che appaiono e scompaiono.",
-    isComingSoon: true
-  },
-  {
-    id: 11,
-    requiredLevel: 145,
-    title: "GLITCH",
-    description: "Domina il caos.",
-    isComingSoon: true
-  },
-  {
-    id: 12,
-    requiredLevel: 160,
-    title: "NEBULA",
-    description: "Oltre i confini del calcolo.",
-    isComingSoon: true
-  },
-  {
-    id: 13,
-    requiredLevel: 175,
-    title: "SUPERNOVA",
-    description: "Un'esplosione di cifre.",
-    isComingSoon: true
-  },
-  {
-    id: 14,
-    requiredLevel: 190,
-    title: "QUANTUM",
-    description: "Tutto e niente allo stesso tempo.",
-    isComingSoon: true
-  },
-  {
-    id: 15,
-    requiredLevel: 205,
-    title: "SINGULARITY",
-    description: "Il punto di non ritorno.",
-    isComingSoon: true
-  },
-  {
-    id: 16,
-    requiredLevel: 220,
-    title: "ORIGIN",
-    description: "Dove tutto ebbe inizio.",
-    isComingSoon: true
-  }
-];
+// BOSS_LEVELS imported from constants/boss_levels
+
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -808,10 +691,7 @@ const App: React.FC = () => {
     // Safety check: Don't allow re-playing defeated bosses
     // Check BOTH localStorage (instant, set on victory) AND profile badges (from DB)
     const badgeToCheck = `boss_${bossId}_defeated`;
-    const localBossKey = `defeated_boss_${bossId}`;
-    const hasBadgeInProfile = (userProfile?.badges || []).includes(badgeToCheck);
-    const hasBadgeInLocal = localStorage.getItem(localBossKey) === 'true';
-    const hasBadge = hasBadgeInProfile || hasBadgeInLocal;
+    const hasBadge = (userProfile?.badges || []).includes(badgeToCheck) || (bossId === 1 && (userProfile?.badges || []).includes('boss_matematico'));
 
     console.log(`🔍 Controllo blocco Boss ${bossId}:`, {
       badgeToCheck,
@@ -3766,8 +3646,14 @@ const App: React.FC = () => {
                   {/* Custom Octagon Image */}
                   <img src="/octagon-base.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
 
-                  {/* Brain Icon - Centered */}
-                  <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
+                  {/* Brain Icon or Profile Image - Centered */}
+                  {userProfile?.avatar_url ? (
+                    <div className="relative w-24 h-24 rounded-full overflow-hidden border-[3px] border-white/70 shadow-[0_0_25px_rgba(255,255,255,0.4)] z-10 transition-all duration-500 group-hover:scale-110 group-hover:border-white group-hover:shadow-[0_0_35px_rgba(255,136,0,0.5)]">
+                      <img src={userProfile.avatar_url} className="w-full h-full object-cover" alt="Profile" />
+                    </div>
+                  ) : (
+                    <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
+                  )}
 
                 </div>
 
@@ -4657,8 +4543,7 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[55vh] pr-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {BOSS_LEVELS.map((boss) => {
                     const isComingSoon = boss.isComingSoon;
-                    const isDefeated = (userProfile?.badges || []).includes(`boss_${boss.id}_defeated`)
-                      || localStorage.getItem(`defeated_boss_${boss.id}`) === 'true';
+                    const isDefeated = (userProfile?.badges || []).includes(`boss_${boss.id}_defeated`);
                     const isUnlocked = ((userProfile?.max_level || 1) >= boss.requiredLevel);
                     const canPlay = !isComingSoon && isUnlocked && !isDefeated;
 
