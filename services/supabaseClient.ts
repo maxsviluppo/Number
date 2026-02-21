@@ -148,39 +148,55 @@ export const authService = {
 
 export const profileService = {
     async getProfile(userId: string): Promise<UserProfile | null> {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
 
-        if (error) {
-            console.warn('Error fetching profile or profile does not exist:', error.message);
+            if (error) {
+                console.warn('Error fetching profile or profile does not exist:', error.message);
+                return null;
+            }
+            return data;
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted without reason')) {
+                console.error('Critical Profile Fetch Error:', error);
+            }
             return null;
         }
-        return data;
     },
 
     // SEARCH FOR USERS (Case Insensitive)
     async searchUsers(query: string) {
-        let queryBuilder = supabase
-            .from('profiles')
-            .select('id, username, total_score, max_level, avatar_url, email');
+        try {
+            let queryBuilder = supabase
+                .from('profiles')
+                .select('id, username, total_score, max_level, avatar_url, email');
 
-        if (query) {
-            queryBuilder = queryBuilder.ilike('username', `%${query}%`);
-        } else {
-            // If no query, return recently active users
-            queryBuilder = queryBuilder.order('updated_at', { ascending: false });
-        }
+            if (query) {
+                queryBuilder = queryBuilder.ilike('username', `%${query}%`);
+            } else {
+                // If no query, return recently active users
+                queryBuilder = queryBuilder.order('updated_at', { ascending: false });
+            }
 
-        const { data, error } = await queryBuilder.limit(20);
+            const { data, error } = await queryBuilder.limit(20);
 
-        if (error) {
-            console.error('Error searching users:', error);
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('Error searching users:', error);
+                }
+                return [];
+            }
+            return data || [];
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Search Users Error:', error);
+            }
             return [];
         }
-        return data || [];
     },
 
     async updateProfile(profile: Partial<UserProfile> & { id: string }) {
@@ -220,77 +236,111 @@ export const profileService = {
         return data;
     },
 
-    // Sync game progress to DB (only updates if better for stats, but also handles current run save)
     async syncProgress(userId: string, newScore: number, newLevel: number, newIq: number) {
-        const current = await this.getProfile(userId);
+        try {
+            const current = await this.getProfile(userId);
 
-        const updates: any = { id: userId, updated_at: new Date().toISOString() };
-        let shouldUpdate = false;
+            const updates: any = { id: userId, updated_at: new Date().toISOString() };
+            let shouldUpdate = false;
 
-        // HIGH SCORES (Career Stats)
-        if (!current) {
-            updates.total_score = newScore;
-            updates.max_level = newLevel;
-            updates.estimated_iq = newIq;
-            shouldUpdate = true;
-        } else {
-            if (newLevel > (current.max_level || 0)) {
+            // HIGH SCORES (Career Stats)
+            if (!current) {
+                updates.total_score = newScore;
                 updates.max_level = newLevel;
-                shouldUpdate = true;
-            }
-            if (newIq > (current.estimated_iq || 0)) {
                 updates.estimated_iq = newIq;
                 shouldUpdate = true;
+            } else {
+                if (newLevel > (current.max_level || 0)) {
+                    updates.max_level = newLevel;
+                    shouldUpdate = true;
+                }
+                if (newIq > (current.estimated_iq || 0)) {
+                    updates.estimated_iq = newIq;
+                    shouldUpdate = true;
+                }
+                if (newScore > 0) {
+                    updates.total_score = (current.total_score || 0) + newScore;
+                    shouldUpdate = true;
+                }
             }
-            // ACCUMULATE SCORE (Lifetime Points) - Modified as per user request to not reset progress
-            if (newScore > 0) {
-                updates.total_score = (current.total_score || 0) + newScore;
-                shouldUpdate = true;
-            }
-        }
 
-        if (shouldUpdate) {
-            await this.updateProfile(updates);
+            if (shouldUpdate) {
+                await this.updateProfile(updates);
+            }
+            return current;
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Sync Progress Struggle:', error);
+            }
+            return null;
         }
-        return current;
     },
 
-    // Save Active Run State (Snapshot for Resume)
     async saveGameState(userId: string, gameState: any) {
-        const { error } = await supabase
-            .from('profiles')
-            .update({
-                current_run_state: gameState,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', userId);
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    current_run_state: gameState,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', userId);
 
-        if (error) console.error('Error saving game state:', error);
+            if (error) {
+                // Only log non-abort errors
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('Error saving game state:', error);
+                }
+            }
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Save Game Error:', error);
+            }
+        }
     },
 
     // Load Active Run State
     async loadGameState(userId: string) {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('current_run_state')
-            .eq('id', userId)
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('current_run_state')
+                .eq('id', userId)
+                .single();
 
-        if (error) {
-            console.error('Error loading game state:', error);
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('Error loading game state:', error);
+                }
+                return null;
+            }
+            return data?.current_run_state;
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Load Game Error:', error);
+            }
             return null;
         }
-        return data?.current_run_state;
     },
 
     // Clear Saved Game (on Game Over)
     async clearSavedGame(userId: string) {
-        const { error } = await supabase
-            .from('profiles')
-            .update({ current_run_state: null })
-            .eq('id', userId);
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ current_run_state: null })
+                .eq('id', userId);
 
-        if (error) console.error('Error clearing game save:', error);
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('Error clearing game save:', error);
+                }
+            }
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Clear Game Error:', error);
+            }
+        }
     },
 
     // Award Boss Completion Badge & Reward
@@ -326,20 +376,27 @@ export const profileService = {
 };
 
 export const leaderboardService = {
-    async getTopPlayers(limit = 10) {
+    async getTopPlayers(limit = 1000) {
         // Fetch top by Score
-        const { data: byScore } = await (supabase as any)
+        const { data: byScore, error: errorScore } = await (supabase as any)
             .from('profiles')
             .select('username, total_score, max_level, estimated_iq, avatar_url')
+            .not('username', 'is', null) // Avoid displaying accounts without a username
             .order('total_score', { ascending: false })
             .limit(limit);
 
+        if (errorScore) console.error("Error fetching leaderboard by score:", errorScore);
+
         // Fetch top by Level
-        const { data: byLevel } = await (supabase as any)
+        const { data: byLevel, error: errorLevel } = await (supabase as any)
             .from('profiles')
             .select('username, total_score, max_level, estimated_iq, avatar_url')
+            .not('username', 'is', null) // Avoid displaying accounts without a username
             .order('max_level', { ascending: false })
+            .order('total_score', { ascending: false }) // Secondary sort
             .limit(limit);
+
+        if (errorLevel) console.error("Error fetching leaderboard by level:", errorLevel);
 
         return {
             byScore: byScore || [],

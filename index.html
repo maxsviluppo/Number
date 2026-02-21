@@ -396,6 +396,21 @@
   </div>
   <!-- Caricamento del modulo principale -->
   <script type="module" src="./index.tsx"></script>
+
+  <style>
+    /* Prevent blue tap highlight and selection for native feel */
+    * {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    input,
+    textarea {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
+  </style>
 </body>
 
 </html>

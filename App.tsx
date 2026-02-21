@@ -138,6 +138,49 @@ const App: React.FC = () => {
     duelRoundsRef.current = duelRounds;
   }, [duelRounds]);
 
+  // Mobile Haptics Helper (Capacitor Fallback)
+  const vibrateDevice = useCallback((pattern: number | number[]) => {
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(pattern);
+      } catch (e) {
+        console.debug("Vibration not supported orblocked");
+      }
+    }
+  }, []);
+
+  const handleRequestExtraTime = async () => {
+    if (hasUsedAdvThisLevel || activeMatch) return;
+
+    // 1. Pause the game
+    togglePause(true);
+    setIsAdvPlaying(true);
+    vibrateDevice(50);
+    soundService.playExternalSound('switch.mp3');
+
+    // 2. Simulate Adv (mocking the delay for now)
+    // In production, this will trigger the Capacitor AdMob plugin
+    setTimeout(() => {
+      setIsAdvPlaying(false);
+      setHasUsedAdvThisLevel(true);
+
+      // 3. Reward: +60 seconds
+      setGameState(prev => ({
+        ...prev,
+        timeLeft: prev.timeLeft + 60
+      }));
+
+      showToast('🎁 +60 SECONDI AGGIUNTI! Forza!');
+      vibrateDevice([100, 50, 100]);
+      soundService.playSuccess();
+
+      // 4. Resume
+      setTimeout(() => {
+        togglePause(false);
+      }, 1000);
+    }, 3000); // 3 seconds mock video
+  };
+
 
   // Logo Animation Effect
   useEffect(() => {
@@ -200,6 +243,10 @@ const App: React.FC = () => {
   // NEW STATE FOR DUEL RECAP
   const [showDuelRecap, setShowDuelRecap] = useState(false);
   const [latestMatchData, setLatestMatchData] = useState<any>(null); // NEW: Full Match Object Store
+
+  // ADV REWARDED SYSTEM
+  const [isAdvPlaying, setIsAdvPlaying] = useState(false);
+  const [hasUsedAdvThisLevel, setHasUsedAdvThisLevel] = useState(false);
 
   // NEW: Video Intro State
   const [showIntro, setShowIntro] = useState(true);
@@ -705,8 +752,6 @@ const App: React.FC = () => {
 
     console.log(`🔍 Controllo blocco Boss ${bossId}:`, {
       badgeToCheck,
-      hasBadgeInProfile,
-      hasBadgeInLocal,
       hasBadge
     });
 
@@ -1254,6 +1299,9 @@ const App: React.FC = () => {
     }
     await handleUserInteraction();
     soundService.playReset();
+    vibrateDevice(15);
+    setHasUsedAdvThisLevel(false);
+    setIsAdvPlaying(false);
 
     // SFIDA LOGIC (ABBANDONO)
     if (activeMatch && currentUser && latestMatchData?.status !== 'finished') {
@@ -2253,9 +2301,11 @@ const App: React.FC = () => {
         }
 
         handleSuccess(result!);
+        vibrateDevice([40, 30, 40]); // Subtle double-pulse for success on mobile
         setSelectedPath([]);
       } else {
         handleError();
+        vibrateDevice(80); // Single hard pulse for error
       }
       setPreviewResult(null);
     } catch (err: any) {
@@ -2986,6 +3036,7 @@ const App: React.FC = () => {
 
   const nextLevel = () => {
     soundService.playUIClick();
+    vibrateDevice(20);
     setIsVictoryAnimating(false);
     const nextLvl = gameState.level + 1;
 
@@ -3032,6 +3083,7 @@ const App: React.FC = () => {
       // CARRY OVER: Add 60s to whatever is left
       timeLeft: prev.timeLeft + 60,
     }));
+    setHasUsedAdvThisLevel(false); // Reset AD usage for new level
     // Pass explicit level to avoid stale state
     generateGrid(nextLvl);
 
@@ -4086,6 +4138,21 @@ const App: React.FC = () => {
                             </div>
                           );
                         })
+                      )}
+
+                      {/* REWARDED EXTRA TIME BUBBLE (CAREER ONLY) */}
+                      {!activeMatch && !gameState.isBossLevel && (
+                        <div
+                          onPointerDown={handleRequestExtraTime}
+                          className={`
+                            flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-all duration-300 border-2
+                            ${hasUsedAdvThisLevel ? 'bg-gray-800 border-gray-700 opacity-40 grayscale pointer-events-none' : 'bg-gradient-to-br from-yellow-400 to-yellow-600 border-white shadow-[0_0_15px_rgba(251,191,36,0.5)] active:scale-95 animate-bounce-short'}
+                            font-orbitron font-black text-white cursor-pointer relative overflow-hidden group
+                          `}>
+                          <div className={`absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700`}></div>
+                          < FastForward size={20} className="mb-0.5" />
+                          <span className="text-[7px] leading-tight uppercase font-black">EXTRA</span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -5271,6 +5338,24 @@ const App: React.FC = () => {
             if (neverShow) localStorage.setItem('comic_game_tutorial_done', 'true');
           }}
         />
+
+        {/* ADV OVERLAY */}
+        {isAdvPlaying && (
+          <div className="fixed inset-0 z-[10000] bg-black flex flex-col items-center justify-center animate-screen-in">
+            <div className="relative w-24 h-24 mb-6">
+              <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-ping opacity-20"></div>
+              <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-spin border-t-transparent shadow-[0_0_20px_#FF8800]"></div>
+              <div className="absolute inset-4 bg-[#FF8800]/20 rounded-full flex items-center justify-center">
+                <Play size={32} className="text-[#FF8800] fill-[#FF8800] ml-1" />
+              </div>
+            </div>
+            <h2 className="text-xl font-orbitron font-black text-white tracking-widest mb-2">LOADING AD...</h2>
+            <p className="text-[#FF8800] font-orbitron text-[10px] font-bold tracking-widest animate-pulse">CARICAMENTO VIDEO PREMIO</p>
+            <div className="mt-12 w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-yellow-400 to-[#FF8800] animate-[shimmer_3s_linear_infinite]" style={{ width: '100%' }}></div>
+            </div>
+          </div>
+        )}
 
       </div >
     </>

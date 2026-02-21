@@ -22,14 +22,24 @@ export interface Match {
 export const matchService = {
     // Pulisce partite vecchie "appese" del giocatore
     async cleanupUserMatches(playerId: string) {
-        console.log("🧹 Inizializzazione pulizia partite per:", playerId);
-        const { error } = await (supabase as any)
-            .from('matches')
-            .update({ status: 'finished' }) // O delete, ma finished è più sicuro per storico
-            .or(`player1_id.eq.${playerId},player2_id.eq.${playerId}`)
-            .in('status', ['pending', 'active']);
+        try {
+            console.log("🧹 Inizializzazione pulizia partite per:", playerId);
+            const { error } = await (supabase as any)
+                .from('matches')
+                .update({ status: 'finished' })
+                .or(`player1_id.eq.${playerId},player2_id.eq.${playerId}`)
+                .in('status', ['pending', 'active']);
 
-        if (error) console.error("Errore pulizia sessioni:", error);
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error("Errore pulizia sessioni:", error);
+                }
+            }
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error("Critical Cleanup Error:", error);
+            }
+        }
     },
 
     // Crea una nuova richiesta di partita con modalità specifica
@@ -62,7 +72,7 @@ export const matchService = {
                     grid_seed: seed,
                     mode: mode,
                     status: 'pending', // Explicitly set pending
-                    target_score: mode === 'blitz' ? 3 : 5, // 5 for Standard, 3 for Blitz
+                    target_score: mode === 'blitz' ? 5 : 5, // Both modes use 5 targets for fair layout and shared grid rules
                     p1_rounds: 0,
                     p2_rounds: 0,
                     current_round: 1
@@ -90,73 +100,98 @@ export const matchService = {
 
     // CREA SFIDA SU INVITO (Diretta)
     async createInviteMatch(playerId: string, opponentId: string, seed: string, mode: 'standard' | 'blitz' | 'time_attack' = 'standard'): Promise<Match | null> {
-        await this.cleanupUserMatches(playerId);
+        try {
+            await this.cleanupUserMatches(playerId);
 
-        const { data, error } = await (supabase as any)
-            .from('matches')
-            .insert([
-                {
-                    player1_id: playerId,
-                    player2_id: opponentId, // Set opponent immediately
-                    grid_seed: seed,
-                    mode: mode,
-                    status: 'invite_pending', // Special status
-                    target_score: mode === 'blitz' ? 3 : 5,
-                    p1_rounds: 0,
-                    p2_rounds: 0,
-                    current_round: 1
+            const { data, error } = await (supabase as any)
+                .from('matches')
+                .insert([
+                    {
+                        player1_id: playerId,
+                        player2_id: opponentId,
+                        grid_seed: seed,
+                        mode: mode,
+                        status: 'invite_pending',
+                        target_score: mode === 'blitz' ? 5 : 5,
+                        p1_rounds: 0,
+                        p2_rounds: 0,
+                        current_round: 1
+                    }
+                ])
+                .select()
+                .single();
+
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('CREATE INVITE MATCH ERROR:', error);
                 }
-            ])
-            .select()
-            .single();
-
-        if (error) {
-            console.error('CREATE INVITE MATCH ERROR:', error);
-            throw new Error("Impossibile creare l'invito. Riprova.");
+                throw new Error("Impossibile creare l'invito. Riprova.");
+            }
+            return data;
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Invite Error:', error);
+            }
+            return null;
         }
-        return data;
     },
 
     // Partecipa a una partita esistente
     async joinMatch(matchId: string, playerId: string): Promise<boolean> {
-        // [IMPORTANT] Prima di unirci, puliamo le nostre vecchie sessioni
-        await this.cleanupUserMatches(playerId);
+        try {
+            await this.cleanupUserMatches(playerId);
 
-        const { error } = await (supabase as any)
-            .from('matches')
-            .update({
-                player2_id: playerId,
-                status: 'active' // La partita inizia appena entra il secondo giocatore
-            })
-            .eq('id', matchId)
-            .is('player2_id', null); // Sicurezza: controlla che sia ancora libera
+            const { error } = await (supabase as any)
+                .from('matches')
+                .update({
+                    player2_id: playerId,
+                    status: 'active'
+                })
+                .eq('id', matchId)
+                .is('player2_id', null);
 
-        if (error) {
-            console.error('Error joining match:', error);
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('Error joining match:', error);
+                }
+                return false;
+            }
+            return true;
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Join Error:', error);
+            }
             return false;
         }
-        return true;
     },
 
     // Accetta un invito diretto
     async acceptInvite(matchId: string, playerId: string): Promise<boolean> {
-        // [IMPORTANT] Prima di unirci, puliamo le nostre vecchie sessioni
-        await this.cleanupUserMatches(playerId);
+        try {
+            await this.cleanupUserMatches(playerId);
 
-        const { error } = await (supabase as any)
-            .from('matches')
-            .update({
-                status: 'active'
-            })
-            .eq('id', matchId)
-            .eq('player2_id', playerId) // Security check: must be the invitee
-            .eq('status', 'invite_pending');
+            const { error } = await (supabase as any)
+                .from('matches')
+                .update({
+                    status: 'active'
+                })
+                .eq('id', matchId)
+                .eq('player2_id', playerId)
+                .eq('status', 'invite_pending');
 
-        if (error) {
-            console.error('Error accepting invite:', error);
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('Error accepting invite:', error);
+                }
+                return false;
+            }
+            return true;
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Accept Error:', error);
+            }
             return false;
         }
-        return true;
     },
 
     async getPendingInvitesForUser(userId: string): Promise<Match[]> {
@@ -300,52 +335,76 @@ export const matchService = {
 
     // Aggiorna il punteggio di un giocatore
     async updateScore(matchId: string, playerId: string, newScore: number, isPlayer1: boolean) {
-        const updateData = isPlayer1
-            ? { player1_score: newScore }
-            : { player2_score: newScore };
+        try {
+            const updateData = isPlayer1
+                ? { player1_score: newScore }
+                : { player2_score: newScore };
 
-        const { error } = await (supabase as any)
-            .from('matches')
-            .update(updateData)
-            .eq('id', matchId);
+            const { error } = await (supabase as any)
+                .from('matches')
+                .update(updateData)
+                .eq('id', matchId);
 
-        if (error) {
-            console.error('Error updating score:', error);
-            throw error;
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('Error updating score:', error);
+                }
+                throw error;
+            }
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Score Update Error:', error);
+            }
         }
     },
 
     // Aggiorna il numero di target trovati
     async updateTargets(matchId: string, isPlayer1: boolean, targetsCount: number) {
-        const updateData = isPlayer1
-            ? { p1_rounds: targetsCount }
-            : { p2_rounds: targetsCount };
+        try {
+            const updateData = isPlayer1
+                ? { p1_rounds: targetsCount }
+                : { p2_rounds: targetsCount };
 
-        const { error } = await (supabase as any)
-            .from('matches')
-            .update(updateData)
-            .eq('id', matchId);
+            const { error } = await (supabase as any)
+                .from('matches')
+                .update(updateData)
+                .eq('id', matchId);
 
-        if (error) {
-            console.error('Error updating targets:', error);
-            throw error;
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('Error updating targets:', error);
+                }
+                throw error;
+            }
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Targets Update Error:', error);
+            }
         }
     },
 
     // ATOMIC UPDATE: Punteggio + Target insieme per evitare race conditions/glitch di sync
     async updateMatchStats(matchId: string, isPlayer1: boolean, score: number, targetsCount: number) {
-        const updateData = isPlayer1
-            ? { player1_score: score, p1_rounds: targetsCount }
-            : { player2_score: score, p2_rounds: targetsCount };
+        try {
+            const updateData = isPlayer1
+                ? { player1_score: score, p1_rounds: targetsCount }
+                : { player2_score: score, p2_rounds: targetsCount };
 
-        const { error } = await (supabase as any)
-            .from('matches')
-            .update(updateData)
-            .eq('id', matchId);
+            const { error } = await (supabase as any)
+                .from('matches')
+                .update(updateData)
+                .eq('id', matchId);
 
-        if (error) {
-            console.error('Error updating match stats:', error);
-            throw error;
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('Error updating match stats:', error);
+                }
+                throw error;
+            }
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Stats Update Error:', error);
+            }
         }
     },
 
@@ -390,50 +449,65 @@ export const matchService = {
 
     // Dichiara vittoria in modo competitivo (solo se il match è ancora attivo)
     async declareWinner(matchId: string, winnerId: string): Promise<boolean> {
-        const { data, error } = await (supabase as any)
-            .from('matches')
-            .update({
-                status: 'finished',
-                winner_id: winnerId
-            })
-            .eq('id', matchId)
-            .eq('status', 'active') // COMPETITIVE: Solo se non è già finito!
-            .select('id');
+        try {
+            const { data, error } = await (supabase as any)
+                .from('matches')
+                .update({
+                    status: 'finished',
+                    winner_id: winnerId
+                })
+                .eq('id', matchId)
+                .eq('status', 'active')
+                .select('id');
 
-        if (error) {
-            console.error('Error declaring winner:', error);
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('Error declaring winner:', error);
+                }
+                return false;
+            }
+            return !!(data && data.length > 0);
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Winner Declaration Error:', error);
+            }
             return false;
         }
-
-        // Se data ha elementi, significa che l'update è andato a buon fine (siamo i primi!)
-        return !!(data && data.length > 0);
     },
 
     // [OPTIMIZATION] Update Stats AND Finish Match in ONE atomic DB call
     // This reduces latency by sending only 1 Realtime event instead of 2
     async finishMatch(matchId: string, winnerId: string | null, isPlayer1: boolean, finalScore: number, finalRounds: number) {
-        const updateData = isPlayer1
-            ? {
-                status: 'finished',
-                winner_id: winnerId,
-                player1_score: finalScore,
-                p1_rounds: finalRounds
+        try {
+            const updateData = isPlayer1
+                ? {
+                    status: 'finished',
+                    winner_id: winnerId,
+                    player1_score: finalScore,
+                    p1_rounds: finalRounds
+                }
+                : {
+                    status: 'finished',
+                    winner_id: winnerId,
+                    player2_score: finalScore,
+                    p2_rounds: finalRounds
+                };
+
+            const { error } = await (supabase as any)
+                .from('matches')
+                .update(updateData)
+                .eq('id', matchId);
+
+            if (error) {
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.error('Error finishing match atomically:', error);
+                }
+                throw error;
             }
-            : {
-                status: 'finished',
-                winner_id: winnerId,
-                player2_score: finalScore,
-                p2_rounds: finalRounds
-            };
-
-        const { error } = await (supabase as any)
-            .from('matches')
-            .update(updateData)
-            .eq('id', matchId);
-
-        if (error) {
-            console.error('Error finishing match atomically:', error);
-            throw error;
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Finish Match Error:', error);
+            }
         }
     },
 
@@ -637,18 +711,27 @@ export const matchService = {
     // - null: Match definitively missing (PGRST116)
     // - { status: 'ERROR' }: Transient error, ignore this check
     async verifyMatchStatus(matchId: string) {
-        const { data, error } = await (supabase as any)
-            .from('matches')
-            .select('status, winner_id')
-            .eq('id', matchId)
-            .single();
+        try {
+            const { data, error } = await (supabase as any)
+                .from('matches')
+                .select('status, winner_id')
+                .eq('id', matchId)
+                .single();
 
-        if (error) {
-            if (error.code === 'PGRST116') return null; // Row missing
-            console.warn("Sync Watchdog Transient Error:", error.message);
+            if (error) {
+                if (error.code === 'PGRST116') return null;
+                if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                    console.warn("Sync Watchdog Transient Error:", error.message);
+                }
+                return { status: 'ERROR' };
+            }
+            return data;
+        } catch (error: any) {
+            if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted')) {
+                console.error('Critical Verify Status Error:', error);
+            }
             return { status: 'ERROR' };
         }
-        return data;
     },
 
     async getMatchById(matchId: string): Promise<Match | null> {
