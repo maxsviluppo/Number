@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const filename = process.argv[2] || 'c:\\Users\\Max\\Downloads\\A Codici Main\\Number-main\\Number-main\\App.tsx';
+const filename = 'c:\\Users\\Max\\Downloads\\A Codici Main\\Number-main\\Number-main\\App.tsx';
 
 try {
     const content = fs.readFileSync(filename, 'utf8');
