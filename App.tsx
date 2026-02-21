@@ -4142,7 +4142,8 @@ const App: React.FC = () => {
                         })
                       )}
 
-                      {/* REWARDED EXTRA TIME BUBBLE (CAREER ONLY) */}
+                      {/* REWARDED EXTRA TIME BUBBLE (CAREER ONLY) - DISABLED AS REQUESTED */}
+                      {/* 
                       {!activeMatch && !gameState.isBossLevel && (
                         <div
                           onPointerDown={handleRequestExtraTime}
@@ -4156,6 +4157,7 @@ const App: React.FC = () => {
                           <span className="text-[7px] leading-tight uppercase font-black">EXTRA</span>
                         </div>
                       )}
+                      */}
                     </div>
                   </div>
 
