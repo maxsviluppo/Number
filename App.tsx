@@ -3648,8 +3648,10 @@ const App: React.FC = () => {
 
                   {/* Brain Icon or Profile Image - Centered */}
                   {userProfile?.avatar_url ? (
-                    <div className="relative w-24 h-24 rounded-full overflow-hidden border-[3px] border-white/70 shadow-[0_0_25px_rgba(255,255,255,0.4)] z-10 transition-all duration-500 group-hover:scale-110 group-hover:border-white group-hover:shadow-[0_0_35px_rgba(255,136,0,0.5)]">
-                      <img src={userProfile.avatar_url} className="w-full h-full object-cover" alt="Profile" />
+                    <div className="absolute inset-0 p-3 z-10">
+                      <div className="w-full h-full rounded-full overflow-hidden border-[4px] border-white shadow-[0_0_30px_rgba(255,136,0,0.4)] transition-all duration-500 group-hover:scale-105 group-hover:shadow-[0_0_50px_rgba(255,136,0,0.6)]">
+                        <img src={userProfile.avatar_url} className="w-full h-full object-cover" alt="Profile" />
+                      </div>
                     </div>
                   ) : (
                     <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
