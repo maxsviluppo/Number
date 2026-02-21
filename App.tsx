@@ -142,11 +142,21 @@ const App: React.FC = () => {
   // Logo Animation Effect
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      // Silenziamo i falsi positivi di AbortError (spesso causati da Supabase quando si naviga velocemente)
-      const isAbortError = (event.reason?.name === 'AbortError' || event.reason?.message?.includes('signal is aborted without reason'));
+      // Silenziamo i falsi positivi di AbortError (comuni con Supabase o cambi pagina rapidi)
+      const reason = event.reason;
+      const errorName = reason?.name || reason?.statusText;
+      const errorMsg = reason?.message || '';
+
+      const isAbortError =
+        errorName === 'AbortError' ||
+        errorMsg.includes('signal is aborted without reason') ||
+        errorMsg.includes('The user aborted a request') ||
+        errorMsg.includes('Fetch is aborted') ||
+        errorMsg.includes('aborted');
+
       if (isAbortError) {
-        event.preventDefault(); // Impedisce al browser di mostrare il banner di errore/overlay
-        console.debug("🔇 Silenziato AbortError:", event.reason.message);
+        event.preventDefault(); // Previene banner rosso/overlay del browser
+        console.debug("🔇 Silenziato AbortError (Promise):", errorMsg);
       }
     };
 
@@ -176,7 +186,7 @@ const App: React.FC = () => {
     };
   }, [gameState.isBossLevel]);
 
-  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+  const [leaderboardData, setLeaderboardData] = useState<{ byScore: any[], byLevel: any[] } | null>(null);
 
   const [savedGame, setSavedGame] = useState<any>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -1174,11 +1184,10 @@ const App: React.FC = () => {
   // Fetch Leaderboard Data on Open
   useEffect(() => {
     if (activeModal === 'leaderboard') {
+      setLeaderboardData(null); // Reset for loading state
       const fetchLeaderboard = async () => {
         const data = await leaderboardService.getTopPlayers(1000); // Mostra tutti i giocatori (fino a 1000)
-        if (data) {
-          setLeaderboardData(data as any);
-        }
+        setLeaderboardData(data as any);
       };
       fetchLeaderboard();
     }
@@ -2675,10 +2684,11 @@ const App: React.FC = () => {
           // 3. LEVEL UP & SAVE (SINGLE PLAYER ONLY)
           // CRITICAL FIX: Do NOT save state or increment level if in a DUEL or BOSS LEVEL
           if (!activeMatch && !gameStateRef.current.isBossLevel) {
+            const nextLvlVal = gameStateRef.current.level + 1;
             const saveState = {
-              totalScore: gameStateRef.current.totalScore,
-              streak: gameStateRef.current.streak,
-              level: nextLvl,
+              totalScore: gameStateRef.current.totalScore + totalWinBonuses,
+              streak: 0,
+              level: nextLvlVal,
               timeLeft: gameStateRef.current.timeLeft,
               estimatedIQ: gameStateRef.current.estimatedIQ,
               bonusSurge,
@@ -2897,8 +2907,8 @@ const App: React.FC = () => {
       const iWon = winnerId === currentUser.id;
 
       // PASS POINTS TO GLOBAL:
-      // If I won, I pass my Local Match Points (totalScore) to global.
-      const pointsToSync = gameStateRef.current.totalScore + 100; // +100 Bonus
+      // Use ONLY the points from this match to avoid session-total inflation
+      const pointsToSync = myScore + 100; // +100 Bonus for winning/finishing
 
       // Sync Stats: Score (Points) AND Targets (Owned Count or Found Count)
       matchService.updateMatchStats(activeMatch.id, activeMatch.isP1, myScore, myTargetsForSync)
@@ -3017,6 +3027,7 @@ const App: React.FC = () => {
       ...prev,
       level: nextLvl,
       status: 'playing',
+      score: 0, // CRITICAL: Reset level score to 0 for the new level
       streak: 0,
       // CARRY OVER: Add 60s to whatever is left
       timeLeft: prev.timeLeft + 60,
@@ -3648,9 +3659,10 @@ const App: React.FC = () => {
 
                   {/* Brain Icon or Profile Image - Centered */}
                   {userProfile?.avatar_url ? (
-                    <div className="absolute inset-0 p-3 z-10">
-                      <div className="w-full h-full rounded-full overflow-hidden border-[4px] border-white shadow-[0_0_30px_rgba(255,136,0,0.4)] transition-all duration-500 group-hover:scale-105 group-hover:shadow-[0_0_50px_rgba(255,136,0,0.6)]">
-                        <img src={userProfile.avatar_url} className="w-full h-full object-cover" alt="Profile" />
+                    <div className="absolute inset-0 p-[2px] z-10 flex items-center justify-center">
+                      <div className="w-full h-full overflow-hidden border-[4px] border-white/60 shadow-[0_0_20px_rgba(255,136,0,0.4)] transition-all duration-500 group-hover:scale-105 group-hover:border-white group-hover:shadow-[0_0_40px_rgba(255,136,0,0.6)]"
+                        style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)' }}>
+                        <img src={userProfile.avatar_url} className="w-full h-full object-cover scale-110 group-hover:scale-125 transition-transform duration-700" alt="Profile" />
                       </div>
                     </div>
                   ) : (
@@ -5025,12 +5037,12 @@ const App: React.FC = () => {
                   </button>
                 </div>
 
-                {(!leaderboardData || (!leaderboardData['byScore'] && !Array.isArray(leaderboardData))) ? (
-                  <div className="text-center py-10 text-slate-400 font-orbitron">Caricamento...</div>
+                {!leaderboardData ? (
+                  <div className="text-center py-10 text-slate-400 font-orbitron text-xs animate-pulse">Caricamento in corso...</div>
                 ) : (
                   <div className="space-y-3 overflow-y-auto flex-1 pr-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     {/* DATA LIST */}
-                    {((tutorialStep === 0 ? (leaderboardData as any).byScore : (leaderboardData as any).byLevel) || []).map((p: any, idx: number) => {
+                    {((tutorialStep === 0 ? leaderboardData.byScore : leaderboardData.byLevel) || []).map((p: any, idx: number) => {
                       // Rank Calculation Inline for Leaderboard (avoiding circular dependency or extra imports if possible, but we imported `getRank` so use it)
                       const playerRank = getRank(p.max_level || 1);
                       const RankIcon = playerRank.icon;
@@ -5080,7 +5092,7 @@ const App: React.FC = () => {
                       )
                     })}
 
-                    {((tutorialStep === 0 ? (leaderboardData as any).byScore : (leaderboardData as any).byLevel) || []).length === 0 && (
+                    {((tutorialStep === 0 ? leaderboardData.byScore : leaderboardData.byLevel) || []).length === 0 && (
                       <div className="text-center py-8 text-gray-500 text-xs">Nessun dato disponibile</div>
                     )}
                   </div>
