@@ -737,18 +737,20 @@ const App: React.FC = () => {
     const boss = BOSS_LEVELS.find(b => b.id === bossId);
     if (!boss) return;
 
-    // CRITICAL: Require login to play boss levels
-    if (!currentUser) {
-      console.log(`⛔ Boss ${bossId} richiede login!`);
-      showToast('Devi effettuare il login per sfidare i Boss!');
-      setShowAuthModal(true);
+    // CRITICAL: Require login and loaded profile to play boss levels
+    if (!currentUser || !userProfile) {
+      console.log(`⛔ Boss ${bossId} richiede login o profilo non caricato!`);
+      showToast('Caricamento profilo in corso o accesso richiesto per sfidare i Boss!');
+      if (!currentUser) setShowAuthModal(true);
       return;
     }
 
     // Safety check: Don't allow re-playing defeated bosses
     // Check BOTH localStorage (instant, set on victory) AND profile badges (from DB)
     const badgeToCheck = `boss_${bossId}_defeated`;
-    const hasBadge = (userProfile?.badges || []).includes(badgeToCheck) || (bossId === 1 && (userProfile?.badges || []).includes('boss_matematico'));
+    const hasBadge = (userProfile?.badges || []).includes(badgeToCheck)
+      || (bossId === 1 && (userProfile?.badges || []).includes('boss_matematico'))
+      || localStorage.getItem(`defeated_boss_${bossId}`) === 'true';
 
     console.log(`🔍 Controllo blocco Boss ${bossId}:`, {
       badgeToCheck,
@@ -4624,7 +4626,9 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[55vh] pr-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {BOSS_LEVELS.map((boss) => {
                     const isComingSoon = boss.isComingSoon;
-                    const isDefeated = (userProfile?.badges || []).includes(`boss_${boss.id}_defeated`);
+                    const isDefeated = (userProfile?.badges || []).includes(`boss_${boss.id}_defeated`)
+                      || (boss.id === 1 && (userProfile?.badges || []).includes('boss_matematico'))
+                      || localStorage.getItem(`defeated_boss_${boss.id}`) === 'true';
                     const isUnlocked = ((userProfile?.max_level || 1) >= boss.requiredLevel);
                     const canPlay = !isComingSoon && isUnlocked && !isDefeated;
 
