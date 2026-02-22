@@ -748,9 +748,7 @@ const App: React.FC = () => {
     // Safety check: Don't allow re-playing defeated bosses
     // Check BOTH localStorage (instant, set on victory) AND profile badges (from DB)
     const badgeToCheck = `boss_${bossId}_defeated`;
-    const hasBadge = (userProfile?.badges || []).includes(badgeToCheck)
-      || (bossId === 1 && (userProfile?.badges || []).includes('boss_matematico'))
-      || localStorage.getItem(`defeated_boss_${bossId}`) === 'true';
+    const hasBadge = (userProfile?.badges || []).includes(badgeToCheck);
 
     console.log(`🔍 Controllo blocco Boss ${bossId}:`, {
       badgeToCheck,
@@ -4142,9 +4140,8 @@ const App: React.FC = () => {
                         })
                       )}
 
-                      {/* REWARDED EXTRA TIME BUBBLE (CAREER ONLY) - DISABLED AS REQUESTED */}
-                      {/* 
-                      {!activeMatch && !gameState.isBossLevel && (
+                      {/* REWARDED EXTRA TIME BUBBLE (CAREER ONLY) */}
+                      {false && !activeMatch && !gameState.isBossLevel && (
                         <div
                           onPointerDown={handleRequestExtraTime}
                           className={`
@@ -4157,7 +4154,6 @@ const App: React.FC = () => {
                           <span className="text-[7px] leading-tight uppercase font-black">EXTRA</span>
                         </div>
                       )}
-                      */}
                     </div>
                   </div>
 
@@ -4628,9 +4624,7 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[55vh] pr-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {BOSS_LEVELS.map((boss) => {
                     const isComingSoon = boss.isComingSoon;
-                    const isDefeated = (userProfile?.badges || []).includes(`boss_${boss.id}_defeated`)
-                      || (boss.id === 1 && (userProfile?.badges || []).includes('boss_matematico'))
-                      || localStorage.getItem(`defeated_boss_${boss.id}`) === 'true';
+                    const isDefeated = (userProfile?.badges || []).includes(`boss_${boss.id}_defeated`);
                     const isUnlocked = ((userProfile?.max_level || 1) >= boss.requiredLevel);
                     const canPlay = !isComingSoon && isUnlocked && !isDefeated;
 
