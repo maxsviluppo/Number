@@ -8,7 +8,7 @@ import CharacterHelper from './components/CharacterHelper';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { matchService } from './services/matchService';
-import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward, Clock, Crown, Lock, Target, Send, XCircle } from 'lucide-react';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronLeft, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward, Clock, Crown, Lock, Target, Send, XCircle } from 'lucide-react';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
 import NeuralDuelLobby from './components/NeuralDuelLobby';
@@ -4204,8 +4204,8 @@ const App: React.FC = () => {
                   </div>
 
                   {/* PREMIUM AD REWARD BANNER - Vertical Tab */}
-                  <div className={`fixed left-0 top-[140px] md:top-[120px] z-[100] transition-all duration-700 ease-out transform
-                    ${adBannerActive ? 'translate-x-0' : '-translate-x-[calc(100%-70px)]'}`}>
+                  <div className={`fixed right-0 top-[140px] md:top-[120px] z-[100] transition-all duration-700 ease-out transform
+                    ${adBannerActive ? 'translate-x-0' : 'translate-x-[calc(100%-70px)]'}`}>
                     <div
                       onPointerDown={(e) => {
                         adTouchStartX.current = e.clientX;
@@ -4217,7 +4217,7 @@ const App: React.FC = () => {
 
                         // SWIPE DETECTION
                         if (Math.abs(deltaX) > 30) {
-                          if (deltaX > 30) { // Swipe Right: Open
+                          if (deltaX < -30) { // Swipe Left: Open (if on the right)
                             if (!adBannerActive) {
                               setAdBannerActive(true);
                               if (adBannerTimerRef.current) clearTimeout(adBannerTimerRef.current);
@@ -4225,7 +4225,7 @@ const App: React.FC = () => {
                                 setAdBannerActive(false);
                               }, 5000); // 5 seconds manually
                             }
-                          } else if (deltaX < -30) { // Swipe Left: Close
+                          } else if (deltaX > 30) { // Swipe Right: Close
                             setAdBannerActive(false);
                           }
                           return;
@@ -4246,24 +4246,24 @@ const App: React.FC = () => {
                           }
                         }
                       }}
-                      className={`flex items-center bg-gradient-to-r from-gray-600 to-gray-800 p-0 rounded-r-2xl border-[3px] border-l-0 border-white/50 transition-all group relative overflow-hidden h-[80px]
-                        ${adBannerActive ? 'shadow-[0_0_40px_rgba(156,163,175,0.8)]' : 'shadow-[8px_0_15px_rgba(156,163,175,0.4)]'}
+                      className={`flex flex-row-reverse items-center bg-gradient-to-r from-gray-600 to-gray-800 p-0 rounded-l-2xl border-[3px] border-r-0 border-white/50 transition-all group relative overflow-hidden h-[80px]
+                        ${adBannerActive ? 'shadow-[0_0_40px_rgba(156,163,175,0.8)]' : 'shadow-[-8px_0_15px_rgba(156,163,175,0.4)]'}
                         cursor-default grayscale opacity-80`}
                     >
                       {/* Carbon Texture */}
                       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
 
-                      <div className="flex items-center h-full">
+                      <div className="flex flex-row-reverse items-center h-full">
                         {/* Expanded Text Area (Triggers Video) */}
-                        <div className={`flex items-center pl-16 transition-all duration-500 overflow-hidden ${adBannerActive ? 'max-w-[400px] opacity-100' : 'max-w-0 opacity-0'}`}>
-                          <div className="text-left pr-6 whitespace-nowrap">
+                        <div className={`flex items-center pr-16 transition-all duration-500 overflow-hidden ${adBannerActive ? 'max-w-[400px] opacity-100' : 'max-w-0 opacity-0'}`}>
+                          <div className="text-right pl-6 whitespace-nowrap">
                             <h3 className="font-orbitron font-black text-white/50 text-[18px] uppercase leading-tight tracking-widest italic">IN ARRIVO A BREVE</h3>
                             <p className="text-[14px] text-gray-300 font-bold uppercase tracking-tighter">Pubblicità disabilitata</p>
                           </div>
                         </div>
 
                         {/* Impact Tab (Triggers Close when expanded) */}
-                        <div className="ad-close-tab flex flex-col items-center justify-center w-[70px] h-full bg-black/40 border-l border-white/10 shrink-0 cursor-pointer">
+                        <div className="ad-close-tab flex flex-col items-center justify-center w-[70px] h-full bg-black/40 border-r border-white/10 shrink-0 cursor-pointer">
                           <span style={{ fontFamily: 'Impact, "Arial Narrow", sans-serif' }} className="text-3xl font-black text-white/50 leading-none">+30</span>
                           <span className="text-[8px] font-black text-white/50 leading-none mt-1 uppercase tracking-tighter">SECONDI</span>
                         </div>
@@ -4271,8 +4271,8 @@ const App: React.FC = () => {
 
                       {/* Peeking Arrow */}
                       {!adBannerActive && (
-                        <div className="absolute right-0.5 top-1/2 -translate-y-1/2 opacity-60">
-                          <ChevronRight size={14} className="text-white/50" />
+                        <div className="absolute left-0.5 top-1/2 -translate-y-1/2 opacity-60">
+                          <ChevronLeft size={14} className="text-white/50" />
                         </div>
                       )}
                     </div>
