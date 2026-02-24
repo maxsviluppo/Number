@@ -4192,7 +4192,7 @@ const App: React.FC = () => {
                   </div>
 
                   {/* PREMIUM AD REWARD BANNER - Vertical Tab */}
-                  <div className={`fixed left-0 top-[35%] z-[100] transition-all duration-700 ease-out transform
+                  <div className={`fixed left-0 top-[140px] md:top-[120px] z-[100] transition-all duration-700 ease-out transform
                     ${adBannerActive ? 'translate-x-0' : '-translate-x-[calc(100%-70px)]'}`}>
                     <div
                       onPointerDown={(e) => {
