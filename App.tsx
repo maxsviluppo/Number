@@ -178,7 +178,7 @@ const App: React.FC = () => {
       // 4. Resume
       setTimeout(() => {
         togglePause(false);
-      }, 1000);
+      }, 500);
     }, 3000); // 3 seconds mock video
   };
 
@@ -268,31 +268,37 @@ const App: React.FC = () => {
     }
   }, [showIntro]);
 
-  // Ad Banner Timing Effect (8s loop, 3s expansion)
+  // Ad Banner Timing Effect: Closed during play, every 4s during pause (Career Mode)
   const adBannerTimerRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     const startCycle = () => {
-      adBannerTimerRef.current = setTimeout(() => {
-        if (gameState.status === 'playing' && !hasUsedAdvThisLevel && !activeMatch && !gameState.isBossLevel) {
+      if (adBannerTimerRef.current) clearTimeout(adBannerTimerRef.current);
+
+      // Condition: Playing, NOT a match, NOT boss level, AND IS PAUSED
+      if (gameState.status === 'playing' && isPaused && !hasUsedAdvThisLevel && !activeMatch && !gameState.isBossLevel) {
+        adBannerTimerRef.current = setTimeout(() => {
           setAdBannerActive(true);
           adBannerTimerRef.current = setTimeout(() => {
             setAdBannerActive(false);
-            startCycle();
-          }, 3000); // Auto-close after 3 seconds in cycle
-        }
-      }, 8000); // Waiting for 8 seconds
+            startCycle(); // Continue cycle if still paused
+          }, 3000); // Expanded for 3 seconds
+        }, 4000); // Wait 4 seconds between expansions
+      } else {
+        setAdBannerActive(false);
+      }
     };
 
-    if (gameState.status === 'playing' && !hasUsedAdvThisLevel && !activeMatch && !gameState.isBossLevel) {
+    if (gameState.status === 'playing' && isPaused && !hasUsedAdvThisLevel && !activeMatch && !gameState.isBossLevel) {
       startCycle();
     } else {
       setAdBannerActive(false);
+      if (adBannerTimerRef.current) clearTimeout(adBannerTimerRef.current);
     }
 
     return () => {
       if (adBannerTimerRef.current) clearTimeout(adBannerTimerRef.current);
     };
-  }, [gameState.status, hasUsedAdvThisLevel, activeMatch, gameState.isBossLevel]);
+  }, [gameState.status, isPaused, hasUsedAdvThisLevel, activeMatch, gameState.isBossLevel]);
 
   const handleUserInteraction = useCallback(async () => {
     await soundService.init();
@@ -1224,22 +1230,28 @@ const App: React.FC = () => {
   }, [currentUser, pendingMatchInvite, isJoiningPending, showAuthModal, generateGrid, showToast]);
 
 
-  const togglePause = async (e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const togglePause = async (e?: React.PointerEvent | boolean) => {
+    if (e && typeof e === 'object' && 'preventDefault' in e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     await handleUserInteraction();
     soundService.playUIClick();
 
-    if (!isPaused) {
-      if (pauseLocked) {
+    const targetPauseState = typeof e === 'boolean' ? e : !isPaused;
+
+    if (targetPauseState) {
+      if (pauseLocked && typeof e !== 'boolean') {
         showToast("Sistema in riscaldamento... Attesa 3s");
         return;
       }
       setIsPaused(true);
     } else {
       setIsPaused(false);
-      setPauseLocked(true);
-      setTimeout(() => setPauseLocked(false), 3000);
+      if (typeof e !== 'boolean') {
+        setPauseLocked(true);
+        setTimeout(() => setPauseLocked(false), 3000);
+      }
     }
   };
 
