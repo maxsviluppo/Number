@@ -3649,26 +3649,26 @@ const App: React.FC = () => {
                       setActiveModal('logout_confirm');
                     }
                   }}
-                  className={`flex items-center gap-3 p-1.5 pr-6 rounded-full border-2 transition-all duration-500 cursor-pointer shadow-xl group overflow-hidden
+                  className={`flex items-center gap-2 p-1 pr-4 rounded-full border-2 transition-all duration-500 cursor-pointer shadow-xl group overflow-hidden
                     ${currentUser
-                      ? 'bg-gradient-to-r from-slate-900/90 to-slate-800/90 border-[#FF8800] shadow-[#FF8800]/40 min-w-[180px]'
-                      : 'bg-black/40 border-white/20 hover:border-white/40 w-14 h-14 justify-center'
+                      ? 'bg-gradient-to-r from-slate-900/90 to-slate-800/90 border-[#FF8800] shadow-[#FF8800]/40 min-w-[150px]'
+                      : 'bg-black/40 border-white/20 hover:border-white/40 w-12 h-12 justify-center'
                     }`}
                 >
-                  {/* Avatar Circle - LARGER and at the margin */}
-                  <div className={`shrink-0 w-12 h-12 rounded-full border-[3px] flex items-center justify-center overflow-hidden transition-all duration-500 -ml-0.5
-                    ${currentUser ? 'border-[#FF8800] bg-slate-800 shadow-[0_0_20px_rgba(255,136,0,0.4)]' : 'border-white/30 bg-white/5'}`}>
+                  {/* Avatar Circle - Aligned with other bubbles */}
+                  <div className={`shrink-0 w-10 h-10 rounded-full border-[2px] flex items-center justify-center overflow-hidden transition-all duration-500 -ml-0.5
+                    ${currentUser ? 'border-[#FF8800] bg-slate-800 shadow-[0_0_15px_rgba(255,136,0,0.4)]' : 'border-white/30 bg-white/5'}`}>
                     {currentUser && userProfile?.avatar_url ? (
                       <img src={userProfile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
-                      <User size={22} className={currentUser ? 'text-[#FF8800]' : 'text-white/40'} strokeWidth={3} />
+                      <User size={18} className={currentUser ? 'text-[#FF8800]' : 'text-white/40'} strokeWidth={3} />
                     )}
                   </div>
 
-                  {/* Info Text - LARGER (Expanded only when logged in) */}
+                  {/* Info Text */}
                   {currentUser && (
-                    <div className="flex flex-col items-start leading-tight animate-screen-in overflow-hidden">
-                      <span className="text-[14px] font-black font-orbitron text-white uppercase tracking-wider truncate max-w-[110px]">
+                    <div className="flex flex-col items-start leading-[1.1] animate-screen-in overflow-hidden">
+                      <span className="text-[12px] font-black font-orbitron text-white uppercase tracking-wider truncate max-w-[90px]">
                         {userProfile?.username || currentUser.user_metadata?.username || 'Guerriero'}
                       </span>
                       <div className="flex items-center gap-1.5 mt-0.5">
@@ -3772,11 +3772,10 @@ const App: React.FC = () => {
                   <span className="tracking-widest relative z-10">{savedGame && savedGame.level > 1 ? `CONTINUA LVL ${savedGame.level}` : "GIOCA"}</span>
                 </button>
 
-                <div className="grid grid-cols-2 gap-4 w-full">
-                  {/* 1VS1 MODE BUTTON - NEURAL DUEL */}
-                  {/* 1VS1 MODE BUTTON - SINGLE ENTRY */}
+                <div className="grid grid-cols-2 gap-3 w-full">
+                  {/* 1VS1 MODE BUTTON */}
                   <button
-                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 text-white py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
+                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 text-white py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
                     id="duel-btn-home"
                     onPointerDown={async (e) => {
                       e.stopPropagation();
@@ -3786,7 +3785,7 @@ const App: React.FC = () => {
                         showToast("Accedi per sfidare altri giocatori!");
                         setShowAuthModal(true);
                       } else {
-                        setActiveModal('duel_selection'); // Open Selection logic
+                        setActiveModal('duel_selection');
                       }
                     }}
                   >
@@ -3797,11 +3796,12 @@ const App: React.FC = () => {
                       <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Sfida 1vs1 Realtime</span>
                     </div>
                     {/* Badge */}
-                    <div className="absolute top-2 right-2 bg-red-600/90 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-white animate-pulse shadow-lg">NEW MODES</div>
+                    <div className="absolute top-2 right-2 bg-red-600/90 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-white animate-pulse shadow-lg">NEW</div>
                   </button>
 
+                  {/* BOSS LEVELS BUTTON - COLS-SPAN-1 */}
                   <button
-                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-5 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
+                    className="flex flex-col items-center justify-center pt-5 pb-4 gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl border-[3px] border-white shadow-[0_5px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group"
                     id="boss-btn-home"
                     onPointerDown={async (e) => {
                       e.stopPropagation();
@@ -3812,28 +3812,17 @@ const App: React.FC = () => {
                   >
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
                     <Crown className="w-8 h-8 text-yellow-300 animate-[bounce_3s_infinite]" />
-                    <div className="flex flex-col items-start leading-none relative z-10">
-                      <span className="font-orbitron text-xl font-black uppercase tracking-widest drop-shadow-md">BOSS LEVELS</span>
-                      <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Sfide Epiche & Bonus</span>
-                    </div>
+                    <span className="font-orbitron text-[13px] sm:text-[14px] font-black uppercase tracking-widest drop-shadow-md relative z-10 mt-1">BOSSES</span>
                   </button>
 
+                  {/* RANKING BUTTON - COLS-SPAN-1 */}
                   <button
-                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group"
-                    id="challenges-btn-home"
-                    onPointerDown={() => { soundService.playUIClick(); showToast("Nessun torneo attivo al momento"); }}
-                  >
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                    <Trophy className="w-5 h-5" />
-                    <span className="font-orbitron text-xs font-black uppercase tracking-widest relative z-10">Tornei</span>
-                  </button>
-
-                  <button onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
                     id="ranking-btn-home"
-                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-900 py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group">
+                    onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
+                    className="flex flex-col items-center justify-center pt-5 pb-4 gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-900 rounded-xl border-[3px] border-white shadow-[0_5px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group">
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-15"></div>
-                    <BarChart3 className="w-5 h-5 relative z-10" />
-                    <span className="font-orbitron text-xs font-black uppercase tracking-widest relative z-10">RANKING</span>
+                    <BarChart3 className="w-8 h-8 relative z-10 text-slate-800 drop-shadow-md" />
+                    <span className="font-orbitron text-[13px] sm:text-[14px] font-black uppercase tracking-widest relative z-10 mt-1">RANKING</span>
                   </button>
                 </div>
 
