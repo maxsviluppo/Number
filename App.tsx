@@ -2055,6 +2055,9 @@ const App: React.FC = () => {
     // Consume bonus if starting a standard game
     if (careerBonus > 0 && !activeMatch?.isDuel) {
       localStorage.setItem('career_time_bonus', '0');
+      if (currentUser) {
+        profileService.updateProfile({ id: currentUser.id, career_time_bonus: 0 }).catch(e => console.error("Errore azzeramento bonus:", e));
+      }
       // Show toast notification
       showToast(`🏆 BONUS BOSS ATTIVATO! +${careerBonus}s al tempo iniziale!`);
     }
@@ -2127,6 +2130,9 @@ const App: React.FC = () => {
 
     if (careerBonus > 0) {
       localStorage.setItem('career_time_bonus', '0');
+      if (currentUser) {
+        profileService.updateProfile({ id: currentUser.id, career_time_bonus: 0 }).catch(e => console.error("Errore azzeramento bonus:", e));
+      }
       newTimeLeft += careerBonus;
       showToast(`🏆 BONUS BOSS ATTIVATO! +${careerBonus}s al tempo ripristinato!`);
     }
@@ -2168,6 +2174,7 @@ const App: React.FC = () => {
       await profileService.updateProfile({
         id: currentUser.id,
         max_level: 1,
+        career_time_bonus: 0 // Assicurarsi che il reset cancelli anche i bonus accumulati
       });
 
       // 3. Ricarica profilo aggiornato
