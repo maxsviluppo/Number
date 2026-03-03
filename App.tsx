@@ -153,33 +153,64 @@ const App: React.FC = () => {
   const handleRequestExtraTime = async () => {
     if (hasUsedAdvThisLevel || activeMatch) return;
 
-    // 1. Pause the game
+    // 1. Pause and Setup AD
     togglePause(true);
     setIsAdvPlaying(true);
+    setAdTimer(ADS_CONFIG.rewardDuration);
+    setAdCanSkip(false);
+    setAdRewardTriggered(false);
     vibrateDevice(50);
     soundService.playExternalSound('switch.mp3');
 
-    // 2. Simulate Adv (mocking the delay for now)
-    // In production, this will trigger the Capacitor AdMob plugin
-    setTimeout(() => {
-      setIsAdvPlaying(false);
+    // 2. AD TIMER LOGIC
+    const interval = setInterval(() => {
+      setAdTimer(prev => {
+        const next = prev - 1;
+
+        // Show skip button after skipOffset seconds
+        if (ADS_CONFIG.rewardDuration - next >= ADS_CONFIG.skipOffset) {
+          setAdCanSkip(true);
+        }
+
+        if (next <= 0) {
+          clearInterval(interval);
+          handleFinishAd(true); // Auto-finish with reward
+          return 0;
+        }
+        return next;
+      });
+    }, 1000);
+
+    // Store interval to cleanup if needed
+    (window as any)._adInterval = interval;
+  };
+
+  const handleFinishAd = (getReward: boolean) => {
+    if ((window as any)._adInterval) clearInterval((window as any)._adInterval);
+
+    setIsAdvPlaying(false);
+
+    if (getReward) {
       setHasUsedAdvThisLevel(true);
+      setAdRewardTriggered(true);
 
       // 3. Reward: +30 seconds
       setGameState(prev => ({
         ...prev,
-        timeLeft: prev.timeLeft + 30
+        timeLeft: prev.timeLeft + ADS_CONFIG.rewardValue
       }));
 
-      showToast('🎁 +30 SECONDI AGGIUNTI! Forza!');
+      showToast(`🎁 +${ADS_CONFIG.rewardValue} SECONDI AGGIUNTI! Forza!`);
       vibrateDevice([100, 50, 100]);
       soundService.playSuccess();
+    } else {
+      showToast('⚠️ Video saltato: nessun premio assegnato.');
+    }
 
-      // 4. Resume
-      setTimeout(() => {
-        togglePause(false);
-      }, 500);
-    }, 3000); // 3 seconds mock video
+    // 4. Resume
+    setTimeout(() => {
+      togglePause(false);
+    }, 500);
   };
 
 
@@ -245,10 +276,20 @@ const App: React.FC = () => {
   const [showDuelRecap, setShowDuelRecap] = useState(false);
   const [latestMatchData, setLatestMatchData] = useState<any>(null); // NEW: Full Match Object Store
 
-  // ADV REWARDED SYSTEM
   const [isAdvPlaying, setIsAdvPlaying] = useState(false);
   const [hasUsedAdvThisLevel, setHasUsedAdvThisLevel] = useState(false);
   const [adBannerActive, setAdBannerActive] = useState(false);
+  const [adTimer, setAdTimer] = useState(30);
+  const [adCanSkip, setAdCanSkip] = useState(false);
+  const [adRewardTriggered, setAdRewardTriggered] = useState(false);
+
+  // GOOGLE ADSENSE / ADMOB CONFIG
+  const ADS_CONFIG = {
+    enabled: false, // Set to true after AdSense/AdMob approval
+    rewardDuration: 30, // Full duration for reward
+    skipOffset: 30, // Seconds before skip button appears (forced to 30 for full view)
+    rewardValue: 30, // Seconds granted
+  };
 
   // NEW: Video Intro State
   const [showIntro, setShowIntro] = useState(true);
@@ -261,8 +302,8 @@ const App: React.FC = () => {
     if (showIntro) {
       const timer = setTimeout(() => {
         console.warn("⚠️ BOOT SYSTEM: Intro sequence timed out - Force entering app");
-        // Extended timeout to 120s to allow full video playback without forced skip
-        // Only acts as a true failsafe if video engine crashes
+        setShowIntro(false);
+        setGameState(prev => ({ ...prev, status: 'idle' }));
       }, 120000);
       return () => clearTimeout(timer);
     }
@@ -4253,26 +4294,33 @@ const App: React.FC = () => {
                           }
                         }
                       }}
-                      className={`flex flex-row-reverse items-center bg-gradient-to-r from-gray-600 to-gray-800 p-0 rounded-l-2xl border-[3px] border-r-0 border-white/50 transition-all group relative overflow-hidden h-[80px]
-                        ${adBannerActive ? 'shadow-[0_0_40px_rgba(156,163,175,0.8)]' : 'shadow-[-8px_0_15px_rgba(156,163,175,0.4)]'}
-                        cursor-default grayscale opacity-80`}
+                      className={`flex flex-row-reverse items-center bg-gradient-to-r ${ADS_CONFIG.enabled ? 'from-amber-600 to-orange-800' : 'from-gray-600 to-gray-800'} p-0 rounded-l-2xl border-[3px] border-r-0 border-white/50 transition-all group relative overflow-hidden h-[80px]
+                        ${adBannerActive ? 'shadow-[0_0_40px_rgba(255,136,0,0.8)]' : 'shadow-[-8px_0_15px_rgba(255,136,0,0.4)]'}
+                        ${ADS_CONFIG.enabled ? 'cursor-pointer' : 'cursor-default grayscale opacity-80'}`}
                     >
                       {/* Carbon Texture */}
                       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
 
                       <div className="flex flex-row-reverse items-center h-full">
                         {/* Expanded Text Area (Triggers Video) */}
-                        <div className={`flex items-center pr-16 transition-all duration-500 overflow-hidden ${adBannerActive ? 'max-w-[400px] opacity-100' : 'max-w-0 opacity-0'}`}>
+                        <div
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            // Click temporaneamente disabilitato come richiesto
+                            // if (adBannerActive) handleRequestExtraTime();
+                          }}
+                          className={`flex items-center pr-16 transition-all duration-500 overflow-hidden ${adBannerActive ? 'max-w-[400px] opacity-100' : 'max-w-0 opacity-0'}`}
+                        >
                           <div className="text-right pl-6 whitespace-nowrap">
-                            <h3 className="font-orbitron font-black text-white/50 text-[18px] uppercase leading-tight tracking-widest italic">IN ARRIVO A BREVE</h3>
-                            <p className="text-[14px] text-gray-300 font-bold uppercase tracking-tighter">Pubblicità disabilitata</p>
+                            <h3 className="font-orbitron font-black text-white text-[18px] uppercase leading-tight tracking-widest italic">{ADS_CONFIG.enabled ? '+60s BONUS' : 'IN ARRIVO A BREVE'}</h3>
+                            <p className="text-[14px] text-gray-300 font-bold uppercase tracking-tighter">{ADS_CONFIG.enabled ? 'Guarda video premio' : 'Pubblicità disabilitata'}</p>
                           </div>
                         </div>
 
                         {/* Impact Tab (Triggers Close when expanded) */}
                         <div className="ad-close-tab flex flex-col items-center justify-center w-[70px] h-full bg-black/40 border-r border-white/10 shrink-0 cursor-pointer">
-                          <span style={{ fontFamily: 'Impact, "Arial Narrow", sans-serif' }} className="text-3xl font-black text-white/50 leading-none">+30</span>
-                          <span className="text-[8px] font-black text-white/50 leading-none mt-1 uppercase tracking-tighter">SECONDI</span>
+                          <span style={{ fontFamily: 'Impact, "Arial Narrow", sans-serif' }} className="text-3xl font-black text-white leading-none">+{ADS_CONFIG.rewardValue}</span>
+                          <span className="text-[8px] font-black text-white leading-none mt-1 uppercase tracking-tighter">SECONDI</span>
                         </div>
                       </div>
 
@@ -5457,22 +5505,72 @@ const App: React.FC = () => {
           }}
         />
 
-        {/* ADV OVERLAY */}
+        {/* ADV OVERLAY (MOCK UNTIL APPROVAL) */}
         {
           isAdvPlaying && (
             <div className="fixed inset-0 z-[10000] bg-black flex flex-col items-center justify-center animate-screen-in">
-              <div className="relative w-24 h-24 mb-6">
-                <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-ping opacity-20"></div>
-                <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-spin border-t-transparent shadow-[0_0_20px_#FF8800]"></div>
-                <div className="absolute inset-4 bg-[#FF8800]/20 rounded-full flex items-center justify-center">
-                  <Play size={32} className="text-[#FF8800] fill-[#FF8800] ml-1" />
+              <div className="absolute top-12 right-4 z-[50] flex items-center gap-4">
+                {adCanSkip && (
+                  <button
+                    onPointerDown={() => handleFinishAd(adTimer <= 0)}
+                    className="bg-black/50 hover:bg-white/10 text-white px-4 py-2 rounded-lg font-orbitron font-black text-[10px] uppercase tracking-widest border border-white/20 transition-all active:scale-95 flex items-center gap-2 backdrop-blur-md"
+                  >
+                    {adTimer <= 0 ? (
+                      <>CHIUDI <X size={14} /></>
+                    ) : (
+                      <>SALTA <FastForward size={14} /></>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Progress Ring / Ad Placeholder */}
+              <div className="relative w-full h-full flex-1 bg-[#020617] overflow-hidden flex flex-col items-center justify-center group">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#FF8800]/10 to-transparent"></div>
+
+                {/* MOCK AD CONTENT */}
+                <div className="relative z-10 flex flex-col items-center text-center px-8">
+                  <div className="w-20 h-20 mb-6 relative">
+                    <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-ping opacity-20"></div>
+                    <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-spin border-t-transparent shadow-[0_0_20px_#FF8800]"></div>
+                    <div className="absolute inset-3 bg-[#FF8800]/20 rounded-full flex items-center justify-center">
+                      <Play size={28} className="text-[#FF8800] fill-[#FF8800] ml-1" />
+                    </div>
+                  </div>
+
+                  <h3 className="font-orbitron font-black text-white text-lg tracking-[0.2em] mb-2 uppercase">Google Adsense</h3>
+                  <p className="text-[#FF8800] font-orbitron text-[8px] font-black tracking-[0.3em] uppercase opacity-70 mb-4">In attesa di approvazione</p>
+
+                  <div className="bg-white/5 border border-white/10 rounded-xl py-3 px-6">
+                    <span className="text-white/40 text-[9px] font-black uppercase tracking-widest block mb-1">Premio al termine</span>
+                    <span className="text-2xl font-black font-orbitron text-white text-shadow-neon-orange">+30 SECONDI</span>
+                  </div>
+                </div>
+
+                {/* AD PROGRESS BAR */}
+                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/5">
+                  <div
+                    className="h-full bg-gradient-to-r from-yellow-400 to-[#FF8800] transition-all duration-1000 ease-linear shadow-[0_0_15px_#FF8800]"
+                    style={{ width: `${(1 - adTimer / ADS_CONFIG.rewardDuration) * 100}%` }}
+                  ></div>
                 </div>
               </div>
-              <h2 className="text-xl font-orbitron font-black text-white tracking-widest mb-2">LOADING AD...</h2>
-              <p className="text-[#FF8800] font-orbitron text-[10px] font-bold tracking-widest animate-pulse">CARICAMENTO VIDEO PREMIO</p>
-              <div className="mt-12 w-48 h-1 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-yellow-400 to-[#FF8800] animate-[shimmer_3s_linear_infinite]" style={{ width: '100%' }}></div>
+
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full border-2 border-[#FF8800] flex items-center justify-center bg-[#FF8800]/10">
+                    <span className="font-orbitron font-black text-white text-xl">{adTimer}</span>
+                  </div>
+                  <div className="text-left">
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] block">Sincronizzazione</span>
+                    <span className="text-xs font-black text-white uppercase tracking-widest">ADV NEURAL {adTimer > 0 ? 'STREAMING' : 'READY'}</span>
+                  </div>
+                </div>
               </div>
+
+              <footer className="absolute bottom-8 text-[7px] text-white/20 font-black tracking-[0.5em] uppercase pointer-events-none">
+                {ADS_CONFIG.enabled ? "GOOGLE AD NETWORK ACTIVE" : "ADS_MOCK_ENGINE_V1.2 / PENDING APPROVAL"}
+              </footer>
             </div>
           )
         }
