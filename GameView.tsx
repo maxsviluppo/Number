@@ -3684,6 +3684,18 @@ const GameView: React.FC = () => {
 
 
 
+              {/* TOP LEFT: Site Link */}
+              <div className="fixed top-12 left-6 z-[3000] flex gap-3 items-center">
+                <Link
+                  to="/site"
+                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); }}
+                  className="w-12 h-12 rounded-full bg-blue-600 text-white border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                  title="Vai al Sito"
+                >
+                  <Globe size={24} strokeWidth={2.5} />
+                </Link>
+              </div>
+
               {/* TOP RIGHT: Action Buttons (Audio) */}
               <div className="fixed top-12 right-6 z-[3000] flex gap-3 items-center">
                 <button
@@ -3752,15 +3764,6 @@ const GameView: React.FC = () => {
 
               {/* BOTTOM RIGHT ICONS: Admin & Tutorial (FIXED Position) */}
               <div className="fixed bottom-4 right-4 z-[2000] flex gap-3" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
-                {/* Site Page Icon */}
-                <Link
-                  to="/"
-                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); }}
-                  className="w-12 h-12 rounded-full bg-blue-600 text-white border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
-                  title="Vai al Sito"
-                >
-                  <Globe size={24} strokeWidth={2.5} />
-                </Link>
 
                 {/* Tutorial Icon */}
                 <button
@@ -5590,7 +5593,7 @@ const GameView: React.FC = () => {
         {!isAdvPlaying && (
           <footer className="w-full py-4 text-center border-t border-white/5 bg-[#020617]/50 backdrop-blur-sm relative z-[100]">
              <div className="max-w-4xl mx-auto flex flex-wrap justify-center gap-6 text-[10px] font-black uppercase tracking-widest text-[#FF8800]/60">
-                <Link to="/" className="hover:text-white transition-colors">Home</Link>
+                <Link to="/site" className="hover:text-white transition-colors">Sito</Link>
                 <Link to="/about" className="hover:text-white transition-colors">About</Link>
                 <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
                 <Link to="/cookies" className="hover:text-white transition-colors">Cookies</Link>

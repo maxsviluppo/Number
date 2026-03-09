@@ -11,13 +11,13 @@ const LegalLayout: React.FC<{ title: string; children: React.ReactNode }> = ({ t
       <nav className="fixed top-0 w-full z-[100] glass-panel border-b border-white/5 py-4 px-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-[#FF8800] rounded-lg flex items-center justify-center font-black text-white italic">N</div>
-          <Link to="/" className="font-['Orbitron'] font-black tracking-tighter text-xl text-[#FF8800]">number</Link>
+          <Link to="/site" className="font-['Orbitron'] font-black tracking-tighter text-xl text-[#FF8800]">number</Link>
         </div>
         
         {/* Desktop Menu */}
         <div className="hidden md:flex gap-8 text-sm font-semibold uppercase tracking-widest text-slate-400">
-          <Link to="/" className="hover:text-white transition-colors">Home</Link>
-          <Link to="/play" className="hover:text-white transition-colors">Gioca</Link>
+          <Link to="/site" className="hover:text-white transition-colors">Home</Link>
+          <Link to="/" className="hover:text-white transition-colors">Gioca</Link>
           <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
           <Link to="/about" className="hover:text-white transition-colors">About</Link>
         </div>
@@ -39,8 +39,8 @@ const LegalLayout: React.FC<{ title: string; children: React.ReactNode }> = ({ t
         {/* Mobile Menu Overlay */}
         {isMenuOpen && (
           <div className="fixed inset-0 top-[72px] bg-black z-[9999] flex flex-col p-8 gap-6 animate-screen-in md:hidden">
-            <Link to="/" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">HOME</Link>
-            <Link to="/play" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">GIOCA</Link>
+            <Link to="/site" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">HOME</Link>
+            <Link to="/" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">GIOCA</Link>
             <Link to="/blog" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">BLOG</Link>
             <Link to="/about" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">ABOUT</Link>
             <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">CONTATTI</Link>

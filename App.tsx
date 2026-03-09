@@ -21,7 +21,8 @@ const App: React.FC = () => {
     <BrowserRouter>
       <ScrollToTop />
       <Routes>
-        <Route path="/" element={<HomeView />} />
+        <Route path="/" element={<GameView />} />
+        <Route path="/site" element={<HomeView />} />
         <Route path="/play" element={<GameView />} />
         <Route path="/blog" element={<BlogView />} />
         <Route path="/blog/:slug" element={<BlogPostDetailView />} />
@@ -33,7 +34,7 @@ const App: React.FC = () => {
         <Route path="/contact" element={<ContactView />} />
         
         {/* Fallback */}
-        <Route path="*" element={<HomeView />} />
+        <Route path="*" element={<GameView />} />
       </Routes>
       <CookieBanner />
     </BrowserRouter>
