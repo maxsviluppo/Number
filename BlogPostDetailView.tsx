@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { BLOG_POSTS } from './constants/blog_posts';
 import { Clock, User, ChevronLeft, Calendar, Tag, Menu, X } from 'lucide-react';
@@ -7,6 +7,15 @@ const BlogPostDetailView: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const post = BLOG_POSTS.find(p => p.slug === slug);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.classList.add('allow-scroll');
+    document.documentElement.classList.add('allow-scroll');
+    return () => {
+      document.body.classList.remove('allow-scroll');
+      document.documentElement.classList.remove('allow-scroll');
+    };
+  }, []);
 
   if (!post) {
     return (

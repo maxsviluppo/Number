@@ -1,9 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, Lock, Info, Mail, Scale, FileText, CheckCircle, Menu, X } from 'lucide-react';
 
 const LegalLayout: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.classList.add('allow-scroll');
+    document.documentElement.classList.add('allow-scroll');
+    return () => {
+      document.body.classList.remove('allow-scroll');
+      document.documentElement.classList.remove('allow-scroll');
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col font-['Inter']">

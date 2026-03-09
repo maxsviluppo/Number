@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Brain, Zap, Trophy, Play, Info, Shield, MessageSquare, ChevronRight, Clock, User, ArrowRight, Menu, X } from 'lucide-react';
 
@@ -6,6 +6,15 @@ import { BLOG_POSTS } from './constants/blog_posts';
 
 const BlogView: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.classList.add('allow-scroll');
+    document.documentElement.classList.add('allow-scroll');
+    return () => {
+      document.body.classList.remove('allow-scroll');
+      document.documentElement.classList.remove('allow-scroll');
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col font-['Inter']">
