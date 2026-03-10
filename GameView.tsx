@@ -18,7 +18,7 @@ import IntroVideo from './components/IntroVideo';
 import ComicTutorial, { TutorialStep } from './components/ComicTutorial';
 import UserProfileModal, { getRank } from './components/UserProfileModal'; // Updated import
 import RegistrationSuccess from './components/RegistrationSuccess';
-import BonusChallengeModal from './components/BonusChallengeModal';
+
 import { BADGES } from './constants/badges';
 import { authService, profileService, leaderboardService, supabase, UserProfile } from './services/supabaseClient'; // Moved this import here
 import { BOSS_LEVELS } from './constants/boss_levels';
@@ -82,9 +82,7 @@ const GameView: React.FC = () => {
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
 
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | 'full_reset_confirm' | 'bonus_challenge' | null>(null);
-  const [bonusSurge, setBonusSurge] = useState<{ active: boolean; window: number; level: number } | null>(null);
-  const [lastBonusSpawnLevel, setLastBonusSpawnLevel] = useState(0);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | 'full_reset_confirm' | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean, isP1: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0);
@@ -2142,8 +2140,6 @@ const GameView: React.FC = () => {
         level: startLevel,
         timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME,
         estimatedIQ: startLevel === 1 ? 100 : (userProfile?.estimated_iq || 100),
-        bonusSurge,
-        lastBonusSpawnLevel
       };
 
       profileService.saveGameState(currentUser.id, initialSaveState)
@@ -2192,8 +2188,7 @@ const GameView: React.FC = () => {
     }));
 
     // Restore Bonus State
-    setBonusSurge(savedGame.bonusSurge || null);
-    setLastBonusSpawnLevel(savedGame.lastBonusSpawnLevel || 0);
+    // Bonus surge and last bonus spawn level removed as they were abolished
 
     // Generate Grid for the SAVED Level
     setTimeout(() => generateGrid(savedGame.level), 0);
@@ -2820,8 +2815,6 @@ const GameView: React.FC = () => {
               level: nextLvlVal,
               timeLeft: gameStateRef.current.timeLeft,
               estimatedIQ: gameStateRef.current.estimatedIQ,
-              bonusSurge,
-              lastBonusSpawnLevel
             };
             // SYNC TO GLOBAL PROFILE
             profileService.syncProgress(currentUser.id, finalPointsToSync, saveState.level, saveState.estimatedIQ)
@@ -3119,32 +3112,7 @@ const GameView: React.FC = () => {
     setIsVictoryAnimating(false);
     const nextLvl = gameState.level + 1;
 
-    // --- NEURAL SURGE (BONUS) LOGIC ---
-    let updatedBonusSurge = bonusSurge;
-    let updatedLastSpawn = lastBonusSpawnLevel;
-
-    if (bonusSurge) {
-      const nextWindow = bonusSurge.window - 1;
-      if (nextWindow <= 0) {
-        updatedBonusSurge = null;
-      } else {
-        updatedBonusSurge = { ...bonusSurge, window: nextWindow };
-      }
-      setBonusSurge(updatedBonusSurge);
-    } else {
-      const distance = nextLvl - lastBonusSpawnLevel;
-      if (distance >= 12 && nextLvl >= 10 && !gameState.isBossLevel) {
-        if (Math.random() < 0.12 || distance >= 25) {
-          updatedBonusSurge = { active: true, window: 3, level: nextLvl };
-          updatedLastSpawn = nextLvl;
-          setBonusSurge(updatedBonusSurge);
-          setLastBonusSpawnLevel(updatedLastSpawn);
-          showToast("⚡ SOVRACCARICO NEURALE! Badge bonus attivo per 3 livelli!");
-          soundService.playSuccess();
-        }
-      }
-    }
-    // ----------------------------------
+    // --- BOSS UNLOCK CHECK ---
 
     // Check for boss unlocks
     const unlockedBoss = BOSS_LEVELS.find(b => b.requiredLevel === nextLvl && !b.isComingSoon);
@@ -3174,8 +3142,6 @@ const GameView: React.FC = () => {
         level: nextLvl,
         timeLeft: gameState.timeLeft + 60,
         estimatedIQ: gameState.estimatedIQ,
-        bonusSurge: updatedBonusSurge,
-        lastBonusSpawnLevel: updatedLastSpawn
       };
       profileService.saveGameState(currentUser.id, saveState).catch(e => {
         if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
@@ -3951,36 +3917,7 @@ const GameView: React.FC = () => {
                       {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
                     </button>
 
-                    {/* NEURAL SURGE BADGE */}
-                    {bonusSurge && !activeMatch?.isDuel && (
-                      <div className="ml-2 animate-screen-in" onPointerDown={(e) => e.stopPropagation()}>
-                        <button
-                          onPointerDown={(e) => {
-                            e.stopPropagation();
-                            soundService.playUIClick();
-                            setActiveModal('bonus_challenge');
-                          }}
-                          className="relative group active:scale-95 transition-transform"
-                        >
-                          <div className="absolute -inset-1.5 bg-cyan-400/30 blur-md rounded-xl animate-pulse group-hover:bg-cyan-400/50 transition-colors"></div>
-                          <div className="relative bg-slate-900 border-2 border-cyan-400 p-1.5 rounded-lg flex flex-col items-center justify-center min-w-[48px]">
-                            <Zap size={16} className="text-cyan-400 fill-cyan-400/20 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]" />
-                            <div className="flex flex-col items-center mt-0.5">
-                              <span className="text-[7px] font-black text-cyan-200 uppercase leading-none tracking-tighter">Bonus</span>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                {[1, 2, 3].map(i => (
-                                  <div key={i} className={`w-1 h-1 rounded-full ${i <= bonusSurge.window ? 'bg-cyan-400 shadow-[0_0_4px_rgba(34,211,238,1)]' : 'bg-slate-700'}`} />
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                          {/* Label popping out */}
-                          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                            <span className="text-[6px] font-black text-cyan-400 tracking-[0.2em] uppercase animate-pulse">SURGE</span>
-                          </div>
-                        </button>
-                      </div>
-                    )}
+
                   </div>
 
                   {/* Center: Floating Timer (Half-In/Half-Out) */}
@@ -5367,26 +5304,7 @@ const GameView: React.FC = () => {
           )
         }
 
-        {
-          activeModal === 'bonus_challenge' && (
-            <BonusChallengeModal
-              onComplete={(bonus) => {
-                setGameState(prev => ({
-                  ...prev,
-                  timeLeft: prev.timeLeft + bonus
-                }));
-                setBonusSurge(null);
-                setActiveModal(null);
-                showToast(`🚀 FRAMMENTO ESTRATTO: +${bonus}s al tempo!`);
-                soundService.playSuccess();
-              }}
-              onFail={() => {
-                setBonusSurge(null); // Lose the chance if failed/skipped
-                setActiveModal(null);
-              }}
-            />
-          )
-        }
+
 
         {/* DUEL RECAP MODAL */}
         {/* DUEL RECAP MODAL */}
