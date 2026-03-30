@@ -414,3 +414,38 @@ export const leaderboardService = {
         }
     }
 };
+
+export const configService = {
+    async getSystemConfig(): Promise<any> {
+        try {
+            const { data, error } = await supabase
+                .from('system_config')
+                .select('data')
+                .eq('id', 'main')
+                .maybeSingle(); // maybeSingle for easier logic if row is missing
+
+            if (error) {
+                console.warn('Config not found or error:', error.message);
+                return null;
+            }
+            return data?.data;
+        } catch (e) {
+            console.error('Critical Config Fetch:', e);
+            return null;
+        }
+    },
+
+    async updateSystemConfig(configData: any) {
+        try {
+            const { error } = await supabase
+                .from('system_config')
+                .upsert({ id: 'main', data: configData, updated_at: new Date().toISOString() });
+
+            if (error) throw error;
+            return true;
+        } catch (e) {
+            console.error('Critical Config Update:', e);
+            return false;
+        }
+    }
+};
