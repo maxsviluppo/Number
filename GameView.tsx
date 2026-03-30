@@ -20,7 +20,7 @@ import UserProfileModal, { getRank } from './components/UserProfileModal'; // Up
 import RegistrationSuccess from './components/RegistrationSuccess';
 
 import { BADGES } from './constants/badges';
-import { authService, profileService, leaderboardService, supabase, UserProfile } from './services/supabaseClient'; // Moved this import here
+import { authService, profileService, leaderboardService, supabase, configService, UserProfile } from './services/supabaseClient'; // Moved this import here
 import { BOSS_LEVELS } from './constants/boss_levels';
 import { AdMob, BannerAdPosition, BannerAdSize, AdMobBannerSize } from '@capacitor-community/admob';
 
@@ -328,8 +328,8 @@ const GameView: React.FC = () => {
   const ADS_CONFIG = {
     // Dynamically check enablement based on environment
     enabled: ['android', 'ios'].includes((window as any).Capacitor?.getPlatform()) 
-      ? (remoteConfig?.admobEnabled ?? localStorage.getItem('admob_enabled') === 'true') 
-      : (remoteConfig?.adsenseEnabled ?? localStorage.getItem('adsense_enabled') === 'true'), 
+      ? (remoteConfig?.admob_enabled ?? localStorage.getItem('admob_enabled') === 'true') 
+      : (remoteConfig?.adsense_enabled ?? localStorage.getItem('adsense_enabled') === 'true'), 
     rewardDuration: 30, // Full duration for reward
     skipOffset: 5, // REDUCED for testing, set to 30 for production
     rewardValue: 30, // Seconds granted
@@ -4383,7 +4383,7 @@ const GameView: React.FC = () => {
                               showToast("Arriverà tra poco!");
                             }
                           }}
-                          className={`flex items-center pr-16 transition-all duration-500 overflow-hidden ${adBannerActive ? 'max-w-[400px] opacity-100' : 'max-w-0 opacity-0'}`}
+                          className={`flex items-center pr-16 transition-all duration-500 overflow-hidden ${adBannerActive ? 'max-w-[380px] opacity-100' : 'max-w-0 opacity-0'}`}
                         >
                           <div className="text-right pl-6 whitespace-nowrap">
                             <h3 className="font-orbitron font-black text-white text-[18px] uppercase leading-tight tracking-widest italic">{ADS_CONFIG.enabled ? `+${ADS_CONFIG.rewardValue}s BONUS` : 'ARRIVERÀ TRA POCO'}</h3>
