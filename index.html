@@ -21,6 +21,18 @@
     rel="stylesheet">
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2753359398526340"
     crossorigin="anonymous"></script>
+  
+  <!-- Google Search Console Verification -->
+  <meta name="google-site-verification" content="google-site-verification-placeholder" />
+
+  <!-- Google Analytics (GA4) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
   <script>
     // Shim avanzato per process.env: previene crash in librerie esterne (es. Google GenAI)
     // che cercano l'oggetto globale process durante l'inizializzazione.
@@ -383,7 +395,16 @@
       scrollbar-width: thin;
       scrollbar-color: #FF8800 rgba(2, 6, 23, 0.8);
     }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
   </style>
+
 
   <script type="importmap">
     {

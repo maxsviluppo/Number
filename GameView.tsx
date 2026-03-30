@@ -1,7 +1,7 @@
-// FORCED UPDATE: 2026-02-04 15:15 - RECAP MODAL FIX
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { HexCellData, GameState } from './types';
-import { INITIAL_TIME, BASE_POINTS_START, MAX_STREAK, GRID_ROWS, GRID_COLS, OPERATORS, MOCK_LEADERBOARD } from './constants';
+import { INITIAL_TIME, BASE_POINTS_START, MAX_STREAK, GRID_ROWS, GRID_COLS, OPERATORS, MOCK_LEADERBOARD, APP_CONFIG } from './constants';
 import HexCell from './components/HexCell';
 import ParticleEffect from './components/ParticleEffect';
 import CharacterHelper from './components/CharacterHelper';
@@ -22,6 +22,7 @@ import RegistrationSuccess from './components/RegistrationSuccess';
 import { BADGES } from './constants/badges';
 import { authService, profileService, leaderboardService, supabase, UserProfile } from './services/supabaseClient'; // Moved this import here
 import { BOSS_LEVELS } from './constants/boss_levels';
+import { AdMob, BannerAdPosition, BannerAdSize, AdMobBannerSize } from '@capacitor-community/admob';
 
 const TUTORIAL_STEPS = [
   {
@@ -56,8 +57,6 @@ const LOSE_VIDEOS = ['/Lose1noaudio.mp4', '/Lose2noaudio.mp4'];
 const SURRENDER_VIDEOS = ['/Resa1noaudio.mp4'];
 
 // BOSS_LEVELS imported from constants/boss_levels
-
-
 const GameView: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
@@ -138,49 +137,70 @@ const GameView: React.FC = () => {
     duelRoundsRef.current = duelRounds;
   }, [duelRounds]);
 
-  // Mobile Haptics Helper (Capacitor Fallback)
-  const vibrateDevice = useCallback((pattern: number | number[]) => {
-    if ('vibrate' in navigator) {
-      try {
-        navigator.vibrate(pattern);
-      } catch (e) {
-        console.debug("Vibration not supported orblocked");
+    // Mobile Haptics Helper (Capacitor Fallback)
+    const vibrateDevice = useCallback((pattern: number | number[]) => {
+      if ('vibrate' in navigator) {
+        try {
+          navigator.vibrate(pattern);
+        } catch (e) {
+          console.debug("Vibration not supported or blocked");
+        }
       }
-    }
-  }, []);
+    }, []);
 
   const handleRequestExtraTime = async () => {
     if (hasUsedAdvThisLevel || activeMatch) return;
 
-    // 1. Pause and Setup AD
+    // 1. Pause and Setup
     togglePause(true);
+    vibrateDevice(50);
+    soundService.playExternalSound('switch.mp3');
+
+    // MOBILE AD LOGIC (AdMob)
+    if (['android', 'ios'].includes((window as any).Capacitor?.getPlatform())) {
+      try {
+        await AdMob.prepareRewardVideoAd({
+          adId: ADS_CONFIG.rewardedId,
+          isTesting: true,
+        });
+
+        const reward = await AdMob.showRewardVideoAd();
+
+        if (reward && reward.amount > 0) {
+          handleFinishAd(true);
+        } else {
+          togglePause(false); // Cancelled
+          showToast("Pubblicità non completata.");
+        }
+      } catch (e) {
+        console.error("AdMob Rewarded Error:", e);
+        // Fallback for unexpected errors
+        togglePause(false);
+        showToast("Impossibile caricare il video.");
+      }
+      return;
+    }
+
+    // WEB MOCK AD LOGIC (Already exists)
     setIsAdvPlaying(true);
     setAdTimer(ADS_CONFIG.rewardDuration);
     setAdCanSkip(false);
     setAdRewardTriggered(false);
-    vibrateDevice(50);
-    soundService.playExternalSound('switch.mp3');
 
-    // 2. AD TIMER LOGIC
     const interval = setInterval(() => {
       setAdTimer(prev => {
         const next = prev - 1;
-
-        // Show skip button after skipOffset seconds
         if (ADS_CONFIG.rewardDuration - next >= ADS_CONFIG.skipOffset) {
           setAdCanSkip(true);
         }
-
         if (next <= 0) {
           clearInterval(interval);
-          handleFinishAd(true); // Auto-finish with reward
+          handleFinishAd(true);
           return 0;
         }
         return next;
       });
     }, 1000);
-
-    // Store interval to cleanup if needed
     (window as any)._adInterval = interval;
   };
 
@@ -284,10 +304,13 @@ const GameView: React.FC = () => {
 
   // GOOGLE ADSENSE / ADMOB CONFIG
   const ADS_CONFIG = {
-    enabled: false, // Set to true after AdSense/AdMob approval
+    enabled: true, // Activated by user request
     rewardDuration: 30, // Full duration for reward
-    skipOffset: 30, // Seconds before skip button appears (forced to 30 for full view)
+    skipOffset: 5, // REDUCED for testing, set to 30 for production
     rewardValue: 30, // Seconds granted
+    // TEST IDS (Replace with ca-app-pub-2753359398526340/xxxxxxxxxx)
+    bannerId: 'ca-app-pub-3940256099942544/6300978111',
+    rewardedId: 'ca-app-pub-3940256099942544/5224354917',
   };
 
   // NEW: Video Intro State
@@ -339,6 +362,73 @@ const GameView: React.FC = () => {
       if (adBannerTimerRef.current) clearTimeout(adBannerTimerRef.current);
     };
   }, [gameState.status, isPaused, hasUsedAdvThisLevel, activeMatch, gameState.isBossLevel]);
+
+  // NEW: AdMob Initialization & Banner Management
+  useEffect(() => {
+    if (!ADS_CONFIG.enabled) return;
+
+    const initAdMob = async () => {
+      try {
+        await AdMob.initialize({
+          requestTrackingAuthorization: true,
+          testingDevices: [],
+          initializeForTesting: true,
+        });
+
+        // Preload Banner only on Android/iOS (Web will use mock)
+        if (['android', 'ios'].includes((window as any).Capacitor?.getPlatform())) {
+          await AdMob.showBanner({
+            adId: ADS_CONFIG.bannerId,
+            adSize: BannerAdSize.ADAPTIVE_BANNER,
+            position: BannerAdPosition.BOTTOM_CENTER,
+            margin: 0,
+            isTesting: true,
+          });
+          setAdBannerActive(true);
+        }
+      } catch (e) {
+        console.error("AdMob Init Error:", e);
+      }
+    };
+
+    initAdMob();
+
+    return () => {
+      if (['android', 'ios'].includes((window as any).Capacitor?.getPlatform())) {
+        AdMob.removeBanner();
+      }
+    };
+  }, []);
+
+  // Update Banner visibility based on isPaused (as requested by previous code logic)
+  useEffect(() => {
+    if (!ADS_CONFIG.enabled) return;
+
+    const updateBannerVisibility = async () => {
+      const isMobile = ['android', 'ios'].includes((window as any).Capacitor?.getPlatform());
+      if (!isMobile) return;
+
+      try {
+        if (isPaused || gameState.status === 'idle' || gameState.status === 'victory' || gameState.status === 'game-over') {
+          await AdMob.showBanner({
+            adId: ADS_CONFIG.bannerId,
+            adSize: BannerAdSize.ADAPTIVE_BANNER,
+            position: BannerAdPosition.BOTTOM_CENTER,
+            margin: 0,
+            isTesting: true,
+          });
+        } else {
+          // Hide banner during active gameplay if preferred, or keep it.
+          // The user specifically asked to SEE IT, so I'll keep it visible or show it.
+          // Let's follow the adBannerActive logic from original file (line 320)
+        }
+      } catch (e) {
+        console.debug("Banner Visibility Error:", e);
+      }
+    };
+
+    updateBannerVisibility();
+  }, [isPaused, gameState.status]);
 
   const handleUserInteraction = useCallback(async () => {
     await soundService.init();
@@ -5344,7 +5434,7 @@ const GameView: React.FC = () => {
           )
         }
 
-        <footer className="mt-auto py-6 text-slate-600 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-0">AI Evaluation Engine v3.6 - LOCAL DEV</footer>
+        <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-0">AI Evaluation Engine v3.6 - LOCAL DEV</footer>
 
         {/* HOMEPAGE TUTORIAL OVERLAY */}
         <ComicTutorial

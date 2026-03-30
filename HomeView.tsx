@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Brain, Zap, Trophy, Play, Info, Shield, MessageSquare, ChevronRight, Menu, X } from 'lucide-react';
+
+import { APP_CONFIG } from './constants';
 
 const HomeView: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,6 +19,13 @@ const HomeView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col font-['Inter']">
+      <Helmet>
+        <title>{APP_CONFIG.seo.site.title}</title>
+        <meta name="description" content={APP_CONFIG.seo.site.description} />
+        <meta name="keywords" content={APP_CONFIG.seo.site.keywords} />
+        <link rel="canonical" href={APP_CONFIG.seo.site.canonical} />
+      </Helmet>
+
       {/* Navigation Header */}
       {/* Navigation Header */}
       <nav className={`fixed top-0 w-full z-[10000] border-b border-white/5 py-4 px-6 flex justify-between items-center transition-colors duration-300 ${isMenuOpen ? 'bg-black' : 'glass-panel'}`}>

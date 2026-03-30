@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Info, Mail, Scale, FileText, CheckCircle, Menu, X } from 'lucide-react';
+import { APP_CONFIG } from './constants';
 
-const LegalLayout: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
+const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.seo; children: React.ReactNode }> = ({ title, configKey, children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const seoConfig = APP_CONFIG.seo[configKey];
 
   useEffect(() => {
     document.body.classList.add('allow-scroll');
@@ -16,8 +17,16 @@ const LegalLayout: React.FC<{ title: string; children: React.ReactNode }> = ({ t
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col font-['Inter']">
+       <Helmet>
+        <title>{seoConfig.title}</title>
+        <meta name="description" content={seoConfig.description} />
+        <meta name="keywords" content={seoConfig.keywords} />
+        <link rel="canonical" href={seoConfig.canonical} />
+      </Helmet>
+
       {/* Navigation Header */}
       <nav className="fixed top-0 w-full z-[100] glass-panel border-b border-white/5 py-4 px-6 flex justify-between items-center">
+
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-[#FF8800] rounded-lg flex items-center justify-center font-black text-white italic">N</div>
           <Link to="/site" className="font-['Orbitron'] font-black tracking-tighter text-xl text-[#FF8800]">number</Link>
@@ -76,7 +85,7 @@ const LegalLayout: React.FC<{ title: string; children: React.ReactNode }> = ({ t
 };
 
 export const PrivacyView: React.FC = () => (
-  <LegalLayout title="Privacy Policy & GDPR">
+  <LegalLayout title="Privacy Policy & GDPR" configKey="privacy">
     <div className="space-y-8">
       <section>
         <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -120,7 +129,7 @@ export const PrivacyView: React.FC = () => (
 );
 
 export const CookieView: React.FC = () => (
-  <LegalLayout title="Cookie Policy">
+  <LegalLayout title="Cookie Policy" configKey="cookies">
     <div className="space-y-8">
       <section>
         <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em]">Utilizzo dei Cookie</h2>
@@ -151,7 +160,7 @@ export const CookieView: React.FC = () => (
 );
 
 export const AboutView: React.FC = () => (
-  <LegalLayout title="Chi Siamo">
+  <LegalLayout title="Chi Siamo" configKey="about">
     <div className="space-y-8">
       <section>
         <p className="text-white text-xl leading-relaxed font-bold italic">
@@ -169,7 +178,7 @@ export const AboutView: React.FC = () => (
 );
 
 export const TermsView: React.FC = () => (
-  <LegalLayout title="Termini di Contratto">
+  <LegalLayout title="Termini di Contratto" configKey="terms">
     <div className="space-y-8">
       <section>
         <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -203,7 +212,7 @@ export const TermsView: React.FC = () => (
 );
 
 export const ContactView: React.FC = () => (
-  <LegalLayout title="Contatti">
+  <LegalLayout title="Contatti" configKey="contact">
     <div className="space-y-8">
       <section className="bg-slate-900 p-10 rounded-[2rem] border border-white/5 shadow-2xl overflow-hidden relative group">
         <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF8800]/5 blur-3xl -mr-16 -mt-16 group-hover:bg-[#FF8800]/10 transition-colors"></div>

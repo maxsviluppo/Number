@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { BLOG_POSTS } from './constants/blog_posts';
 import { Clock, User, ChevronLeft, Calendar, Tag, Menu, X } from 'lucide-react';
 
@@ -20,6 +21,10 @@ const BlogPostDetailView: React.FC = () => {
   if (!post) {
     return (
       <div className="min-h-screen bg-[#020617] text-white flex flex-col items-center justify-center p-6">
+        <Helmet>
+          <title>Articolo non Trovato | Number Game</title>
+        </Helmet>
+
         <h1 className="text-4xl font-black font-['Orbitron'] mb-4 text-[#FF8800]">404</h1>
         <p className="text-slate-400 mb-8">Articolo non trovato.</p>
         <Link to="/blog" className="bg-[#FF8800] text-black px-6 py-2 rounded-full font-black text-sm">
@@ -31,7 +36,13 @@ const BlogPostDetailView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col font-['Inter']">
+      <Helmet>
+        <title>{post.title} | Blog Number Game</title>
+        <meta name="description" content={post.excerpt} />
+        <link rel="canonical" href={`https://numbergame.it/blog/${post.slug}`} />
+      </Helmet>
       {/* Navigation Header */}
+
       <nav className="fixed top-0 w-full z-[100] glass-panel border-b border-white/5 py-4 px-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-[#FF8800] rounded-lg flex items-center justify-center font-black text-white italic">N</div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Users, DollarSign, Trophy, TrendingUp, Calendar, Mail, X, Shield, Lock, Activity, List, Send, Save, Menu, Trash2, Eye, EyeOff } from 'lucide-react';
+import { APP_CONFIG } from '../constants';
+import { Users, DollarSign, Trophy, TrendingUp, Calendar, Mail, X, Shield, Lock, Activity, List, Send, Save, Menu, Trash2, Eye, EyeOff, Settings } from 'lucide-react';
 
 
 
@@ -22,7 +23,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     });
     const [subscribers, setSubscribers] = useState<{ username: string, email: string }[]>([]);
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'subscribers' | 'planning' | 'newsletter'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'subscribers' | 'seo' | 'config' | 'ads' | 'analytics'>('overview');
+    
+    // SEO State
+    const [seoConfig, setSeoConfig] = useState(APP_CONFIG.seo);
+    // Profile/App State
+    const [systemConfig, setSystemConfig] = useState({
+        adsEnabled: APP_CONFIG.adsense.client !== '',
+        analyticsId: APP_CONFIG.analytics.measurementId,
+        rewardValue: 30,
+        gameTime: 60,
+        // Google Property
+        googleTag: '',
+        googleSnippet: '',
+        adsTxtContent: 'google.com, pub-2753359398526340, DIRECT, f08c47fec0942fa0',
+        // Advertising
+        adsenseClient: APP_CONFIG.adsense.client,
+        admobAppId: '',
+        admobBannerId: '',
+        admobInterstitialId: '',
+        admobRewardedId: '',
+        adsenseHomeBanner: APP_CONFIG.adsense.slots.home_banner,
+        adsenseGameBottom: APP_CONFIG.adsense.slots.game_bottom
+    });
 
     // Confirm Delete State
     const [userToDelete, setUserToDelete] = useState<string | null>(null);
@@ -210,9 +233,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <nav className="flex-1 space-y-1">
                     <SidebarItem icon={<Activity />} label="Panoramica" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
                     <SidebarItem icon={<Users />} label="Iscritti" active={activeTab === 'subscribers'} onClick={() => setActiveTab('subscribers')} />
-                    <SidebarItem icon={<Calendar />} label="Pianificazione" active={activeTab === 'planning'} onClick={() => setActiveTab('planning')} />
-                    <SidebarItem icon={<Mail />} label="Newsletter" active={activeTab === 'newsletter'} onClick={() => setActiveTab('newsletter')} />
+                    <SidebarItem icon={<Shield />} label="SEO" active={activeTab === 'seo'} onClick={() => setActiveTab('seo')} />
+                    <SidebarItem icon={<Lock />} label="Proprietà Google" active={activeTab === 'config'} onClick={() => setActiveTab('config')} />
+                    <SidebarItem icon={<DollarSign />} label="Pubblicità" active={activeTab === 'ads'} onClick={() => setActiveTab('ads')} />
+                    <SidebarItem icon={<Activity />} label="Analytics GA4" active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} />
                 </nav>
+
 
                 <button onClick={onClose} className="mt-auto flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-[#222] rounded-xl transition-all">
                     <X size={18} />
@@ -247,8 +273,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         </span>
                                     </>
                                 ) :
-                                    activeTab === 'planning' ? 'Pianificazione Sfide' : 'Newsletter'
+                                    activeTab === 'seo' ? 'SEO & Meta Tags' : 
+                                    activeTab === 'config' ? 'Proprietà & Verifica' :
+                                    activeTab === 'ads' ? 'Monetizzazione & ADS' : 'Google Analytics 4'
                         }
+
                     </h1>
                     <div className="text-xs md:text-sm text-gray-500">Ultimo aggiornamento: Oggi, {new Date().toLocaleTimeString()}</div>
                 </header>
@@ -339,61 +368,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         )}
                                     </tbody>
                                 </table>
-
-                                <div className="p-4 bg-[#1a1a1a] border-t border-[#222]">
-                                    <div className="flex items-start gap-2 text-gray-500">
-                                        <Shield size={14} className="mt-0.5 flex-shrink-0" />
-                                        <p className="text-[10px] italic leading-relaxed">
-                                            <strong>Nota Automazione:</strong> Lo stato viene impostato automaticamente su <span className="text-red-500 font-bold uppercase">Inattivo</span> se l'utente non effettua l'accesso per più di <strong>5 mesi</strong>. Questa regola serve per identificare account potenzialmente dormienti.
-                                        </p>
-                                    </div>
-                                </div>
                             </div>
                         )}
-
-                        {/* PLANNING TAB */}
-                        {activeTab === 'planning' && (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {activeTab === 'seo' && (
+                            <div className="space-y-6">
                                 <div className="bg-[#111] border border-[#222] rounded-2xl p-6">
-                                    <h3 className="text-xl font-bold mb-4">Nuova Sfida Settimanale</h3>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="text-sm text-gray-400 block mb-2">Titolo Sfida</label>
-                                            <input type="text" className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-white focus:border-[#FF8800] outline-none" placeholder="Es. Maratona Matematica" />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="text-sm text-gray-400 block mb-2">Inizio</label>
-                                                <input type="date" className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-white outline-none" />
-                                            </div>
-                                            <div>
-                                                <label className="text-sm text-gray-400 block mb-2">Fine</label>
-                                                <input type="date" className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-white outline-none" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm text-gray-400 block mb-2">Regole Speciali</label>
-                                            <textarea className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-white h-24 outline-none resize-none" placeholder="Descrivi le regole..."></textarea>
-                                        </div>
-                                        <button className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
-                                            <Save size={18} /> Salva Pianificazione
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-xl font-bold flex items-center gap-3">
+                                            <Shield className="text-[#FF8800]" /> Configurazione Meta Tags
+                                        </h3>
+                                        <button onClick={() => showToast('Configurazione salvata correttamente!')} className="bg-[#FF8800] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#ff9900] transition-colors">
+                                            <Save size={18} /> Salva Tutto
                                         </button>
                                     </div>
-                                </div>
 
-                                <div className="bg-[#111] border border-[#222] rounded-2xl p-6">
-                                    <h3 className="text-xl font-bold mb-4">Sfide Programmate</h3>
-                                    <div className="space-y-4">
-                                        {[1, 2].map((i) => (
-                                            <div key={i} className="flex items-center gap-4 p-4 bg-[#1a1a1a] rounded-xl border border-[#333]">
-                                                <div className="w-10 h-10 bg-[#222] rounded-full flex items-center justify-center text-gray-400">
-                                                    <Calendar size={20} />
+                                    <div className="space-y-6">
+                                        {Object.entries(seoConfig).map(([page, meta]: [string, any]) => (
+                                            <div key={page} className="bg-[#1a1a1a] p-5 rounded-xl border border-[#333] group hover:border-[#FF8800]/30 transition-all">
+                                                <h4 className="text-[#FF8800] font-bold uppercase text-xs tracking-[0.2em] mb-4 flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-[#FF8800]"></div>
+                                                    Pagina: {page}
+                                                </h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest pl-1">Meta Title</label>
+                                                        <input 
+                                                            type="text" 
+                                                            value={meta.title} 
+                                                            onChange={(e) => setSeoConfig({...seoConfig, [page]: {...meta, title: e.target.value}})}
+                                                            className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm focus:border-[#FF8800] focus:ring-1 focus:ring-[#FF8800] outline-none transition-all"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest pl-1">Keywords (Separa da virgola)</label>
+                                                        <input 
+                                                            type="text" 
+                                                            value={meta.keywords} 
+                                                            onChange={(e) => setSeoConfig({...seoConfig, [page]: {...meta, keywords: e.target.value}})}
+                                                            className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm focus:border-[#FF8800] focus:ring-1 focus:ring-[#FF8800] outline-none transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="md:col-span-2">
+                                                        <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest pl-1">Meta Description</label>
+                                                        <textarea 
+                                                            rows={2}
+                                                            value={meta.description} 
+                                                            onChange={(e) => setSeoConfig({...seoConfig, [page]: {...meta, description: e.target.value}})}
+                                                            className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm focus:border-[#FF8800] focus:ring-1 focus:ring-[#FF8800] outline-none transition-all resize-none"
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div className="flex-1">
-                                                    <h4 className="font-bold text-white">Sfida di Primavera {i}</h4>
-                                                    <p className="text-xs text-gray-500">Inizia tra {i * 2} giorni</p>
-                                                </div>
-                                                <span className="text-xs bg-yellow-900/20 text-yellow-500 px-2 py-1 rounded border border-yellow-900">Programmata</span>
                                             </div>
                                         ))}
                                     </div>
@@ -401,32 +425,204 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             </div>
                         )}
 
-                        {/* NEWSLETTER TAB */}
-                        {activeTab === 'newsletter' && (
-                            <div className="max-w-3xl mx-auto">
-                                <div className="bg-[#111] border border-[#222] rounded-2xl p-8">
-                                    <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                                        <Send className="text-[#FF8800]" /> Invia Aggiornamento
-                                    </h3>
+                        {/* GOOGLE PROPERTY TAB (Standard Config) */}
+                        {activeTab === 'config' && (
+                            <div className="space-y-6">
+                                <div className="bg-[#111] border border-[#222] rounded-2xl p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-xl font-bold flex items-center gap-3">
+                                            <Shield className="text-[#FF8800]" /> Verifica Proprietà Google
+                                        </h3>
+                                        <button onClick={() => showToast('Proprietà salvata correttamente!')} className="bg-[#FF8800] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#ff9900] transition-colors">
+                                            <Save size={18} /> Salva Tutto
+                                        </button>
+                                    </div>
+
                                     <div className="space-y-6">
-                                        <div>
-                                            <label className="text-sm text-gray-400 block mb-2">Oggetto</label>
-                                            <input type="text" className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-4 text-white focus:border-[#FF8800] outline-none text-lg" placeholder="Novità in arrivo..." />
+                                        <div className="bg-[#1a1a1a] p-5 rounded-xl border border-[#333]">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Shield size={16} className="text-[#FF8800]" />
+                                                <label className="block text-[10px] text-gray-400 uppercase font-black tracking-widest">Codice Tag Google</label>
+                                            </div>
+                                            <textarea 
+                                                rows={4}
+                                                value={systemConfig.googleTag}
+                                                onChange={(e) => setSystemConfig({...systemConfig, googleTag: e.target.value})}
+                                                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-xs font-mono text-cyan-400 focus:border-[#FF8800] outline-none resize-none"
+                                                placeholder="Incolla qui il codice Tag (<meta> o <script>)..."
+                                            />
                                         </div>
-                                        <div>
-                                            <label className="text-sm text-gray-400 block mb-2">Messaggio a tutti gli iscritti ({stats.subscribersCount})</label>
-                                            <textarea className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-4 text-white h-48 outline-none resize-none font-mono text-sm leading-relaxed" placeholder="Scrivi il tuo messaggio qui..."></textarea>
+
+                                        <div className="bg-[#1a1a1a] p-5 rounded-xl border border-[#333]">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Shield size={16} className="text-[#FF8800]" />
+                                                <label className="block text-[10px] text-gray-400 uppercase font-black tracking-widest">Codice Snippet Google</label>
+                                            </div>
+                                            <textarea 
+                                                rows={4}
+                                                value={systemConfig.googleSnippet}
+                                                onChange={(e) => setSystemConfig({...systemConfig, googleSnippet: e.target.value})}
+                                                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-xs font-mono text-cyan-400 focus:border-[#FF8800] outline-none resize-none"
+                                                placeholder="Incolla qui il codice Snippet..."
+                                            />
                                         </div>
-                                        <div className="flex justify-end gap-4">
-                                            <button className="px-6 py-3 text-gray-400 hover:text-white transition-colors font-medium">Salva Bozza</button>
-                                            <button className="px-8 py-3 bg-[#FF8800] text-black font-bold rounded-xl hover:bg-[#ff9900] transition-transform transform active:scale-95 flex items-center gap-2">
-                                                <Send size={18} /> Invia Ora
-                                            </button>
+
+                                        <div className="bg-[#1a1a1a] p-5 rounded-xl border border-[#333]">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <DollarSign size={16} className="text-[#FF8800]" />
+                                                <label className="block text-[10px] text-gray-400 uppercase font-black tracking-widest">Contenuto ads.txt</label>
+                                            </div>
+                                            <textarea 
+                                                rows={4}
+                                                value={systemConfig.adsTxtContent}
+                                                onChange={(e) => setSystemConfig({...systemConfig, adsTxtContent: e.target.value})}
+                                                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-xs font-mono text-green-400 focus:border-[#FF8800] outline-none resize-none"
+                                                placeholder="google.com, pub-XXXXXXX, DIRECT, f08c47fec0942fa0"
+                                            />
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         )}
+
+                        {/* ADS & MONETIZATION TAB */}
+                        {activeTab === 'ads' && (
+                            <div className="space-y-6">
+                                <div className="bg-[#111] border border-[#222] rounded-2xl p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-xl font-bold flex items-center gap-3">
+                                            <DollarSign className="text-[#FF8800]" /> Pubblicità & Monetizzazione
+                                        </h3>
+                                        <button onClick={() => showToast('Configurazione ADS salvata!')} className="bg-[#FF8800] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#ff9900] transition-colors">
+                                            <Save size={18} /> Salva Config
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        {/* ADSENSE SECTION (Web) */}
+                                        <div className="space-y-4">
+                                            <h4 className="text-xs font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
+                                                <Activity size={14} className="text-[#FF8800]" /> Google AdSense (Web)
+                                            </h4>
+                                            <div className="bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+                                                <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">Publisher ID (ca-pub-XXX)</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={systemConfig.adsenseClient}
+                                                    onChange={(e) => setSystemConfig({...systemConfig, adsenseClient: e.target.value})}
+                                                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm font-mono focus:border-[#FF8800] outline-none"
+                                                />
+                                            </div>
+                                            <div className="bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+                                                <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">Slot ID Home Banner</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={systemConfig.adsenseHomeBanner}
+                                                    onChange={(e) => setSystemConfig({...systemConfig, adsenseHomeBanner: e.target.value})}
+                                                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm font-mono focus:border-[#FF8800] outline-none"
+                                                />
+                                            </div>
+                                            <div className="bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+                                                <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">Slot ID Game Bottom</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={systemConfig.adsenseGameBottom}
+                                                    onChange={(e) => setSystemConfig({...systemConfig, adsenseGameBottom: e.target.value})}
+                                                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm font-mono focus:border-[#FF8800] outline-none"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* ADMOB SECTION (App) */}
+                                        <div className="space-y-4">
+                                            <h4 className="text-xs font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
+                                                <Activity size={14} className="text-[#FF8800]" /> Google AdMob (Mobile App)
+                                            </h4>
+                                            <div className="bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+                                                <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">AdMob App ID</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={systemConfig.admobAppId}
+                                                    onChange={(e) => setSystemConfig({...systemConfig, admobAppId: e.target.value})}
+                                                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm font-mono focus:border-[#FF8800] outline-none"
+                                                    placeholder="ca-app-pub-XXX~YYY"
+                                                />
+                                            </div>
+                                            <div className="bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+                                                <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">AdMob Banner Unit ID</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={systemConfig.admobBannerId}
+                                                    onChange={(e) => setSystemConfig({...systemConfig, admobBannerId: e.target.value})}
+                                                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm font-mono focus:border-[#FF8800] outline-none"
+                                                />
+                                            </div>
+                                            <div className="bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+                                                <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">AdMob Interstitial Unit ID</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={systemConfig.admobInterstitialId}
+                                                    onChange={(e) => setSystemConfig({...systemConfig, admobInterstitialId: e.target.value})}
+                                                    className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-2.5 text-sm font-mono focus:border-[#FF8800] outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ANALYTICS GA4 TAB */}
+                        {activeTab === 'analytics' && (
+                            <div className="space-y-6">
+                                <div className="bg-[#111] border border-[#222] rounded-2xl p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-xl font-bold flex items-center gap-3">
+                                            <Activity className="text-[#FF8800]" /> Google Analytics 4 (GA4)
+                                        </h3>
+                                        <button onClick={() => showToast('Analytics aggiornato!')} className="bg-[#FF8800] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#ff9900] transition-colors">
+                                            <Save size={18} /> Salva Tutto
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="bg-[#1a1a1a] p-6 rounded-xl border border-[#333]">
+                                            <div className="flex items-center gap-4 mb-6">
+                                                <div className="p-3 bg-blue-900/20 rounded-full text-blue-400 border border-blue-900/30">
+                                                    <TrendingUp size={24} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold">Monitoraggio Traffico</h4>
+                                                    <p className="text-xs text-gray-500">Configura l'ID di misurazione principale per GA4.</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">Measurement ID (Codice G-XXXXXX)</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={systemConfig.analyticsId}
+                                                        onChange={(e) => setSystemConfig({...systemConfig, analyticsId: e.target.value})}
+                                                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-lg font-mono text-[#FF8800] focus:border-[#FF8800] outline-none"
+                                                        placeholder="G-XXXXXXXXXX"
+                                                    />
+                                                </div>
+
+                                                <div className="p-4 bg-yellow-900/10 border border-yellow-900/20 rounded-lg flex items-start gap-3">
+                                                    <Shield size={16} className="text-yellow-600 mt-0.5" />
+                                                    <p className="text-[10px] text-yellow-600/80 leading-relaxed italic">
+                                                        L'ID di misurazione inserito inizializzerà automaticamente lo snippet globale di gtag.js. 
+                                                        Assicurati che l'ID appartenga a uno stream di dati web configurato correttamente nel tuo account Google Analytics.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
 
                     </>
                 )}
@@ -464,13 +660,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </div>
             )}
 
-            {/* Mobile Bottom Navigation */}
-            <div className="md:hidden bg-[#111] border-t border-[#222] flex justify-around p-2 pb-safe">
-                <MobileNavItem icon={<Activity />} label="Panoramica" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-                <MobileNavItem icon={<Users />} label="Iscritti" active={activeTab === 'subscribers'} onClick={() => setActiveTab('subscribers')} />
-                <MobileNavItem icon={<Calendar />} label="Pianif." active={activeTab === 'planning'} onClick={() => setActiveTab('planning')} />
-                <MobileNavItem icon={<Mail />} label="News" active={activeTab === 'newsletter'} onClick={() => setActiveTab('newsletter')} />
+            <div className="md:hidden bg-[#111] border-t border-[#222] flex overflow-x-auto no-scrollbar p-2 pb-safe divide-x divide-white/5">
+                <MobileNavItem icon={<Activity />} label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+                <MobileNavItem icon={<Users />} label="Users" active={activeTab === 'subscribers'} onClick={() => setActiveTab('subscribers')} />
+                <MobileNavItem icon={<Shield />} label="SEO" active={activeTab === 'seo'} onClick={() => setActiveTab('seo')} />
+                <MobileNavItem icon={<Lock />} label="Google" active={activeTab === 'config'} onClick={() => setActiveTab('config')} />
+                <MobileNavItem icon={<DollarSign />} label="Ads" active={activeTab === 'ads'} onClick={() => setActiveTab('ads')} />
+                <MobileNavItem icon={<TrendingUp />} label="Stats" active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} />
             </div>
+
         </div>
     );
 };

@@ -1,0 +1,59 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { HexCellData, GameState } from './types';
+import { INITIAL_TIME, BASE_POINTS_START, MAX_STREAK, GRID_ROWS, GRID_COLS, OPERATORS, MOCK_LEADERBOARD, APP_CONFIG } from './constants';
+import HexCell from './components/HexCell';
+import ParticleEffect from './components/ParticleEffect';
+import CharacterHelper from './components/CharacterHelper';
+import { getIQInsights } from './services/geminiService';
+import { soundService } from './services/soundService';
+import { matchService } from './services/matchService';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronLeft, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward, Clock, Crown, Lock, Target, Send, XCircle, Globe } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import AuthModal from './components/AuthModal';
+import AdminPanel from './components/AdminPanel';
+import NeuralDuelLobby from './components/NeuralDuelLobby';
+import DuelRecapModal from './components/DuelRecapModal';
+import IntroVideo from './components/IntroVideo';
+import ComicTutorial, { TutorialStep } from './components/ComicTutorial';
+import UserProfileModal, { getRank } from './components/UserProfileModal'; // Updated import
+import RegistrationSuccess from './components/RegistrationSuccess';
+
+import { BADGES } from './constants/badges';
+import { authService, profileService, leaderboardService, supabase, UserProfile } from './services/supabaseClient'; // Moved this import here
+import { BOSS_LEVELS } from './constants/boss_levels';
+import { AdMob, BannerAdPosition, BannerAdSize, AdMobBannerSize } from '@capacitor-community/admob';
+
+const TUTORIAL_STEPS = [
+  {
+    title: "OBIETTIVO & GRIGLIA",
+    description: "Collega i numeri per raggiungere i Target in alto. La griglia è fissa: trova tutte le combinazioni per avanzare di livello. Usa i numeri e gli operatori (+, -, ×, ÷) saggiamente!",
+    icon: <Brain className="w-12 h-12 text-[#FF8800]" />
+  },
+  {
+    title: "REGOLE DI CONNESSIONE",
+    description: "Trascina il dito/mouse tra le celle. Segui sempre la sequenza: Numero → Operatore → Numero. La selezione diventerà VERDE se corretta, ROSSA se sbagliata.",
+    icon: <RefreshCw className="w-12 h-12 text-[#FF8800]" />
+  },
+  {
+    title: "BOSS LEVELS",
+    description: "Ogni 5 livelli affronterai un Boss! Sfide a tempo limitato con premi speciali come Bonus di Tempo e Punti Extra. Sconfiggi il Guardiano per continuare!",
+    icon: <Crown className="w-12 h-12 text-[#FF8800]" />
+  },
+  {
+    title: "NEURAL DUEL (1VS1)",
+    description: "Sfida altri giocatori in tempo reale! Scegli tra modalità STANDARD (punti) o BLITZ (velocità). Vinci i round per dominare la Classifica Neurale.",
+    icon: <Swords className="w-12 h-12 text-[#FF8800]" />
+  },
+  {
+    title: "QI RANKING AI",
+    description: "La nostra AI analizza la tua velocità e precisione matematica ad ogni mossa per calcolare il tuo QI di gioco. Punta all'Eccellenza!",
+    icon: <Zap className="w-12 h-12 text-[#FF8800]" />
+  }
+];
+
+const WIN_VIDEOS = ['/Win1noaudio.mp4', '/Win2noaudioe.mp4', '/Win3noaudio.mp4', '/Win4noaudio.mp4'];
+const LOSE_VIDEOS = ['/Lose1noaudio.mp4', '/Lose2noaudio.mp4'];
+const SURRENDER_VIDEOS = ['/Resa1noaudio.mp4'];
+
+// BOSS_LEVELS imported from constants/boss_levels
