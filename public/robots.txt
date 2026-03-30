@@ -1,0 +1,6 @@
+google-site-verification: google-site-verification-placeholder.html
+User-agent: *
+Disallow: /admin
+Allow: /
+
+Sitemap: https://numbergame.it/sitemap.xml
