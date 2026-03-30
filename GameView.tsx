@@ -98,6 +98,28 @@ const GameView: React.FC = () => {
   const [showLostVideo, setShowLostVideo] = useState(false);
   const [showBossIntro, setShowBossIntro] = useState(false);
   const [isBossBonusPlaying, setIsBossBonusPlaying] = useState(false);
+  const [remoteConfig, setRemoteConfig] = useState<any>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+
+  // FETCH GLOBAL CONFIG ON START
+  useEffect(() => {
+    const loadGlobalConfig = async () => {
+      try {
+        const config = await configService.getSystemConfig();
+        if (config) {
+          setRemoteConfig(config);
+          // Sync with local memory for components that might not re-render immediately
+          if (config.adsense_enabled !== undefined) localStorage.setItem('adsense_enabled', config.adsense_enabled.toString());
+          if (config.admob_enabled !== undefined) localStorage.setItem('admob_enabled', config.admob_enabled.toString());
+        }
+      } catch (e) {
+        console.error("Error loading remote config:", e);
+      } finally {
+        setConfigLoading(false);
+      }
+    };
+    loadGlobalConfig();
+  }, []);
   const [showHomeTutorial, setShowHomeTutorial] = useState(false);
   const [showGameTutorial, setShowGameTutorial] = useState(false);
   const theme = 'orange';
@@ -304,7 +326,10 @@ const GameView: React.FC = () => {
 
   // GOOGLE ADSENSE / ADMOB CONFIG
   const ADS_CONFIG = {
-    enabled: true, // Activated by user request
+    // Dynamically check enablement based on environment
+    enabled: ['android', 'ios'].includes((window as any).Capacitor?.getPlatform()) 
+      ? (remoteConfig?.admobEnabled ?? localStorage.getItem('admob_enabled') === 'true') 
+      : (remoteConfig?.adsenseEnabled ?? localStorage.getItem('adsense_enabled') === 'true'), 
     rewardDuration: 30, // Full duration for reward
     skipOffset: 5, // REDUCED for testing, set to 30 for production
     rewardValue: 30, // Seconds granted
@@ -4321,6 +4346,11 @@ const GameView: React.FC = () => {
                         }
 
                         // CLICK LOGIC
+                        if (!ADS_CONFIG.enabled && adBannerActive) {
+                          showToast("Arriverà tra poco!");
+                          return;
+                        }
+
                         if (!adBannerActive) {
                           setAdBannerActive(true);
                           if (adBannerTimerRef.current) clearTimeout(adBannerTimerRef.current);
@@ -4347,13 +4377,16 @@ const GameView: React.FC = () => {
                         <div
                           onPointerDown={(e) => {
                             e.stopPropagation();
-                            // Click temporaneamente disabilitato come richiesto
-                            // if (adBannerActive) handleRequestExtraTime();
+                            if (ADS_CONFIG.enabled) {
+                              if (adBannerActive) handleRequestExtraTime();
+                            } else {
+                              showToast("Arriverà tra poco!");
+                            }
                           }}
                           className={`flex items-center pr-16 transition-all duration-500 overflow-hidden ${adBannerActive ? 'max-w-[400px] opacity-100' : 'max-w-0 opacity-0'}`}
                         >
                           <div className="text-right pl-6 whitespace-nowrap">
-                            <h3 className="font-orbitron font-black text-white text-[18px] uppercase leading-tight tracking-widest italic">{ADS_CONFIG.enabled ? '+60s BONUS' : 'IN ARRIVO A BREVE'}</h3>
+                            <h3 className="font-orbitron font-black text-white text-[18px] uppercase leading-tight tracking-widest italic">{ADS_CONFIG.enabled ? `+${ADS_CONFIG.rewardValue}s BONUS` : 'ARRIVERÀ TRA POCO'}</h3>
                             <p className="text-[14px] text-gray-300 font-bold uppercase tracking-tighter">{ADS_CONFIG.enabled ? 'Guarda video premio' : 'Pubblicità disabilitata'}</p>
                           </div>
                         </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabaseClient';
+import { supabase, configService } from '../services/supabaseClient';
 import { APP_CONFIG } from '../constants';
-import { Users, DollarSign, Trophy, TrendingUp, Calendar, Mail, X, Shield, Lock, Activity, List, Send, Save, Menu, Trash2, Eye, EyeOff, Settings } from 'lucide-react';
+import { Users, DollarSign, Trophy, TrendingUp, Calendar, Mail, X, Shield, Lock, Activity, List, Send, Save, Menu, Trash2, Eye, EyeOff, Settings, Loader2 } from 'lucide-react';
 
 
 
@@ -29,7 +29,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const [seoConfig, setSeoConfig] = useState(APP_CONFIG.seo);
     // Profile/App State
     const [systemConfig, setSystemConfig] = useState({
-        adsEnabled: APP_CONFIG.adsense.client !== '',
+        adsenseEnabled: APP_CONFIG.adsense.client !== '',
+        admobEnabled: false,
         analyticsId: APP_CONFIG.analytics.measurementId,
         rewardValue: 30,
         gameTime: 60,
@@ -47,12 +48,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         adsenseGameBottom: APP_CONFIG.adsense.slots.game_bottom
     });
 
+    const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
     // Confirm Delete State
     const [userToDelete, setUserToDelete] = useState<string | null>(null);
     const [adminToast, setAdminToast] = useState<{ msg: string, visible: boolean }>({ msg: '', visible: false });
 
     const showToast = (msg: string) => {
         setAdminToast({ msg, visible: true });
+        if (msg.includes('salvata') || msg.includes('aggiornato') || msg.includes('Completato')) {
+            setShowSaveSuccess(true);
+        }
         setTimeout(() => setAdminToast(prev => ({ ...prev, visible: false })), 3000);
     };
 
@@ -69,11 +75,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Fetch everything from profiles for now (assuming standard scale)
-            // Cast to any to bypass dummy client type limitations
+            // 1. Fetch System Config (Global)
+            const remoteConfig = await configService.getSystemConfig();
+            if (remoteConfig) {
+                if (remoteConfig.seo) setSeoConfig(remoteConfig.seo);
+                setSystemConfig(prev => ({
+                    ...prev,
+                    ...remoteConfig,
+                    // Keep derived fields if needed or overwrite all
+                }));
+            }
+
+            // 2. Fetch Users
             const { data: profiles, count, error } = await (supabase as any)
                 .from('profiles')
-                // FIXED: Include ID to allow deletion. Added updated_at for status check.
                 .select('id, username, email, total_score, max_level, updated_at, recovery_password', { count: 'exact' })
                 .order('updated_at', { ascending: false });
 
@@ -82,15 +97,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             let maxS = 0;
             let maxL = 0;
             if (profiles) {
-                // 5 Months Inactivity Rule
                 const fiveMonthsAgo = new Date();
                 fiveMonthsAgo.setMonth(fiveMonthsAgo.getMonth() - 5);
 
                 profiles.forEach((p: any) => {
                     if ((p.total_score || 0) > maxS) maxS = p.total_score;
                     if ((p.max_level || 0) > maxL) maxL = p.max_level;
-
-                    // Determine Status
                     const lastActive = p.updated_at ? new Date(p.updated_at) : new Date();
                     p.status = lastActive < fiveMonthsAgo ? 'Inattivo' : 'Attivo';
                 });
@@ -107,6 +119,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             console.error("Admin fetch error:", e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const saveAllConfig = async (customMsg?: string) => {
+        setLoading(true);
+        const success = await configService.updateSystemConfig({
+            ...systemConfig,
+            seo: seoConfig
+        });
+        setLoading(false);
+        if (success) {
+            showToast(customMsg || 'Configurazione globale salvata!');
+        } else {
+            showToast('Errore nel salvataggio su database.');
         }
     };
 
@@ -433,8 +459,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         <h3 className="text-xl font-bold flex items-center gap-3">
                                             <Shield className="text-[#FF8800]" /> Verifica Proprietà Google
                                         </h3>
-                                        <button onClick={() => showToast('Proprietà salvata correttamente!')} className="bg-[#FF8800] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#ff9900] transition-colors">
-                                            <Save size={18} /> Salva Tutto
+                                        <button onClick={() => saveAllConfig('Proprietà salvata correttamente!')} className="bg-[#FF8800] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#ff9900] transition-colors disabled:opacity-50">
+                                            {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} Salva Tutto
                                         </button>
                                     </div>
 
@@ -493,17 +519,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         <h3 className="text-xl font-bold flex items-center gap-3">
                                             <DollarSign className="text-[#FF8800]" /> Pubblicità & Monetizzazione
                                         </h3>
-                                        <button onClick={() => showToast('Configurazione ADS salvata!')} className="bg-[#FF8800] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#ff9900] transition-colors">
-                                            <Save size={18} /> Salva Config
+                                        <button 
+                                            onClick={() => saveAllConfig('Configurazione ADS salvata!')} 
+                                            className="bg-[#FF8800] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#ff9900] transition-colors disabled:opacity-50"
+                                        >
+                                            {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} Salva Config
                                         </button>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         {/* ADSENSE SECTION (Web) */}
                                         <div className="space-y-4">
-                                            <h4 className="text-xs font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
-                                                <Activity size={14} className="text-[#FF8800]" /> Google AdSense (Web)
-                                            </h4>
+                                            <div className="flex items-center justify-between bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+                                                <h4 className="text-xs font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
+                                                    <Activity size={14} className="text-[#FF8800]" /> Google AdSense (Web)
+                                                </h4>
+                                                <button 
+                                                    onClick={() => setSystemConfig({...systemConfig, adsenseEnabled: !systemConfig.adsenseEnabled})}
+                                                    className={`w-10 h-5 rounded-full relative transition-all duration-300 ${systemConfig.adsenseEnabled ? 'bg-[#FF8800]' : 'bg-gray-700'}`}
+                                                >
+                                                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all duration-300 ${systemConfig.adsenseEnabled ? 'left-[22px]' : 'left-0.5'}`}></div>
+                                                </button>
+                                            </div>
                                             <div className="bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
                                                 <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">Publisher ID (ca-pub-XXX)</label>
                                                 <input 
@@ -535,9 +572,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
                                         {/* ADMOB SECTION (App) */}
                                         <div className="space-y-4">
-                                            <h4 className="text-xs font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
-                                                <Activity size={14} className="text-[#FF8800]" /> Google AdMob (Mobile App)
-                                            </h4>
+                                            <div className="flex items-center justify-between bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+                                                <h4 className="text-xs font-black uppercase text-gray-500 tracking-widest flex items-center gap-2">
+                                                    <Activity size={14} className="text-[#FF8800]" /> Google AdMob (App)
+                                                </h4>
+                                                <button 
+                                                    onClick={() => setSystemConfig({...systemConfig, admobEnabled: !systemConfig.admobEnabled})}
+                                                    className={`w-10 h-5 rounded-full relative transition-all duration-300 ${systemConfig.admobEnabled ? 'bg-[#FF8800]' : 'bg-gray-700'}`}
+                                                >
+                                                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all duration-300 ${systemConfig.admobEnabled ? 'left-[22px]' : 'left-0.5'}`}></div>
+                                                </button>
+                                            </div>
                                             <div className="bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
                                                 <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">AdMob App ID</label>
                                                 <input 
@@ -580,8 +625,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                         <h3 className="text-xl font-bold flex items-center gap-3">
                                             <Activity className="text-[#FF8800]" /> Google Analytics 4 (GA4)
                                         </h3>
-                                        <button onClick={() => showToast('Analytics aggiornato!')} className="bg-[#FF8800] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#ff9900] transition-colors">
-                                            <Save size={18} /> Salva Tutto
+                                        <button onClick={() => saveAllConfig('Analytics aggiornato!')} className="bg-[#FF8800] text-black px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#ff9900] transition-colors disabled:opacity-50">
+                                            {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} Salva Tutto
                                         </button>
                                     </div>
 
@@ -668,6 +713,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <MobileNavItem icon={<DollarSign />} label="Ads" active={activeTab === 'ads'} onClick={() => setActiveTab('ads')} />
                 <MobileNavItem icon={<TrendingUp />} label="Stats" active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} />
             </div>
+
+            {/* SAVE SUCCESS MODAL */}
+            {showSaveSuccess && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/85 backdrop-blur-md animate-fade-in">
+                    <div className="bg-[#1a1a1a] p-8 rounded-3xl border border-[#333] shadow-[0_0_80px_rgba(255,136,0,0.2)] w-full max-w-sm mx-4 transform animate-scale-up text-center">
+                        <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-green-500 border border-green-500/30">
+                            <Save size={40} className="animate-pulse" />
+                        </div>
+                        <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Impostazioni Salvate</h3>
+                        <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+                            Le modifiche sono state applicate correttamente al sistema e sono ora attive.
+                        </p>
+                        <button
+                            onClick={() => setShowSaveSuccess(false)}
+                            className="w-full py-4 rounded-2xl font-black bg-[#FF8800] text-black hover:bg-[#ff9900] transition-all transform active:scale-95 shadow-lg shadow-[#FF8800]/20 tracking-widest text-sm"
+                        >
+                            CHIUDI
+                        </button>
+                    </div>
+                </div>
+            )}
 
         </div>
     );
