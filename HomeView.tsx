@@ -4,11 +4,19 @@ import { Helmet } from 'react-helmet-async';
 import { Brain, Zap, Trophy, Play, Info, Shield, MessageSquare, ChevronRight, Menu, X } from 'lucide-react';
 
 import { APP_CONFIG } from './constants';
+import { configService } from './services/supabaseClient';
 
 const HomeView: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [remoteConfig, setRemoteConfig] = useState<any>(null);
 
   useEffect(() => {
+    const loadConfig = async () => {
+      const config = await configService.getSystemConfig();
+      if (config) setRemoteConfig(config);
+    };
+    loadConfig();
+    
     document.body.classList.add('allow-scroll');
     document.documentElement.classList.add('allow-scroll');
     return () => {
@@ -20,11 +28,36 @@ const HomeView: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col font-['Inter']">
       <Helmet>
-        <title>{APP_CONFIG.seo.site.title}</title>
-        <meta name="description" content={APP_CONFIG.seo.site.description} />
-        <meta name="keywords" content={APP_CONFIG.seo.site.keywords} />
+        <title>{remoteConfig?.seo?.site?.title || APP_CONFIG.seo.site.title}</title>
+        <meta name="description" content={remoteConfig?.seo?.site?.description || APP_CONFIG.seo.site.description} />
+        <meta name="keywords" content={remoteConfig?.seo?.site?.keywords || APP_CONFIG.seo.site.keywords} />
         <link rel="canonical" href={APP_CONFIG.seo.site.canonical} />
+        
+        {/* Dynamic Google Verification */}
+        {remoteConfig?.googleTag && (
+          remoteConfig.googleTag.includes('content="') ? (
+            <meta name="google-site-verification" content={remoteConfig.googleTag.split('content="')[1].split('"')[0]} />
+          ) : (
+             <meta name="google-site-verification" content={remoteConfig.googleTag} />
+          )
+        )}
+        
+        {/* Dynamic Google Snippet / Analytics */}
+        {remoteConfig?.analyticsId && (
+          <script async src={`https://www.googletagmanager.com/gtag/js?id=${remoteConfig.analyticsId}`}></script>
+        )}
+        {remoteConfig?.analyticsId && (
+          <script>
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${remoteConfig.analyticsId}');
+            `}
+          </script>
+        )}
       </Helmet>
+
 
       {/* Navigation Header */}
       {/* Navigation Header */}

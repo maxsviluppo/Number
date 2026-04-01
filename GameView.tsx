@@ -3520,6 +3520,36 @@ const GameView: React.FC = () => {
 
   return (
     <>
+      <Helmet>
+        <title>{remoteConfig?.seo?.game?.title || APP_CONFIG.seo.game.title}</title>
+        <meta name="description" content={remoteConfig?.seo?.game?.description || APP_CONFIG.seo.game.description} />
+        <meta name="keywords" content={remoteConfig?.seo?.game?.keywords || APP_CONFIG.seo.game.keywords} />
+        <link rel="canonical" href={APP_CONFIG.seo.game.canonical} />
+        
+        {/* Dynamic Google Verification */}
+        {remoteConfig?.googleTag && (
+          remoteConfig.googleTag.includes('content="') ? (
+            <meta name="google-site-verification" content={remoteConfig.googleTag.split('content="')[1].split('"')[0]} />
+          ) : (
+             <meta name="google-site-verification" content={remoteConfig.googleTag} />
+          )
+        )}
+        
+        {/* Dynamic Google Snippet / Analytics */}
+        {remoteConfig?.analyticsId && (
+          <script async src={`https://www.googletagmanager.com/gtag/js?id=${remoteConfig.analyticsId}`}></script>
+        )}
+        {remoteConfig?.analyticsId && (
+          <script>
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${remoteConfig.analyticsId}');
+            `}
+          </script>
+        )}
+      </Helmet>
       {showIntro && <IntroVideo onFinish={() => {
         setShowIntro(false);
         setGameState(prev => ({ ...prev, status: 'idle' }));
