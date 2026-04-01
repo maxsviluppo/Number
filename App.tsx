@@ -38,8 +38,11 @@ const App: React.FC = () => {
     <HelmetProvider>
       <BrowserRouter>
         <Helmet>
-           {/* Global Google Verification */}
-           {remoteConfig?.googleTag && (
+           {/* Global Google Verification (Hardcoded for immediate verification) */}
+           <meta name="google-site-verification" content="1wGPWrEmUOc4JrOPIe9vc2MuI62VN4HqcQ38iuvbwQU" />
+           
+           {/* Dynamic Google Verification from DB (will override if exists) */}
+           {remoteConfig?.googleTag && !remoteConfig.googleTag.includes('1wGPWrEmUOc4JrOPIe9vc2MuI62VN4HqcQ38iuvbwQU') && (
              remoteConfig.googleTag.includes('content="') ? (
                <meta name="google-site-verification" content={remoteConfig.googleTag.split('content="')[1].split('"')[0]} />
              ) : (
