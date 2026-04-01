@@ -1,4 +1,3 @@
-google-site-verification: google-site-verification-placeholder.html
 User-agent: *
 Disallow: /admin
 Allow: /
