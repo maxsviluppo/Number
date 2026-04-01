@@ -51,19 +51,15 @@ const App: React.FC = () => {
            )}
            
            {/* Global Analytics Snippet */}
-           {remoteConfig?.analyticsId && (
-             <script async src={`https://www.googletagmanager.com/gtag/js?id=${remoteConfig.analyticsId}`}></script>
-           )}
-           {remoteConfig?.analyticsId && (
-             <script>
-               {`
-                 window.dataLayer = window.dataLayer || [];
-                 function gtag(){dataLayer.push(arguments);}
-                 gtag('js', new Date());
-                 gtag('config', '${remoteConfig.analyticsId}');
-               `}
-             </script>
-           )}
+           <script async src={`https://www.googletagmanager.com/gtag/js?id=${remoteConfig?.analyticsId || 'G-YW7KE80KWL'}`}></script>
+           <script>
+             {`
+               window.dataLayer = window.dataLayer || [];
+               function gtag(){dataLayer.push(arguments);}
+               gtag('js', new Date());
+               gtag('config', '${remoteConfig?.analyticsId || 'G-YW7KE80KWL'}');
+             `}
+           </script>
         </Helmet>
         <ScrollToTop />
         <Routes>

@@ -25,7 +25,14 @@
   <!-- Google Search Console Verification -->
   <meta name="google-site-verification" content="1wGPWrEmUOc4JrOPIe9vc2MuI62VN4HqcQ38iuvbwQU" />
 
-  <!-- Google Analytics handled dynamically via Helmet in views -->
+  <!-- Google Analytics (GA4) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-YW7KE80KWL"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-YW7KE80KWL');
+  </script>
   <script>
     // Shim avanzato per process.env: previene crash in librerie esterne (es. Google GenAI)
     // che cercano l'oggetto globale process durante l'inizializzazione.
