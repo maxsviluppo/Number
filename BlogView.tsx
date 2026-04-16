@@ -125,9 +125,9 @@ const BlogView: React.FC = () => {
              <Link to="/about" className="hover:text-white transition-colors">Chi Siamo</Link>
              <Link to="/contact" className="hover:text-white transition-colors">Contatti</Link>
            </div>
-           <div className="text-slate-600 text-[10px] font-mono">
-              © 2026 NUMBERGAME.IT
-           </div>
+            <div className="text-slate-600 text-[10px] font-mono">
+               © 2026 GIULINCY SRL
+            </div>
         </div>
       </footer>
     </div>

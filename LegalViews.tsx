@@ -79,7 +79,7 @@ const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.
 
     <footer className="py-8 px-6 border-t border-white/5 bg-slate-950 mt-20 text-center">
       <div className="max-w-7xl mx-auto text-slate-600 text-[10px] font-mono">
-        © 2026 NUMBERGAME.IT • TUTTI I DIRITTI RISERVATI • GDPR COMPLIANT
+        © 2026 GIULINCY SRL • TUTTI I DIRITTI RISERVATI • GDPR COMPLIANT
       </div>
     </footer>
     </div>
@@ -100,19 +100,19 @@ export const PrivacyView: React.FC = () => (
         <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
            <Lock className="w-5 h-5 text-[#FF8800]" /> 2. Titolare del Trattamento
         </h2>
-        <p>Il titolare del trattamento è lo staff di Numbergame.it, contattabile per qualsiasi chiarimento relativo alla protezione dei dati all'indirizzo email: <strong>privacy@numbergame.it</strong>.</p>
+        <p>Il titolare del trattamento è <strong>Giulincy srl</strong>. Per qualsiasi chiarimento relativo alla protezione dei dati o per l'esercizio dei propri diritti, è possibile contattare il titolare all'indirizzo email: <strong>privacy@numbergame.it</strong>.</p>
       </section>
 
       <section>
         <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-           <Info className="w-5 h-5 text-[#FF8800]" /> 3. Finalità del Trattamento
+           <Info className="w-5 h-5 text-[#FF8800]" /> 3. Finalità e Conservazione
         </h2>
-        <p>I dati vengono raccolti per le seguenti finalità:</p>
+        <p>I dati vengono raccolti esclusivamente per le seguenti finalità:</p>
         <ul className="list-disc pl-6 space-y-2">
-          <li><strong>Funzionamento del gioco:</strong> Salvataggio dei progressi, livelli e punteggi (dati tecnici e nickname).</li>
-          <li><strong>Personalizzazione Pubblicitaria:</strong> Attraverso Google AdSense, mostriamo annunci pertinenti basati sui vostri interessi.</li>
-          <li><strong>Analisi Statistica:</strong> Monitoraggio del traffico in forma anonima per migliorare l'esperienza utente.</li>
+          <li><strong>Funzionamento del gioco:</strong> Salvataggio dei progressi, livelli e punteggi su server sicuri gestiti da <strong>Supabase</strong>.</li>
+          <li><strong>Sicurezza e Prestazioni:</strong> Monitoraggio tecnico per garantire la stabilità del servizio.</li>
         </ul>
+        <p className="mt-4">Numbergame.it non vende né cede i tuoi dati a terze parti per scopi commerciali.</p>
       </section>
 
       <section>
@@ -169,11 +169,19 @@ export const AboutView: React.FC = () => (
           "La matematica non è un'opinione, è un'avventura."
         </p>
         <p className="mt-6">
-          Numbergame.it nasce dall'idea di trasformare il calcolo mentale in un'esperienza competitiva e visivamente gratificante. Crediamo fermamente che il **Brain Training** debba essere accessibile a tutti, gratuito e divertente.
+          Numbergame.it è un progetto di <strong>Giulincy srl</strong> che nasce dall'idea di trasformare il calcolo mentale in un'esperienza competitiva e visivamente gratificante. Crediamo fermamente che il **Brain Training** debba essere accessibile a tutti, gratuito e divertente.
         </p>
-        <p>
-          Il nostro team è composto da appassionati di logica e sviluppatori che hanno voluto creare una piattaforma dove la neuroplasticità cerebrale viene stimolata attraverso il gioco diretto.
-        </p>
+        
+        <div className="grid md:grid-cols-2 gap-8 mt-12 pt-12 border-t border-white/5">
+           <div className="bg-slate-900/50 p-6 rounded-2xl border border-white/5">
+              <h3 className="text-[#FF8800] font-black uppercase text-sm tracking-widest mb-2">Ideatore & PM</h3>
+              <p className="text-white text-lg font-bold">Giovanni Coda</p>
+           </div>
+           <div className="bg-slate-900/50 p-6 rounded-2xl border border-white/5">
+              <h3 className="text-[#FF8800] font-black uppercase text-sm tracking-widest mb-2">Sviluppo & Test</h3>
+              <p className="text-white text-lg font-bold">Castro Massimo</p>
+           </div>
+        </div>
       </section>
     </div>
   </LegalLayout>
@@ -193,7 +201,7 @@ export const TermsView: React.FC = () => (
         <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
            <FileText className="w-5 h-5 text-[#FF8800]" /> 2. Proprietà Intellettuale
         </h2>
-        <p>Tutti i contenuti (codice, design, testi degli articoli e algoritmi di gioco) sono di proprietà esclusiva di Numbergame.it. È vietata la riproduzione, anche parziale, senza autorizzazione scritta.</p>
+        <p>Tutti i contenuti (codice, design, testi degli articoli e algoritmi di gioco) sono di proprietà esclusiva di <strong>Giulincy srl</strong>. È vietata la riproduzione, anche parziale, senza autorizzazione scritta.</p>
       </section>
 
       <section>

@@ -199,7 +199,7 @@ const HomeView: React.FC = () => {
           </div>
         </div>
         <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-white/5 text-center text-slate-600 text-[10px] font-mono">
-           © 2026 NUMBERGAME.IT • ALL RIGHTS RESERVED • MATH IS POWER
+           © 2026 GIULINCY SRL • ALL RIGHTS RESERVED • MATH IS POWER
         </div>
       </footer>
     </div>
