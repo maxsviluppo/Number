@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import { X, Menu, Shield, Lock, Info, CheckCircle, FileText, Mail } from 'lucide-react';
 import { APP_CONFIG } from './constants';
 
 const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.seo; children: React.ReactNode }> = ({ title, configKey, children }) => {
