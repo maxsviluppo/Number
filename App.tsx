@@ -8,6 +8,7 @@ import BlogPostDetailView from './BlogPostDetailView';
 import { PrivacyView, CookieView, AboutView, ContactView, TermsView } from './LegalViews';
 import CookieBanner from './components/CookieBanner';
 import BottomNav from './components/BottomNav';
+import ErrorBoundary from './components/ErrorBoundary';
 import { configService } from './services/supabaseClient';
 
 // Scroll to top on route change
@@ -62,22 +63,24 @@ const App: React.FC = () => {
            </script>
         </Helmet>
         <ScrollToTop />
-        <Routes>
-          <Route path="/" element={<GameView />} />
-          <Route path="/site" element={<HomeView />} />
-          <Route path="/play" element={<GameView />} />
-          <Route path="/blog" element={<BlogView />} />
-          <Route path="/blog/:slug" element={<BlogPostDetailView />} />
-          
-          <Route path="/about" element={<AboutView />} />
-          <Route path="/privacy" element={<PrivacyView />} />
-          <Route path="/cookies" element={<CookieView />} />
-          <Route path="/terms" element={<TermsView />} />
-          <Route path="/contact" element={<ContactView />} />
-          
-          {/* Fallback */}
-          <Route path="*" element={<GameView />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<GameView />} />
+            <Route path="/site" element={<HomeView />} />
+            <Route path="/play" element={<GameView />} />
+            <Route path="/blog" element={<BlogView />} />
+            <Route path="/blog/:slug" element={<BlogPostDetailView />} />
+            
+            <Route path="/about" element={<AboutView />} />
+            <Route path="/privacy" element={<PrivacyView />} />
+            <Route path="/cookies" element={<CookieView />} />
+            <Route path="/terms" element={<TermsView />} />
+            <Route path="/contact" element={<ContactView />} />
+            
+            {/* Fallback */}
+            <Route path="*" element={<GameView />} />
+          </Routes>
+        </ErrorBoundary>
         <CookieBanner />
         <BottomNav />
       </BrowserRouter>

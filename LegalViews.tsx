@@ -6,24 +6,37 @@ import { APP_CONFIG } from './constants';
 
 const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.seo; children: React.ReactNode }> = ({ title, configKey, children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const seoConfig = APP_CONFIG.seo[configKey];
+  const seoConfig = APP_CONFIG.seo[configKey] || {
+    title: 'Number Game',
+    description: 'Sfida Matematica & Brain Training',
+    keywords: 'math, game, brain training',
+    canonical: 'https://numbergame.it/'
+  };
 
   useEffect(() => {
-    document.body.classList.add('allow-scroll');
-    document.documentElement.classList.add('allow-scroll');
+    try {
+      document.body.classList.add('allow-scroll');
+      document.documentElement.classList.add('allow-scroll');
+    } catch (e) {
+      console.warn("DOM manipulation error", e);
+    }
     return () => {
-      document.body.classList.remove('allow-scroll');
-      document.documentElement.classList.remove('allow-scroll');
+      try {
+        document.body.classList.remove('allow-scroll');
+        document.documentElement.classList.remove('allow-scroll');
+      } catch (e) {
+        console.warn("DOM cleanup error", e);
+      }
     };
   }, []);
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col font-['Inter']">
        <Helmet>
-        <title>{seoConfig.title}</title>
-        <meta name="description" content={seoConfig.description} />
-        <meta name="keywords" content={seoConfig.keywords} />
-        <link rel="canonical" href={seoConfig.canonical} />
+        <title>{seoConfig?.title || 'Number Game'}</title>
+        <meta name="description" content={seoConfig?.description || ''} />
+        <meta name="keywords" content={seoConfig?.keywords || ''} />
+        <link rel="canonical" href={seoConfig?.canonical || 'https://numbergame.it/'} />
       </Helmet>
 
       {/* Navigation Header */}
