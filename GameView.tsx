@@ -26,28 +26,28 @@ import { AdMob, BannerAdPosition, BannerAdSize, AdMobBannerSize } from '@capacit
 
 const TUTORIAL_STEPS = [
   {
-    title: "OBIETTIVO & GRIGLIA",
-    description: "Collega i numeri per raggiungere i Target in alto. La griglia è fissa: trova tutte le combinazioni per avanzare di livello. Usa i numeri e gli operatori (+, -, ×, ÷) saggiamente!",
+    title: "OBIETTIVO E GRIGLIA",
+    description: "Collega le celle per formare equazioni che danno come risultato i Target richiesti. Usa i numeri e gli operatori (+, -, ×, ÷) in modo strategico per svuotare la lista nel minor tempo possibile!",
     icon: <Brain className="w-12 h-12 text-[#FF8800]" />
   },
   {
-    title: "REGOLE DI CONNESSIONE",
-    description: "Trascina il dito/mouse tra le celle. Segui sempre la sequenza: Numero → Operatore → Numero. La selezione diventerà VERDE se corretta, ROSSA se sbagliata.",
+    title: "CONNESSIONE NEURALE",
+    description: "Trascina per collegare le celle adiacenti rispettando la sequenza: Numero → Operatore → Numero (es. 5 + 3). Il percorso si illumina di VERDE se l'equazione è esatta, di ROSSO in caso di errore.",
     icon: <RefreshCw className="w-12 h-12 text-[#FF8800]" />
   },
   {
-    title: "BOSS LEVELS",
-    description: "Ogni 5 livelli affronterai un Boss! Sfide a tempo limitato con premi speciali come Bonus di Tempo e Punti Extra. Sconfiggi il Guardiano per continuare!",
+    title: "SFIDE BOSS & GRAVITÀ",
+    description: "Ogni 5 livelli affronterai un potente Boss Guardiano con meccaniche uniche, come griglie a cascata e gravità dinamica! Sconfiggilo entro il tempo limite per sbloccare ricompense e moltiplicatori.",
     icon: <Crown className="w-12 h-12 text-[#FF8800]" />
   },
   {
     title: "NEURAL DUEL (1VS1)",
-    description: "Sfida altri giocatori in tempo reale! Scegli tra modalità STANDARD (punti) o BLITZ (velocità). Vinci i round per dominare la Classifica Neurale.",
+    description: "Entra nell'arena multigiocatore! Scegli tra la modalità STANDARD e la frenetica modalità BLITZ / DOMINIO, dove la rapidità è tutto e puoi persino rubare i Target completati dal tuo avversario!",
     icon: <Swords className="w-12 h-12 text-[#FF8800]" />
   },
   {
     title: "QI RANKING AI",
-    description: "La nostra AI analizza la tua velocità e precisione matematica ad ogni mossa per calcolare il tuo QI di gioco. Punta all'Eccellenza!",
+    description: "Il nostro motore di intelligenza artificiale valuta costantemente la tua velocità di calcolo, l'ottimizzazione dei percorsi e la serie di risposte corrette per stimare in tempo reale il tuo QI Matematico.",
     icon: <Zap className="w-12 h-12 text-[#FF8800]" />
   }
 ];
@@ -65,7 +65,7 @@ const GameView: React.FC = () => {
     level: 1,
     timeLeft: INITIAL_TIME,
     targetResult: 0,
-    status: 'intro',
+    status: 'idle',
     estimatedIQ: 100,
     lastLevelPerfect: true,
     basePoints: BASE_POINTS_START,
@@ -339,7 +339,7 @@ const GameView: React.FC = () => {
   };
 
   // NEW: Video Intro State
-  const [showIntro, setShowIntro] = useState(true);
+  const [showIntro, setShowIntro] = useState(false);
   const [onlinePlayers, setOnlinePlayers] = useState<any[]>([]);
   const [pendingMatchInvite, setPendingMatchInvite] = useState<string | null>(null);
   const [isJoiningPending, setIsJoiningPending] = useState(false);
@@ -354,6 +354,8 @@ const GameView: React.FC = () => {
       }, 120000);
       return () => clearTimeout(timer);
     }
+    // L'avvio automatico del tutorial è stato disabilitato come richiesto dall'utente.
+    // Rimane accessibile unicamente dal pulsante dedicato nella Home.
   }, [showIntro]);
 
   // Ad Banner Timing Effect: Closed during play, every 4s during pause (Career Mode)
@@ -4770,15 +4772,35 @@ const GameView: React.FC = () => {
 
         {
           activeModal === 'tutorial' && (
-            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-              <div className="bg-white border-[4px] border-[#FF8800] w-full max-w-md p-8 rounded-[2rem] shadow-[0_0_50px_rgba(255,136,0,0.3)] flex flex-col" onPointerDown={e => e.stopPropagation()}>
-                <div className="flex flex-col items-center text-center py-4">
-                  <div className="mb-6 scale-125 drop-shadow-sm">{TUTORIAL_STEPS[tutorialStep].icon}</div>
-                  <h2 className="text-2xl font-black font-orbitron text-[#FF8800] mb-4 uppercase tracking-widest">{TUTORIAL_STEPS[tutorialStep].title}</h2>
-                  <p className="text-slate-600 font-bold text-sm leading-relaxed mb-10 border-t-2 border-slate-100 pt-4 w-full">{TUTORIAL_STEPS[tutorialStep].description}</p>
-                  <button onPointerDown={(e) => { e.stopPropagation(); nextTutorialStep(); }} className="w-full bg-[#FF8800] text-white border-[3px] border-white py-5 rounded-2xl font-orbitron font-black text-sm uppercase shadow-lg active:scale-95 transition-all outline-none ring-0">
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
+              <div className="bg-white border-[4px] border-[#FF8800] w-full max-w-md p-8 rounded-[2rem] shadow-[0_0_50px_rgba(255,136,0,0.3)] flex flex-col relative" onPointerDown={e => e.stopPropagation()}>
+                <button
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    soundService.playUIClick();
+                    setActiveModal(null);
+                  }}
+                  className="absolute top-4 right-4 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-black flex items-center justify-center transition-all active:scale-95"
+                  title="Chiudi tutorial"
+                >
+                  <X size={20} strokeWidth={2.5} />
+                </button>
+
+                <div className="flex flex-col items-center text-center py-2">
+                  <div className="mb-5 scale-125 drop-shadow-sm">{TUTORIAL_STEPS[tutorialStep].icon}</div>
+                  <h2 className="text-2xl font-black font-orbitron text-[#FF8800] mb-3 uppercase tracking-widest">{TUTORIAL_STEPS[tutorialStep].title}</h2>
+                  <p className="text-slate-600 font-bold text-sm leading-relaxed mb-8 border-t-2 border-slate-100 pt-4 w-full min-h-[80px] flex items-center justify-center">{TUTORIAL_STEPS[tutorialStep].description}</p>
+                  <button onPointerDown={(e) => { e.stopPropagation(); nextTutorialStep(); }} className="w-full bg-[#FF8800] text-white border-[3px] border-white py-4 rounded-2xl font-orbitron font-black text-sm uppercase shadow-lg active:scale-95 transition-all outline-none ring-0 hover:bg-orange-600">
                     {tutorialStep === TUTORIAL_STEPS.length - 1 ? 'HO CAPITO' : 'AVANTI'}
                   </button>
+                  <div className="flex items-center gap-2 mt-4">
+                    {TUTORIAL_STEPS.map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={`w-2 h-2 rounded-full transition-all ${idx === tutorialStep ? 'bg-[#FF8800] w-6' : 'bg-slate-300'}`}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

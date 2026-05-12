@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { X, Menu, Shield, Lock, Info, CheckCircle, FileText, Mail } from 'lucide-react';
 import { APP_CONFIG } from './constants';
 
@@ -15,6 +14,9 @@ const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.
 
   useEffect(() => {
     try {
+      if (seoConfig?.title) {
+        document.title = seoConfig.title;
+      }
       document.body.classList.add('allow-scroll');
       document.documentElement.classList.add('allow-scroll');
     } catch (e) {
@@ -28,16 +30,10 @@ const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.
         console.warn("DOM cleanup error", e);
       }
     };
-  }, []);
+  }, [seoConfig]);
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col font-['Inter']">
-       <Helmet>
-        <title>{seoConfig?.title || 'Number Game'}</title>
-        <meta name="description" content={seoConfig?.description || ''} />
-        <meta name="keywords" content={seoConfig?.keywords || ''} />
-        <link rel="canonical" href={seoConfig?.canonical || 'https://numbergame.it/'} />
-      </Helmet>
 
       {/* Navigation Header */}
       <nav className="fixed top-0 w-full z-[100] glass-panel border-b border-white/5 py-4 px-6 flex justify-between items-center">

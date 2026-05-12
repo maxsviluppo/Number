@@ -45,40 +45,12 @@
   </script>
   <script>
     window.onerror = function (msg, url, lineNo, columnNo, error) {
-      // Ignore ResizeObserver loop limit exceeded
       if (msg.includes('ResizeObserver')) return;
-
-      const errorDiv = document.createElement('div');
-      errorDiv.style.position = 'fixed';
-      errorDiv.style.top = '0';
-      errorDiv.style.left = '0';
-      errorDiv.style.width = '100%';
-      errorDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.9)';
-      errorDiv.style.color = 'white';
-      errorDiv.style.zIndex = '999999';
-      errorDiv.style.padding = '20px';
-      errorDiv.style.fontSize = '12px';
-      errorDiv.style.fontFamily = 'monospace';
-      errorDiv.style.whiteSpace = 'pre-wrap';
-      errorDiv.style.wordBreak = 'break-all';
-      errorDiv.innerText = '⚠️ CRITICAL APP ERROR:\n' + msg + '\nLocation: ' + url + ':' + lineNo + ':' + columnNo + '\n\n' + (error ? error.stack : '');
-      document.body.appendChild(errorDiv);
+      console.warn('🔇 Silenziato Errore App non critico:', msg, url, lineNo);
       return false;
     };
     window.addEventListener('unhandledrejection', function (event) {
-      const errorDiv = document.createElement('div');
-      errorDiv.style.position = 'fixed';
-      errorDiv.style.bottom = '0';
-      errorDiv.style.left = '0';
-      errorDiv.style.width = '100%';
-      errorDiv.style.backgroundColor = 'rgba(139, 0, 0, 0.9)';
-      errorDiv.style.color = 'white';
-      errorDiv.style.zIndex = '999999';
-      errorDiv.style.padding = '20px';
-      errorDiv.style.fontSize = '12px';
-      errorDiv.style.fontFamily = 'monospace';
-      errorDiv.innerText = '⚠️ UNHANDLED PROMISE:\n' + event.reason;
-      document.body.appendChild(errorDiv);
+      console.warn('🔇 Silenziata Promise non gestita:', event.reason);
     });
   </script>
   <style>
@@ -100,26 +72,50 @@
 
     @media (max-width: 480px) {
       :root {
-        --hex-scale: 1.30;
+        --hex-scale: 1.25;
       }
     }
 
-    /* Altezza limitata (es. Android con barre browser o vecchi iPhone) */
-    @media (max-height: 800px) {
+    @media (max-width: 410px) {
       :root {
         --hex-scale: 1.15;
       }
     }
 
-    @media (max-height: 700px) {
+    @media (max-width: 380px) {
+      :root {
+        --hex-scale: 1.00;
+      }
+    }
+
+    @media (max-width: 340px) {
+      :root {
+        --hex-scale: 0.85;
+      }
+    }
+
+    /* Regole avanzate per altezze di schermi Android nativi / schermi pieghevoli */
+    @media (max-height: 850px) {
+      :root {
+        --hex-scale: 1.15;
+      }
+    }
+
+    @media (max-height: 750px) {
       :root {
         --hex-scale: 1.05;
       }
     }
 
-    @media (max-width: 380px) {
+    @media (max-height: 660px) {
       :root {
-        --hex-scale: 0.85;
+        --hex-scale: 0.95;
+      }
+    }
+
+    @media (max-height: 580px) {
+      :root {
+        --hex-scale: 0.80;
       }
     }
 

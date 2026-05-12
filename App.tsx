@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { HelmetProvider, Helmet } from 'react-helmet-async';
 import HomeView from './HomeView';
 import BlogView from './BlogView';
 import GameView from './GameView';
@@ -27,7 +26,22 @@ const App: React.FC = () => {
     const loadConfig = async () => {
       try {
         const config = await configService.getSystemConfig();
-        if (config) setRemoteConfig(config);
+        if (config) {
+          setRemoteConfig(config);
+          if (config.googleTag) {
+            let tagValue = config.googleTag;
+            if (tagValue.includes('content="')) {
+              tagValue = tagValue.split('content="')[1].split('"')[0];
+            }
+            let meta = document.querySelector('meta[name="google-site-verification"]');
+            if (!meta) {
+              meta = document.createElement('meta');
+              meta.setAttribute('name', 'google-site-verification');
+              document.head.appendChild(meta);
+            }
+            meta.setAttribute('content', tagValue);
+          }
+        }
       } catch (e) {
         console.warn("App: Error loading global config", e);
       }
@@ -36,59 +50,30 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <HelmetProvider>
-      <BrowserRouter>
-        <Helmet>
-           {/* Global Google Verification (Hardcoded for immediate verification) */}
-           <meta name="google-site-verification" content="1wGPWrEmUOc4JrOPIe9vc2MuI62VN4HqcQ38iuvbwQU" />
-           
-           {/* Dynamic Google Verification from DB (will override if exists) */}
-           {remoteConfig?.googleTag && !remoteConfig.googleTag.includes('1wGPWrEmUOc4JrOPIe9vc2MuI62VN4HqcQ38iuvbwQU') && (
-             remoteConfig.googleTag.includes('content="') ? (
-               <meta name="google-site-verification" content={remoteConfig.googleTag.split('content="')[1].split('"')[0]} />
-             ) : (
-                <meta name="google-site-verification" content={remoteConfig.googleTag} />
-             )
-           )}
-           
-           {/* Global Analytics Snippet */}
-           <script async src={`https://www.googletagmanager.com/gtag/js?id=${remoteConfig?.analyticsId || 'G-YW7KE80KWL'}`}></script>
-           <script>
-             {`
-               window.dataLayer = window.dataLayer || [];
-               function gtag(){dataLayer.push(arguments);}
-               gtag('js', new Date());
-               gtag('config', '${remoteConfig?.analyticsId || 'G-YW7KE80KWL'}');
-             `}
-           </script>
-        </Helmet>
-        <ScrollToTop />
-        <ErrorBoundary>
-          <Routes>
-            <Route path="/" element={<GameView />} />
-            <Route path="/site" element={<HomeView />} />
-            <Route path="/play" element={<GameView />} />
-            <Route path="/blog" element={<BlogView />} />
-            <Route path="/blog/:slug" element={<BlogPostDetailView />} />
-            
-            <Route path="/about" element={<AboutView />} />
-            <Route path="/privacy" element={<PrivacyView />} />
-            <Route path="/cookies" element={<CookieView />} />
-            <Route path="/terms" element={<TermsView />} />
-            <Route path="/contact" element={<ContactView />} />
-            
-            {/* Fallback */}
-            <Route path="*" element={<GameView />} />
-          </Routes>
-        </ErrorBoundary>
-        <CookieBanner />
-        <BottomNav />
-      </BrowserRouter>
-    </HelmetProvider>
+    <BrowserRouter>
+      <ScrollToTop />
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<GameView />} />
+          <Route path="/site" element={<HomeView />} />
+          <Route path="/play" element={<GameView />} />
+          <Route path="/blog" element={<BlogView />} />
+          <Route path="/blog/:slug" element={<BlogPostDetailView />} />
+          
+          <Route path="/about" element={<AboutView />} />
+          <Route path="/privacy" element={<PrivacyView />} />
+          <Route path="/cookies" element={<CookieView />} />
+          <Route path="/terms" element={<TermsView />} />
+          <Route path="/contact" element={<ContactView />} />
+          
+          {/* Fallback */}
+          <Route path="*" element={<GameView />} />
+        </Routes>
+      </ErrorBoundary>
+      <CookieBanner />
+      <BottomNav />
+    </BrowserRouter>
   );
 };
 
-
 export default App;
-
-
