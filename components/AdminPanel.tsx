@@ -95,7 +95,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         // Google Property
         googleTag: '',
         googleSnippet: '',
-        adsTxtContent: 'google.com, pub-2753359398526340, DIRECT, f08c47fec0942fa0',
+        adsTxtContent: 'google.com, pub-8620196010585213, DIRECT, f08c47fec0942fa0',
         // Advertising
         adsenseClient: APP_CONFIG.adsense.client,
         admobAppId: '',
@@ -158,7 +158,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 setSystemConfig(prev => ({
                     ...prev,
                     ...remoteConfig,
-                    // Keep derived fields if needed or overwrite all
+                    adsenseEnabled: remoteConfig.adsense_enabled ?? remoteConfig.adsenseEnabled ?? prev.adsenseEnabled,
+                    admobEnabled: remoteConfig.admob_enabled ?? remoteConfig.admobEnabled ?? prev.admobEnabled,
                 }));
             }
 
@@ -200,10 +201,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
     const saveAllConfig = async (customMsg?: string) => {
         setLoading(true);
-        const success = await configService.updateSystemConfig({
+        const configToSave = {
             ...systemConfig,
+            adsense_enabled: systemConfig.adsenseEnabled,
+            admob_enabled: systemConfig.admobEnabled,
             seo: seoConfig
-        });
+        };
+        const success = await configService.updateSystemConfig(configToSave);
         setLoading(false);
         if (success) {
             showToast(customMsg || 'Configurazione globale salvata!');
