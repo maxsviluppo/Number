@@ -158,6 +158,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 setSystemConfig(prev => ({
                     ...prev,
                     ...remoteConfig,
+                    adsenseClient: remoteConfig.adsenseClient || 'ca-pub-8620196010585213',
+                    adsenseHomeBanner: remoteConfig.adsenseHomeBanner || '4546676285',
+                    adsenseGameBottom: remoteConfig.adsenseGameBottom || '4546676285',
+                    adsTxtContent: remoteConfig.adsTxtContent || 'google.com, pub-8620196010585213, DIRECT, f08c47fec0942fa0',
                     adsenseEnabled: remoteConfig.adsense_enabled ?? remoteConfig.adsenseEnabled ?? prev.adsenseEnabled,
                     admobEnabled: remoteConfig.admob_enabled ?? remoteConfig.admobEnabled ?? prev.admobEnabled,
                 }));
@@ -203,6 +207,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         setLoading(true);
         const configToSave = {
             ...systemConfig,
+            adsenseClient: systemConfig.adsenseClient || 'ca-pub-8620196010585213',
+            adsenseHomeBanner: systemConfig.adsenseHomeBanner || '4546676285',
+            adsenseGameBottom: systemConfig.adsenseGameBottom || '4546676285',
+            adsTxtContent: systemConfig.adsTxtContent || 'google.com, pub-8620196010585213, DIRECT, f08c47fec0942fa0',
             adsense_enabled: systemConfig.adsenseEnabled,
             admob_enabled: systemConfig.admobEnabled,
             seo: seoConfig
