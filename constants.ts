@@ -67,10 +67,10 @@ export const APP_CONFIG = {
     }
   },
   adsense: {
-    client: 'ca-pub-2753359398526340',
+    client: 'ca-pub-8620196010585213',
     slots: {
-      game_bottom: '1234567890', // Esempio: da sostituire con reali
-      home_banner: '0987654321'
+      game_bottom: '4546676285',
+      home_banner: '4546676285'
     }
   },
   analytics: {

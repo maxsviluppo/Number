@@ -332,10 +332,24 @@ const GameView: React.FC = () => {
     rewardDuration: 30, // Full duration for reward
     skipOffset: 5, // REDUCED for testing, set to 30 for production
     rewardValue: 30, // Seconds granted
+    client: 'ca-pub-8620196010585213',
+    adsenseSlot: '4546676285',
     // TEST IDS (Replace with ca-app-pub-2753359398526340/xxxxxxxxxx)
     bannerId: 'ca-app-pub-3940256099942544/6300978111',
     rewardedId: 'ca-app-pub-3940256099942544/5224354917',
   };
+
+  useEffect(() => {
+    if (isAdvPlaying && ADS_CONFIG.enabled) {
+      setTimeout(() => {
+        try {
+          ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+        } catch (e) {
+          console.warn("AdSense Push Warning:", e);
+        }
+      }, 300);
+    }
+  }, [isAdvPlaying, ADS_CONFIG.enabled]);
 
   // NEW: Video Intro State
   const [showIntro, setShowIntro] = useState(false);
@@ -5625,23 +5639,36 @@ const GameView: React.FC = () => {
               <div className="relative w-full h-full flex-1 bg-[#020617] overflow-hidden flex flex-col items-center justify-center group">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#FF8800]/10 to-transparent"></div>
 
-                {/* MOCK AD CONTENT */}
-                <div className="relative z-10 flex flex-col items-center text-center px-8">
-                  <div className="w-20 h-20 mb-6 relative">
-                    <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-ping opacity-20"></div>
-                    <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-spin border-t-transparent shadow-[0_0_20px_#FF8800]"></div>
-                    <div className="absolute inset-3 bg-[#FF8800]/20 rounded-full flex items-center justify-center">
-                      <Play size={28} className="text-[#FF8800] fill-[#FF8800] ml-1" />
+                {/* MOCK AD CONTENT OR REAL ADSENSE */}
+                <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 w-full h-full max-w-2xl py-8">
+                  {ADS_CONFIG.enabled ? (
+                    <div className="w-full h-full flex items-center justify-center bg-[#050b20] rounded-2xl border border-white/10 overflow-hidden p-2 shadow-2xl">
+                      <ins className="adsbygoogle"
+                           style={{ display: 'block', width: '100%', height: '100%', minHeight: '320px' }}
+                           data-ad-client={ADS_CONFIG.client}
+                           data-ad-slot={ADS_CONFIG.adsenseSlot}
+                           data-ad-format="auto"
+                           data-full-width-responsive="true"></ins>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="w-20 h-20 mb-6 relative">
+                        <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-ping opacity-20"></div>
+                        <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-spin border-t-transparent shadow-[0_0_20px_#FF8800]"></div>
+                        <div className="absolute inset-3 bg-[#FF8800]/20 rounded-full flex items-center justify-center">
+                          <Play size={28} className="text-[#FF8800] fill-[#FF8800] ml-1" />
+                        </div>
+                      </div>
 
-                  <h3 className="font-orbitron font-black text-white text-lg tracking-[0.2em] mb-2 uppercase">Google Adsense</h3>
-                  <p className="text-[#FF8800] font-orbitron text-[8px] font-black tracking-[0.3em] uppercase opacity-70 mb-4">In attesa di approvazione</p>
+                      <h3 className="font-orbitron font-black text-white text-lg tracking-[0.2em] mb-2 uppercase">Google Adsense</h3>
+                      <p className="text-[#FF8800] font-orbitron text-[8px] font-black tracking-[0.3em] uppercase opacity-70 mb-4">In attesa di approvazione</p>
 
-                  <div className="bg-white/5 border border-white/10 rounded-xl py-3 px-6">
-                    <span className="text-white/40 text-[9px] font-black uppercase tracking-widest block mb-1">Premio al termine</span>
-                    <span className="text-2xl font-black font-orbitron text-white text-shadow-neon-orange">+30 SECONDI</span>
-                  </div>
+                      <div className="bg-white/5 border border-white/10 rounded-xl py-3 px-6">
+                        <span className="text-white/40 text-[9px] font-black uppercase tracking-widest block mb-1">Premio al termine</span>
+                        <span className="text-2xl font-black font-orbitron text-white text-shadow-neon-orange">+30 SECONDI</span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* AD PROGRESS BAR */}
