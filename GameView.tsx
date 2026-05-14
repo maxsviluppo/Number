@@ -489,7 +489,8 @@ const GameView: React.FC = () => {
   };
 
 
-  const getDifficultyRange = (level: number) => {
+  const getDifficultyRange = (levelInput: number) => {
+    const level = Number(levelInput) || 1;
     // NUOVA CURVA NEURAL 2.0: Molto più graduale
     // La difficoltà che prima era al liv 70 ora è al liv 200 (min 15, max 55)
 
@@ -502,10 +503,19 @@ const GameView: React.FC = () => {
     // PLATEAU: Dal livello 200 al 900 la difficoltà resta costante
     if (level <= 900) return { min: 15, max: 58 };
 
-    // Dopo il livello 900 riprende in modo quasi impercettibile
+    // Fino al livello 1100 riprende in modo quasi impercettibile come da logica originale
+    if (level <= 1100) {
+      return {
+        min: 15 + Math.floor((level - 900) * 0.5),
+        max: 58 + Math.floor((level - 900) * 1.5)
+      };
+    }
+
+    // Oltre il livello 1100 (Loop Infinito): stabilizziamo sul tetto massimo calcolato a 1100
+    // per mantenere i numeri calcolabili con le tessere ed evitare il fallback.
     return {
-      min: 15 + Math.floor((level - 900) * 0.5),
-      max: 58 + Math.floor((level - 900) * 1.5)
+      min: 115, // corrisponde a min al livello 1100
+      max: 358  // corrisponde a max al livello 1100
     };
   };
 
@@ -625,7 +635,8 @@ const GameView: React.FC = () => {
     }
   }, [gameState.status, userProfile, showToast]);
 
-  const createLevelData = useCallback((level: number, seedStr?: string, targetCount: number = 5) => {
+  const createLevelData = useCallback((levelInput: number, seedStr?: string, targetCount: number = 5) => {
+    const level = Number(levelInput) || 1;
     const { min, max } = getDifficultyRange(level);
     let attempts = 0;
     const maxAttempts = 20;
@@ -975,7 +986,7 @@ const GameView: React.FC = () => {
     let nextLevelData;
     let newBuffer = [...levelBuffer];
 
-    const currentLevel = forceStartLevel !== undefined ? forceStartLevel : gameState.level;
+    const currentLevel = Number(forceStartLevel !== undefined ? forceStartLevel : gameState.level) || 1;
 
     const targetCount = (duelMode === 'blitz' || activeMatch?.mode === 'blitz') ? 5 : 5; // Always 5 for parity across modes now, specifically requested for Blitz
 
@@ -990,7 +1001,7 @@ const GameView: React.FC = () => {
       // Shift buffer (Normal progression)
       nextLevelData = newBuffer.shift()!;
       // Replenish buffer
-      newBuffer.push(createLevelData(gameState.level + 6, undefined, targetCount));
+      newBuffer.push(createLevelData(Number(gameState.level) + 6, undefined, targetCount));
     }
 
     setGrid(nextLevelData.grid);
@@ -2296,7 +2307,7 @@ const GameView: React.FC = () => {
       score: 0,
       totalScore: 0, // Reset session score to 0 on restore
       streak: savedGame.streak || 0,
-      level: savedGame.level || 1,
+      level: Number(savedGame.level) || 1,
       timeLeft: newTimeLeft,
       status: 'playing',
       estimatedIQ: savedGame.estimatedIQ || 100,
@@ -2307,7 +2318,7 @@ const GameView: React.FC = () => {
     // Bonus surge and last bonus spawn level removed as they were abolished
 
     // Generate Grid for the SAVED Level
-    setTimeout(() => generateGrid(savedGame.level), 0);
+    setTimeout(() => generateGrid(Number(savedGame.level) || 1), 0);
   };
 
 
@@ -3226,7 +3237,7 @@ const GameView: React.FC = () => {
     soundService.playUIClick();
     vibrateDevice(20);
     setIsVictoryAnimating(false);
-    const nextLvl = gameState.level + 1;
+    const nextLvl = Number(gameState.level) + 1;
 
     // --- BOSS UNLOCK CHECK ---
 
@@ -3521,7 +3532,6 @@ const GameView: React.FC = () => {
 
   return (
     <>
-      
       {showIntro && <IntroVideo onFinish={() => {
         setShowIntro(false);
         setGameState(prev => ({ ...prev, status: 'idle' }));
@@ -4279,12 +4289,22 @@ const GameView: React.FC = () => {
                             if (t.completed) bgClass = (gameState.bossLevelId === 2 ? 'bg-amber-600' : gameState.isBossLevel ? 'bg-emerald-500' : 'bg-[#FF8800]') + ' border-white scale-110 shadow-[0_0_15px_rgba(251,191,36,0.6)]';
                           }
 
+                          const valStr = String(t.value || '');
+                          let sizeClasses = 'w-14 h-14 text-2xl sm:text-3xl';
+                          if (t.displayValue) {
+                            sizeClasses = 'w-14 h-14 text-[10px] sm:text-[11px] leading-tight whitespace-nowrap px-1';
+                          } else if (valStr.length >= 3) {
+                            sizeClasses = 'min-w-[3.5rem] px-2 h-14 text-base sm:text-lg';
+                          } else if (valStr.length === 2) {
+                            sizeClasses = 'min-w-[3.5rem] px-1.5 h-14 text-xl sm:text-2xl';
+                          }
+
                           return (
                             <div key={i} data-target-value={t.value} className={`
-                                            flex items-center justify-center w-14 h-14 rounded-xl transition-all duration-300 border-2
+                                            flex items-center justify-center rounded-xl transition-all duration-300 border-2
                                             ${bgClass}
                                              font-orbitron font-black text-white shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
-                                         ${t.displayValue ? 'text-[10px] sm:text-[11px] leading-tight whitespace-nowrap px-1' : 'text-3xl'} 
+                                         ${sizeClasses} 
                                          `}>
                               {t.displayValue || t.value}
                             </div>

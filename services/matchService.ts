@@ -695,8 +695,9 @@ export const matchService = {
     },
     // Iscriviti agli aggiornamenti di una partita specifica
     subscribeToMatch(matchId: string, callback: (payload: any) => void) {
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
         return (supabase as any)
-            .channel(`match:${matchId}`)
+            .channel(`match:${matchId}_${randomSuffix}`)
             .on(
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` },
