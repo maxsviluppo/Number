@@ -725,52 +725,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                     </button>
                                                 </div>
 
-                                                <div className="space-y-4">
-                                                    <div>
-                                                        <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">Publisher ID</label>
-                                                        <input 
-                                                            type="text" 
-                                                            value={systemConfig.adsenseClient}
-                                                            onChange={(e) => setSystemConfig({...systemConfig, adsenseClient: e.target.value})}
-                                                            className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm font-mono text-[#FF8800] focus:border-[#FF8800] outline-none"
-                                                            placeholder="ca-pub-XXXXXXXXXXXXXXXX"
-                                                        />
+                                                <div className="space-y-3 pt-2">
+                                                    <div className="p-3 bg-blue-950/20 border border-blue-800/30 rounded-xl flex items-center gap-3">
+                                                        <Shield className="text-blue-400 shrink-0" size={16} />
+                                                        <span className="text-[10px] font-black tracking-wider text-blue-300 uppercase">Parametri di Rete Cablati nel Core</span>
                                                     </div>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                        <div>
-                                                            <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">Slot Home Banner</label>
-                                                            <input 
-                                                                type="text" 
-                                                                value={systemConfig.adsenseHomeBanner}
-                                                                onChange={(e) => setSystemConfig({...systemConfig, adsenseHomeBanner: e.target.value})}
-                                                                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm font-mono focus:border-[#FF8800] outline-none"
-                                                                placeholder="1234567890"
-                                                            />
+                                                    <div className="bg-[#0a0a0a] border border-[#222] rounded-xl p-3 flex flex-col gap-1.5">
+                                                        <div className="flex justify-between items-center text-[10px]">
+                                                            <span className="text-gray-500 font-bold">PUBLISHER ID</span>
+                                                            <span className="font-mono font-bold text-[#FF8800]">ca-pub-8620196010585213</span>
                                                         </div>
-                                                        <div>
-                                                            <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">Slot Game Bottom</label>
-                                                            <input 
-                                                                type="text" 
-                                                                value={systemConfig.adsenseGameBottom}
-                                                                onChange={(e) => setSystemConfig({...systemConfig, adsenseGameBottom: e.target.value})}
-                                                                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm font-mono focus:border-[#FF8800] outline-none"
-                                                                placeholder="0987654321"
-                                                            />
+                                                        <div className="flex justify-between items-center text-[10px]">
+                                                            <span className="text-gray-500 font-bold">SLOT ANNUNCIO</span>
+                                                            <span className="font-mono font-bold text-gray-300">4546676285</span>
                                                         </div>
-                                                    </div>
-
-                                                    <div className="pt-4 border-t border-[#222]">
-                                                        <div className="flex items-center gap-2 mb-3">
-                                                            <DollarSign size={16} className="text-green-500" />
-                                                            <label className="block text-[10px] text-gray-400 uppercase font-black tracking-widest">Configurazione ads.txt</label>
+                                                        <div className="flex justify-between items-center text-[10px]">
+                                                            <span className="text-gray-500 font-bold">ADS.TXT VALIDATION</span>
+                                                            <span className="text-green-400 font-bold">INTEGRATO</span>
                                                         </div>
-                                                        <textarea 
-                                                            rows={3}
-                                                            value={systemConfig.adsTxtContent}
-                                                            onChange={(e) => setSystemConfig({...systemConfig, adsTxtContent: e.target.value})}
-                                                            className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-[10px] font-mono text-green-400 focus:border-[#FF8800] outline-none resize-none"
-                                                            placeholder="google.com, pub-XXXXXXX, DIRECT, f08c47fec0942fa0"
-                                                        />
                                                     </div>
                                                 </div>
                                             </div>
@@ -797,44 +769,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                                     </button>
                                                 </div>
 
-                                                <div className="space-y-4">
-                                                    <div>
-                                                        <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">AdMob App ID</label>
-                                                        <input 
-                                                            type="text" 
-                                                            value={systemConfig.admobAppId}
-                                                            onChange={(e) => setSystemConfig({...systemConfig, admobAppId: e.target.value})}
-                                                            className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm font-mono text-cyan-400 focus:border-[#FF8800] outline-none"
-                                                            placeholder="ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX"
-                                                        />
+                                                <div className="space-y-3 pt-2">
+                                                    <div className="p-3 bg-cyan-950/20 border border-cyan-800/30 rounded-xl flex items-center gap-3">
+                                                        <Shield className="text-cyan-400 shrink-0" size={16} />
+                                                        <span className="text-[10px] font-black tracking-wider text-cyan-300 uppercase">Configurazione Nativa Android</span>
                                                     </div>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                        <div>
-                                                            <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">Banner Unit ID</label>
-                                                            <input 
-                                                                type="text" 
-                                                                value={systemConfig.admobBannerId}
-                                                                onChange={(e) => setSystemConfig({...systemConfig, admobBannerId: e.target.value})}
-                                                                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm font-mono focus:border-[#FF8800] outline-none"
-                                                                placeholder="ca-app-pub-XXXXXXXX/XXXXXXXX"
-                                                            />
+                                                    <div className="bg-[#0a0a0a] border border-[#222] rounded-xl p-3 flex flex-col gap-1.5">
+                                                        <div className="flex justify-between items-center text-[10px]">
+                                                            <span className="text-gray-500 font-bold">APP ID / BANNER ID</span>
+                                                            <span className="font-mono font-bold text-cyan-400">Integrato nel Container</span>
                                                         </div>
-                                                        <div>
-                                                            <label className="block text-[10px] text-gray-500 uppercase font-black mb-1.5 tracking-widest">Interstitial Unit ID</label>
-                                                            <input 
-                                                                type="text" 
-                                                                value={systemConfig.admobInterstitialId}
-                                                                onChange={(e) => setSystemConfig({...systemConfig, admobInterstitialId: e.target.value})}
-                                                                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg p-3 text-sm font-mono focus:border-[#FF8800] outline-none"
-                                                                placeholder="ca-app-pub-XXXXXXXX/XXXXXXXX"
-                                                            />
+                                                        <div className="flex justify-between items-center text-[10px]">
+                                                            <span className="text-gray-500 font-bold">REWARDED ID</span>
+                                                            <span className="font-mono font-bold text-gray-300">Attivo e Monetizzante</span>
                                                         </div>
-                                                    </div>
-                                                    <div className="p-3 bg-cyan-900/10 border border-cyan-900/20 rounded-lg flex items-start gap-2">
-                                                        <Activity size={12} className="text-cyan-600 mt-0.5" />
-                                                        <p className="text-[9px] text-cyan-600/80 leading-relaxed italic">
-                                                            Utilizza gli ID corretti per ogni piattaforma. L''attivazione richiede l''integrazione del plugin AdMob nel tuo bundle Android.
-                                                        </p>
+                                                        <div className="flex justify-between items-center text-[10px]">
+                                                            <span className="text-gray-500 font-bold">PLUGINS NATIVI</span>
+                                                            <span className="text-green-400 font-bold">READY</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
