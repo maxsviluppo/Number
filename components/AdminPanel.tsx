@@ -87,7 +87,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const [seoConfig, setSeoConfig] = useState(APP_CONFIG.seo);
     // Profile/App State
     const [systemConfig, setSystemConfig] = useState({
-        adsenseEnabled: APP_CONFIG.adsense.client !== '',
+        adsenseEnabled: true,
         admobEnabled: false,
         analyticsId: APP_CONFIG.analytics.measurementId,
         rewardValue: 30,

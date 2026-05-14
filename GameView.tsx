@@ -325,10 +325,8 @@ const GameView: React.FC = () => {
 
   // GOOGLE ADSENSE / ADMOB CONFIG
   const ADS_CONFIG = {
-    // Dynamically check enablement based on environment
-    enabled: ['android', 'ios'].includes((window as any).Capacitor?.getPlatform()) 
-      ? (remoteConfig?.admob_enabled ?? localStorage.getItem('admob_enabled') === 'true') 
-      : (remoteConfig?.adsense_enabled ?? localStorage.getItem('adsense_enabled') === 'true'), 
+    // Forza l'attivazione sul Web come richiesto in attesa dell'autorizzazione AdSense
+    enabled: true, 
     rewardDuration: 30, // Full duration for reward
     skipOffset: 5, // REDUCED for testing, set to 30 for production
     rewardValue: 30, // Seconds granted
