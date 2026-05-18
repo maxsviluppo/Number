@@ -2558,13 +2558,13 @@ const GameView: React.FC = () => {
         setPathStatus('correct');
         setMatchedTargetValue(result!);
         
-        // Attende 500ms mostrando il brillamento verde smeraldo prima di completare il target!
+        // Attende 2320ms mostrando la celebre animazione a 4 fasi del target prima di completarlo!
         setTimeout(() => {
           handleSuccess(result!);
           setSelectedPath([]);
           setPathStatus(null);
           setMatchedTargetValue(null);
-        }, 500);
+        }, 2320);
       } else {
         setPathStatus('wrong');
         handleError();

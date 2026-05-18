@@ -309,10 +309,72 @@
       transform-origin: bottom center !important; /* Mantiene la base immobile */
       animation: hex-correct-bounce 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
+    /* Spazzamento del Riflesso Luminoso Bianco (Step 2: Glass Shine Sweep) */
+    @keyframes hex-shine-sweep {
+      0%   { left: -150%; }
+      20%  { left: -150%; }
+      40%  { left: 150%; }
+      100% { left: 150%; }
+    }
+
+    /* Coreografia Celebrazione Target in 4 Fasi (Step 1-4) */
+    @keyframes hex-target-star-bounce {
+      /* STEP 1: Pop in dal nulla elastico (0% - 20%) */
+      0%   { transform: scale3d(0, 0, 1); opacity: 0; }
+      10%  { transform: scale3d(1.2, 1.2, 1); opacity: 1; }
+      20%  { transform: scale3d(1, 1, 1); opacity: 1; }
+
+      /* STEP 2: Specular reflect sweep - Target immobile per far passare il riflesso (20% - 40%) */
+      20%  { transform: scale3d(1, 1, 1) translateY(0) rotate(0deg); }
+      40%  { transform: scale3d(1, 1, 1) translateY(0) rotate(0deg); }
+
+      /* STEP 3: 3 piccoli saltelli sul posto con schiacciamento/allungamento e oscillazione (40% - 85%) */
+      /* Saltello 1 (oscillazione a sinistra) */
+      40%  { transform: translateY(0) scale3d(1.26, 0.74, 1) rotate(-3deg); }
+      47%  { transform: translateY(-16px) scale3d(0.84, 1.24, 1) rotate(-7deg); }
+      55%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
+      /* Saltello 2 (oscillazione a destra) */
+      55%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
+      62%  { transform: translateY(-16px) scale3d(0.84, 1.24, 1) rotate(7deg); }
+      70%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
+      /* Saltello 3 (oscillazione a sinistra) */
+      70%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
+      77%  { transform: translateY(-12px) scale3d(0.88, 1.16, 1) rotate(-4deg); }
+      85%  { transform: translateY(0) scale3d(1.16, 0.84, 1) rotate(0deg); }
+
+      /* STEP 4: Rimpicciolimento rapido fino a sparire nel nulla (85% - 100%) */
+      85%  { transform: translateY(0) scale3d(1, 1, 1) rotate(0deg); opacity: 1; }
+      92%  { transform: translateY(0) scale3d(1.12, 1.12, 1) rotate(4deg); opacity: 1; }
+      100% { transform: translateY(0) scale3d(0, 0, 1) rotate(-10deg); opacity: 0; }
+    }
+
     .animate-hex-correct-bounce-delayed {
-      transform-origin: bottom center !important; /* Mantiene la base immobile */
-      animation: hex-correct-bounce 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      position: relative;
+      overflow: hidden;
+      transform-origin: bottom center !important; /* Ancoraggio fisso alla base */
+      animation: hex-target-star-bounce 2.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
       animation-delay: 120ms !important; /* Ritardo di cascata dinamica */
+    }
+
+    /* Pseudo-elemento per il riflesso di luce lucido (Step 2 pseudo shine sweep) */
+    .animate-hex-correct-bounce-delayed::after {
+      content: '';
+      position: absolute;
+      top: -20%;
+      left: -150%;
+      width: 120%;
+      height: 140%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.75),
+        transparent
+      );
+      transform: skewX(-25deg);
+      pointer-events: none;
+      z-index: 30;
+      animation: hex-shine-sweep 2.2s linear forwards;
+      animation-delay: 120ms !important;
     }
 
     /* Flash Reflect - white specular flash for correct and wrong */
