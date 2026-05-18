@@ -3621,7 +3621,7 @@ const GameView: React.FC = () => {
         <div 
           className={`fixed inset-0 bg-[url('/sfondoblu.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           style={{
-            filter: 'brightness(0.9) contrast(1.45) saturate(1.85) hue-rotate(-5deg)'
+            filter: 'brightness(0.8) contrast(1.45) saturate(1.85) hue-rotate(-5deg)'
           }}
         ></div>
 
@@ -4083,14 +4083,102 @@ const GameView: React.FC = () => {
             {gameState.status !== 'won' && gameState.status !== 'level-complete' && gameState.status !== 'game-over' && gameState.status !== 'opponent-surrendered' && (
               <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
                 <div className={`
-                relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.15)]
+                relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] shadow-[0_12px_24px_rgba(0,0,0,0.45)]
                 ${gameState.bossLevelId === 2
-                    ? 'bg-gradient-to-r from-amber-800 via-amber-900 to-amber-950'
+                    ? 'border-amber-500/80'
                     : gameState.isBossLevel
-                      ? 'bg-gradient-to-r from-lime-500 via-green-500 to-lime-600'
-                      : 'bg-gradient-to-r from-orange-400 via-[#FF5500] to-orange-600'}
+                      ? 'border-emerald-400/80'
+                      : 'border-[#b8c6db]'}
                 transition-all duration-300
-              `}>
+              `}
+              style={{
+                boxShadow: '0 12px 32px rgba(0,0,0,0.5), inset 0 6px 12px rgba(255,255,255,0.55), inset 0 -6px 12px rgba(0,0,0,0.65)'
+              }}>
+                {/* Internal container to confine bokeh & high-gloss styling with perfect overflow clipping */}
+                <div className="absolute inset-0 rounded-[2.2rem] overflow-hidden z-0 pointer-events-none"
+                  style={gameState.bossLevelId === 2
+                    ? { background: 'linear-gradient(90deg, #92400e, #d97706, #92400e)' }
+                    : gameState.isBossLevel
+                      ? { background: 'linear-gradient(90deg, #065f46, #10b981, #059669, #065f46)' }
+                      : { background: 'linear-gradient(90deg, #00ff66 0%, #00f0ff 25%, #cc00ff 53%, #ff007f 78%, #ffaa00 100%)' }
+                  }>
+                  {/* CSS float animations for bokeh circles */}
+                  <style dangerouslySetInnerHTML={{__html: `
+                    @keyframes float-b-1 {
+                      0% { transform: translate(0px, 0px) scale(1); }
+                      50% { transform: translate(18px, -5px) scale(1.15); }
+                      100% { transform: translate(0px, 0px) scale(1); }
+                    }
+                    @keyframes float-b-2 {
+                      0% { transform: translate(0px, 0px) scale(1); }
+                      50% { transform: translate(-14px, 6px) scale(0.85); }
+                      100% { transform: translate(0px, 0px) scale(1); }
+                    }
+                    @keyframes float-b-3 {
+                      0% { transform: translate(0px, 0px) scale(1); }
+                      50% { transform: translate(12px, 8px) scale(1.2); }
+                      100% { transform: translate(0px, 0px) scale(1); }
+                    }
+                    @keyframes float-b-4 {
+                      0% { transform: translate(0px, 0px) scale(1); }
+                      50% { transform: translate(-10px, -6px) scale(1.1); }
+                      100% { transform: translate(0px, 0px) scale(1); }
+                    }
+                    @keyframes float-b-5 {
+                      0% { transform: translate(0px, 0px) scale(1); }
+                      50% { transform: translate(16px, -4px) scale(0.9); }
+                      100% { transform: translate(0px, 0px) scale(1); }
+                    }
+                    @keyframes float-b-6 {
+                      0% { transform: translate(0px, 0px) scale(1); }
+                      50% { transform: translate(-8px, 5px) scale(1.15); }
+                      100% { transform: translate(0px, 0px) scale(1); }
+                    }
+                  `}} />
+
+                  {/* Bokeh texture overlay */}
+                  <div className="absolute inset-0 pointer-events-none" style={{
+                    background: gameState.isBossLevel || gameState.bossLevelId === 2 ? 'none' :
+                      'radial-gradient(circle at 15% 50%, rgba(255,255,255,0.18) 0%, transparent 40%), radial-gradient(circle at 40% 30%, rgba(255,255,255,0.12) 0%, transparent 30%), radial-gradient(circle at 70% 60%, rgba(255,255,255,0.15) 0%, transparent 35%), radial-gradient(circle at 88% 40%, rgba(255,255,255,0.10) 0%, transparent 25%)'
+                  }}></div>
+                  
+                  {/* Visible bokeh circles - same as reference image with slow floating animations */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[2.2rem]">
+                    <div style={{ position:'absolute', top:'10%', left:'8%', width:'48px', height:'48px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(4px)', animation: 'float-b-1 14s infinite ease-in-out' }}></div>
+                    <div style={{ position:'absolute', top:'30%', left:'15%', width:'28px', height:'28px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(2px)', animation: 'float-b-2 18s infinite ease-in-out' }}></div>
+                    <div style={{ position:'absolute', top:'5%', left:'33%', width:'38px', height:'38px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(3px)', animation: 'float-b-3 21s infinite ease-in-out' }}></div>
+                    <div style={{ position:'absolute', top:'15%', left:'56%', width:'54px', height:'54px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.50) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(5px)', animation: 'float-b-4 16s infinite ease-in-out' }}></div>
+                    <div style={{ position:'absolute', top:'8%', right:'10%', width:'34px', height:'34px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.60) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(3px)', animation: 'float-b-5 19s infinite ease-in-out' }}></div>
+                    <div style={{ position:'absolute', top:'40%', right:'18%', width:'20px', height:'20px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.40) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(2px)', animation: 'float-b-6 24s infinite ease-in-out' }}></div>
+                  </div>
+
+                  {/* Sharp High-Gloss Specular Glass Diagonal highlight reflection sweep */}
+                  <div className="absolute inset-0 pointer-events-none" style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.22) 32%, transparent 32.1%, transparent 72%, rgba(255,255,255,0.12) 72.1%, rgba(255,255,255,0.25) 100%)'
+                  }}></div>
+
+                  {/* Glossy Curved Bevel Cover (Cupola superiore lucida ad effetto vetro 3D) */}
+                  <div className="absolute top-0 inset-x-0 h-[42%] pointer-events-none rounded-t-[2.2rem]" style={{
+                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                  }}></div>
+
+                  {/* Lateral Sharp Specular Highlights (Riflessi luce specchiati alle estremità curve) */}
+                  <div className="absolute top-[8%] left-[4%] w-[22%] h-[20%] rounded-full filter blur-[1px] pointer-events-none" style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                  }}></div>
+                  <div className="absolute top-[8%] right-[4%] w-[22%] h-[20%] rounded-full filter blur-[1px] pointer-events-none" style={{
+                    background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                  }}></div>
+
+                  {/* Top shine edge */}
+                  <div className="absolute top-0 inset-x-0 h-[38%] pointer-events-none" style={{
+                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.30), transparent)'
+                  }}></div>
+                  {/* Bottom shadow edge */}
+                  <div className="absolute bottom-0 inset-x-0 h-[28%] pointer-events-none" style={{
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.35), transparent)'
+                  }}></div>
+                </div>
                   {/* SERIES SCOREBOARD REMOVED PER USER REQUEST */}
                   {/* Left Group: Buttons */}
                   <div className="flex gap-2.5 items-center">
@@ -4102,18 +4190,25 @@ const GameView: React.FC = () => {
                         goToHome(e);
                         setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
                       }}
-                      className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
-                      ${gameState.bossLevelId === 2 ? 'text-amber-800' : gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
+                      className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-[0_2px_8px_rgba(0,0,0,0.5)] overflow-hidden z-10"
+                      style={{ background: 'radial-gradient(circle at 40% 35%, #d0d0d0 0%, #808080 50%, #404040 100%)', border: '2px solid rgba(255,255,255,0.5)' }}
                       title="Home"
                     >
-                      <Home className="w-6 h-6" />
+                      {/* Radial brushed metal texture */}
+                      <div className="absolute inset-0 rounded-full pointer-events-none" style={{
+                        background: 'repeating-conic-gradient(rgba(255,255,255,0.07) 0deg, transparent 1deg, transparent 3deg, rgba(255,255,255,0.07) 4deg)'
+                      }}></div>
+                      <Home className="w-5 h-5 relative z-10" style={{ color: '#1a1a1a', filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.3))' }} />
                     </button>
                     <button
                       onPointerDown={toggleMute}
-                      className={`w-11 h-11 rounded-full border-[3px] border-white flex items-center justify-center transition-all active:scale-90 shadow-md bg-white 
-                      ${gameState.bossLevelId === 2 ? 'text-amber-800' : gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}
+                      className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-[0_2px_8px_rgba(0,0,0,0.5)] overflow-hidden z-10"
+                      style={{ background: 'radial-gradient(circle at 40% 35%, #d0d0d0 0%, #808080 50%, #404040 100%)', border: '2px solid rgba(255,255,255,0.5)' }}
                     >
-                      {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+                      <div className="absolute inset-0 rounded-full pointer-events-none" style={{
+                        background: 'repeating-conic-gradient(rgba(255,255,255,0.07) 0deg, transparent 1deg, transparent 3deg, rgba(255,255,255,0.07) 4deg)'
+                      }}></div>
+                      {isMuted ? <VolumeX className="w-5 h-5 relative z-10" style={{ color: '#1a1a1a' }} /> : <Volume2 className="w-5 h-5 relative z-10" style={{ color: '#1a1a1a' }} />}
                     </button>
 
 
@@ -4179,7 +4274,13 @@ const GameView: React.FC = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${activeMatch?.isDuel ? 'border-amber-400/30' : ''}`}>
+                      <div className={`relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110 shadow-[0_0_40px_rgba(255,136,0,0.7)]' : 'group-hover:scale-105'}`}
+                      style={{
+                        /* Real carbon fiber diagonal weave */
+                        background: 'repeating-linear-gradient(135deg, #1c1c1c 0px, #1c1c1c 2px, #2a2a2a 2px, #2a2a2a 4px, #222 4px, #222 6px, #303030 6px, #303030 8px)',
+                        border: '5px solid #555',
+                        boxShadow: '0 0 0 2px #888, 0 0 0 3px #333, 0 6px 30px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 20px rgba(255,136,0,0.15)'
+                      }}>
                         {/* Circular 3D Glass Embossed Reflection Cover (Copertura in rilievo 3D ad effetto vetro con riflesso fisso) */}
                         <div 
                           className="absolute inset-0 rounded-full pointer-events-none overflow-hidden z-20"
@@ -4213,7 +4314,7 @@ const GameView: React.FC = () => {
                         </div>
 
                         <svg className="absolute inset-0 w-full h-full -rotate-90 scale-95">
-                          <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.05)" strokeWidth="10" fill="none" />
+                          <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,136,0,0.12)" strokeWidth="10" fill="none" />
                           {!isPaused && (
                             <circle
                               cx="50%" cy="50%" r="45%"
@@ -4222,13 +4323,15 @@ const GameView: React.FC = () => {
                                 : (gameState.timeLeft <= 10 ? '#ef4444' : '#FF8800')}
                               strokeWidth="10"
                               fill="none"
-                              strokeDasharray="283"
+                              pathLength="100"
+                              strokeDasharray="100"
                               strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                                ? 283 - (283 * (opponentTargets || 0) / 5)
-                                : (283 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / ((activeMatch?.mode === 'time_attack') ? 60 : (60 + parseInt(typeof window !== 'undefined' ? localStorage.getItem('career_time_bonus') || '0' : '0')))))))
+                                ? 100 - (100 * (opponentTargets || 0) / 5)
+                                : (100 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / ((activeMatch?.mode === 'time_attack') ? 60 : (60 + parseInt(typeof window !== 'undefined' ? localStorage.getItem('career_time_bonus') || '0' : '0')))))))
                               }
                               strokeLinecap="round"
-                              className="transition-all duration-1000 ease-linear shadow-inner"
+                              className="transition-all duration-1000 ease-linear"
+                              style={{ filter: 'drop-shadow(0 0 6px #FF8800) drop-shadow(0 0 12px rgba(255,136,0,0.4))' }}
                             />
                           )}
                         </svg>
@@ -4256,7 +4359,8 @@ const GameView: React.FC = () => {
                                     {duelMode === 'time_attack' ? 'TIME' : 'ENEMY'}
                                   </span>
                                 )}
-                                <span className={`font-black font-orbitron text-white leading-none ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}>
+                                <span className={`font-black font-orbitron leading-none ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}
+                                  style={{ color: '#FF8800', textShadow: '0 0 10px rgba(255,136,0,0.9), 0 0 20px rgba(255,136,0,0.5), 0 0 30px rgba(255,136,0,0.3)' }}>
                                   {activeMatch?.isDuel
                                     ? ((duelMode === 'time_attack' || duelMode === 'blitz') ? gameState.timeLeft : opponentTargets)
                                     : gameState.timeLeft}
@@ -4303,13 +4407,17 @@ const GameView: React.FC = () => {
                   ) : (
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-3">
-                        <div id="score-display-game" className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.bossLevelId === 2 ? 'text-amber-800' : gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
-                          <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">PTS</span>
-                          <span className="text-xs font-black font-orbitron leading-none tracking-tighter">{gameState.totalScore}</span>
+                        <div id="score-display-game" className="relative w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.5)] overflow-hidden z-10"
+                          style={{ background: 'radial-gradient(circle at 40% 35%, #d0d0d0 0%, #808080 50%, #404040 100%)', border: '2px solid rgba(255,255,255,0.5)' }}>
+                          <div className="absolute inset-0 rounded-full pointer-events-none" style={{ background: 'repeating-conic-gradient(rgba(255,255,255,0.07) 0deg, transparent 1deg, transparent 3deg, rgba(255,255,255,0.07) 4deg)' }}></div>
+                          <span className="text-[6px] font-black uppercase leading-none mb-0.5 relative z-10" style={{ color: '#1a1a1a', textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}>PTS</span>
+                          <span className="text-[10px] font-black font-orbitron leading-none tracking-tighter relative z-10" style={{ color: '#1a1a1a', textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}>{gameState.totalScore}</span>
                         </div>
-                        <div className={`w-11 h-11 rounded-full border-[3px] border-white flex flex-col items-center justify-center shadow-md bg-white ${gameState.bossLevelId === 2 ? 'text-amber-800' : gameState.isBossLevel ? 'text-emerald-600' : 'text-[#FF8800]'}`}>
-                          <span className="text-[7px] font-black uppercase leading-none opacity-80 mb-0.5">{gameState.isBossLevel ? 'BOSS' : 'LV'}</span>
-                          <span className="text-sm font-black font-orbitron leading-none">{gameState.isBossLevel ? gameState.bossLevelId : gameState.level}</span>
+                        <div className="relative w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.5)] overflow-hidden z-10"
+                          style={{ background: 'radial-gradient(circle at 40% 35%, #d0d0d0 0%, #808080 50%, #404040 100%)', border: '2px solid rgba(255,255,255,0.5)' }}>
+                          <div className="absolute inset-0 rounded-full pointer-events-none" style={{ background: 'repeating-conic-gradient(rgba(255,255,255,0.07) 0deg, transparent 1deg, transparent 3deg, rgba(255,255,255,0.07) 4deg)' }}></div>
+                          <span className="text-[6px] font-black uppercase leading-none mb-0.5 relative z-10" style={{ color: '#1a1a1a', textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}>{gameState.isBossLevel ? 'BOSS' : 'LV'}</span>
+                          <span className="text-sm font-black font-orbitron leading-none relative z-10" style={{ color: '#1a1a1a', textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}>{gameState.isBossLevel ? gameState.bossLevelId : gameState.level}</span>
                         </div>
                       </div>
                     </div>
@@ -4410,19 +4518,42 @@ const GameView: React.FC = () => {
                         // STANDARD & BOSS 2+: Career-style Target List
                         gameState.levelTargets.map((t, i) => {
                           const isDominion = activeMatch?.isDuel && duelMode === 'blitz';
-                          let bgClass = gameState.bossLevelId === 2
-                            ? 'bg-amber-950 border-amber-600 shadow-inner'
-                            : gameState.isBossLevel
-                              ? 'bg-emerald-900 border-emerald-500/50'
-                              : 'bg-[#0055AA] border-white/50';
+                          const isCompleted = t.completed;
+                          
+                          // Style settings based on status
+                          let targetBg = 'linear-gradient(135deg, #0a1733 0%, #030814 100%)'; // Dark glossy sapphire enamel
+                          let targetBorder = '2px solid #00d2ff'; // Solid glowing ice-cyan neon border
+                          let targetGlow = '0 0 25px rgba(0, 210, 255, 0.95), 0 0 8px rgba(0, 210, 255, 0.9), inset 0 3px 6px rgba(255, 255, 255, 0.45), inset 0 -3px 6px rgba(0, 0, 0, 0.7)';
+                          let numStyle: React.CSSProperties = {
+                            color: '#ffffff',
+                            textShadow: '0 0 8px #00d2ff, 0 0 16px rgba(0, 210, 255, 0.9), 0 0 24px rgba(0, 210, 255, 0.5)'
+                          };
 
-                          if (isDominion) {
+                          if (isCompleted) {
+                            // Bright success state (neon emerald or gold)
+                            targetBg = 'linear-gradient(135deg, #052e16 0%, #022c22 100%)';
+                            targetBorder = '2px solid rgba(16, 185, 129, 0.7)';
+                            targetGlow = '0 0 20px rgba(16, 185, 129, 0.8), 0 0 6px rgba(16, 185, 129, 1), inset 0 3px 6px rgba(255, 255, 255, 0.35), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
+                            numStyle = {
+                              color: '#d1fae5',
+                              textShadow: '0 0 8px rgba(16, 185, 129, 0.95), 0 0 15px rgba(16, 185, 129, 0.5)'
+                            };
+                          } else if (isDominion) {
                             const isMyTarget = (t.owner === 'p1' && activeMatch?.isP1) || (t.owner === 'p2' && !activeMatch?.isP1);
                             const isEnemyTarget = (t.owner === 'p1' && !activeMatch?.isP1) || (t.owner === 'p2' && activeMatch?.isP1);
-                            if (isMyTarget) bgClass = 'bg-emerald-500 border-white scale-110 shadow-[0_0_15px_rgba(16,185,129,0.6)] z-10';
-                            else if (isEnemyTarget) bgClass = 'bg-rose-600 border-white/80 opacity-90 scale-95';
-                          } else {
-                            if (t.completed) bgClass = (gameState.bossLevelId === 2 ? 'bg-amber-600' : gameState.isBossLevel ? 'bg-emerald-500' : 'bg-[#FF8800]') + ' border-white scale-110 shadow-[0_0_15px_rgba(251,191,36,0.6)]';
+                            if (isMyTarget) {
+                              targetBg = 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)';
+                              targetBorder = '2px solid rgba(52, 211, 153, 0.8)';
+                              targetGlow = '0 0 25px rgba(52, 211, 153, 0.9), 0 0 8px rgba(52, 211, 153, 1), inset 0 3px 6px rgba(255, 255, 255, 0.4), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
+                            } else if (isEnemyTarget) {
+                              targetBg = 'linear-gradient(135deg, #4c0519 0%, #31000e 100%)';
+                              targetBorder = '2px solid rgba(244, 63, 94, 0.7)';
+                              targetGlow = '0 0 15px rgba(244, 63, 94, 0.6), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
+                              numStyle = {
+                                color: '#ffe4e6',
+                                textShadow: '0 0 8px rgba(244, 63, 94, 0.8)'
+                              };
+                            }
                           }
 
                           const valStr = String(t.value || '');
@@ -4436,25 +4567,26 @@ const GameView: React.FC = () => {
                           }
 
                           return (
-                            <div key={i} data-target-value={t.value} className={`
-                                            relative overflow-hidden flex items-center justify-center rounded-xl transition-all duration-300 border-2
-                                            ${bgClass}
-                                             font-orbitron font-black text-white shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
-                                         ${sizeClasses} 
-                                         ${matchedTargetValue === t.value && !t.completed ? 'animate-hex-correct-bounce-delayed' : ''}
-                                         `}>
+                            <div key={i} data-target-value={t.value} 
+                              className={`relative overflow-hidden flex items-center justify-center rounded-xl transition-all duration-300 font-orbitron font-black shadow-lg ${sizeClasses} ${matchedTargetValue === t.value && !t.completed ? 'animate-hex-correct-bounce-delayed' : ''}`}
+                              style={{
+                                background: targetBg,
+                                border: targetBorder,
+                                boxShadow: targetGlow
+                              }}
+                            >
                               {/* Circular/Rounded 3D Glass Embossed Reflection Cover */}
                               <div 
                                 className="absolute inset-0 rounded-lg pointer-events-none overflow-hidden z-20"
                                 style={{
-                                  boxShadow: 'inset 0 5px 10px rgba(255,255,255,0.45), inset 0 -5px 10px rgba(0,0,0,0.45)'
+                                  boxShadow: 'inset 0 4px 8px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.5)'
                                 }}
                               >
                                 {/* Glossy Curved Bevel Cover (Cupola superiore lucida) */}
                                 <div 
                                   className="absolute top-0 inset-x-0 h-[42%] rounded-t-lg"
                                   style={{
-                                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.25), transparent)'
+                                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
                                   }}
                                 ></div>
                                 
@@ -4462,7 +4594,7 @@ const GameView: React.FC = () => {
                                 <div 
                                   className="absolute top-[8%] left-[8%] w-[35%] h-[35%] rounded-full filter blur-[2px] rotate-[15deg]"
                                   style={{
-                                    background: 'linear-gradient(to bottom right, rgba(255,255,255,0.22), transparent)'
+                                    background: 'linear-gradient(to bottom right, rgba(255,255,255,0.20), transparent)'
                                   }}
                                 ></div>
 
@@ -4470,11 +4602,11 @@ const GameView: React.FC = () => {
                                 <div 
                                   className="absolute top-[12%] left-[12%] w-[16%] h-[16%] rounded-full filter blur-[0.5px] rotate-[15deg]"
                                   style={{
-                                    background: 'linear-gradient(to bottom right, rgba(255,255,255,0.6), rgba(255,255,255,0.05))'
+                                    background: 'linear-gradient(to bottom right, rgba(255,255,255,0.55), rgba(255,255,255,0.05))'
                                   }}
                                 ></div>
                               </div>
-                              <span className="z-10">{t.displayValue || t.value}</span>
+                              <span className="z-10" style={numStyle}>{t.displayValue || t.value}</span>
                             </div>
                           );
                         })
@@ -4500,7 +4632,10 @@ const GameView: React.FC = () => {
                     ${theme === 'orange'
                         ? 'w-[calc(272px*var(--hex-scale))] h-[calc(376px*var(--hex-scale))]'
                         : 'w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))]'
-                      }`}>
+                      }`}
+                      style={{
+                        filter: isPaused ? 'blur(16px) grayscale(1)' : 'drop-shadow(0 27px 36px rgba(0,0,0,0.58)) drop-shadow(0 9px 13px rgba(0,0,0,0.40))'
+                      }}>
                       {grid.map(cell => (
                         <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} bossLevelId={gameState.bossLevelId} pathStatus={pathStatus} />
                       ))}
