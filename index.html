@@ -296,6 +296,36 @@
       animation: hex-deselect 0.3s ease-in-out forwards;
     }
 
+    /* Effetto Palloncino 3D (Inflate & Deflate +40%) - correct path celebration */
+    @keyframes hex-correct-bounce {
+      0%   { transform: scale3d(1, 1, 1); }
+      30%  { transform: scale3d(1.4, 1.4, 1); }   /* Gonfiamento sferico massimo (+40%) */
+      48%  { transform: scale3d(1.35, 1.45, 1); } /* Deformazione d'aria verticale */
+      65%  { transform: scale3d(1.45, 1.35, 1); } /* Deformazione d'aria orizzontale */
+      82%  { transform: scale3d(0.92, 0.92, 1); } /* Sgonfiamento fulmineo e rimbalzo a vuoto */
+      100% { transform: scale3d(1, 1, 1); }      /* Stato stabile iniziale */
+    }
+    .animate-hex-correct-bounce {
+      transform-origin: bottom center !important; /* Mantiene la base immobile */
+      animation: hex-correct-bounce 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    .animate-hex-correct-bounce-delayed {
+      transform-origin: bottom center !important; /* Mantiene la base immobile */
+      animation: hex-correct-bounce 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation-delay: 120ms !important; /* Ritardo di cascata dinamica */
+    }
+
+    /* Flash Reflect - white specular flash for correct and wrong */
+    @keyframes hex-flash-reflect {
+      0%   { opacity: 0; }
+      25%  { opacity: 0.55; }
+      60%  { opacity: 0.35; }
+      100% { opacity: 0; }
+    }
+    .animate-hex-flash-reflect {
+      animation: hex-flash-reflect 0.5s ease-out forwards;
+    }
+
     @keyframes fallen {
       0% {
         opacity: 1;

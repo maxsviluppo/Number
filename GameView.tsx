@@ -78,6 +78,8 @@ const GameView: React.FC = () => {
   const [selectedPath, setSelectedPath] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [previewResult, setPreviewResult] = useState<number | null>(null);
+  const [pathStatus, setPathStatus] = useState<'correct' | 'wrong' | null>(null);
+  const [matchedTargetValue, setMatchedTargetValue] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
 
   const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | 'full_reset_confirm' | null>(null);
@@ -2552,12 +2554,27 @@ const GameView: React.FC = () => {
           }, 800); // 0.8 second delay
         }
 
-        handleSuccess(result!);
         vibrateDevice([40, 30, 40]); // Subtle double-pulse for success on mobile
-        setSelectedPath([]);
+        setPathStatus('correct');
+        setMatchedTargetValue(result!);
+        
+        // Attende 500ms mostrando il brillamento verde smeraldo prima di completare il target!
+        setTimeout(() => {
+          handleSuccess(result!);
+          setSelectedPath([]);
+          setPathStatus(null);
+          setMatchedTargetValue(null);
+        }, 500);
       } else {
+        setPathStatus('wrong');
         handleError();
         vibrateDevice(80); // Single hard pulse for error
+        
+        // Attende 500ms mostrando il flash rosso fuoco prima di pulire la selezione!
+        setTimeout(() => {
+          setSelectedPath([]);
+          setPathStatus(null);
+        }, 500);
       }
       setPreviewResult(null);
     } catch (err: any) {
@@ -3279,7 +3296,6 @@ const GameView: React.FC = () => {
       basePoints: BASE_POINTS_START,
       estimatedIQ: Math.max(70, prev.estimatedIQ - 1.5),
     }));
-    setSelectedPath([]);
   }
 
 
@@ -3602,7 +3618,12 @@ const GameView: React.FC = () => {
         onPointerLeave={handleGlobalEnd}
       >
         {/* MAIN BLUE BACKGROUND IMAGE LAYER */}
-        <div className={`fixed inset-0 bg-[url('/sfondoblu.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
+        <div 
+          className={`fixed inset-0 bg-[url('/sfondoblu.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          style={{
+            filter: 'brightness(0.9) contrast(1.45) saturate(1.85) hue-rotate(-5deg)'
+          }}
+        ></div>
 
         {/* BOSS 2 BACKGROUND IMAGE LAYER */}
         <div className={`fixed -inset-[20%] w-[140%] h-[140%] bg-[url('/sfondomarrone.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.bossLevelId === 2 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
@@ -4159,6 +4180,38 @@ const GameView: React.FC = () => {
                       </div>
                     ) : (
                       <div className={`relative w-24 h-24 rounded-full bg-slate-900 border-[4px] border-white flex items-center justify-center shadow-xl transition-all duration-300 ${isPaused ? 'border-[#FF8800] scale-110 shadow-[0_0_30px_rgba(255,136,0,0.5)]' : 'group-hover:scale-105'} ${activeMatch?.isDuel ? 'border-amber-400/30' : ''}`}>
+                        {/* Circular 3D Glass Embossed Reflection Cover (Copertura in rilievo 3D ad effetto vetro con riflesso fisso) */}
+                        <div 
+                          className="absolute inset-0 rounded-full pointer-events-none overflow-hidden z-20"
+                          style={{
+                            boxShadow: 'inset 0 4px 8px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.3)'
+                          }}
+                        >
+                          {/* Glossy Curved Bevel Cover (Bombatura sferica lucida superiore) */}
+                          <div 
+                            className="absolute top-0 inset-x-0 h-[45%] rounded-t-full"
+                            style={{
+                              background: 'linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)'
+                            }}
+                          ></div>
+                          
+                          {/* Diagonal Spotlight Reflection - Outer Soft (Riflesso morbido) */}
+                          <div 
+                            className="absolute top-[8%] left-[8%] w-[32%] h-[32%] rounded-full filter blur-[3px] rotate-[15deg]"
+                            style={{
+                              background: 'linear-gradient(to bottom right, rgba(255,255,255,0.18), transparent)'
+                            }}
+                          ></div>
+
+                          {/* Diagonal Spotlight Reflection - Inner Sharp Core (Punto luce super lucido) */}
+                          <div 
+                            className="absolute top-[12%] left-[12%] w-[15%] h-[15%] rounded-full filter blur-[0.5px] rotate-[15deg]"
+                            style={{
+                              background: 'linear-gradient(to bottom right, rgba(255,255,255,0.45), rgba(255,255,255,0.05))'
+                            }}
+                          ></div>
+                        </div>
+
                         <svg className="absolute inset-0 w-full h-full -rotate-90 scale-95">
                           <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.05)" strokeWidth="10" fill="none" />
                           {!isPaused && (
@@ -4172,7 +4225,7 @@ const GameView: React.FC = () => {
                               strokeDasharray="283"
                               strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
                                 ? 283 - (283 * (opponentTargets || 0) / 5)
-                                : (283 * (1 - gameState.timeLeft / 60))
+                                : (283 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / ((activeMatch?.mode === 'time_attack') ? 60 : (60 + parseInt(typeof window !== 'undefined' ? localStorage.getItem('career_time_bonus') || '0' : '0')))))))
                               }
                               strokeLinecap="round"
                               className="transition-all duration-1000 ease-linear shadow-inner"
@@ -4309,11 +4362,43 @@ const GameView: React.FC = () => {
 
                           return (
                             <div className="flex flex-col items-center animate-bounce-short w-full">
-                              <div data-target-value={activeTarget.value} className="flex flex-col items-center justify-center w-full max-w-[240px] h-24 px-4 rounded-xl border-[4px] border-emerald-400 bg-emerald-900/80 shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all duration-300 transform hover:scale-105">
-                                <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-[0.2em] mb-1">
+                              <div data-target-value={activeTarget.value} className={`relative overflow-hidden flex flex-col items-center justify-center w-full max-w-[240px] h-24 px-4 rounded-xl border-[4px] border-emerald-400 bg-emerald-900/80 shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all duration-300 transform hover:scale-105 ${matchedTargetValue === activeTarget.value ? 'animate-hex-correct-bounce-delayed' : ''}`}>
+                                {/* Circular/Rounded 3D Glass Embossed Reflection Cover */}
+                                <div 
+                                  className="absolute inset-0 rounded-lg pointer-events-none overflow-hidden z-20"
+                                  style={{
+                                    boxShadow: 'inset 0 6px 12px rgba(255,255,255,0.55), inset 0 -6px 12px rgba(0,0,0,0.45)'
+                                  }}
+                                >
+                                  {/* Glossy Curved Bevel Cover (Cupola superiore lucida) */}
+                                  <div 
+                                    className="absolute top-0 inset-x-0 h-[42%] rounded-t-lg"
+                                    style={{
+                                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.35), transparent)'
+                                    }}
+                                  ></div>
+                                  
+                                  {/* Diagonal Spotlight Reflection - Outer Soft (Riflesso morbido) */}
+                                  <div 
+                                    className="absolute top-[8%] left-[8%] w-[32%] h-[32%] rounded-full filter blur-[2.5px] rotate-[15deg]"
+                                    style={{
+                                      background: 'linear-gradient(to bottom right, rgba(255,255,255,0.3), transparent)'
+                                    }}
+                                  ></div>
+
+                                  {/* Diagonal Spotlight Reflection - Inner Sharp Core (Punto luce super specchiato) */}
+                                  <div 
+                                    className="absolute top-[12%] left-[12%] w-[15%] h-[15%] rounded-full filter blur-[0.5px] rotate-[15deg]"
+                                    style={{
+                                      background: 'linear-gradient(to bottom right, rgba(255,255,255,0.7), rgba(255,255,255,0.05))'
+                                    }}
+                                  ></div>
+                                </div>
+
+                                <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-[0.2em] mb-1 z-10">
                                   TARGET {currentIndex}/{totalCount}
                                 </span>
-                                <span className={`font-orbitron font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none
+                                <span className={`font-orbitron font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none z-10
                                   ${activeTarget.displayValue ? 'text-3xl tracking-widest' : 'text-6xl'}`}>
                                   {activeTarget.displayValue || activeTarget.value}
                                 </span>
@@ -4352,12 +4437,44 @@ const GameView: React.FC = () => {
 
                           return (
                             <div key={i} data-target-value={t.value} className={`
-                                            flex items-center justify-center rounded-xl transition-all duration-300 border-2
+                                            relative overflow-hidden flex items-center justify-center rounded-xl transition-all duration-300 border-2
                                             ${bgClass}
                                              font-orbitron font-black text-white shadow-lg drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]
                                          ${sizeClasses} 
+                                         ${matchedTargetValue === t.value && !t.completed ? 'animate-hex-correct-bounce-delayed' : ''}
                                          `}>
-                              {t.displayValue || t.value}
+                              {/* Circular/Rounded 3D Glass Embossed Reflection Cover */}
+                              <div 
+                                className="absolute inset-0 rounded-lg pointer-events-none overflow-hidden z-20"
+                                style={{
+                                  boxShadow: 'inset 0 5px 10px rgba(255,255,255,0.45), inset 0 -5px 10px rgba(0,0,0,0.45)'
+                                }}
+                              >
+                                {/* Glossy Curved Bevel Cover (Cupola superiore lucida) */}
+                                <div 
+                                  className="absolute top-0 inset-x-0 h-[42%] rounded-t-lg"
+                                  style={{
+                                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.25), transparent)'
+                                  }}
+                                ></div>
+                                
+                                {/* Diagonal Spotlight Reflection - Outer Soft (Riflesso morbido) */}
+                                <div 
+                                  className="absolute top-[8%] left-[8%] w-[35%] h-[35%] rounded-full filter blur-[2px] rotate-[15deg]"
+                                  style={{
+                                    background: 'linear-gradient(to bottom right, rgba(255,255,255,0.22), transparent)'
+                                  }}
+                                ></div>
+
+                                {/* Diagonal Spotlight Reflection - Inner Sharp Core (Punto luce super specchiato) */}
+                                <div 
+                                  className="absolute top-[12%] left-[12%] w-[16%] h-[16%] rounded-full filter blur-[0.5px] rotate-[15deg]"
+                                  style={{
+                                    background: 'linear-gradient(to bottom right, rgba(255,255,255,0.6), rgba(255,255,255,0.05))'
+                                  }}
+                                ></div>
+                              </div>
+                              <span className="z-10">{t.displayValue || t.value}</span>
                             </div>
                           );
                         })
@@ -4385,14 +4502,27 @@ const GameView: React.FC = () => {
                         : 'w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))]'
                       }`}>
                       {grid.map(cell => (
-                        <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} bossLevelId={gameState.bossLevelId} />
+                        <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} bossLevelId={gameState.bossLevelId} pathStatus={pathStatus} />
                       ))}
                     </div>
                   </div>
 
                   {/* PREMIUM AD REWARD BANNER - Vertical Tab */}
-                  <div className={`fixed right-0 top-[140px] md:top-[120px] z-[100] transition-all duration-700 ease-out transform
+                  <div className={`fixed right-0 top-[140px] md:top-[120px] z-[500] transition-all duration-700 ease-out transform
                     ${adBannerActive ? 'translate-x-0' : 'translate-x-[calc(100%-70px)]'}`}>
+                    {/* Keyframes for the fluid moving gradient flow and crystal glass reflections */}
+                    <style>{`
+                      @keyframes adGradientFlow {
+                        0% { background-position: 0% 50%; }
+                        50% { background-position: 100% 50%; }
+                        100% { background-position: 0% 50%; }
+                      }
+                      @keyframes glassSheen {
+                        0% { left: -150%; }
+                        30% { left: 150%; }
+                        100% { left: 150%; }
+                      }
+                    `}</style>
                     <div
                       onPointerDown={(e) => {
                         adTouchStartX.current = e.clientX;
@@ -4438,12 +4568,44 @@ const GameView: React.FC = () => {
                           }
                         }
                       }}
-                      className={`flex flex-row-reverse items-center bg-gradient-to-r ${ADS_CONFIG.enabled ? 'from-amber-600 to-orange-800' : 'from-gray-600 to-gray-800'} p-0 rounded-l-2xl border-[3px] border-r-0 border-white/50 transition-all group relative overflow-hidden h-[80px]
-                        ${adBannerActive ? 'shadow-[0_0_40px_rgba(255,136,0,0.8)]' : 'shadow-[-8px_0_15px_rgba(255,136,0,0.4)]'}
-                        ${ADS_CONFIG.enabled ? 'cursor-pointer' : 'cursor-default grayscale opacity-80'}`}
+                      className={`flex flex-row-reverse items-center p-0 rounded-l-2xl border-[3px] border-r-0 border-white/75 transition-all group relative overflow-hidden h-[80px]
+                        ${adBannerActive ? 'shadow-[0_0_50px_rgba(255,0,128,0.9)] animate-pulse' : 'shadow-[-8px_0_15px_rgba(255,0,128,0.45)]'}
+                        ${ADS_CONFIG.enabled ? 'cursor-pointer' : 'from-gray-600 to-gray-800 bg-gradient-to-r cursor-default grayscale opacity-80'}`}
+                      style={ADS_CONFIG.enabled ? {
+                        background: 'linear-gradient(135deg, rgb(255, 0, 128), rgb(255, 0, 255), rgb(255, 85, 0), rgb(0, 235, 255))',
+                        backgroundSize: '300% 300%',
+                        animation: 'adGradientFlow 4s linear infinite',
+                      } : undefined}
                     >
                       {/* Carbon Texture */}
-                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-15 pointer-events-none"></div>
+
+                      {/* Glossy Sheen Crystal Reflection */}
+                      {ADS_CONFIG.enabled && (
+                        <div className="absolute inset-y-0 w-[60px] bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none"
+                             style={{
+                               transform: 'skewX(-25deg)',
+                               animation: 'glassSheen 4.5s ease-in-out infinite',
+                             }}
+                        />
+                      )}
+
+                      {/* FIXED EMBOSSED GLASS COVER (Copertura in rilievo 3D con riflesso fisso) */}
+                      {ADS_CONFIG.enabled && (
+                        <>
+                          {/* Top Border Reflection Line (Riflesso di rilievo superiore) */}
+                          <div className="absolute top-0 inset-x-0 h-[2px] bg-white/45 pointer-events-none"></div>
+                          
+                          {/* Curved Glossy Half-Cap (Fascia lucida fissa superiore) */}
+                          <div className="absolute top-0 inset-x-0 h-[42%] bg-gradient-to-b from-white/20 to-transparent pointer-events-none"></div>
+                          
+                          {/* Left Edge Bevel Highlight (Riflesso fisso verticale sul lato) */}
+                          <div className="absolute left-0 inset-y-0 w-[4px] bg-gradient-to-r from-white/40 to-transparent pointer-events-none"></div>
+                          
+                          {/* Bottom Bevel Depth Shadow (Ombra di profondità inferiore) */}
+                          <div className="absolute bottom-0 inset-x-0 h-[2px] bg-black/25 pointer-events-none"></div>
+                        </>
+                      )}
 
                       <div className="flex flex-row-reverse items-center h-full">
                         {/* Expanded Text Area (Triggers Video) */}
@@ -4459,15 +4621,15 @@ const GameView: React.FC = () => {
                           className={`flex items-center pr-16 transition-all duration-500 overflow-hidden ${adBannerActive ? 'max-w-[380px] opacity-100' : 'max-w-0 opacity-0'}`}
                         >
                           <div className="text-right pl-6 whitespace-nowrap">
-                            <h3 className="font-orbitron font-black text-white text-[18px] uppercase leading-tight tracking-widest italic">{ADS_CONFIG.enabled ? `+${ADS_CONFIG.rewardValue}s BONUS` : 'ARRIVERÀ TRA POCO'}</h3>
-                            <p className="text-[14px] text-gray-300 font-bold uppercase tracking-tighter">{ADS_CONFIG.enabled ? 'Guarda video premio' : 'Pubblicità disabilitata'}</p>
+                            <h3 className="font-orbitron font-black text-white text-[18px] uppercase leading-tight tracking-widest italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">{ADS_CONFIG.enabled ? `+${ADS_CONFIG.rewardValue}s BONUS` : 'ARRIVERÀ TRA POCO'}</h3>
+                            <p className="text-[14px] text-white/80 font-bold uppercase tracking-tighter drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">{ADS_CONFIG.enabled ? 'Guarda video premio' : 'Pubblicità disabilitata'}</p>
                           </div>
                         </div>
 
                         {/* Impact Tab (Triggers Close when expanded) */}
-                        <div className="ad-close-tab flex flex-col items-center justify-center w-[70px] h-full bg-black/40 border-r border-white/10 shrink-0 cursor-pointer">
-                          <span style={{ fontFamily: 'Impact, "Arial Narrow", sans-serif' }} className="text-3xl font-black text-white leading-none">+{ADS_CONFIG.rewardValue}</span>
-                          <span className="text-[8px] font-black text-white leading-none mt-1 uppercase tracking-tighter">SECONDI</span>
+                        <div className="ad-close-tab flex flex-col items-center justify-center w-[70px] h-full bg-white/10 backdrop-blur-md border-r border-white/20 shrink-0 cursor-pointer">
+                          <span style={{ fontFamily: 'Impact, "Arial Narrow", sans-serif' }} className="text-3xl font-black text-white leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">+{ADS_CONFIG.rewardValue}</span>
+                          <span className="text-[8px] font-black text-white leading-none mt-1 uppercase tracking-tighter opacity-90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">SECONDI</span>
                         </div>
                       </div>
 

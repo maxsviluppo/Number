@@ -11,6 +11,7 @@ interface HexCellProps {
   theme?: 'default' | 'orange';
   isBossLevel?: boolean;
   bossLevelId?: number | null;
+  pathStatus?: 'correct' | 'wrong' | null;
 }
 
 const HexCell: React.FC<HexCellProps> = ({
@@ -22,6 +23,7 @@ const HexCell: React.FC<HexCellProps> = ({
   theme = 'default',
   isBossLevel = false,
   bossLevelId = null,
+  pathStatus = null,
 }) => {
   const [animationClass, setAnimationClass] = useState('animate-hex-entry');
   const prevSelected = useRef(isSelected);
@@ -123,26 +125,23 @@ const HexCell: React.FC<HexCellProps> = ({
   return (
     <div
       className={`absolute transition-all duration-300 cursor-pointer flex items-center justify-center 
-        ${isOrangeTheme && isNumber ? '' : shapeClass} 
+        ${isOrangeTheme ? '' : shapeClass} 
         ${!isOrangeTheme ? 'border-2' : ''} 
-        ${data.isFallen ? 'animate-fallen' : (data.isVibrating ? 'animate-vibrate' : animationClass)}
+        ${data.isFallen ? 'animate-fallen' : (data.isVibrating ? 'animate-vibrate' : (isSelected && pathStatus === 'correct' ? 'animate-hex-correct-bounce' : animationClass))}
         ${isOrangeTheme && isNumber ? 'w-[calc(64px*var(--hex-scale))] h-[calc(64px*var(--hex-scale))]' : ''}
         ${isOrangeTheme && !isNumber ? 'w-[calc(40px*var(--hex-scale))] h-[calc(40px*var(--hex-scale))]' : ''}
         ${!isOrangeTheme ? 'w-[calc(64px*var(--hex-scale))] h-[calc(72px*var(--hex-scale))]' : ''}
         ${isSelected
           ? isOrangeTheme ? 'z-20 scale-110' : 'bg-cyan-400 shadow-[0_0_40px_rgba(34,211,238,1)] z-20 border-white scale-110'
-          : isOrangeTheme && isNumber
-            ? `${orangeNumberStyle} active:scale-95`
-            // Removing shadow from container if SVG has it, or keeping drop-shadow on SVG
-            : isOrangeTheme && !isNumber
-              ? `${orangeOperatorStyle} active:scale-95 shadow-md`
-              : isNumber
-                ? bossLevelId === 2
-                  ? 'bg-gradient-to-br from-amber-700 to-amber-500 border-amber-600 active:scale-95 shadow-[0_5px_15px_rgba(146,64,14,0.4)] text-amber-50'
-                  : 'bg-slate-800/95 border-white/10 active:scale-95 hover:bg-slate-700/95'
-                : bossLevelId === 2
-                  ? 'bg-gradient-to-br from-amber-800 to-amber-600 border-amber-700 active:scale-95 shadow-md text-amber-100'
-                  : `${operatorTheme.bg} ${operatorTheme.border} active:scale-95 hover:brightness-125`
+          : isOrangeTheme
+            ? 'active:scale-95'
+            : isNumber
+              ? bossLevelId === 2
+                ? 'bg-gradient-to-br from-amber-700 to-amber-500 border-amber-600 active:scale-95 shadow-[0_5px_15px_rgba(146,64,14,0.4)] text-amber-50'
+                : 'bg-slate-800/95 border-white/10 active:scale-95 hover:bg-slate-700/95'
+              : bossLevelId === 2
+                ? 'bg-gradient-to-br from-amber-800 to-amber-600 border-amber-700 active:scale-95 shadow-md text-amber-100'
+                : `${operatorTheme.bg} ${operatorTheme.border} active:scale-95 hover:brightness-125`
         }
         ${data.isFallen ? 'opacity-0 scale-50 pointer-events-none translate-y-20' : ''}
         ${(!isSelectable && !isSelected) && !data.isFallen ? 'opacity-20 pointer-events-none' : ''}
@@ -158,49 +157,94 @@ const HexCell: React.FC<HexCellProps> = ({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
     >
-      {/* PNG Background for Orange Theme Octagons (Numbers) */}
-      {isOrangeTheme && isNumber && (
+      {/* PNG Background for Orange Theme Octagons (Numbers and Operators) */}
+      {isOrangeTheme && (
         <img
-          src="/octagon-base.png"
+          src="/CasellaGlass.png"
           alt="cell"
           className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-md"
           style={{
-            filter: isSelected
-              ? 'hue-rotate(100deg) brightness(1.1) saturate(1.2)'
-              : isBossLevel
-                ? bossLevelId === 2
-                  ? 'brightness(0.6) sepia(0.8) saturate(1.5)' // Dark Brown/Amber for Boss 2
-                  : 'hue-rotate(100deg) saturate(1.5) brightness(0.7)' // Dark Green for other Bosses
-                : 'none',
+            filter: (() => {
+              if (isSelected) {
+                if (pathStatus === 'correct') {
+                  // GLOW SMERALDO (Successo!)
+                  return 'hue-rotate(95deg) saturate(2.4) brightness(1.25) drop-shadow(0 0 20px rgba(16,185,129,0.9))';
+                } else if (pathStatus === 'wrong') {
+                  // GLOW ROSSO FUOCO (Errore!)
+                  return 'hue-rotate(335deg) saturate(2.6) brightness(1.25) drop-shadow(0 0 20px rgba(239,68,68,0.95))';
+                } else {
+                  // GLOW GIALLO NEON (Selezione in corso per numeri e simboli!)
+                  return 'hue-rotate(35deg) saturate(2.2) brightness(1.25) drop-shadow(0 0 15px rgba(251,191,36,0.8))';
+                }
+              }
+
+              if (isNumber) {
+                if (isBossLevel) {
+                  return bossLevelId === 2
+                    ? 'brightness(0.6) sepia(0.8) saturate(1.5)' // Dark Amber
+                    : 'hue-rotate(100deg) saturate(1.5) brightness(0.7)'; // Dark Green
+                }
+                return 'none'; // Default Orange
+              } else {
+                // Operators: dynamic hue-rotations for + (green), - (neon fuchsia), x (yellow), / (electric violet)
+                let baseFilter = 'none';
+                switch (data.value) {
+                  case '+': baseFilter = 'hue-rotate(95deg) saturate(1.8) brightness(1.0)'; break;
+                  case '-': baseFilter = 'hue-rotate(295deg) saturate(2.4) brightness(1.05)'; break;
+                  case '×': baseFilter = 'hue-rotate(25deg) saturate(1.8) brightness(1.2)'; break;
+                  case '÷': baseFilter = 'hue-rotate(235deg) saturate(2.2) brightness(0.9)'; break;
+                }
+                return baseFilter;
+              }
+            })(),
             transition: 'filter 0.3s ease'
           }}
         />
       )}
 
-      {/* SVG Background for Orange Theme Squares (Operators) - ONLY IF SELECTED to handle scale/color change cleanly, or standard DIV otherwise */}
-      {isOrangeTheme && !isNumber && isSelected && (
-        <div className="absolute inset-0 bg-[#00CC66] border-[3px] border-white rounded-xl shadow-[0_0_40px_rgba(0,204,102,1)]" />
+      {/* Flash Reflect Overlay - speculare bianco durante glow corretto o errato */}
+      {isSelected && (pathStatus === 'correct' || pathStatus === 'wrong') && (
+        <div
+          className="absolute inset-0 pointer-events-none z-30 animate-hex-flash-reflect"
+          style={{
+            background: pathStatus === 'correct'
+              ? 'linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.15) 50%, transparent 100%)'
+              : 'linear-gradient(135deg, rgba(255,200,200,0.65) 0%, rgba(255,255,255,0.12) 50%, transparent 100%)',
+            // Clip al contorno esatto della cella per evitare alone quadrato
+            clipPath: isOrangeTheme && isNumber
+              ? 'polygon(29.29% 0%, 70.71% 0%, 100% 29.29%, 100% 70.71%, 70.71% 100%, 29.29% 100%, 0% 70.71%, 0% 29.29%)'
+              : undefined,
+            borderRadius: isOrangeTheme && !isNumber ? 'inherit' : undefined,
+          }}
+        />
       )}
 
       {!isOrangeTheme && (
         <div className={`absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none ${isSelected ? 'opacity-50' : 'opacity-10'}`}></div>
       )}
 
-      <span className={`font-orbitron font-black select-none transition-all duration-200 leading-none z-10
-        ${isSelected
-          ? 'text-white scale-110'
-          : isOrangeTheme && isNumber
-            ? 'text-white text-[calc(2.8rem*var(--hex-scale))] drop-shadow-lg'
-            : isOrangeTheme && !isNumber
-              ? 'text-white text-[calc(1.4rem*var(--hex-scale))] drop-shadow-md'
-              : isNumber
-                ? bossLevelId === 2
-                  ? 'text-amber-50 text-[calc(2.6rem*var(--hex-scale))] drop-shadow-[0_2px_10px_rgba(0,0,0,0.4)]'
-                  : 'text-cyan-400 text-[calc(2.6rem*var(--hex-scale))] drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]'
-                : bossLevelId === 2
-                  ? 'text-amber-200 text-[calc(3.4rem*var(--hex-scale))] drop-shadow-[0_0_15px_rgba(120,53,15,0.5)]'
-                  : `${operatorTheme.text} text-[calc(3.4rem*var(--hex-scale))]`
-        }`}>
+      <span 
+        className={`font-orbitron font-black select-none transition-all duration-200 leading-none z-10
+          ${isSelected
+            ? 'text-white scale-110'
+            : isOrangeTheme && isNumber
+              ? 'text-white text-[calc(2.8rem*var(--hex-scale))] drop-shadow-lg'
+              : isOrangeTheme && !isNumber
+                ? 'text-white text-[calc(1.4rem*var(--hex-scale))] drop-shadow-md'
+                : isNumber
+                  ? bossLevelId === 2
+                    ? 'text-amber-50 text-[calc(2.6rem*var(--hex-scale))] drop-shadow-[0_2px_10px_rgba(0,0,0,0.4)]'
+                    : 'text-cyan-400 text-[calc(2.6rem*var(--hex-scale))] drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]'
+                  : bossLevelId === 2
+                    ? 'text-amber-200 text-[calc(3.4rem*var(--hex-scale))] drop-shadow-[0_0_15px_rgba(120,53,15,0.5)]'
+                    : `${operatorTheme.text} text-[calc(3.4rem*var(--hex-scale))]`
+          }`}
+        style={isOrangeTheme && isNumber ? {
+          textShadow: isSelected
+            ? '0 2px 4px rgba(0,0,0,0.5), 0 -1px 0.5px rgba(255,255,255,0.8)'
+            : '0 3px 6px rgba(120,30,0,0.6), 0 -1.5px 0.5px rgba(255,255,255,0.8)'
+        } : undefined}
+      >
         {data.value}
       </span>
     </div>
