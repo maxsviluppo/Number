@@ -3621,7 +3621,7 @@ const GameView: React.FC = () => {
         <div 
           className={`fixed inset-0 bg-[url('/sfondoblu.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           style={{
-            filter: 'brightness(0.8) contrast(1.45) saturate(1.85) hue-rotate(-5deg)'
+            filter: 'brightness(0.7) contrast(1.45) saturate(1.85) hue-rotate(-5deg)'
           }}
         ></div>
 
@@ -4083,7 +4083,7 @@ const GameView: React.FC = () => {
             {gameState.status !== 'won' && gameState.status !== 'level-complete' && gameState.status !== 'game-over' && gameState.status !== 'opponent-surrendered' && (
               <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
                 <div className={`
-                relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px] shadow-[0_12px_24px_rgba(0,0,0,0.45)]
+                relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px]
                 ${gameState.bossLevelId === 2
                     ? 'border-amber-500/80'
                     : gameState.isBossLevel
@@ -4092,15 +4092,27 @@ const GameView: React.FC = () => {
                 transition-all duration-300
               `}
               style={{
-                boxShadow: '0 12px 32px rgba(0,0,0,0.5), inset 0 6px 12px rgba(255,255,255,0.55), inset 0 -6px 12px rgba(0,0,0,0.65)'
+                boxShadow: 'inset 0 6px 12px rgba(255,255,255,0.55), inset 0 -6px 12px rgba(0,0,0,0.65)'
               }}>
                 {/* Internal container to confine bokeh & high-gloss styling with perfect overflow clipping */}
                 <div className="absolute inset-0 rounded-[2.2rem] overflow-hidden z-0 pointer-events-none"
                   style={gameState.bossLevelId === 2
-                    ? { background: 'linear-gradient(90deg, #92400e, #d97706, #92400e)' }
+                    ? { 
+                        background: 'linear-gradient(135deg, #92400e, #d97706, #b45309, #92400e)',
+                        backgroundSize: '300% 300%',
+                        animation: 'rainbowFlow 8s ease-in-out infinite'
+                      }
                     : gameState.isBossLevel
-                      ? { background: 'linear-gradient(90deg, #065f46, #10b981, #059669, #065f46)' }
-                      : { background: 'linear-gradient(90deg, #00ff66 0%, #00f0ff 25%, #cc00ff 53%, #ff007f 78%, #ffaa00 100%)' }
+                      ? { 
+                          background: 'linear-gradient(135deg, #065f46, #10b981, #059669, #065f46)',
+                          backgroundSize: '300% 300%',
+                          animation: 'rainbowFlow 8s ease-in-out infinite'
+                        }
+                      : { 
+                          background: 'linear-gradient(135deg, #00ff66, #00f0ff, #cc00ff, #ff007f, #ffaa00, #00ff66)',
+                          backgroundSize: '300% 300%',
+                          animation: 'rainbowFlow 12s ease-in-out infinite'
+                        }
                   }>
                   {/* CSS float animations for bokeh circles */}
                   <style dangerouslySetInnerHTML={{__html: `
@@ -4133,6 +4145,11 @@ const GameView: React.FC = () => {
                       0% { transform: translate(0px, 0px) scale(1); }
                       50% { transform: translate(-8px, 5px) scale(1.15); }
                       100% { transform: translate(0px, 0px) scale(1); }
+                    }
+                    @keyframes rainbowFlow {
+                      0% { background-position: 0% 50%; }
+                      50% { background-position: 100% 50%; }
+                      100% { background-position: 0% 50%; }
                     }
                   `}} />
 
@@ -4273,14 +4290,27 @@ const GameView: React.FC = () => {
                           )}
                         </div>
                       </div>
-                    ) : (
-                      <div className={`relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110 shadow-[0_0_40px_rgba(255,136,0,0.7)]' : 'group-hover:scale-105'}`}
-                      style={{
-                        /* Real carbon fiber diagonal weave */
-                        background: 'repeating-linear-gradient(135deg, #1c1c1c 0px, #1c1c1c 2px, #2a2a2a 2px, #2a2a2a 4px, #222 4px, #222 6px, #303030 6px, #303030 8px)',
-                        border: '5px solid #555',
-                        boxShadow: '0 0 0 2px #888, 0 0 0 3px #333, 0 6px 30px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 20px rgba(255,136,0,0.15)'
-                      }}>
+                    ) : (() => {
+                      const timerLimit = (activeMatch?.mode === 'time_attack') ? 60 : (60 + parseInt(typeof window !== 'undefined' ? localStorage.getItem('career_time_bonus') || '0' : '0'));
+                      const timerPct = (gameState.timeLeft / timerLimit) * 100;
+                      const timerColor = timerPct > 80 ? '#00f0ff' : timerPct > 40 ? '#00ff66' : timerPct > 15 ? '#FF8800' : '#ff003c';
+
+                      return (
+                        <div className={`relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110 shadow-none' : 'group-hover:scale-105'}`}
+                        style={{
+                          /* Real carbon fiber diagonal weave */
+                          background: 'repeating-linear-gradient(135deg, #1c1c1c 0px, #1c1c1c 2px, #2a2a2a 2px, #2a2a2a 4px, #222 4px, #222 6px, #303030 6px, #303030 8px)',
+                          border: '5px solid #555',
+                          boxShadow: '0 0 0 2px #888, 0 0 0 3px #333, inset 0 1px 0 rgba(255,255,255,0.12)'
+                        }}>
+                          {/* CSS Animation for heart beat pulse */}
+                          <style dangerouslySetInnerHTML={{ __html: `
+                            @keyframes heartBeatPulse {
+                              0% { transform: scale(1); }
+                              50% { transform: scale(1.4); }
+                              100% { transform: scale(1); }
+                            }
+                          ` }} />
                         {/* Circular 3D Glass Embossed Reflection Cover (Copertura in rilievo 3D ad effetto vetro con riflesso fisso) */}
                         <div 
                           className="absolute inset-0 rounded-full pointer-events-none overflow-hidden z-20"
@@ -4314,24 +4344,24 @@ const GameView: React.FC = () => {
                         </div>
 
                         <svg className="absolute inset-0 w-full h-full -rotate-90 scale-95">
-                          <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,136,0,0.12)" strokeWidth="10" fill="none" />
+                          <circle cx="50%" cy="50%" r="45%" stroke={`${timerColor}1e`} strokeWidth="10" fill="none" />
                           {!isPaused && (
                             <circle
                               cx="50%" cy="50%" r="45%"
                               stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
                                 ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
-                                : (gameState.timeLeft <= 10 ? '#ef4444' : '#FF8800')}
+                                : timerColor}
                               strokeWidth="10"
                               fill="none"
                               pathLength="100"
                               strokeDasharray="100"
                               strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                                ? 100 - (100 * (opponentTargets || 0) / 5)
-                                : (100 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / ((activeMatch?.mode === 'time_attack') ? 60 : (60 + parseInt(typeof window !== 'undefined' ? localStorage.getItem('career_time_bonus') || '0' : '0')))))))
+                                  ? 100 - (100 * (opponentTargets || 0) / 5)
+                                  : (100 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / timerLimit))))
                               }
                               strokeLinecap="round"
                               className="transition-all duration-1000 ease-linear"
-                              style={{ filter: 'drop-shadow(0 0 6px #FF8800) drop-shadow(0 0 12px rgba(255,136,0,0.4))' }}
+                              style={{ filter: `drop-shadow(0 0 6px ${timerColor}) drop-shadow(0 0 12px ${timerColor}66)` }}
                             />
                           )}
                         </svg>
@@ -4350,7 +4380,17 @@ const GameView: React.FC = () => {
                                     {gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p2' : 'p1')).length}
                                   </span>
                                 </div>
-                                <span className="font-black font-orbitron text-2xl leading-none tracking-tighter shadow-sm">{gameState.timeLeft}</span>
+                                <span className="font-black font-orbitron text-2xl leading-none tracking-tighter transition-all duration-300"
+                                  style={{ 
+                                    color: timerColor, 
+                                    textShadow: `0 0 10px ${timerColor}, 0 0 20px ${timerColor}80`,
+                                    ...(gameState.timeLeft <= 5 && !isPaused ? {
+                                      animation: 'heartBeatPulse 1s ease-in-out infinite',
+                                      display: 'inline-block'
+                                    } : {})
+                                  }}>
+                                  {gameState.timeLeft}
+                                </span>
                               </>
                             ) : (
                               <>
@@ -4359,8 +4399,17 @@ const GameView: React.FC = () => {
                                     {duelMode === 'time_attack' ? 'TIME' : 'ENEMY'}
                                   </span>
                                 )}
-                                <span className={`font-black font-orbitron leading-none ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}
-                                  style={{ color: '#FF8800', textShadow: '0 0 10px rgba(255,136,0,0.9), 0 0 20px rgba(255,136,0,0.5), 0 0 30px rgba(255,136,0,0.3)' }}>
+                                <span className={`font-black font-orbitron leading-none transition-all duration-300 ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}
+                                  style={{ 
+                                    color: (activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz') ? '#FF8800' : timerColor, 
+                                    textShadow: (activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz')
+                                      ? '0 0 10px rgba(255,136,0,0.9), 0 0 20px rgba(255,136,0,0.5), 0 0 30px rgba(255,136,0,0.3)'
+                                      : `0 0 10px ${timerColor}, 0 0 20px ${timerColor}80, 0 0 30px ${timerColor}40`,
+                                    ...(gameState.timeLeft <= 5 && !isPaused && !(activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz') ? {
+                                      animation: 'heartBeatPulse 1s ease-in-out infinite',
+                                      display: 'inline-block'
+                                    } : {})
+                                  }}>
                                   {activeMatch?.isDuel
                                     ? ((duelMode === 'time_attack' || duelMode === 'blitz') ? gameState.timeLeft : opponentTargets)
                                     : gameState.timeLeft}
@@ -4370,7 +4419,8 @@ const GameView: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
 
                   {/* RIGHT SIDE: SCORE / ROUNDS */}
@@ -4634,7 +4684,7 @@ const GameView: React.FC = () => {
                         : 'w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))]'
                       }`}
                       style={{
-                        filter: isPaused ? 'blur(16px) grayscale(1)' : 'drop-shadow(0 27px 36px rgba(0,0,0,0.58)) drop-shadow(0 9px 13px rgba(0,0,0,0.40))'
+                        filter: isPaused ? 'blur(16px) grayscale(1)' : 'none'
                       }}>
                       {grid.map(cell => (
                         <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} bossLevelId={gameState.bossLevelId} pathStatus={pathStatus} />

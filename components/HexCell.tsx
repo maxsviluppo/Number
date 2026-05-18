@@ -137,10 +137,10 @@ const HexCell: React.FC<HexCellProps> = ({
             ? 'active:scale-95'
             : isNumber
               ? bossLevelId === 2
-                ? 'bg-gradient-to-br from-amber-700 to-amber-500 border-amber-600 active:scale-95 shadow-[0_5px_15px_rgba(146,64,14,0.4)] text-amber-50'
+                ? 'bg-gradient-to-br from-amber-700 to-amber-500 border-amber-600 active:scale-95 text-amber-50'
                 : 'bg-slate-800/95 border-white/10 active:scale-95 hover:bg-slate-700/95'
               : bossLevelId === 2
-                ? 'bg-gradient-to-br from-amber-800 to-amber-600 border-amber-700 active:scale-95 shadow-md text-amber-100'
+                ? 'bg-gradient-to-br from-amber-800 to-amber-600 border-amber-700 active:scale-95 text-amber-100'
                 : `${operatorTheme.bg} ${operatorTheme.border} active:scale-95 hover:brightness-125`
         }
         ${data.isFallen ? 'opacity-0 scale-50 pointer-events-none translate-y-20' : ''}
@@ -162,7 +162,7 @@ const HexCell: React.FC<HexCellProps> = ({
         <img
           src="/CasellaGlass.png"
           alt="cell"
-          className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-md"
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
           style={{
             filter: (() => {
               if (isSelected) {
