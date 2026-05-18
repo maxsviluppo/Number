@@ -21,7 +21,7 @@ import RegistrationSuccess from './components/RegistrationSuccess';
 import { BADGES } from './constants/badges';
 import { authService, profileService, leaderboardService, supabase, configService, UserProfile } from './services/supabaseClient'; // Moved this import here
 import { BOSS_LEVELS } from './constants/boss_levels';
-import { AdMob, BannerAdPosition, BannerAdSize, AdMobBannerSize } from '@capacitor-community/admob';
+import { AdMob, BannerAdPosition, BannerAdSize, AdMobBannerSize, RewardAdPluginEvents } from '@capacitor-community/admob';
 
 const TUTORIAL_STEPS = [
   {
@@ -179,22 +179,61 @@ const GameView: React.FC = () => {
 
     // MOBILE AD LOGIC (AdMob)
     if (['android', 'ios'].includes((window as any).Capacitor?.getPlatform())) {
+      let earnedReward = false;
+      let listeners: any[] = [];
+
+      const cleanupListeners = () => {
+        listeners.forEach(l => {
+          try {
+            l.remove();
+          } catch (err) {
+            console.error("Error removing AdMob listener:", err);
+          }
+        });
+        listeners = [];
+      };
+
       try {
+        // Register listeners before showing the ad
+        const rewardedListener = await AdMob.addListener(
+          RewardAdPluginEvents.Rewarded,
+          (reward: any) => {
+            console.log("AdMob Reward Earned:", reward);
+            earnedReward = true;
+          }
+        );
+        listeners.push(rewardedListener);
+
+        const dismissedListener = await AdMob.addListener(
+          RewardAdPluginEvents.Dismissed,
+          () => {
+            console.log("AdMob Ad Dismissed");
+            cleanupListeners();
+            handleFinishAd(earnedReward);
+          }
+        );
+        listeners.push(dismissedListener);
+
+        const failedToShowListener = await AdMob.addListener(
+          RewardAdPluginEvents.FailedToShow,
+          (error: any) => {
+            console.error("AdMob Failed to Show:", error);
+            cleanupListeners();
+            togglePause(false);
+            showToast("Impossibile mostrare il video.");
+          }
+        );
+        listeners.push(failedToShowListener);
+
         await AdMob.prepareRewardVideoAd({
           adId: ADS_CONFIG.rewardedId,
-          isTesting: true,
+          isTesting: false,
         });
 
-        const reward = await AdMob.showRewardVideoAd();
-
-        if (reward && reward.amount > 0) {
-          handleFinishAd(true);
-        } else {
-          togglePause(false); // Cancelled
-          showToast("Pubblicità non completata.");
-        }
+        await AdMob.showRewardVideoAd();
       } catch (e) {
         console.error("AdMob Rewarded Error:", e);
+        cleanupListeners();
         // Fallback for unexpected errors
         togglePause(false);
         showToast("Impossibile caricare il video.");
