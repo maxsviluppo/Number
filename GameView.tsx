@@ -4343,26 +4343,46 @@ const GameView: React.FC = () => {
                           ></div>
                         </div>
 
-                        <svg className="absolute inset-0 w-full h-full -rotate-90 scale-95">
+                        <svg className="absolute inset-0 w-full h-full -rotate-90 scale-95" style={{ overflow: 'visible' }}>
                           <circle cx="50%" cy="50%" r="45%" stroke={`${timerColor}1e`} strokeWidth="10" fill="none" />
                           {!isPaused && (
-                            <circle
-                              cx="50%" cy="50%" r="45%"
-                              stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                                ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
-                                : timerColor}
-                              strokeWidth="10"
-                              fill="none"
-                              pathLength="100"
-                              strokeDasharray="100"
-                              strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                                  ? 100 - (100 * (opponentTargets || 0) / 5)
-                                  : (100 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / timerLimit))))
-                              }
-                              strokeLinecap="round"
-                              className="transition-all duration-1000 ease-linear"
-                              style={{ filter: `drop-shadow(0 0 6px ${timerColor}) drop-shadow(0 0 12px ${timerColor}66)` }}
-                            />
+                            <>
+                              {/* Dynamic Neon Blur Under-Ring (Creates smooth circular glow) */}
+                              <circle
+                                cx="50%" cy="50%" r="45%"
+                                stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                                  ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
+                                  : timerColor}
+                                strokeWidth="16"
+                                fill="none"
+                                pathLength="100"
+                                strokeDasharray="100"
+                                strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                                    ? 100 - (100 * (opponentTargets || 0) / 5)
+                                    : (100 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / timerLimit))))
+                                }
+                                strokeLinecap="round"
+                                className="transition-all duration-1000 ease-linear blur-[5px] opacity-45"
+                              />
+                              
+                              {/* Main Solid Top-Ring (Sharp and crisp vector edge) */}
+                              <circle
+                                cx="50%" cy="50%" r="45%"
+                                stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                                  ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
+                                  : timerColor}
+                                strokeWidth="10"
+                                fill="none"
+                                pathLength="100"
+                                strokeDasharray="100"
+                                strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                                    ? 100 - (100 * (opponentTargets || 0) / 5)
+                                    : (100 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / timerLimit))))
+                                }
+                                strokeLinecap="round"
+                                className="transition-all duration-1000 ease-linear"
+                              />
+                            </>
                           )}
                         </svg>
                         {isPaused ? (
