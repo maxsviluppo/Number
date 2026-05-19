@@ -5687,8 +5687,9 @@ const GameView: React.FC = () => {
 
                 {/* Header Section */}
                 <div className="relative z-10 text-center mb-8">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-2 border-white/20 shadow-lg mb-4">
-                    <Brain className="w-8 h-8 text-white animate-pulse" />
+                  <div className="relative inline-flex items-center justify-center w-16 h-16 mb-4 group cursor-pointer active:scale-95 transition-all">
+                    <img src="/CasellaGlass.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
+                    <Brain className="relative w-8 h-8 text-white drop-shadow-md z-10 animate-pulse" strokeWidth={2.5} />
                   </div>
                   <h2 className="text-3xl font-black font-orbitron text-white uppercase tracking-widest mb-1 drop-shadow-md">
                     MISSIONE <span className="text-[#FF8800]">CARRIERA</span>
@@ -5741,26 +5742,86 @@ const GameView: React.FC = () => {
                 <div className="space-y-4 relative z-10">
                   <button
                     onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); savedGame ? restoreGame() : startGame(); }}
-                    className="w-full bg-gradient-to-r from-[#FF8800] to-orange-600 text-white py-5 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-lg shadow-[0_10px_20px_rgba(255,136,0,0.3)] active:translate-y-1 transition-all border-b-4 border-orange-800 flex items-center justify-center gap-4 group"
+                    className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[#FF8800] text-white py-5 rounded-2xl font-orbitron font-black text-lg border-[4px] border-white hover:scale-105 transition-all duration-300 active:translate-y-1"
+                    style={{
+                      boxShadow: '0 8px 0 rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.5), inset 0 -4px 8px rgba(0,0,0,0.5)'
+                    }}
                   >
-                    <Play className="w-6 h-6 fill-current group-hover:scale-110 transition-transform" />
-                    <span>{savedGame ? 'RIPRENDI' : 'INIZIA'} PARTITA</span>
+                    {/* Glass layout elements */}
+                    <div className="absolute inset-0 pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                    }}></div>
+                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-2xl z-10" style={{
+                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                    }}></div>
+                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                    }}></div>
+                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                    }}></div>
+                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
+                    }}></div>
+
+                    <Play className="w-6 h-6 fill-current relative z-20" />
+                    <span className="tracking-widest relative z-20">{savedGame ? 'RIPRENDI' : 'INIZIA'} PARTITA</span>
                   </button>
 
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal('full_reset_confirm'); }}
-                      className="bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border border-slate-700 active:scale-95 transition-all hover:bg-red-900/20 hover:text-red-400 hover:border-red-900/50 flex items-center justify-center gap-2"
+                      className="relative overflow-hidden bg-slate-800 text-slate-200 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border-[3px] border-white/60 active:translate-y-0.5 transition-all hover:scale-105 flex items-center justify-center gap-2 group"
+                      style={{
+                        boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                      }}
                     >
-                      <AlertTriangle size={14} />
-                      NUOVA PARTITA
+                      {/* Glass layout elements */}
+                      <div className="absolute inset-0 pointer-events-none z-10" style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
+                      }}></div>
+                      <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
+                      }}></div>
+                      <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                      }}></div>
+                      <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                        background: 'linear-gradient(225deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                      }}></div>
+                      <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.2), transparent)'
+                      }}></div>
+
+                      <AlertTriangle size={14} className="relative z-20 text-red-400" />
+                      <span className="relative z-20">NUOVA PARTITA</span>
                     </button>
                     <button
                       onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
-                      className="bg-slate-800 text-slate-400 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border border-slate-700 active:scale-95 transition-all hover:bg-white/5 hover:text-white flex items-center justify-center gap-2"
+                      className="relative overflow-hidden bg-slate-800 text-slate-200 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border-[3px] border-white/60 active:translate-y-0.5 transition-all hover:scale-105 flex items-center justify-center gap-2 group"
+                      style={{
+                        boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                      }}
                     >
-                      <Home size={14} />
-                      INDIETRO
+                      {/* Glass layout elements */}
+                      <div className="absolute inset-0 pointer-events-none z-10" style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
+                      }}></div>
+                      <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
+                      }}></div>
+                      <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                      }}></div>
+                      <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                        background: 'linear-gradient(225deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                      }}></div>
+                      <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.2), transparent)'
+                      }}></div>
+
+                      <Home size={14} className="relative z-20 text-slate-300" />
+                      <span className="relative z-20">INDIETRO</span>
                     </button>
                   </div>
                 </div>
