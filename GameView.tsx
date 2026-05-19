@@ -5678,49 +5678,51 @@ const GameView: React.FC = () => {
 
         {
           activeModal === 'resume_confirm' && (
-            <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => setActiveModal(null)}>
-              <div className="bg-slate-900/90 border-[3px] border-[#FF8800]/50 w-full max-w-md p-8 rounded-[2.5rem] shadow-[0_0_60px_rgba(255,136,0,0.3)] flex flex-col relative overflow-hidden backdrop-blur-xl" onPointerDown={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-[5000] flex flex-col items-center justify-center p-4 md:p-6 modal-overlay bg-black/85 backdrop-blur-sm overflow-y-auto" onPointerDown={() => setActiveModal(null)}>
+              
+              {/* Header Section (OUTSIDE of the framed box) */}
+              <div className="relative z-10 text-center mb-4 flex flex-col items-center pointer-events-none" onPointerDown={e => e.stopPropagation()}>
+                <div className="relative inline-flex items-center justify-center w-14 h-14 mb-2 group active:scale-95 transition-all">
+                  <img src="/CasellaGlass.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
+                  <Brain className="relative w-7 h-7 text-white drop-shadow-md z-10 animate-pulse" strokeWidth={2.5} />
+                </div>
+                <h2 className="text-2xl font-black font-orbitron text-white uppercase tracking-widest mb-1 drop-shadow-md">
+                  MISSIONE <span className="text-[#FF8800]">CARRIERA</span>
+                </h2>
+                <div className="h-0.5 w-20 bg-[#FF8800]/50 mx-auto rounded-full"></div>
+              </div>
+
+              {/* Framed Card container starts from here (Level down to buttons) */}
+              <div className="bg-slate-900/90 border-[3px] border-[#FF8800]/50 w-full max-w-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_0_60px_rgba(255,136,0,0.3)] flex flex-col relative overflow-hidden backdrop-blur-xl" onPointerDown={e => e.stopPropagation()}>
 
                 {/* Premium Background Decor */}
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#FF8800] to-transparent animate-pulse"></div>
 
-                {/* Header Section */}
-                <div className="relative z-10 text-center mb-8">
-                  <div className="relative inline-flex items-center justify-center w-16 h-16 mb-4 group cursor-pointer active:scale-95 transition-all">
-                    <img src="/CasellaGlass.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
-                    <Brain className="relative w-8 h-8 text-white drop-shadow-md z-10 animate-pulse" strokeWidth={2.5} />
-                  </div>
-                  <h2 className="text-3xl font-black font-orbitron text-white uppercase tracking-widest mb-1 drop-shadow-md">
-                    MISSIONE <span className="text-[#FF8800]">CARRIERA</span>
-                  </h2>
-                  <div className="h-0.5 w-24 bg-[#FF8800]/50 mx-auto rounded-full"></div>
-                </div>
-
                 {/* Main Info Card */}
-                <div className="bg-black/40 border-2 border-[#FF8800]/20 rounded-3xl p-6 mb-8 relative z-10 backdrop-blur-md">
+                <div className="bg-black/40 border border-[#FF8800]/20 rounded-3xl p-5 mb-6 relative z-10 backdrop-blur-md">
                   <div className="flex flex-col items-center">
-                    <span className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] mb-2">LIVELLO ATTUALE</span>
-                    <div className="text-8xl font-black font-orbitron text-white drop-shadow-[0_0_30px_rgba(255,136,0,0.4)] mb-6">
+                    <span className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] mb-1.5">LIVELLO ATTUALE</span>
+                    <div className="text-7xl font-black font-orbitron text-white drop-shadow-[0_0_30px_rgba(255,136,0,0.4)] mb-4">
                       {savedGame?.level || 1}
                     </div>
 
                     {/* Progress Stats */}
-                    <div className="grid grid-cols-2 gap-4 w-full">
-                      <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex flex-col items-center">
+                    <div className="grid grid-cols-2 gap-3 w-full">
+                      <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col items-center">
                         <div className="flex items-center gap-2 mb-1 text-amber-400">
-                          <Trophy size={14} />
-                          <span className="text-[10px] font-black uppercase tracking-wider">Punti Globali</span>
+                          <Trophy size={12} />
+                          <span className="text-[9px] font-black uppercase tracking-wider">Punti Globali</span>
                         </div>
-                        <span className="text-xl font-black font-orbitron text-white">{savedGame?.totalScore || 0}</span>
+                        <span className="text-lg font-black font-orbitron text-white">{savedGame?.totalScore || 0}</span>
                       </div>
 
-                      <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex flex-col items-center">
+                      <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col items-center">
                         <div className="flex items-center gap-2 mb-1 text-blue-400">
-                          <Timer size={14} />
-                          <span className="text-[10px] font-black uppercase tracking-wider">Tempo</span>
+                          <Timer size={12} />
+                          <span className="text-[9px] font-black uppercase tracking-wider">Tempo</span>
                         </div>
-                        <span className="text-xl font-black font-orbitron text-white">
+                        <span className="text-lg font-black font-orbitron text-white">
                           {(savedGame?.timeLeft || 0) + parseInt(localStorage.getItem('career_time_bonus') || '0')}s
                         </span>
                       </div>
@@ -5728,9 +5730,9 @@ const GameView: React.FC = () => {
 
                     {/* Bonus Indicator */}
                     {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (
-                      <div className="mt-4 w-full bg-orange-500/10 border border-orange-500/20 rounded-xl py-2 px-4 flex items-center justify-center gap-2 animate-pulse">
-                        <Sparkles size={14} className="text-[#FF8800]" />
-                        <span className="text-[10px] font-black text-[#FF8800] uppercase tracking-wider">
+                      <div className="mt-3 w-full bg-orange-500/10 border border-orange-500/20 rounded-xl py-1.5 px-3 flex items-center justify-center gap-2 animate-pulse">
+                        <Sparkles size={12} className="text-[#FF8800]" />
+                        <span className="text-[9px] font-black text-[#FF8800] uppercase tracking-wider">
                           Bonus Boss Attivo (+{localStorage.getItem('career_time_bonus')}s)
                         </span>
                       </div>
