@@ -3857,10 +3857,11 @@ const GameView: React.FC = () => {
                 <Link
                   to="/site"
                   onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); }}
-                  className="w-12 h-12 rounded-full bg-blue-600 text-white border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                  className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group cursor-pointer"
                   title="Vai al Sito"
                 >
-                  <Globe size={24} strokeWidth={2.5} />
+                  <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
+                  <Globe size={22} className="relative z-20 text-white drop-shadow-md" strokeWidth={2.5} />
                 </Link>
               </div>
 
@@ -3868,12 +3869,21 @@ const GameView: React.FC = () => {
               <div className="fixed top-12 right-6 z-[3000] flex gap-3 items-center">
                 <button
                   onPointerDown={toggleMute}
-                  className={`w-12 h-12 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110
-                    ${isMuted ? 'bg-slate-700 text-slate-400' : 'bg-[#FF8800] text-white'}`}
+                  className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
                   title="Audio"
                   id="audio-btn-home"
                 >
-                  {isMuted ? <VolumeX size={24} strokeWidth={2.5} /> : <Volume2 size={24} strokeWidth={2.5} />}
+                  <img 
+                    src="/CasellaGlass.png" 
+                    alt="Octagon" 
+                    className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10 transition-all duration-300"
+                    style={{
+                      filter: isMuted ? 'grayscale(1) brightness(0.65)' : 'none'
+                    }}
+                  />
+                  <div className="relative z-20 text-white drop-shadow-md">
+                    {isMuted ? <VolumeX size={22} strokeWidth={2.5} /> : <Volume2 size={22} strokeWidth={2.5} />}
+                  </div>
                 </button>
               </div>
 
@@ -3914,7 +3924,7 @@ const GameView: React.FC = () => {
                       </span>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[13px] font-black text-[#FF8800] font-orbitron">
-                          {userProfile?.total_score || 0}
+                           {userProfile?.total_score || 0}
                         </span>
                         <span className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">pts</span>
                       </div>
@@ -3943,20 +3953,22 @@ const GameView: React.FC = () => {
                     setActiveModal('tutorial');
                   }}
                   id="tutorial-btn-home"
-                  className="w-12 h-12 rounded-full bg-[#FF8800] text-white border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                  className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
                   title="Tutorial"
                 >
-                  <HelpCircle size={24} strokeWidth={2.5} />
+                  <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
+                  <HelpCircle size={22} className="relative z-20 text-white drop-shadow-md" strokeWidth={2.5} />
                 </button>
 
                 {/* Quick Invite Button */}
                 <button
                   onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); handleQuickInvite(); }}
                   id="invite-btn-home"
-                  className="w-12 h-12 rounded-full bg-[#FF8800] text-white border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                  className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
                   title="Invita Amico"
                 >
-                  <Send size={22} strokeWidth={3} className="ml-0.5" />
+                  <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
+                  <Send size={20} className="relative z-20 text-white drop-shadow-md ml-0.5" strokeWidth={3} />
                 </button>
 
                 {/* Admin Access */}
@@ -3967,10 +3979,11 @@ const GameView: React.FC = () => {
                     soundService.playUIClick();
                     setActiveModal('admin');
                   }}
-                  className="w-12 h-12 rounded-full bg-[#FF8800] text-white border-2 border-white/50 shadow-lg flex items-center justify-center active:scale-95 transition-all hover:scale-110"
+                  className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
                   title="Admin Access"
                 >
-                  <Shield size={24} strokeWidth={2.5} />
+                  <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
+                  <Shield size={22} className="relative z-20 text-white drop-shadow-md" strokeWidth={2.5} />
                 </button>
               </div>
               <div className="mb-6 flex flex-col items-center">
@@ -3990,7 +4003,7 @@ const GameView: React.FC = () => {
                   title="Apri Profilo"
                 >
                   {/* Custom Octagon Image */}
-                  <img src="/octagon-base.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
+                  <img src="/CasellaGlass.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
 
                   <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
 
@@ -4001,24 +4014,44 @@ const GameView: React.FC = () => {
                 </h1>
               </div>
 
-              {/* Tip Bubble Removed */}
-
               <div className="flex flex-col gap-4 items-center w-full max-w-sm relative z-20">
                 <button
                   onPointerDown={handleStartGameClick}
                   id="play-btn-home"
-                  className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-gradient-to-r from-[#FF8800] to-[#FF5500] text-white py-5 rounded-2xl font-orbitron font-black text-xl border-[4px] border-white shadow-[0_8px_0_rgba(0,0,0,0.2)] active:translate-y-1 active:shadow-[0_4px_0_rgba(0,0,0,0.2)] hover:scale-105 transition-all duration-300"
+                  className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[#FF8800] text-white py-5 rounded-2xl font-orbitron font-black text-xl border-[4px] border-white hover:scale-105 transition-all duration-300 active:translate-y-1"
+                  style={{
+                    boxShadow: '0 8px 0 rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.5), inset 0 -4px 8px rgba(0,0,0,0.5)'
+                  }}
                 >
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                  <Play className="w-8 h-8 fill-current relative z-10" />
-                  <span className="tracking-widest relative z-10">{savedGame && savedGame.level > 1 ? `CONTINUA LVL ${savedGame.level}` : "GIOCA"}</span>
-                </button>
+                  {/* Glass layout elements */}
+                  <div className="absolute inset-0 pointer-events-none z-10" style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                  }}></div>
+                  <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-2xl z-10" style={{
+                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                  }}></div>
+                  <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                  }}></div>
+                  <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                    background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                  }}></div>
+                  <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
+                  }}></div>
 
+                  <Play className="w-8 h-8 fill-current relative z-20" />
+                  <span className="tracking-widest relative z-20">{savedGame && savedGame.level > 1 ? `CONTINUA LVL ${savedGame.level}` : "GIOCA"}</span>
+                </button>
+ 
                 <div className="grid grid-cols-2 gap-3 w-full">
                   {/* 1VS1 MODE BUTTON */}
                   <button
-                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 text-white py-4 rounded-xl border-[3px] border-white shadow-[0_6px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group"
+                    className="flex items-center justify-center gap-2 bg-red-600 text-white py-4 rounded-xl border-[3px] border-white hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group active:translate-y-1"
                     id="duel-btn-home"
+                    style={{
+                      boxShadow: '0 6px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
+                    }}
                     onPointerDown={async (e) => {
                       e.stopPropagation();
                       await handleUserInteraction();
@@ -4031,20 +4064,39 @@ const GameView: React.FC = () => {
                       }
                     }}
                   >
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-                    <Swords className="w-8 h-8 animate-pulse text-yellow-300" />
-                    <div className="flex flex-col items-start leading-none relative z-10">
+                    {/* Glass layout elements */}
+                    <div className="absolute inset-0 pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                    }}></div>
+                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                    }}></div>
+                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                    }}></div>
+                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                    }}></div>
+                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
+                    }}></div>
+
+                    <Swords className="w-8 h-8 animate-pulse text-yellow-300 relative z-20" />
+                    <div className="flex flex-col items-start leading-none relative z-20">
                       <span className="font-orbitron text-xl font-black uppercase tracking-widest italic drop-shadow-md">NEURAL DUEL</span>
                       <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Sfida 1vs1 Realtime</span>
                     </div>
                     {/* Badge */}
-                    <div className="absolute top-2 right-2 bg-red-600/90 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-white animate-pulse shadow-lg">NEW</div>
+                    <div className="absolute top-2 right-2 bg-red-600/90 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-white animate-pulse shadow-lg z-20">NEW</div>
                   </button>
-
+ 
                   {/* BOSS LEVELS BUTTON - COLS-SPAN-1 */}
                   <button
-                    className="flex flex-col items-center justify-center pt-5 pb-4 gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl border-[3px] border-white shadow-[0_5px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group"
+                    className="flex flex-col items-center justify-center pt-5 pb-4 gap-2 bg-emerald-600 text-white rounded-xl border-[3px] border-white hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group active:translate-y-1"
                     id="boss-btn-home"
+                    style={{
+                      boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
+                    }}
                     onPointerDown={async (e) => {
                       e.stopPropagation();
                       await handleUserInteraction();
@@ -4052,22 +4104,57 @@ const GameView: React.FC = () => {
                       setActiveModal('boss_selection');
                     }}
                   >
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-                    <Crown className="w-8 h-8 text-yellow-300 animate-[bounce_3s_infinite]" />
-                    <span className="font-orbitron text-[13px] sm:text-[14px] font-black uppercase tracking-widest drop-shadow-md relative z-10 mt-1">BOSSES</span>
-                  </button>
+                    {/* Glass layout elements */}
+                    <div className="absolute inset-0 pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                    }}></div>
+                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                    }}></div>
+                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                    }}></div>
+                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                    }}></div>
+                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
+                    }}></div>
 
+                    <Crown className="w-8 h-8 text-yellow-300 animate-[bounce_3s_infinite] relative z-20" />
+                    <span className="font-orbitron text-[13px] sm:text-[14px] font-black uppercase tracking-widest drop-shadow-md relative z-20 mt-1">BOSSES</span>
+                  </button>
+ 
                   {/* RANKING BUTTON - COLS-SPAN-1 */}
                   <button
                     id="ranking-btn-home"
                     onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
-                    className="flex flex-col items-center justify-center pt-5 pb-4 gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-900 rounded-xl border-[3px] border-white shadow-[0_5px_0_rgba(0,0,0,0.1)] active:translate-y-1 active:shadow-none hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-15"></div>
-                    <BarChart3 className="w-8 h-8 relative z-10 text-slate-800 drop-shadow-md" />
-                    <span className="font-orbitron text-[13px] sm:text-[14px] font-black uppercase tracking-widest relative z-10 mt-1">RANKING</span>
+                    className="flex flex-col items-center justify-center pt-5 pb-4 gap-2 bg-yellow-500 text-slate-900 rounded-xl border-[3px] border-white hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group active:translate-y-1"
+                    style={{
+                      boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
+                    }}
+                  >
+                    {/* Glass layout elements */}
+                    <div className="absolute inset-0 pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                    }}></div>
+                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                    }}></div>
+                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                    }}></div>
+                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                    }}></div>
+                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
+                    }}></div>
+
+                    <BarChart3 className="w-8 h-8 relative z-20 text-slate-800 drop-shadow-md" />
+                    <span className="font-orbitron text-[13px] sm:text-[14px] font-black uppercase tracking-widest relative z-20 mt-1">RANKING</span>
                   </button>
                 </div>
-
                 {/* AUTH BUTTON */}
                 {/* Auth Button Moved to Top Right - Removed from here */}
 
