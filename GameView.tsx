@@ -5379,9 +5379,10 @@ const GameView: React.FC = () => {
         {
           activeModal === 'duel_selection' && (
             <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-              <div className="bg-slate-900/90 border-[3px] border-red-500/50 w-full max-w-lg p-8 rounded-[2rem] shadow-[0_0_60px_rgba(239,68,68,0.4)] flex flex-col relative overflow-hidden backdrop-blur-xl" onPointerDown={e => e.stopPropagation()}>
+              <div className="bg-slate-900/90 border-[3px] border-red-500/50 w-full max-w-lg p-8 rounded-[2.5rem] shadow-[0_0_60px_rgba(239,68,68,0.4)] flex flex-col relative overflow-hidden backdrop-blur-xl" onPointerDown={e => e.stopPropagation()}>
                 {/* Background Decor */}
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse"></div>
 
                 <h2 className="text-xl sm:text-3xl font-black font-orbitron text-white mb-2 uppercase text-center relative z-10 flex items-center justify-center gap-2 sm:gap-3">
                   <Swords className="w-6 h-6 sm:w-8 sm:h-8 text-red-500 animate-bounce" /> SELEZIONA SFIDA
@@ -5390,59 +5391,116 @@ const GameView: React.FC = () => {
                   COMBATTI • VINCI • GLORIA
                 </p>
 
-                <div className="flex flex-col gap-3 relative z-10 w-full">
-                  {/* Option 1: STANDARD */}
-                  <button
-                    className="w-full bg-gradient-to-r from-red-600 to-rose-700 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
-                    onPointerDown={() => { soundService.playUIClick(); setDuelMode('standard'); setActiveModal('duel'); }}
-                  >
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
-                      <Swords size={22} className="text-yellow-300 drop-shadow-sm" />
-                    </div>
-                    <div className="text-left flex-1 relative z-10">
-                      <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">STANDARD</h3>
-                      <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Velocità Pura • Partita Secca</p>
-                    </div>
-                    <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
-                  </button>
+                 <div className="flex flex-col gap-3 relative z-10 w-full">
+                   {/* Option 1: STANDARD */}
+                   <button
+                     className="w-full bg-red-600 text-white p-4 rounded-xl flex items-center gap-4 border-[3px] border-white hover:scale-[1.02] active:translate-y-1 transition-all group relative overflow-hidden"
+                     style={{
+                       boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
+                     }}
+                     onPointerDown={() => { soundService.playUIClick(); setDuelMode('standard'); setActiveModal('duel'); }}
+                   >
+                     {/* Glass layout elements */}
+                     <div className="absolute inset-0 pointer-events-none z-10" style={{
+                       background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                     }}></div>
+                     <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                       background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                     }}></div>
+                     <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                       background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                     }}></div>
+                     <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                       background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                     }}></div>
+                     <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                       background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
+                     }}></div>
 
-                  {/* Option 2: BLITZ */}
-                  <button
-                    className="w-full bg-gradient-to-r from-orange-500 to-amber-600 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
-                    onPointerDown={() => { soundService.playUIClick(); setDuelMode('blitz'); setActiveModal('duel'); }}
-                  >
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                    <div className="absolute top-0 right-12 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20">NEW</div>
+                     <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-20">
+                       <Swords size={22} className="text-yellow-300 drop-shadow-sm" />
+                     </div>
+                     <div className="text-left flex-1 relative z-20">
+                       <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">STANDARD</h3>
+                       <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Velocità Pura • Partita Secca</p>
+                     </div>
+                     <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-20" />
+                   </button>
+ 
+                   {/* Option 2: BLITZ */}
+                   <button
+                     className="w-full bg-orange-500 text-white p-4 rounded-xl flex items-center gap-4 border-[3px] border-white hover:scale-[1.02] active:translate-y-1 transition-all group relative overflow-hidden"
+                     style={{
+                       boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
+                     }}
+                     onPointerDown={() => { soundService.playUIClick(); setDuelMode('blitz'); setActiveModal('duel'); }}
+                   >
+                     {/* Glass layout elements */}
+                     <div className="absolute inset-0 pointer-events-none z-10" style={{
+                       background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                     }}></div>
+                     <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                       background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                     }}></div>
+                     <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                       background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                     }}></div>
+                     <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                       background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                     }}></div>
+                     <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                       background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
+                     }}></div>
 
-                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
-                      <Zap size={22} className="text-white drop-shadow-sm" />
-                    </div>
-                    <div className="text-left flex-1 relative z-10">
-                      <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">BLITZ DOMINION</h3>
-                      <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Alta Strategia • Conquista</p>
-                    </div>
-                    <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
-                  </button>
+                     <div className="absolute top-0 right-12 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20">NEW</div>
+ 
+                     <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-20">
+                       <Zap size={22} className="text-white drop-shadow-sm" />
+                     </div>
+                     <div className="text-left flex-1 relative z-20">
+                       <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">BLITZ DOMINION</h3>
+                       <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Alta Strategia • Conquista</p>
+                     </div>
+                     <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-20" />
+                   </button>
+ 
+                   {/* Option 3: TIME ATTACK */}
+                   <button
+                     className="w-full bg-purple-600 text-white p-4 rounded-xl flex items-center gap-4 border-[3px] border-white hover:scale-[1.02] active:translate-y-1 transition-all group relative overflow-hidden"
+                     style={{
+                       boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
+                     }}
+                     onPointerDown={() => { soundService.playUIClick(); setDuelMode('time_attack'); setActiveModal('duel'); }}
+                   >
+                     {/* Glass layout elements */}
+                     <div className="absolute inset-0 pointer-events-none z-10" style={{
+                       background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                     }}></div>
+                     <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                       background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                     }}></div>
+                     <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                       background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                     }}></div>
+                     <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                       background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                     }}></div>
+                     <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                       background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
+                     }}></div>
 
-                  {/* Option 3: TIME ATTACK */}
-                  <button
-                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 p-4 rounded-xl flex items-center gap-4 border-2 border-white/10 hover:border-white/40 hover:scale-[1.02] active:scale-95 transition-all group shadow-lg relative overflow-hidden"
-                    onPointerDown={() => { soundService.playUIClick(); setDuelMode('time_attack'); setActiveModal('duel'); }}
-                  >
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                    <div className="absolute top-0 right-12 bg-yellow-400 text-black text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20 animate-pulse">HOT</div>
-
-                    <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-10">
-                      <Clock size={22} className="text-white drop-shadow-sm" />
-                    </div>
-                    <div className="text-left flex-1 relative z-10">
-                      <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">TIME ATTACK</h3>
-                      <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">60 Secondi • Target Infiniti</p>
-                    </div>
-                    <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-10" />
-                  </button>
-                </div>
+                     <div className="absolute top-0 right-12 bg-yellow-400 text-black text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20 animate-pulse">HOT</div>
+ 
+                     <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-20">
+                       <Clock size={22} className="text-white drop-shadow-sm" />
+                     </div>
+                     <div className="text-left flex-1 relative z-20">
+                       <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">TIME ATTACK</h3>
+                       <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">60 Secondi • Target Infiniti</p>
+                     </div>
+                     <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-20" />
+                   </button>
+                 </div>
 
 
               </div>
