@@ -49,14 +49,14 @@ const HexCell: React.FC<HexCellProps> = ({
   const getOperatorTheme = (val: string) => {
     switch (val) {
       case '+': return {
-        text: 'text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.9)]',
-        bg: 'bg-emerald-900/40 shadow-[inset_0_0_20px_rgba(16,185,129,0.3)]',
-        border: 'border-emerald-500/50'
+        text: 'text-[#82c9a2] drop-shadow-[0_0_10px_rgba(130,201,162,0.6)]',
+        bg: 'bg-emerald-950/30 shadow-[inset_0_0_15px_rgba(130,201,162,0.2)]',
+        border: 'border-[#82c9a2]/40'
       };
       case '-': return {
-        text: 'text-rose-400 drop-shadow-[0_0_15px_rgba(251,113,133,0.9)]',
-        bg: 'bg-rose-900/40 shadow-[inset_0_0_20px_rgba(244,63,94,0.3)]',
-        border: 'border-rose-500/50'
+        text: 'text-[#d698b0] drop-shadow-[0_0_10px_rgba(214,152,176,0.6)]',
+        bg: 'bg-rose-950/30 shadow-[inset_0_0_15px_rgba(214,152,176,0.2)]',
+        border: 'border-[#d698b0]/40'
       };
       case '×': return {
         text: 'text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.9)]',
@@ -189,8 +189,8 @@ const HexCell: React.FC<HexCellProps> = ({
                 // Operators: dynamic hue-rotations for + (green), - (neon fuchsia), x (yellow), / (electric violet)
                 let baseFilter = 'none';
                 switch (data.value) {
-                  case '+': baseFilter = 'hue-rotate(95deg) saturate(1.8) brightness(1.0)'; break;
-                  case '-': baseFilter = 'hue-rotate(295deg) saturate(2.4) brightness(1.05)'; break;
+                  case '+': baseFilter = 'hue-rotate(95deg) saturate(1.1) brightness(1.0)'; break;
+                  case '-': baseFilter = 'hue-rotate(295deg) saturate(1.3) brightness(1.05)'; break;
                   case '×': baseFilter = 'hue-rotate(25deg) saturate(1.8) brightness(1.2)'; break;
                   case '÷': baseFilter = 'hue-rotate(235deg) saturate(2.2) brightness(0.9)'; break;
                 }

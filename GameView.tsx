@@ -332,15 +332,18 @@ const GameView: React.FC = () => {
     if (gameState.isBossLevel) {
       document.body.style.background = '#022c22'; // emerald-950
       document.documentElement.style.background = '#022c22';
+    } else if (gameState.status !== 'idle') {
+      document.body.style.background = '#18212d'; // Further desaturated blue for matches
+      document.documentElement.style.background = '#18212d';
     } else {
-      document.body.style.background = '#020617'; // Default Slate-950
+      document.body.style.background = '#020617'; // Default Slate-950 for home
       document.documentElement.style.background = '#020617';
     }
     return () => {
       document.body.style.background = '#020617';
       document.documentElement.style.background = '#020617';
     };
-  }, [gameState.isBossLevel]);
+  }, [gameState.isBossLevel, gameState.status]);
 
   const [leaderboardData, setLeaderboardData] = useState<{ byScore: any[], byLevel: any[] } | null>(null);
 
@@ -4501,28 +4504,74 @@ const GameView: React.FC = () => {
                 <div className="w-full flex flex-col items-center h-full relative">
                   {/* Info Row: Current Calculation Badge (Left) */}
                   <div className="w-full max-w-2xl px-4 flex justify-start items-center min-h-[50px] mb-2 mt-6">
-                    <div className={`transition-all duration-300 transform origin-left
-                        ${isDragging && selectedPath.length > 0 ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-90 -translate-x-4 pointer-events-none'}`}>
-                      <div className={`px-5 py-2 rounded-xl border-[3px] flex items-center gap-3 shadow-md transition-colors duration-200
-                          ${(previewResult !== null && (gameState.isBossLevel
-                          ? (gameState.levelTargets.find(t => !t.completed)?.value === previewResult)
-                          : gameState.levelTargets.some(t => t.value === previewResult && !t.completed)))
-                          ? (gameState.bossLevelId === 2
-                            ? 'bg-amber-400 border-white text-amber-900 scale-105 shadow-[0_0_20px_rgba(251,191,36,0.5)]'
-                            : gameState.isBossLevel
-                              ? 'bg-emerald-600 border-white text-white scale-105 shadow-[0_0_20px_rgba(16,185,129,0.5)]'
-                              : 'bg-[#FF8800] border-white text-white scale-105')
-                          : (gameState.bossLevelId === 2
-                            ? 'bg-white border-amber-400 text-amber-800 shadow-inner'
-                            : gameState.isBossLevel
-                              ? 'bg-white border-emerald-600 text-emerald-600'
-                              : 'bg-white border-[#FF8800] text-[#FF8800]')}`}>
-                        <span className="text-[10px] font-black uppercase tracking-wider opacity-80">Totale:</span>
-                        <span className="text-3xl font-black font-orbitron leading-none">
-                          {previewResult !== null ? previewResult : '...'}
-                        </span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const isTargetMatched = previewResult !== null && (gameState.isBossLevel
+                        ? (gameState.levelTargets.find(t => !t.completed)?.value === previewResult)
+                        : gameState.levelTargets.some(t => t.value === previewResult && !t.completed));
+                      
+                      const neonClass = isTargetMatched 
+                        ? 'text-[#00ff66] drop-shadow-[0_0_15px_rgba(0,255,102,0.9)] animate-pulse'
+                        : 'text-[#00f0ff] drop-shadow-[0_0_15px_rgba(0,240,255,0.9)]';
+
+                      const borderGlow = isTargetMatched
+                        ? 'shadow-[0_0_25px_rgba(0,255,102,0.6)] border-[#00ff66] scale-105'
+                        : 'shadow-[0_0_15px_rgba(0,240,255,0.3)] border-[#555]';
+
+                      return (
+                        <div className={`transition-all duration-300 transform origin-left
+                            ${isDragging && selectedPath.length > 0 ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-90 -translate-x-4 pointer-events-none'}`}>
+                          
+                          {/* Square Badge with Rounded Corners matching the Timer Circle */}
+                          <div 
+                            className={`relative w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 border-[5px] ${borderGlow}`}
+                            style={{
+                              background: 'repeating-linear-gradient(135deg, #1c1c1c 0px, #1c1c1c 2px, #2a2a2a 2px, #2a2a2a 4px, #222 4px, #222 6px, #303030 6px, #303030 8px)',
+                              boxShadow: isTargetMatched 
+                                ? '0 0 0 2px #00ff66, 0 0 0 3px #111, inset 0 1px 0 rgba(255,255,255,0.12), 0 0 20px rgba(0,255,102,0.5)'
+                                : '0 0 0 2px #888, 0 0 0 3px #333, inset 0 1px 0 rgba(255,255,255,0.12)'
+                            }}
+                          >
+                            {/* Glass reflection cover matching the timer circle */}
+                            <div 
+                              className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden z-20"
+                              style={{
+                                boxShadow: 'inset 0 4px 8px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.3)'
+                              }}
+                            >
+                              {/* Glossy Curved Bevel Cover */}
+                              <div 
+                                className="absolute top-0 inset-x-0 h-[45%] rounded-t-xl"
+                                style={{
+                                  background: 'linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)'
+                                }}
+                              ></div>
+                              
+                              {/* Diagonal Spotlight Reflection - Outer Soft */}
+                              <div 
+                                className="absolute top-[8%] left-[8%] w-[32%] h-[32%] rounded-full filter blur-[3px] rotate-[15deg]"
+                                style={{
+                                  background: 'linear-gradient(to bottom right, rgba(255,255,255,0.18), transparent)'
+                                }}
+                              ></div>
+
+                              {/* Diagonal Spotlight Reflection - Inner Sharp Core */}
+                              <div 
+                                className="absolute top-[12%] left-[12%] w-[15%] h-[15%] rounded-full filter blur-[0.5px] rotate-[15deg]"
+                                style={{
+                                  background: 'linear-gradient(to bottom right, rgba(255,255,255,0.45), rgba(255,255,255,0.05))'
+                                }}
+                              ></div>
+                            </div>
+
+                            {/* The Number */}
+                            <span className={`text-2xl font-black font-orbitron leading-none z-10 ${neonClass}`}>
+                              {previewResult !== null ? previewResult : ''}
+                            </span>
+
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex flex-col items-center gap-2 mb-5">
@@ -4636,47 +4685,69 @@ const GameView: React.FC = () => {
                             sizeClasses = 'min-w-[3.5rem] px-1.5 h-14 text-xl sm:text-2xl';
                           }
 
+                          const completedClass = isCompleted ? 'animate-target-completed' : '';
+
                           return (
                             <div key={i} data-target-value={t.value} 
-                              className={`relative overflow-hidden flex items-center justify-center rounded-xl transition-all duration-300 font-orbitron font-black shadow-lg ${sizeClasses} ${matchedTargetValue === t.value && !t.completed ? 'animate-hex-correct-bounce-delayed' : ''}`}
+                              className={`relative overflow-hidden flex items-center justify-center rounded-xl transition-all duration-300 font-orbitron font-black shadow-lg ${sizeClasses} ${completedClass} ${matchedTargetValue === t.value && !t.completed ? 'animate-hex-correct-bounce-delayed' : ''}`}
                               style={{
-                                background: targetBg,
-                                border: targetBorder,
-                                boxShadow: targetGlow
+                                background: isCompleted ? 'transparent' : targetBg,
+                                border: isCompleted ? 'none' : targetBorder,
+                                boxShadow: isCompleted ? 'none' : targetGlow
                               }}
                             >
-                              {/* Circular/Rounded 3D Glass Embossed Reflection Cover */}
-                              <div 
-                                className="absolute inset-0 rounded-lg pointer-events-none overflow-hidden z-20"
-                                style={{
-                                  boxShadow: 'inset 0 4px 8px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.5)'
-                                }}
-                              >
-                                {/* Glossy Curved Bevel Cover (Cupola superiore lucida) */}
-                                <div 
-                                  className="absolute top-0 inset-x-0 h-[42%] rounded-t-lg"
-                                  style={{
-                                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
-                                  }}
-                                ></div>
-                                
-                                {/* Diagonal Spotlight Reflection - Outer Soft (Riflesso morbido) */}
-                                <div 
-                                  className="absolute top-[8%] left-[8%] w-[35%] h-[35%] rounded-full filter blur-[2px] rotate-[15deg]"
-                                  style={{
-                                    background: 'linear-gradient(to bottom right, rgba(255,255,255,0.20), transparent)'
-                                  }}
-                                ></div>
+                              {isCompleted ? (
+                                <div className="plasma-core-wrapper">
+                                  <div className="plasma-bloom"></div>
+                                  <div className="plasma-sphere"></div>
+                                  <div className="plasma-nucleus"></div>
+                                  <div className="plasma-cluster">
+                                    <span className="micro-particle mp1"></span>
+                                    <span className="micro-particle mp2"></span>
+                                    <span className="micro-particle mp3"></span>
+                                    <span className="micro-particle mp4"></span>
+                                    <span className="micro-particle mp5"></span>
+                                    <span className="micro-particle mp6"></span>
+                                    <span className="micro-particle mp7"></span>
+                                    <span className="micro-particle mp8"></span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {/* Circular/Rounded 3D Glass Embossed Reflection Cover */}
+                                  <div 
+                                    className="absolute inset-0 rounded-lg pointer-events-none overflow-hidden z-20"
+                                    style={{
+                                      boxShadow: 'inset 0 4px 8px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.5)'
+                                    }}
+                                  >
+                                    {/* Glossy Curved Bevel Cover (Cupola superiore lucida) */}
+                                    <div 
+                                      className="absolute top-0 inset-x-0 h-[42%] rounded-t-lg"
+                                      style={{
+                                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
+                                      }}
+                                    ></div>
+                                    
+                                    {/* Diagonal Spotlight Reflection - Outer Soft (Riflesso morbido) */}
+                                    <div 
+                                      className="absolute top-[8%] left-[8%] w-[35%] h-[35%] rounded-full filter blur-[2px] rotate-[15deg]"
+                                      style={{
+                                        background: 'linear-gradient(to bottom right, rgba(255,255,255,0.20), transparent)'
+                                      }}
+                                    ></div>
 
-                                {/* Diagonal Spotlight Reflection - Inner Sharp Core (Punto luce super specchiato) */}
-                                <div 
-                                  className="absolute top-[12%] left-[12%] w-[16%] h-[16%] rounded-full filter blur-[0.5px] rotate-[15deg]"
-                                  style={{
-                                    background: 'linear-gradient(to bottom right, rgba(255,255,255,0.55), rgba(255,255,255,0.05))'
-                                  }}
-                                ></div>
-                              </div>
-                              <span className="z-10" style={numStyle}>{t.displayValue || t.value}</span>
+                                    {/* Diagonal Spotlight Reflection - Inner Sharp Core (Punto luce super specchiato) */}
+                                    <div 
+                                      className="absolute top-[12%] left-[12%] w-[16%] h-[16%] rounded-full filter blur-[0.5px] rotate-[15deg]"
+                                      style={{
+                                        background: 'linear-gradient(to bottom right, rgba(255,255,255,0.55), rgba(255,255,255,0.05))'
+                                      }}
+                                    ></div>
+                                  </div>
+                                  <span className="z-10" style={numStyle}>{t.displayValue || t.value}</span>
+                                </>
+                              )}
                             </div>
                           );
                         })
