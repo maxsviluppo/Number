@@ -1122,7 +1122,53 @@ const GameView: React.FC = () => {
     try {
       const profile = await profileService.getProfile(userId);
       const save = await profileService.loadGameState(userId);
-      if (save) setSavedGame(save);
+      
+      // Load offline backup save state
+      let localSave: any = null;
+      try {
+        const cached = localStorage.getItem(`number_game_save_${userId}`);
+        if (cached) localSave = JSON.parse(cached);
+      } catch (e) {
+        console.warn("Error reading local game save:", e);
+      }
+
+      // Resolve the best saved state (max of online save, local backup, and career level)
+      let resolvedSave = save || localSave;
+      const careerMaxLevel = profile?.max_level || 1;
+
+      if (!resolvedSave) {
+        resolvedSave = {
+          level: careerMaxLevel,
+          totalScore: 0,
+          timeLeft: INITIAL_TIME,
+          streak: 0,
+          estimatedIQ: profile?.estimated_iq || 100
+        };
+      } else {
+        // Correct level if it falls below career max level
+        if (resolvedSave.level < careerMaxLevel) {
+          resolvedSave.level = careerMaxLevel;
+        }
+        // Take local save if it is more advanced than the online save
+        if (save && localSave && localSave.level > save.level) {
+          resolvedSave = localSave;
+        }
+      }
+
+      setSavedGame(resolvedSave);
+
+      // Sync resolved save back to online DB and local storage if out of sync
+      if (profile && JSON.stringify(save) !== JSON.stringify(resolvedSave)) {
+        profileService.saveGameState(userId, resolvedSave).catch(e => {
+          console.error("Error auto-syncing resolved save to DB:", e);
+        });
+      }
+      try {
+        localStorage.setItem(`number_game_save_${userId}`, JSON.stringify(resolvedSave));
+      } catch (e) {
+        console.warn("Error writing local game save:", e);
+      }
+
       if (profile) {
         setUserProfile(profile);
 
@@ -1154,6 +1200,17 @@ const GameView: React.FC = () => {
     } catch (error: any) {
       if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted without reason')) {
         console.error("Error loading profile:", error);
+      }
+      
+      // Fallback on error (e.g., offline)
+      try {
+        const cached = localStorage.getItem(`number_game_save_${userId}`);
+        if (cached) {
+          const localSave = JSON.parse(cached);
+          setSavedGame(localSave);
+        }
+      } catch (e) {
+        console.warn("Offline fallback failed:", e);
       }
     }
   }, [checkAndUnlockBadges]);
@@ -2332,6 +2389,11 @@ const GameView: React.FC = () => {
           }
         });
       setSavedGame(initialSaveState);
+      try {
+        localStorage.setItem(`number_game_save_${currentUser.id}`, JSON.stringify(initialSaveState));
+      } catch (e) {
+        console.warn("LocalStorage blocked", e);
+      }
     }
   };
 
@@ -2388,6 +2450,11 @@ const GameView: React.FC = () => {
       // 1. Cancella la partita salvata (resume state)
       await profileService.saveGameState(currentUser.id, null);
       setSavedGame(null);
+      try {
+        localStorage.removeItem(`number_game_save_${currentUser.id}`);
+      } catch (e) {
+        console.warn("LocalStorage blocked", e);
+      }
       localStorage.setItem('career_time_bonus', '0'); // Clear any local bonus
 
       // 2. Reset solo del livello nel profilo (mantiene badge, score totale, ecc.)
@@ -3030,6 +3097,11 @@ const GameView: React.FC = () => {
                 }
               });
             setSavedGame(saveState);
+            try {
+              localStorage.setItem(`number_game_save_${currentUser.id}`, JSON.stringify(saveState));
+            } catch (e) {
+              console.warn("LocalStorage blocked", e);
+            }
           }
         }
       } else {
@@ -3345,6 +3417,12 @@ const GameView: React.FC = () => {
           console.error("Error saving next level state:", e);
         }
       });
+      setSavedGame(saveState);
+      try {
+        localStorage.setItem(`number_game_save_${currentUser.id}`, JSON.stringify(saveState));
+      } catch (e) {
+        console.warn("LocalStorage blocked", e);
+      }
     }
   };
 
@@ -5970,8 +6048,9 @@ const GameView: React.FC = () => {
         {
           activeModal === 'logout_confirm' && (
             <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/90 backdrop-blur-md" onPointerDown={() => setActiveModal(null)}>
-              <div className="bg-slate-900 border-[3px] border-red-500/50 w-full max-w-sm p-8 rounded-[2rem] shadow-[0_0_50px_rgba(220,38,38,0.4)] flex flex-col text-center relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
+              <div className="bg-slate-900 border-[3px] border-red-500/50 w-full max-w-sm p-8 rounded-[2.5rem] shadow-[0_0_60px_rgba(239,68,68,0.4)] flex flex-col text-center relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse"></div>
 
                 <User className="w-16 h-16 text-red-500 mx-auto mb-4" />
                 <h2 className="text-2xl font-black font-orbitron text-white mb-2 uppercase tracking-wider relative z-10">LOGOUT</h2>
@@ -5991,15 +6070,55 @@ const GameView: React.FC = () => {
                       showToast(`Logout effettuato.`);
                       setActiveModal(null);
                     }}
-                    className="w-full bg-red-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border-2 border-white"
+                    className="w-full relative overflow-hidden bg-red-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border-[3px] border-white hover:scale-105 active:translate-y-1 transition-all flex items-center justify-center gap-2 group"
+                    style={{
+                      boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                    }}
                   >
-                    CONFERMA USCITA
+                    {/* Glass layout elements */}
+                    <div className="absolute inset-0 pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
+                    }}></div>
+                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
+                    }}></div>
+                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                    }}></div>
+                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(225deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                    }}></div>
+                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.2), transparent)'
+                    }}></div>
+
+                    <span className="relative z-20">CONFERMA USCITA</span>
                   </button>
                   <button
                     onPointerDown={(e) => { e.stopPropagation(); setActiveModal(null); }}
-                    className="w-full bg-slate-800 text-slate-400 py-3 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border border-slate-600 active:scale-95 transition-all hover:text-white"
+                    className="w-full relative overflow-hidden bg-slate-800 text-slate-200 py-3 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border-[3px] border-white/60 hover:scale-105 active:translate-y-1 transition-all flex items-center justify-center gap-2 group"
+                    style={{
+                      boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                    }}
                   >
-                    ANNULLA
+                    {/* Glass layout elements */}
+                    <div className="absolute inset-0 pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
+                    }}></div>
+                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
+                    }}></div>
+                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                    }}></div>
+                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(225deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                    }}></div>
+                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.2), transparent)'
+                    }}></div>
+
+                    <span className="relative z-20">ANNULLA</span>
                   </button>
                 </div>
               </div>
