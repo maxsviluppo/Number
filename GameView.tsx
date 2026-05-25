@@ -3966,7 +3966,7 @@ const GameView: React.FC = () => {
               </div>
 
               {/* BOTTOM LEFT: Profile Summary Badge */}
-              <div className="fixed bottom-4 left-4 z-[2000]" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
+              <div className="fixed bottom-4 left-4 z-[2000] flex flex-col items-start gap-1" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
                 <div
                   onPointerDown={async (e) => {
                     e.stopPropagation();
@@ -4016,6 +4016,7 @@ const GameView: React.FC = () => {
                     </div>
                   )}
                 </div>
+                <span className="text-[9px] text-white/30 font-black ml-3 font-mono tracking-wider select-none pointer-events-none">v2.3.1</span>
               </div>
 
               {/* BOTTOM RIGHT ICONS: Admin & Tutorial (FIXED Position) */}
