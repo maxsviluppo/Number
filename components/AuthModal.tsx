@@ -99,10 +99,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess, showToast }) 
     return (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={onClose}>
             <div
-                className="glass-panel w-full max-w-md p-8 rounded-[2rem] border-[3px] border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.2)] bg-[#0f172a] relative overflow-hidden"
+                className="w-full max-w-md p-8 rounded-[2.5rem] border-[3px] border-cyan-500/50 shadow-[0_0_60px_rgba(6,182,212,0.4)] bg-slate-900/95 relative overflow-hidden backdrop-blur-xl"
                 onPointerDown={e => e.stopPropagation()}
             >
                 {/* Background Effects */}
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent animate-pulse z-20"></div>
                 <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
                 <button
@@ -201,12 +203,34 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess, showToast }) 
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white py-4 rounded-xl font-black font-orbitron uppercase tracking-widest shadow-lg shadow-cyan-900/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:pointer-events-none mt-6"
+                        className="w-full relative overflow-hidden bg-cyan-500 text-white py-4 rounded-xl font-black font-orbitron uppercase tracking-widest text-xs border-[3px] border-white hover:scale-105 active:translate-y-1 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:pointer-events-none mt-6 group"
+                        style={{
+                          boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                        }}
                     >
-                        {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-                        {mode === 'login' && 'ENTRA NEL SISTEMA'}
-                        {mode === 'signup' && 'REGISTRATI'}
-                        {mode === 'forgot-password' && 'RIPRISTINA PASSWORD'}
+                        {/* Glass layout elements */}
+                        <div className="absolute inset-0 pointer-events-none z-10" style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
+                        }}></div>
+                        <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                          background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
+                        }}></div>
+                        <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                        }}></div>
+                        <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                          background: 'linear-gradient(225deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                        }}></div>
+                        <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                          background: 'linear-gradient(to top, rgba(0,0,0,0.2), transparent)'
+                        }}></div>
+
+                        {loading && <Loader2 className="w-5 h-5 animate-spin relative z-20" />}
+                        <span className="relative z-20">
+                            {mode === 'login' && 'ENTRA NEL SISTEMA'}
+                            {mode === 'signup' && 'REGISTRATI'}
+                            {mode === 'forgot-password' && 'RIPRISTINA PASSWORD'}
+                        </span>
                     </button>
 
                 </form>

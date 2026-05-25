@@ -2628,23 +2628,23 @@ const GameView: React.FC = () => {
         setPathStatus('correct');
         setMatchedTargetValue(result!);
         
-        // Attende 1160ms mostrando la celebre animazione a 4 fasi del target prima di completarlo!
+        // Attende 970ms mostrando la celebre animazione a 4 fasi del target prima di completarlo!
         setTimeout(() => {
           handleSuccess(result!);
           setSelectedPath([]);
           setPathStatus(null);
           setMatchedTargetValue(null);
-        }, 1160);
+        }, 970);
       } else {
         setPathStatus('wrong');
         handleError();
         vibrateDevice(80); // Single hard pulse for error
         
-        // Attende 500ms mostrando il flash rosso fuoco prima di pulire la selezione!
+        // Attende 420ms mostrando il flash rosso fuoco prima di pulire la selezione!
         setTimeout(() => {
           setSelectedPath([]);
           setPathStatus(null);
-        }, 500);
+        }, 420);
       }
       setPreviewResult(null);
     } catch (err: any) {
@@ -3486,7 +3486,7 @@ const GameView: React.FC = () => {
           }
           return prev;
         });
-      }, 500);
+      }, 420);
     }
   };
 

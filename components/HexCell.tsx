@@ -124,7 +124,7 @@ const HexCell: React.FC<HexCellProps> = ({
 
   return (
     <div
-      className={`absolute transition-all duration-300 cursor-pointer flex items-center justify-center 
+      className={`absolute transition-all duration-[250ms] cursor-pointer flex items-center justify-center 
         ${isOrangeTheme ? '' : shapeClass} 
         ${!isOrangeTheme ? 'border-2' : ''} 
         ${data.isFallen ? 'animate-fallen' : (data.isVibrating ? 'animate-vibrate' : (isSelected && pathStatus === 'correct' ? 'animate-hex-correct-bounce' : animationClass))}
@@ -197,7 +197,7 @@ const HexCell: React.FC<HexCellProps> = ({
                 return baseFilter;
               }
             })(),
-            transition: 'filter 0.3s ease'
+            transition: 'filter 0.25s ease'
           }}
         />
       )}
