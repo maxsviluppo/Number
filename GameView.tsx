@@ -4081,13 +4081,20 @@ const GameView: React.FC = () => {
                     setActiveModal('profile');
                   }}
                   id="logo-home"
-                  className={`relative w-36 h-36 flex items-center justify-center mb-4 transition-all duration-[2000ms] ease-in-out group cursor-pointer ${logoAnim ? 'scale-110 drop-shadow-[0_0_25px_rgba(255,136,0,0.6)]' : 'hover:scale-110'}`}
+                  className={`relative w-40 h-40 flex items-center justify-center mb-4 transition-all duration-[2000ms] ease-in-out group cursor-pointer
+                    ${logoAnim 
+                      ? 'scale-110' 
+                      : 'hover:scale-110'
+                    }`}
+                  style={{
+                    filter: logoAnim
+                      ? 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 25px rgba(255, 136, 0, 0.65))'
+                      : undefined
+                  }}
                   title="Apri Profilo"
                 >
                   {/* Custom Octagon Image */}
-                  <img src="/CasellaGlass.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
-
-                  <Brain className="relative w-16 h-16 text-white drop-shadow-md z-10" strokeWidth={2.5} />
+                  <img src="/Faviconottagonook.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
 
                 </div>
 
@@ -4174,37 +4181,40 @@ const GameView: React.FC = () => {
  
                   {/* BOSS LEVELS BUTTON - COLS-SPAN-1 */}
                   <button
-                    className="flex flex-col items-center justify-center pt-5 pb-4 gap-2 bg-emerald-600 text-white rounded-xl border-[3px] border-white hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group active:translate-y-1"
+                    className="flex flex-col items-center justify-center pt-5 pb-4 gap-2 bg-slate-700 text-white/50 rounded-xl border-[3px] border-white/20 col-span-1 relative overflow-hidden group cursor-not-allowed"
                     id="boss-btn-home"
                     style={{
-                      boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
+                      boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.1), inset 0 -4px 8px rgba(0,0,0,0.45)'
                     }}
                     onPointerDown={async (e) => {
                       e.stopPropagation();
                       await handleUserInteraction();
                       soundService.playUIClick();
-                      setActiveModal('boss_selection');
+                      showToast("La modalità BOSS sarà disponibile a breve!");
                     }}
                   >
                     {/* Glass layout elements */}
                     <div className="absolute inset-0 pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.04) 70.1%, rgba(255,255,255,0.1) 100%)'
                     }}></div>
                     <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)'
                     }}></div>
                     <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.01))'
                     }}></div>
                     <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
+                      background: 'linear-gradient(225deg, rgba(255,255,255,0.2), rgba(255,255,255,0.01))'
                     }}></div>
                     <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.15), transparent)'
                     }}></div>
 
-                    <Crown className="w-8 h-8 text-yellow-300 animate-[bounce_3s_infinite] relative z-20" />
-                    <span className="font-orbitron text-[13px] sm:text-[14px] font-black uppercase tracking-widest drop-shadow-md relative z-20 mt-1">BOSSES</span>
+                    <Crown className="w-8 h-8 text-white/40 relative z-20" />
+                    <span className="font-orbitron text-[13px] sm:text-[14px] font-black uppercase tracking-widest drop-shadow-md relative z-20 mt-1">BOSS</span>
+                    
+                    {/* Badge COMING SOON */}
+                    <div className="absolute top-1.5 right-1.5 bg-yellow-500 text-black px-1.5 py-0.5 rounded-[4px] text-[7px] font-black tracking-widest uppercase shadow-md z-20 animate-pulse">COMING SOON</div>
                   </button>
  
                   {/* RANKING BUTTON - COLS-SPAN-1 */}
@@ -4254,123 +4264,229 @@ const GameView: React.FC = () => {
           <div className="w-full h-full flex flex-col items-center z-10 p-4 pt-12 sm:pt-4 max-w-4xl animate-screen-in">
             {gameState.status !== 'won' && gameState.status !== 'level-complete' && gameState.status !== 'game-over' && gameState.status !== 'opponent-surrendered' && (
               <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
-                <div className={`
-                relative w-full flex justify-between items-center px-4 py-3 rounded-[2.5rem] border-[4px]
-                ${gameState.bossLevelId === 2
-                    ? 'border-amber-500/80'
-                    : gameState.isBossLevel
-                      ? 'border-emerald-400/80'
-                      : 'border-[#b8c6db]'}
-                transition-all duration-300
-              `}
-              style={{
-                boxShadow: 'inset 0 6px 12px rgba(255,255,255,0.55), inset 0 -6px 12px rgba(0,0,0,0.65)'
-              }}>
-                {/* Internal container to confine bokeh & high-gloss styling with perfect overflow clipping */}
-                <div className="absolute inset-0 rounded-[2.2rem] overflow-hidden z-0 pointer-events-none"
-                  style={gameState.bossLevelId === 2
-                    ? { 
-                        background: 'linear-gradient(135deg, #92400e, #d97706, #b45309, #92400e)',
-                        backgroundSize: '300% 300%',
-                        animation: 'rainbowFlow 8s ease-in-out infinite'
-                      }
-                    : gameState.isBossLevel
-                      ? { 
-                          background: 'linear-gradient(135deg, #065f46, #10b981, #059669, #065f46)',
-                          backgroundSize: '300% 300%',
-                          animation: 'rainbowFlow 8s ease-in-out infinite'
-                        }
-                      : { 
-                          background: 'linear-gradient(135deg, #00ff66, #00f0ff, #cc00ff, #ff007f, #ffaa00, #00ff66)',
-                          backgroundSize: '300% 300%',
-                          animation: 'rainbowFlow 12s ease-in-out infinite'
-                        }
-                  }>
-                  {/* CSS float animations for bokeh circles */}
-                  <style dangerouslySetInnerHTML={{__html: `
-                    @keyframes float-b-1 {
-                      0% { transform: translate(0px, 0px) scale(1); }
-                      50% { transform: translate(18px, -5px) scale(1.15); }
-                      100% { transform: translate(0px, 0px) scale(1); }
-                    }
-                    @keyframes float-b-2 {
-                      0% { transform: translate(0px, 0px) scale(1); }
-                      50% { transform: translate(-14px, 6px) scale(0.85); }
-                      100% { transform: translate(0px, 0px) scale(1); }
-                    }
-                    @keyframes float-b-3 {
-                      0% { transform: translate(0px, 0px) scale(1); }
-                      50% { transform: translate(12px, 8px) scale(1.2); }
-                      100% { transform: translate(0px, 0px) scale(1); }
-                    }
-                    @keyframes float-b-4 {
-                      0% { transform: translate(0px, 0px) scale(1); }
-                      50% { transform: translate(-10px, -6px) scale(1.1); }
-                      100% { transform: translate(0px, 0px) scale(1); }
-                    }
-                    @keyframes float-b-5 {
-                      0% { transform: translate(0px, 0px) scale(1); }
-                      50% { transform: translate(16px, -4px) scale(0.9); }
-                      100% { transform: translate(0px, 0px) scale(1); }
-                    }
-                    @keyframes float-b-6 {
-                      0% { transform: translate(0px, 0px) scale(1); }
-                      50% { transform: translate(-8px, 5px) scale(1.15); }
-                      100% { transform: translate(0px, 0px) scale(1); }
-                    }
-                    @keyframes rainbowFlow {
-                      0% { background-position: 0% 50%; }
-                      50% { background-position: 100% 50%; }
-                      100% { background-position: 0% 50%; }
-                    }
-                  `}} />
+                <style dangerouslySetInnerHTML={{__html: `
+                  .chrome-bar {
+                    background: linear-gradient(to bottom, #ffffff 0%, #e8ebf0 10%, #c2c7d2 25%, #858c99 50%, #535a66 75%, #a1a7b5 92%, #ffffff 100%);
+                    border: 4px solid #b1b6c0;
+                    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.9), inset 0 -4px 4px rgba(0, 0, 0, 0.6), 0 10px 20px rgba(0,0,0,0.5);
+                  }
 
-                  {/* Bokeh texture overlay */}
-                  <div className="absolute inset-0 pointer-events-none" style={{
-                    background: gameState.isBossLevel || gameState.bossLevelId === 2 ? 'none' :
-                      'radial-gradient(circle at 15% 50%, rgba(255,255,255,0.18) 0%, transparent 40%), radial-gradient(circle at 40% 30%, rgba(255,255,255,0.12) 0%, transparent 30%), radial-gradient(circle at 70% 60%, rgba(255,255,255,0.15) 0%, transparent 35%), radial-gradient(circle at 88% 40%, rgba(255,255,255,0.10) 0%, transparent 25%)'
-                  }}></div>
+                  .chrome-divider {
+                    width: 5px;
+                    height: 80%;
+                    background: linear-gradient(to right, #404550 0%, #8c93a0 25%, #ffffff 50%, #8c93a0 75%, #2a2e37 100%);
+                    box-shadow: 1px 0 1px rgba(255,255,255,0.2), -1px 0 1px rgba(0,0,0,0.4);
+                  }
+
+                  .btn-panel {
+                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.6), inset -2px -3px 5px rgba(255, 255, 255, 0.2);
+                    transition: transform 0.1s ease, filter 0.2s ease, box-shadow 0.2s ease;
+                    position: relative;
+                    overflow: hidden;
+                    height: 85%;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                  }
+
+                  button.btn-panel {
+                    cursor: pointer;
+                  }
+
+                  .btn-panel::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 40%;
+                    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.25), transparent);
+                    pointer-events: none;
+                  }
+
+                  .btn-panel:active {
+                    transform: scale(0.95);
+                  }
+
+                  .btn-panel-green {
+                    background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+                  }
+                  .btn-panel-green:hover {
+                    filter: brightness(1.2);
+                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.4), inset -2px -3px 5px rgba(255, 255, 255, 0.3), 0 0 15px rgba(16, 185, 129, 0.8), 0 0 5px rgba(16, 185, 129, 0.4);
+                  }
+                  .btn-panel-green:hover svg {
+                    filter: drop-shadow(0 0 6px #10b981) !important;
+                  }
+                  .btn-panel-green:active {
+                    filter: brightness(1.35);
+                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.3), inset -2px -3px 5px rgba(255, 255, 255, 0.4), 0 0 25px rgba(16, 185, 129, 1), 0 0 10px rgba(16, 185, 129, 0.6);
+                  }
+                  .btn-panel-green:active svg {
+                    filter: drop-shadow(0 0 10px #10b981) !important;
+                  }
+
+                  .btn-panel-blue {
+                    background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #6366f1 100%);
+                  }
+                  .btn-panel-blue:hover {
+                    filter: brightness(1.2);
+                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.4), inset -2px -3px 5px rgba(255, 255, 255, 0.3), 0 0 15px rgba(6, 182, 212, 0.8), 0 0 5px rgba(6, 182, 212, 0.4);
+                  }
+                  .btn-panel-blue:hover svg {
+                    filter: drop-shadow(0 0 6px #06b6d4) !important;
+                  }
+                  .btn-panel-blue:active {
+                    filter: brightness(1.35);
+                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.3), inset -2px -3px 5px rgba(255, 255, 255, 0.4), 0 0 25px rgba(6, 182, 212, 1), 0 0 10px rgba(6, 182, 212, 0.6);
+                  }
+                  .btn-panel-blue:active svg {
+                    filter: drop-shadow(0 0 10px #06b6d4) !important;
+                  }
+
+                  .btn-panel-orange {
+                    background: linear-gradient(135deg, #db2777 0%, #f97316 60%, #eab308 100%);
+                  }
+                  .btn-panel-orange:hover {
+                    filter: brightness(1.2);
+                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.4), inset -2px -3px 5px rgba(255, 255, 255, 0.3), 0 0 15px rgba(249, 115, 22, 0.8), 0 0 5px rgba(249, 115, 22, 0.4);
+                  }
+                  .btn-panel-orange:hover span {
+                    filter: drop-shadow(0 0 6px #f97316) !important;
+                  }
+                  .btn-panel-orange:active {
+                    filter: brightness(1.35);
+                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.3), inset -2px -3px 5px rgba(255, 255, 255, 0.4), 0 0 25px rgba(249, 115, 22, 1), 0 0 10px rgba(249, 115, 22, 0.6);
+                  }
+                  .btn-panel-orange:active span {
+                    filter: drop-shadow(0 0 10px #f97316) !important;
+                  }
+
+                  .btn-panel-yellow {
+                    background: linear-gradient(135deg, #fde047 0%, #eab308 60%, #ca8a04 100%);
+                  }
+                  .btn-panel-yellow:hover {
+                    filter: brightness(1.2);
+                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.4), inset -2px -3px 5px rgba(255, 255, 255, 0.3), 0 0 15px rgba(234, 179, 8, 0.8), 0 0 5px rgba(234, 179, 8, 0.4);
+                  }
+                  .btn-panel-yellow:hover span {
+                    filter: drop-shadow(0 0 6px #eab308) !important;
+                  }
+                  .btn-panel-yellow:active {
+                    filter: brightness(1.35);
+                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.3), inset -2px -3px 5px rgba(255, 255, 255, 0.4), 0 0 25px rgba(234, 179, 8, 1), 0 0 10px rgba(234, 179, 8, 0.6);
+                  }
+                  .btn-panel-yellow:active span {
+                    filter: drop-shadow(0 0 10px #eab308) !important;
+                  }
+
+                  .chrome-timer-outer {
+                    width: 106px;
+                    height: 106px;
+                    border-radius: 50%;
+                    position: relative;
+                    background: conic-gradient(from 135deg, #ffffff 0%, #d8dbe3 10%, #8f96a3 22%, #434955 35%, #9fa5b2 45%, #ffffff 55%, #b0b5c1 65%, #323740 78%, #949aa7 90%, #ffffff 100%);
+                    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.65), inset 0 2px 3px rgba(255, 255, 255, 0.9), inset 0 -2px 3px rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                  }
+
+                  .chrome-timer-outer-square {
+                    width: 106px;
+                    height: 106px;
+                    border-radius: 20px;
+                    position: relative;
+                    background: conic-gradient(from 135deg, #ffffff 0%, #d8dbe3 10%, #8f96a3 22%, #434955 35%, #9fa5b2 45%, #ffffff 55%, #b0b5c1 65%, #323740 78%, #949aa7 90%, #ffffff 100%);
+                    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.65), inset 0 2px 3px rgba(255, 255, 255, 0.9), inset 0 -2px 3px rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                  }
+
+                  .glass-timer-inner {
+                    width: 90px;
+                    height: 90px;
+                    border-radius: 50%;
+                    background: radial-gradient(circle at 50% 25%, #181d28 0%, #030406 80%, #000000 100%);
+                    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95), inset 0 -3px 6px rgba(255, 255, 255, 0.15), 0 0 1px 1px rgba(0, 0, 0, 0.4);
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                  }
+
+                  .glass-timer-inner-square {
+                    width: 88px;
+                    height: 88px;
+                    border-radius: 14px;
+                    background: radial-gradient(circle at 50% 25%, #181d28 0%, #030406 80%, #000000 100%);
+                    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95), inset 0 -3px 6px rgba(255, 255, 255, 0.15), 0 0 1px 1px rgba(0, 0, 0, 0.4);
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                  }
+
+                  .glass-timer-reflection {
+                    position: absolute;
+                    top: -18%;
+                    left: -10%;
+                    width: 120%;
+                    height: 60%;
+                    border-radius: 50%;
+                    background: radial-gradient(ellipse 80% 55% at 50% 30%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.18) 45%, transparent 70%);
+                    pointer-events: none;
+                    z-index: 30;
+                  }
+
+                  .glass-timer-glint {
+                    position: absolute;
+                    bottom: -20%;
+                    left: -10%;
+                    width: 120%;
+                    height: 55%;
+                    border-radius: 50%;
+                    background: radial-gradient(ellipse 80% 50% at 50% 70%, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.10) 45%, transparent 70%);
+                    pointer-events: none;
+                    z-index: 30;
+                  }
                   
-                  {/* Visible bokeh circles - same as reference image with slow floating animations */}
-                  <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[2.2rem]">
-                    <div style={{ position:'absolute', top:'10%', left:'8%', width:'48px', height:'48px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(4px)', animation: 'float-b-1 14s infinite ease-in-out' }}></div>
-                    <div style={{ position:'absolute', top:'30%', left:'15%', width:'28px', height:'28px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(2px)', animation: 'float-b-2 18s infinite ease-in-out' }}></div>
-                    <div style={{ position:'absolute', top:'5%', left:'33%', width:'38px', height:'38px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(3px)', animation: 'float-b-3 21s infinite ease-in-out' }}></div>
-                    <div style={{ position:'absolute', top:'15%', left:'56%', width:'54px', height:'54px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.50) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(5px)', animation: 'float-b-4 16s infinite ease-in-out' }}></div>
-                    <div style={{ position:'absolute', top:'8%', right:'10%', width:'34px', height:'34px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.60) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(3px)', animation: 'float-b-5 19s infinite ease-in-out' }}></div>
-                    <div style={{ position:'absolute', top:'40%', right:'18%', width:'20px', height:'20px', borderRadius:'50%', background:'radial-gradient(circle, rgba(255,255,255,0.40) 0%, rgba(255,255,255,0.0) 70%)', filter:'blur(2px)', animation: 'float-b-6 24s infinite ease-in-out' }}></div>
-                  </div>
+                   @keyframes heartBeatPulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.4); }
+                    100% { transform: scale(1); }
+                  }
 
-                  {/* Sharp High-Gloss Specular Glass Diagonal highlight reflection sweep */}
-                  <div className="absolute inset-0 pointer-events-none" style={{
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.22) 32%, transparent 32.1%, transparent 72%, rgba(255,255,255,0.12) 72.1%, rgba(255,255,255,0.25) 100%)'
-                  }}></div>
+                  #logo-home {
+                    transition: transform 2s ease-in-out, filter 2s ease-in-out;
+                    filter: drop-shadow(0 12px 15px rgba(0, 0, 0, 0.5));
+                  }
+                  
+                  @media (hover: hover) {
+                    #logo-home:hover {
+                      filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3)) !important;
+                    }
+                  }
 
-                  {/* Glossy Curved Bevel Cover (Cupola superiore lucida ad effetto vetro 3D) */}
-                  <div className="absolute top-0 inset-x-0 h-[42%] pointer-events-none rounded-t-[2.2rem]" style={{
-                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                  }}></div>
+                  #logo-home:active {
+                    transform: scale(0.95) !important;
+                    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)) !important;
+                    transition: transform 0.1s ease, filter 0.1s ease !important;
+                  }
+                 `}} />
 
-                  {/* Lateral Sharp Specular Highlights (Riflessi luce specchiati alle estremità curve) */}
-                  <div className="absolute top-[8%] left-[4%] w-[22%] h-[20%] rounded-full filter blur-[1px] pointer-events-none" style={{
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                  }}></div>
-                  <div className="absolute top-[8%] right-[4%] w-[22%] h-[20%] rounded-full filter blur-[1px] pointer-events-none" style={{
-                    background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                  }}></div>
-
-                  {/* Top shine edge */}
-                  <div className="absolute top-0 inset-x-0 h-[38%] pointer-events-none" style={{
-                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.30), transparent)'
-                  }}></div>
-                  {/* Bottom shadow edge */}
-                  <div className="absolute bottom-0 inset-x-0 h-[28%] pointer-events-none" style={{
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.35), transparent)'
-                  }}></div>
-                </div>
-                  {/* SERIES SCOREBOARD REMOVED PER USER REQUEST */}
-                  {/* Left Group: Buttons */}
-                  <div className="flex gap-2.5 items-center">
+                <div className="relative w-full h-16 chrome-bar rounded-[2.5rem] flex items-center px-2.5 justify-between">
+                  
+                  {/* LATO SINISTRO: HOME + DIVISORE + AUDIO */}
+                  <div className="flex w-[40%] h-full items-center gap-1.5">
+                    {/* HOME */}
                     <button
                       onPointerDown={(e) => {
                         e.stopPropagation();
@@ -4379,100 +4495,73 @@ const GameView: React.FC = () => {
                         goToHome(e);
                         setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
                       }}
-                      className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-[0_4px_10px_rgba(0,0,0,0.35)] overflow-hidden z-10"
-                      style={{
-                        background: 'radial-gradient(circle at 30% 30%, #ffa84c 0%, #ff8800 50%, #c45a00 100%)',
-                        border: '2px solid rgba(255,255,255,0.65)',
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -3px 6px rgba(0,0,0,0.45)'
-                      }}
-                      title="Home"
+                      className="btn-panel btn-panel-green flex-grow rounded-l-[1.8rem] rounded-r-md text-emerald-950 font-black flex items-center justify-center"
                     >
-                      <div className="absolute top-0 inset-x-0 h-[40%] rounded-t-full pointer-events-none z-20" style={{
-                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.30), transparent)'
-                      }} />
-                      <div className="absolute top-[12%] left-[12%] w-[20%] h-[20%] rounded-full filter blur-[0.5px] pointer-events-none z-20" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.05))'
-                      }} />
-                      <Home className="w-5 h-5 relative z-10 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
+                      <Home className="w-7 h-7 text-emerald-950/90 drop-shadow-[0_2px_4px_rgba(255,255,255,0.35),0_1px_2px_rgba(0,0,0,0.4)]" />
                     </button>
+
+                    {/* SOLCO */}
+                    <div className="chrome-divider" />
+
+                    {/* AUDIO */}
                     <button
                       onPointerDown={toggleMute}
-                      className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-[0_4px_10px_rgba(0,0,0,0.35)] overflow-hidden z-10"
-                      style={{
-                        background: 'radial-gradient(circle at 30% 30%, #4ea8ff 0%, #0077ff 50%, #004fb0 100%)',
-                        border: '2px solid rgba(255,255,255,0.65)',
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -3px 6px rgba(0,0,0,0.45)'
-                      }}
+                      className="btn-panel btn-panel-blue flex-grow rounded-md text-indigo-950 font-black flex items-center justify-center"
                     >
-                      <div className="absolute top-0 inset-x-0 h-[40%] rounded-t-full pointer-events-none z-20" style={{
-                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.30), transparent)'
-                      }} />
-                      <div className="absolute top-[12%] left-[12%] w-[20%] h-[20%] rounded-full filter blur-[0.5px] pointer-events-none z-20" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.05))'
-                      }} />
                       {isMuted ? (
-                        <VolumeX className="w-5 h-5 relative z-10 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
+                        <VolumeX className="w-7 h-7 text-indigo-950/90 drop-shadow-[0_2px_4px_rgba(255,255,255,0.35),0_1px_2px_rgba(0,0,0,0.4)]" />
                       ) : (
-                        <Volume2 className="w-5 h-5 relative z-10 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
+                        <Volume2 className="w-7 h-7 text-indigo-950/90 drop-shadow-[0_2px_4px_rgba(255,255,255,0.35),0_1px_2px_rgba(0,0,0,0.4)]" />
                       )}
                     </button>
                   </div>
 
-                  {/* Center: Floating Timer (Half-In/Half-Out) */}
-                  {/* Center: Floating Timer (Half-In/Half-Out) - CLICKABLE PAUSE */}
-                  <div id="timer-display-game" className="absolute left-1/2 -translate-x-1/2 top-1/2 transform translate-y-[-10%] z-[100] cursor-pointer group" onPointerDown={activeMatch?.isDuel ? undefined : togglePause}>
-                    {/* Round Indicator - Only for Blitz - Now handled in Right Side Score */}
-                    {activeMatch?.isDuel && duelMode === 'blitz' && false && (
-                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-amber-400/50 text-amber-100 text-[11px] font-black font-orbitron px-5 py-1.5 rounded-full z-[110] whitespace-nowrap shadow-[0_0_20px_rgba(251,191,36,0.2)] animate-pulse-slow">
-                        ROUND {duelRounds.p1 + duelRounds.p2 + 1} / 5
-                      </div>
-                    )}
+                  {/* CENTRO: TIMER (assoluto per sporgere sopra/sotto) */}
+                  <div className="w-[16%] flex justify-center">
+                    {/* Spazio vuoto occupato dal timer assoluto */}
+                  </div>
 
+                  {/* LATO DESTRO: PUNTI + DIVISORE + LIVELLI */}
+                  <div className="flex w-[40%] h-full items-center gap-1.5">
+                    {/* PUNTI */}
+                    <div className="btn-panel btn-panel-orange flex-grow rounded-md flex flex-col justify-center items-center text-amber-950 font-black">
+                      <span className="text-[7px] leading-none text-amber-950/60 uppercase tracking-widest">PUNTI</span>
+                      <span className="text-xl font-black font-orbitron leading-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.6)] mt-0.5">
+                        {activeMatch?.isDuel ? gameState.score : gameState.totalScore}
+                      </span>
+                    </div>
+
+                    {/* SOLCO */}
+                    <div className="chrome-divider" />
+
+                    {/* LIVELLI */}
+                    <div className="btn-panel btn-panel-yellow flex-grow rounded-r-[1.8rem] rounded-l-md flex flex-col justify-center items-center text-yellow-950 font-black">
+                      <span className="text-[7px] leading-none text-yellow-950/60 uppercase tracking-widest">
+                        {gameState.isBossLevel ? 'BOSS' : 'LIVELLO'}
+                      </span>
+                      <span className="text-xl font-black font-orbitron leading-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.6)] mt-0.5">
+                        {gameState.isBossLevel ? gameState.bossLevelId : gameState.level}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* TIMER IN SOVRAPPOSIZIONE ASSOLUTA */}
+                  <div
+                    id="timer-display-game"
+                    className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-[100] cursor-pointer group"
+                    onPointerDown={activeMatch?.isDuel ? undefined : togglePause}
+                  >
                     {gameState.isBossLevel ? (
-                      <div className={`relative w-24 h-24 flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110' : 'hover:scale-105'}`}>
-                        {/* External White Frame */}
-                        <div className="absolute -inset-1 rounded-xl border-[4px] border-white pointer-events-none"></div>
-
-                        <div className={`absolute inset-0 bg-slate-900 rounded-xl border-[4px] shadow-lg
-                          ${gameState.bossLevelId === 2
-                            ? 'border-amber-600 shadow-[0_0_20px_rgba(217,119,6,0.4)]'
-                            : 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
-                          }`}></div>
-
-                        {/* BOSS TIMER PROGRESS SQUARE */}
-                        <svg className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
-                          <defs>
-                            <filter id="bossGlow" x="-20%" y="-20%" width="140%" height="140%">
-                              <feGaussianBlur stdDeviation="2" result="blur" />
-                              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                            </filter>
-                          </defs>
-                          <rect
-                            x="2" y="2" width="92" height="92" rx="12"
-                            stroke={gameState.bossLevelId === 2 ? 'rgba(217, 119, 6, 0.2)' : 'rgba(16, 185, 129, 0.2)'}
-                            strokeWidth="6"
-                            fill="none"
-                          />
-                          <rect
-                            x="2" y="2" width="92" height="92" rx="12"
-                            stroke={gameState.bossLevelId === 2 ? '#DEB887' : '#10b981'}
-                            strokeWidth="6"
-                            fill="none"
-                            pathLength="100"
-                            strokeDasharray="100"
-                            strokeDashoffset={100 * (1 - (gameState.timeLeft / (BOSS_LEVELS.find(b => b.id === gameState.bossLevelId)?.time || 90)))}
-                            strokeLinecap="round"
-                            className="transition-all duration-1000 ease-linear"
-                          />
-                        </svg>
-
-                        <div className="relative z-10 flex flex-col items-center justify-center text-white">
+                      <div className={`chrome-timer-outer-square transition-all duration-300 ${isPaused ? 'scale-110' : 'hover:scale-105'}`}>
+                        <div className="glass-timer-inner-square text-white">
+                          <div className="glass-timer-reflection" />
+                          <div className="glass-timer-glint" />
                           {isPaused ? (
-                            <Pause className={`w-8 h-8 animate-pulse ${gameState.bossLevelId === 2 ? 'text-amber-500' : 'text-emerald-400'}`} />
+                            <Pause className="w-8 h-8 animate-pulse text-emerald-400" />
                           ) : (
                             <>
-                              <span className={`text-[8px] font-black uppercase leading-none mb-1 tracking-widest ${gameState.bossLevelId === 2 ? 'text-amber-500' : 'text-emerald-400'}`}>BOSS</span>
-                              <span className="font-black font-orbitron text-3xl leading-none drop-shadow-md">{gameState.timeLeft}</span>
+                              <span className="text-[7px] font-black uppercase leading-none mb-0.5 text-emerald-400 tracking-widest">BOSS</span>
+                              <span className="font-black font-orbitron text-2xl leading-none drop-shadow-md text-white">{gameState.timeLeft}</span>
                             </>
                           )}
                         </div>
@@ -4481,222 +4570,123 @@ const GameView: React.FC = () => {
                       const timerLimit = (activeMatch?.mode === 'time_attack') ? 60 : (60 + parseInt(typeof window !== 'undefined' ? localStorage.getItem('career_time_bonus') || '0' : '0'));
                       const timerPct = (gameState.timeLeft / timerLimit) * 100;
                       const timerColor = timerPct > 80 ? '#00f0ff' : timerPct > 40 ? '#00ff66' : timerPct > 15 ? '#FF8800' : '#ff003c';
+                      const getTimerFontSize = (n: number) => {
+                        const digits = Math.abs(n).toString().length;
+                        if (digits >= 4) return 'text-sm tracking-tight';
+                        if (digits === 3) return 'text-xl';
+                        return 'text-3xl';
+                      };
 
                       return (
-                        <div className={`relative w-28 h-28 rounded-full flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110 shadow-none' : 'group-hover:scale-105'}`}
-                        style={{
-                          /* Real carbon fiber diagonal weave */
-                          background: 'repeating-linear-gradient(135deg, #1c1c1c 0px, #1c1c1c 2px, #2a2a2a 2px, #2a2a2a 4px, #222 4px, #222 6px, #303030 6px, #303030 8px)',
-                          border: '5px solid #555',
-                          boxShadow: '0 0 0 2px #888, 0 0 0 3px #333, inset 0 1px 0 rgba(255,255,255,0.12)'
-                        }}>
-                          {/* CSS Animation for heart beat pulse */}
-                          <style dangerouslySetInnerHTML={{ __html: `
-                            @keyframes heartBeatPulse {
-                              0% { transform: scale(1); }
-                              50% { transform: scale(1.4); }
-                              100% { transform: scale(1); }
-                            }
-                          ` }} />
-                        {/* Circular 3D Glass Embossed Reflection Cover (Copertura in rilievo 3D ad effetto vetro con riflesso fisso) */}
-                        <div 
-                          className="absolute inset-0 rounded-full pointer-events-none overflow-hidden z-20"
-                          style={{
-                            boxShadow: 'inset 0 4px 8px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.3)'
-                          }}
-                        >
-                          {/* Glossy Curved Bevel Cover (Bombatura sferica lucida superiore) */}
-                          <div 
-                            className="absolute top-0 inset-x-0 h-[45%] rounded-t-full"
-                            style={{
-                              background: 'linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)'
-                            }}
-                          ></div>
-                          
-                          {/* Diagonal Spotlight Reflection - Outer Soft (Riflesso morbido) */}
-                          <div 
-                            className="absolute top-[8%] left-[8%] w-[32%] h-[32%] rounded-full filter blur-[3px] rotate-[15deg]"
-                            style={{
-                              background: 'linear-gradient(to bottom right, rgba(255,255,255,0.18), transparent)'
-                            }}
-                          ></div>
-
-                          {/* Diagonal Spotlight Reflection - Inner Sharp Core (Punto luce super lucido) */}
-                          <div 
-                            className="absolute top-[12%] left-[12%] w-[15%] h-[15%] rounded-full filter blur-[0.5px] rotate-[15deg]"
-                            style={{
-                              background: 'linear-gradient(to bottom right, rgba(255,255,255,0.45), rgba(255,255,255,0.05))'
-                            }}
-                          ></div>
-                        </div>
-
-                        <svg className="absolute inset-0 w-full h-full -rotate-90 scale-95" style={{ overflow: 'visible' }}>
-                          <circle cx="50%" cy="50%" r="45%" stroke={`${timerColor}1e`} strokeWidth="10" fill="none" />
-                          {!isPaused && (
-                            <>
-                              {/* Dynamic Neon Blur Under-Ring (Creates smooth circular glow) */}
-                              <circle
-                                cx="50%" cy="50%" r="45%"
-                                stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                                  ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
-                                  : timerColor}
-                                strokeWidth="16"
-                                fill="none"
-                                pathLength="100"
-                                strokeDasharray="100"
-                                strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                                    ? 100 - (100 * (opponentTargets || 0) / 5)
-                                    : (100 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / timerLimit))))
-                                }
-                                strokeLinecap="round"
-                                className="transition-all duration-1000 ease-linear blur-[5px] opacity-45"
-                              />
-                              
-                              {/* Main Solid Top-Ring (Sharp and crisp vector edge) */}
-                              <circle
-                                cx="50%" cy="50%" r="45%"
-                                stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                                  ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
-                                  : timerColor}
-                                strokeWidth="10"
-                                fill="none"
-                                pathLength="100"
-                                strokeDasharray="100"
-                                strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
-                                    ? 100 - (100 * (opponentTargets || 0) / 5)
-                                    : (100 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / timerLimit))))
-                                }
-                                strokeLinecap="round"
-                                className="transition-all duration-1000 ease-linear"
-                              />
-                            </>
-                          )}
-                        </svg>
-                        {isPaused ? (
-                          <Pause className="w-10 h-10 text-white animate-pulse absolute z-10" fill="white" />
-                        ) : (
-                          <div className="relative z-10 flex flex-col items-center justify-center text-white">
-                            {activeMatch?.isDuel && duelMode === 'blitz' ? (
-                              <>
-                                <div className="flex items-center gap-1.5 mb-1 scale-90 opacity-90 font-orbitron font-black">
-                                  <span className="text-cyan-400 text-sm drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]">
-                                    {gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p1' : 'p2')).length}
-                                  </span>
-                                  <span className="text-white/20 text-[6px]">VS</span>
-                                  <span className="text-red-500 text-sm drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">
-                                    {gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p2' : 'p1')).length}
-                                  </span>
-                                </div>
-                                <span className="font-black font-orbitron text-2xl leading-none tracking-tighter transition-all duration-300"
-                                  style={{ 
-                                    color: timerColor, 
-                                    textShadow: `0 0 10px ${timerColor}, 0 0 20px ${timerColor}80`,
-                                    ...(gameState.timeLeft <= 5 && !isPaused ? {
-                                      animation: 'heartBeatPulse 1s ease-in-out infinite',
-                                      display: 'inline-block'
-                                    } : {})
-                                  }}>
-                                  {gameState.timeLeft}
-                                </span>
-                              </>
+                        <div className={`chrome-timer-outer transition-all duration-300 ${isPaused ? 'scale-110' : 'group-hover:scale-105'}`}>
+                          <div className="glass-timer-inner">
+                            <div className="glass-timer-reflection" />
+                            <div className="glass-timer-glint" />
+                            
+                            <svg className="absolute inset-0 w-full h-full -rotate-90 scale-95" style={{ overflow: 'visible' }}>
+                              <circle cx="50%" cy="50%" r="44%" stroke={`${timerColor}18`} strokeWidth="4" fill="none" />
+                              {!isPaused && (
+                                <>
+                                  <circle
+                                    cx="50%" cy="50%" r="44%"
+                                    stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                                      ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
+                                      : timerColor}
+                                    strokeWidth="6"
+                                    fill="none"
+                                    pathLength="100"
+                                    strokeDasharray="100"
+                                    strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                                        ? 100 - (100 * (opponentTargets || 0) / 5)
+                                        : (100 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / timerLimit))))
+                                    }
+                                    strokeLinecap="round"
+                                    className="transition-all duration-1000 ease-linear blur-[2px] opacity-60"
+                                  />
+                                  <circle
+                                    cx="50%" cy="50%" r="44%"
+                                    stroke={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                                      ? `rgb(${Math.floor(((opponentTargets || 0) / 5) * 205 + 34)}, ${Math.floor((1 - (opponentTargets || 0) / 5) * 129 + 68)}, 68)`
+                                      : timerColor}
+                                    strokeWidth="4"
+                                    fill="none"
+                                    pathLength="100"
+                                    strokeDasharray="100"
+                                    strokeDashoffset={activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz'
+                                        ? 100 - (100 * (opponentTargets || 0) / 5)
+                                        : (100 * (1 - Math.max(0, Math.min(1, gameState.timeLeft / timerLimit))))
+                                    }
+                                    strokeLinecap="round"
+                                    className="transition-all duration-1000 ease-linear"
+                                  />
+                                </>
+                              )}
+                            </svg>
+                            
+                            {isPaused ? (
+                              <Pause className="w-8 h-8 text-white animate-pulse" fill="white" />
                             ) : (
-                              <>
-                                {activeMatch?.isDuel && duelMode !== 'time_attack' && (
-                                  <span className="text-[8px] font-black text-white/30 uppercase leading-none mb-1 tracking-widest">
-                                    {duelMode === 'time_attack' ? 'TIME' : 'ENEMY'}
-                                  </span>
+                              <div className="relative z-10 flex flex-col items-center justify-center text-white">
+                                {activeMatch?.isDuel && duelMode === 'blitz' ? (
+                                  <>
+                                    <div className="flex items-center gap-1 mb-0.5 scale-75 opacity-90 font-orbitron font-black">
+                                      <span className="text-cyan-400 text-xs drop-shadow-[0_0_4px_rgba(34,211,238,0.5)]">
+                                        {gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p1' : 'p2')).length}
+                                      </span>
+                                      <span className="text-white/20 text-[5px]">VS</span>
+                                      <span className="text-red-500 text-xs drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]">
+                                        {gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p2' : 'p1')).length}
+                                      </span>
+                                    </div>
+                                    <span className={`font-black font-orbitron leading-none tracking-tighter ${getTimerFontSize(gameState.timeLeft)}`}
+                                      style={{ 
+                                        color: timerColor, 
+                                        textShadow: `0 0 8px ${timerColor}, 0 0 16px ${timerColor}80`,
+                                        ...(gameState.timeLeft <= 5 ? {
+                                          animation: 'heartBeatPulse 1s ease-in-out infinite',
+                                          display: 'inline-block'
+                                        } : {})
+                                      }}>
+                                      {gameState.timeLeft}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    {activeMatch?.isDuel && duelMode !== 'time_attack' && (
+                                      <span className="text-[6px] font-black text-white/40 uppercase leading-none mb-0.5 tracking-widest">
+                                        {duelMode === 'time_attack' ? 'TIME' : 'ENEMY'}
+                                      </span>
+                                    )}
+                                    {(() => {
+                                        const displayVal = activeMatch?.isDuel
+                                          ? ((duelMode === 'time_attack' || duelMode === 'blitz') ? gameState.timeLeft : opponentTargets)
+                                          : gameState.timeLeft;
+                                        return (
+                                          <span className={`font-black font-orbitron leading-none ${getTimerFontSize(displayVal)}`}
+                                            style={{ 
+                                              color: (activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz') ? '#FF8800' : timerColor, 
+                                              textShadow: (activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz')
+                                                ? '0 0 8px rgba(255,136,0,0.9), 0 0 16px rgba(255,136,0,0.5)'
+                                                : `0 0 8px ${timerColor}, 0 0 16px ${timerColor}80`,
+                                              ...(gameState.timeLeft <= 5 && !(activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz') ? {
+                                                animation: 'heartBeatPulse 1s ease-in-out infinite',
+                                                display: 'inline-block'
+                                              } : {})
+                                            }}>
+                                            {displayVal}
+                                          </span>
+                                        );
+                                      })()}
+                                  </>
                                 )}
-                                <span className={`font-black font-orbitron leading-none transition-all duration-300 ${activeMatch?.isDuel ? 'text-4xl' : 'text-3xl'}`}
-                                  style={{ 
-                                    color: (activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz') ? '#FF8800' : timerColor, 
-                                    textShadow: (activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz')
-                                      ? '0 0 10px rgba(255,136,0,0.9), 0 0 20px rgba(255,136,0,0.5), 0 0 30px rgba(255,136,0,0.3)'
-                                      : `0 0 10px ${timerColor}, 0 0 20px ${timerColor}80, 0 0 30px ${timerColor}40`,
-                                    ...(gameState.timeLeft <= 5 && !isPaused && !(activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz') ? {
-                                      animation: 'heartBeatPulse 1s ease-in-out infinite',
-                                      display: 'inline-block'
-                                    } : {})
-                                  }}>
-                                  {activeMatch?.isDuel
-                                    ? ((duelMode === 'time_attack' || duelMode === 'blitz') ? gameState.timeLeft : opponentTargets)
-                                    : gameState.timeLeft}
-                                </span>
-                              </>
+                              </div>
                             )}
                           </div>
-                        )}
-                      </div>
+                        </div>
                       );
                     })()}
                   </div>
 
-                  {/* RIGHT SIDE: SCORE / ROUNDS */}
-                  {activeMatch?.isDuel ? (
-                    <div className="flex items-center gap-3 pl-20 sm:pl-0">
-                      {/* TARGETS COUNTER (Time Attack Specific) */}
-                      {duelMode === 'time_attack' && (
-                        <div id="targets-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-all">
-                          <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">TGT</span>
-                          <span className="text-2xl font-black font-orbitron text-[#FF8800] leading-none">
-                            {gameState.targetsFound}
-                          </span>
-                        </div>
-                      )}
-
-                      <div id="score-display-game" className="w-14 h-14 rounded-full bg-white border-[3px] border-white/20 flex flex-col items-center justify-center shadow-xl transform hover:scale-105 transition-transform">
-                        {duelMode === 'blitz' ? (
-                          <>
-                            <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">TARGETS</span>
-                            <span className="text-2xl font-black font-orbitron text-[#FF8800] leading-none">
-                              {gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p1' : 'p2')).length}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-[7px] font-black text-[#FF8800] leading-none mb-0.5 uppercase">PTS</span>
-                            <span className="text-2xl font-black font-orbitron text-[#FF8800] leading-none">
-                              {gameState.score}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-3">
-                        <div id="score-display-game" className="relative w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.35)] overflow-hidden z-10"
-                          style={{
-                            background: 'radial-gradient(circle at 30% 30%, #5dff78 0%, #00c735 50%, #008722 100%)',
-                            border: '2px solid rgba(255,255,255,0.65)',
-                            boxShadow: '0 4px 10px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -3px 6px rgba(0,0,0,0.45)'
-                          }}>
-                          <div className="absolute top-0 inset-x-0 h-[40%] rounded-t-full pointer-events-none z-20" style={{
-                            background: 'linear-gradient(to bottom, rgba(255,255,255,0.30), transparent)'
-                          }} />
-                          <div className="absolute top-[12%] left-[12%] w-[20%] h-[20%] rounded-full filter blur-[0.5px] pointer-events-none z-20" style={{
-                            background: 'linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.05))'
-                          }} />
-                          <span className="text-[6px] font-black uppercase leading-none mb-0.5 relative z-10 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">PTS</span>
-                          <span className="text-[10px] font-black font-orbitron leading-none tracking-tighter relative z-10 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">{gameState.totalScore}</span>
-                        </div>
-                        <div className="relative w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.35)] overflow-hidden z-10"
-                          style={{
-                            background: 'radial-gradient(circle at 30% 30%, #ff6ee8 0%, #e600a1 50%, #99006b 100%)',
-                            border: '2px solid rgba(255,255,255,0.65)',
-                            boxShadow: '0 4px 10px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -3px 6px rgba(0,0,0,0.45)'
-                          }}>
-                          <div className="absolute top-0 inset-x-0 h-[40%] rounded-t-full pointer-events-none z-20" style={{
-                            background: 'linear-gradient(to bottom, rgba(255,255,255,0.30), transparent)'
-                          }} />
-                          <div className="absolute top-[12%] left-[12%] w-[20%] h-[20%] rounded-full filter blur-[0.5px] pointer-events-none z-20" style={{
-                            background: 'linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.05))'
-                          }} />
-                          <span className="text-[6px] font-black uppercase leading-none mb-0.5 relative z-10 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">{gameState.isBossLevel ? 'BOSS' : 'LV'}</span>
-                          <span className="text-sm font-black font-orbitron leading-none relative z-10 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">{gameState.isBossLevel ? gameState.bossLevelId : gameState.level}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </header>
             )}
@@ -4776,188 +4766,206 @@ const GameView: React.FC = () => {
                     })()}
                   </div>
 
-                  <div className="flex flex-col items-center gap-2 mb-5">
-                    {/* Level Targets List */}
-                    {/* Level Targets List */}
-                    <div className="flex gap-2 items-center flex-wrap justify-center max-w-[340px]" id="targets-display-tutorial">
-                      {gameState.isBossLevel && gameState.bossLevelId === 1 ? (
-                        // BOSS 1: Sequential Large Target
-                        (() => {
-                          const activeTarget = gameState.levelTargets.find(t => !t.completed);
-                          if (!activeTarget) return null;
-                          const remainingCount = gameState.levelTargets.filter(t => !t.completed).length;
-                          const totalCount = gameState.levelTargets.length;
-                          const currentIndex = totalCount - remainingCount + 1;
+                  {/* TARGETS - Chrome Frame: auto-sizing to remaining targets */}
+                  {(() => {
+                    const activeTargetCount = gameState.isBossLevel && gameState.bossLevelId === 1
+                      ? (gameState.levelTargets.find(t => !t.completed) ? 1 : 0)
+                      : gameState.levelTargets.filter(t => !t.completed).length;
+                    const totalCount = gameState.levelTargets.length;
+                    return (
+                      <div className="flex justify-center w-full mb-5">
+                        <div
+                          className="chrome-bar rounded-[2rem] flex items-center justify-center transition-all duration-500 ease-in-out"
+                          style={{
+                            boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.9), inset 0 -4px 4px rgba(0,0,0,0.6), 0 8px 18px rgba(0,0,0,0.5)',
+                            padding: activeTargetCount === 0 ? '6px 16px' : '10px 12px',
+                          }}
+                        >
+                          <div
+                            className="flex gap-2 items-center flex-nowrap justify-center transition-all duration-500"
+                            id="targets-display-tutorial"
+                            style={{ maxWidth: `${Math.max(activeTargetCount, 1) * 68}px` }}
+                          >
+                        {gameState.isBossLevel && gameState.bossLevelId === 1 ? (
+                          // BOSS 1: Sequential Large Target
+                          (() => {
+                            const activeTarget = gameState.levelTargets.find(t => !t.completed);
+                            if (!activeTarget) return null;
+                            const remainingCount = gameState.levelTargets.filter(t => !t.completed).length;
+                            const totalCount = gameState.levelTargets.length;
+                            const currentIndex = totalCount - remainingCount + 1;
 
-                          return (
-                            <div className="flex flex-col items-center animate-bounce-short w-full">
-                              <div data-target-value={activeTarget.value} className={`relative overflow-hidden flex flex-col items-center justify-center w-full max-w-[240px] h-24 px-4 rounded-xl border-[4px] border-emerald-400 bg-emerald-900/80 shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all duration-300 transform hover:scale-105 ${matchedTargetValue === activeTarget.value ? 'animate-hex-correct-bounce-delayed' : ''}`}>
-                                {/* Circular/Rounded 3D Glass Embossed Reflection Cover */}
-                                <div 
-                                  className="absolute inset-0 rounded-lg pointer-events-none overflow-hidden z-20"
-                                  style={{
-                                    boxShadow: 'inset 0 6px 12px rgba(255,255,255,0.55), inset 0 -6px 12px rgba(0,0,0,0.45)'
-                                  }}
-                                >
-                                  {/* Glossy Curved Bevel Cover (Cupola superiore lucida) */}
-                                  <div 
-                                    className="absolute top-0 inset-x-0 h-[42%] rounded-t-lg"
-                                    style={{
-                                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.35), transparent)'
-                                    }}
-                                  ></div>
-                                  
-                                  {/* Diagonal Spotlight Reflection - Outer Soft (Riflesso morbido) */}
-                                  <div 
-                                    className="absolute top-[8%] left-[8%] w-[32%] h-[32%] rounded-full filter blur-[2.5px] rotate-[15deg]"
-                                    style={{
-                                      background: 'linear-gradient(to bottom right, rgba(255,255,255,0.3), transparent)'
-                                    }}
-                                  ></div>
-
-                                  {/* Diagonal Spotlight Reflection - Inner Sharp Core (Punto luce super specchiato) */}
-                                  <div 
-                                    className="absolute top-[12%] left-[12%] w-[15%] h-[15%] rounded-full filter blur-[0.5px] rotate-[15deg]"
-                                    style={{
-                                      background: 'linear-gradient(to bottom right, rgba(255,255,255,0.7), rgba(255,255,255,0.05))'
-                                    }}
-                                  ></div>
-                                </div>
-
-                                <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-[0.2em] mb-1 z-10">
-                                  TARGET {currentIndex}/{totalCount}
-                                </span>
-                                <span className={`font-orbitron font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none z-10
-                                  ${activeTarget.displayValue ? 'text-3xl tracking-widest' : 'text-6xl'}`}>
-                                  {activeTarget.displayValue || activeTarget.value}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })()
-                      ) : (
-                        // STANDARD & BOSS 2+: Career-style Target List
-                        gameState.levelTargets.map((t, i) => {
-                          const isDominion = activeMatch?.isDuel && duelMode === 'blitz';
-                          const isCompleted = t.completed;
-                          
-                          // Style settings based on status
-                          let targetBg = 'linear-gradient(135deg, #0a1733 0%, #030814 100%)'; // Dark glossy sapphire enamel
-                          let targetBorder = '2px solid #00d2ff'; // Solid glowing ice-cyan neon border
-                          let targetGlow = '0 0 25px rgba(0, 210, 255, 0.95), 0 0 8px rgba(0, 210, 255, 0.9), inset 0 3px 6px rgba(255, 255, 255, 0.45), inset 0 -3px 6px rgba(0, 0, 0, 0.7)';
-                          let numStyle: React.CSSProperties = {
-                            color: '#ffffff',
-                            textShadow: '0 0 8px #00d2ff, 0 0 16px rgba(0, 210, 255, 0.9), 0 0 24px rgba(0, 210, 255, 0.5)'
-                          };
-
-                          if (isCompleted) {
-                            // Bright success state (neon emerald or gold)
-                            targetBg = 'linear-gradient(135deg, #052e16 0%, #022c22 100%)';
-                            targetBorder = '2px solid rgba(16, 185, 129, 0.7)';
-                            targetGlow = '0 0 20px rgba(16, 185, 129, 0.8), 0 0 6px rgba(16, 185, 129, 1), inset 0 3px 6px rgba(255, 255, 255, 0.35), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
-                            numStyle = {
-                              color: '#d1fae5',
-                              textShadow: '0 0 8px rgba(16, 185, 129, 0.95), 0 0 15px rgba(16, 185, 129, 0.5)'
-                            };
-                          } else if (isDominion) {
-                            const isMyTarget = (t.owner === 'p1' && activeMatch?.isP1) || (t.owner === 'p2' && !activeMatch?.isP1);
-                            const isEnemyTarget = (t.owner === 'p1' && !activeMatch?.isP1) || (t.owner === 'p2' && activeMatch?.isP1);
-                            if (isMyTarget) {
-                              targetBg = 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)';
-                              targetBorder = '2px solid rgba(52, 211, 153, 0.8)';
-                              targetGlow = '0 0 25px rgba(52, 211, 153, 0.9), 0 0 8px rgba(52, 211, 153, 1), inset 0 3px 6px rgba(255, 255, 255, 0.4), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
-                            } else if (isEnemyTarget) {
-                              targetBg = 'linear-gradient(135deg, #4c0519 0%, #31000e 100%)';
-                              targetBorder = '2px solid rgba(244, 63, 94, 0.7)';
-                              targetGlow = '0 0 15px rgba(244, 63, 94, 0.6), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
-                              numStyle = {
-                                color: '#ffe4e6',
-                                textShadow: '0 0 8px rgba(244, 63, 94, 0.8)'
-                              };
-                            }
-                          }
-
-                          const valStr = String(t.value || '');
-                          let sizeClasses = 'w-14 h-14 text-2xl sm:text-3xl';
-                          if (t.displayValue) {
-                            sizeClasses = 'w-14 h-14 text-[10px] sm:text-[11px] leading-tight whitespace-nowrap px-1';
-                          } else if (valStr.length >= 3) {
-                            sizeClasses = 'min-w-[3.5rem] px-2 h-14 text-base sm:text-lg';
-                          } else if (valStr.length === 2) {
-                            sizeClasses = 'min-w-[3.5rem] px-1.5 h-14 text-xl sm:text-2xl';
-                          }
-
-                          const completedClass = isCompleted ? 'animate-target-completed' : '';
-
-                          return (
-                            <div key={i} data-target-value={t.value} 
-                              className={`relative overflow-hidden flex items-center justify-center rounded-xl transition-all duration-300 font-orbitron font-black shadow-lg ${sizeClasses} ${completedClass} ${matchedTargetValue === t.value && !t.completed ? 'animate-hex-correct-bounce-delayed' : ''}`}
-                              style={{
-                                background: isCompleted ? 'transparent' : targetBg,
-                                border: isCompleted ? 'none' : targetBorder,
-                                boxShadow: isCompleted ? 'none' : targetGlow
-                              }}
-                            >
-                              {isCompleted ? (
-                                <div className="plasma-core-wrapper">
-                                  <div className="plasma-bloom"></div>
-                                  <div className="plasma-sphere"></div>
-                                  <div className="plasma-nucleus"></div>
-                                  <div className="plasma-cluster">
-                                    <span className="micro-particle mp1"></span>
-                                    <span className="micro-particle mp2"></span>
-                                    <span className="micro-particle mp3"></span>
-                                    <span className="micro-particle mp4"></span>
-                                    <span className="micro-particle mp5"></span>
-                                    <span className="micro-particle mp6"></span>
-                                    <span className="micro-particle mp7"></span>
-                                    <span className="micro-particle mp8"></span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <>
+                            return (
+                              <div className="flex flex-col items-center animate-bounce-short w-full">
+                                <div data-target-value={activeTarget.value} className={`relative overflow-hidden flex flex-col items-center justify-center w-full max-w-[240px] h-24 px-4 rounded-xl border-[4px] border-emerald-400 bg-emerald-900/80 shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all duration-300 transform hover:scale-105 ${matchedTargetValue === activeTarget.value ? 'animate-hex-correct-bounce-delayed' : ''}`}>
                                   {/* Circular/Rounded 3D Glass Embossed Reflection Cover */}
                                   <div 
                                     className="absolute inset-0 rounded-lg pointer-events-none overflow-hidden z-20"
                                     style={{
-                                      boxShadow: 'inset 0 4px 8px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.5)'
+                                      boxShadow: 'inset 0 6px 12px rgba(255,255,255,0.55), inset 0 -6px 12px rgba(0,0,0,0.45)'
                                     }}
                                   >
                                     {/* Glossy Curved Bevel Cover (Cupola superiore lucida) */}
                                     <div 
                                       className="absolute top-0 inset-x-0 h-[42%] rounded-t-lg"
                                       style={{
-                                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
+                                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.35), transparent)'
                                       }}
                                     ></div>
                                     
                                     {/* Diagonal Spotlight Reflection - Outer Soft (Riflesso morbido) */}
                                     <div 
-                                      className="absolute top-[8%] left-[8%] w-[35%] h-[35%] rounded-full filter blur-[2px] rotate-[15deg]"
+                                      className="absolute top-[8%] left-[8%] w-[32%] h-[32%] rounded-full filter blur-[2.5px] rotate-[15deg]"
                                       style={{
-                                        background: 'linear-gradient(to bottom right, rgba(255,255,255,0.20), transparent)'
+                                        background: 'linear-gradient(to bottom right, rgba(255,255,255,0.3), transparent)'
                                       }}
                                     ></div>
 
                                     {/* Diagonal Spotlight Reflection - Inner Sharp Core (Punto luce super specchiato) */}
                                     <div 
-                                      className="absolute top-[12%] left-[12%] w-[16%] h-[16%] rounded-full filter blur-[0.5px] rotate-[15deg]"
+                                      className="absolute top-[12%] left-[12%] w-[15%] h-[15%] rounded-full filter blur-[0.5px] rotate-[15deg]"
                                       style={{
-                                        background: 'linear-gradient(to bottom right, rgba(255,255,255,0.55), rgba(255,255,255,0.05))'
+                                        background: 'linear-gradient(to bottom right, rgba(255,255,255,0.7), rgba(255,255,255,0.05))'
                                       }}
                                     ></div>
                                   </div>
-                                  <span className="z-10" style={numStyle}>{t.displayValue || t.value}</span>
-                                </>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
 
-                      {/* EXTRA TIME BUBBLE REMOVED AS IT GAVE ERRORS */}
-                    </div>
-                  </div>
+                                  <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-[0.2em] mb-1 z-10">
+                                    TARGET {currentIndex}/{totalCount}
+                                  </span>
+                                  <span className={`font-orbitron font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none z-10
+                                    ${activeTarget.displayValue ? 'text-3xl tracking-widest' : 'text-6xl'}`}>
+                                    {activeTarget.displayValue || activeTarget.value}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          // STANDARD & BOSS 2+: Career-style Target List
+                          gameState.levelTargets.map((t, i) => {
+                            const isDominion = activeMatch?.isDuel && duelMode === 'blitz';
+                            const isCompleted = t.completed;
+                            
+                            // Style settings based on status
+                            let targetBg = 'linear-gradient(135deg, #0a1733 0%, #030814 100%)';
+                            let targetBorder = '2px solid #00d2ff';
+                            let targetGlow = '0 0 25px rgba(0, 210, 255, 0.95), 0 0 8px rgba(0, 210, 255, 0.9), inset 0 3px 6px rgba(255, 255, 255, 0.45), inset 0 -3px 6px rgba(0, 0, 0, 0.7)';
+                            let numStyle: React.CSSProperties = {
+                              color: '#ffffff',
+                              textShadow: '0 0 8px #00d2ff, 0 0 16px rgba(0, 210, 255, 0.9), 0 0 24px rgba(0, 210, 255, 0.5)'
+                            };
+
+                            if (isCompleted) {
+                              targetBg = 'linear-gradient(135deg, #052e16 0%, #022c22 100%)';
+                              targetBorder = '2px solid rgba(16, 185, 129, 0.7)';
+                              targetGlow = '0 0 20px rgba(16, 185, 129, 0.8), 0 0 6px rgba(16, 185, 129, 1), inset 0 3px 6px rgba(255, 255, 255, 0.35), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
+                              numStyle = {
+                                color: '#d1fae5',
+                                textShadow: '0 0 8px rgba(16, 185, 129, 0.95), 0 0 15px rgba(16, 185, 129, 0.5)'
+                              };
+                            } else if (isDominion) {
+                              const isMyTarget = (t.owner === 'p1' && activeMatch?.isP1) || (t.owner === 'p2' && !activeMatch?.isP1);
+                              const isEnemyTarget = (t.owner === 'p1' && !activeMatch?.isP1) || (t.owner === 'p2' && activeMatch?.isP1);
+                              if (isMyTarget) {
+                                targetBg = 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)';
+                                targetBorder = '2px solid rgba(52, 211, 153, 0.8)';
+                                targetGlow = '0 0 25px rgba(52, 211, 153, 0.9), 0 0 8px rgba(52, 211, 153, 1), inset 0 3px 6px rgba(255, 255, 255, 0.4), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
+                              } else if (isEnemyTarget) {
+                                targetBg = 'linear-gradient(135deg, #4c0519 0%, #31000e 100%)';
+                                targetBorder = '2px solid rgba(244, 63, 94, 0.7)';
+                                targetGlow = '0 0 15px rgba(244, 63, 94, 0.6), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
+                                numStyle = {
+                                  color: '#ffe4e6',
+                                  textShadow: '0 0 8px rgba(244, 63, 94, 0.8)'
+                                };
+                              }
+                            }
+
+                            const valStr = String(t.value || '');
+                            let sizeClasses = 'w-14 h-14 text-2xl sm:text-3xl';
+                            if (t.displayValue) {
+                              sizeClasses = 'w-14 h-14 text-[10px] sm:text-[11px] leading-tight whitespace-nowrap px-1';
+                            } else if (valStr.length >= 3) {
+                              sizeClasses = 'min-w-[3.5rem] px-2 h-14 text-base sm:text-lg';
+                            } else if (valStr.length === 2) {
+                              sizeClasses = 'min-w-[3.5rem] px-1.5 h-14 text-xl sm:text-2xl';
+                            }
+
+                            const completedClass = isCompleted ? 'animate-target-completed' : '';
+
+                            return (
+                              <div key={i} data-target-value={t.value} 
+                                className={`relative overflow-hidden flex items-center justify-center rounded-xl transition-all duration-300 font-orbitron font-black shadow-lg ${sizeClasses} ${completedClass} ${matchedTargetValue === t.value && !t.completed ? 'animate-hex-correct-bounce-delayed' : ''}`}
+                                style={{
+                                  background: isCompleted ? 'transparent' : targetBg,
+                                  border: isCompleted ? 'none' : targetBorder,
+                                  boxShadow: isCompleted ? 'none' : targetGlow
+                                }}
+                              >
+                                {isCompleted ? (
+                                  <div className="plasma-core-wrapper">
+                                    <div className="plasma-bloom"></div>
+                                    <div className="plasma-sphere"></div>
+                                    <div className="plasma-nucleus"></div>
+                                    <div className="plasma-cluster">
+                                      <span className="micro-particle mp1"></span>
+                                      <span className="micro-particle mp2"></span>
+                                      <span className="micro-particle mp3"></span>
+                                      <span className="micro-particle mp4"></span>
+                                      <span className="micro-particle mp5"></span>
+                                      <span className="micro-particle mp6"></span>
+                                      <span className="micro-particle mp7"></span>
+                                      <span className="micro-particle mp8"></span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    {/* Circular/Rounded 3D Glass Embossed Reflection Cover */}
+                                    <div 
+                                      className="absolute inset-0 rounded-lg pointer-events-none overflow-hidden z-20"
+                                      style={{
+                                        boxShadow: 'inset 0 4px 8px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.5)'
+                                      }}
+                                    >
+                                      {/* Glossy Curved Bevel Cover */}
+                                      <div 
+                                        className="absolute top-0 inset-x-0 h-[42%] rounded-t-lg"
+                                        style={{
+                                          background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
+                                        }}
+                                      ></div>
+                                      
+                                      {/* Diagonal Spotlight - Outer Soft */}
+                                      <div 
+                                        className="absolute top-[8%] left-[8%] w-[35%] h-[35%] rounded-full filter blur-[2px] rotate-[15deg]"
+                                        style={{
+                                          background: 'linear-gradient(to bottom right, rgba(255,255,255,0.20), transparent)'
+                                        }}
+                                      ></div>
+
+                                      {/* Diagonal Spotlight - Inner Sharp */}
+                                      <div 
+                                        className="absolute top-[12%] left-[12%] w-[16%] h-[16%] rounded-full filter blur-[0.5px] rotate-[15deg]"
+                                        style={{
+                                          background: 'linear-gradient(to bottom right, rgba(255,255,255,0.55), rgba(255,255,255,0.05))'
+                                        }}
+                                      ></div>
+                                    </div>
+                                    <span className="z-10" style={numStyle}>{t.displayValue || t.value}</span>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+
+                        {/* EXTRA TIME BUBBLE REMOVED AS IT GAVE ERRORS */}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="relative flex-grow w-full flex items-center justify-center overflow-visible">
 
