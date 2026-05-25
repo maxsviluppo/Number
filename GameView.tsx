@@ -2628,13 +2628,13 @@ const GameView: React.FC = () => {
         setPathStatus('correct');
         setMatchedTargetValue(result!);
         
-        // Attende 2320ms mostrando la celebre animazione a 4 fasi del target prima di completarlo!
+        // Attende 1160ms mostrando la celebre animazione a 4 fasi del target prima di completarlo!
         setTimeout(() => {
           handleSuccess(result!);
           setSelectedPath([]);
           setPathStatus(null);
           setMatchedTargetValue(null);
-        }, 2320);
+        }, 1160);
       } else {
         setPathStatus('wrong');
         handleError();
@@ -3702,7 +3702,7 @@ const GameView: React.FC = () => {
         <div 
           className={`fixed inset-0 bg-[url('/sfondoblu.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           style={{
-            filter: 'brightness(0.7) contrast(1.45) saturate(1.85) hue-rotate(-5deg)'
+            filter: 'brightness(0.85) contrast(1.6) saturate(1.43) hue-rotate(-5deg)'
           }}
         ></div>
 
@@ -3932,15 +3932,18 @@ const GameView: React.FC = () => {
 
               {/* TOP LEFT: Site Link */}
               <div className="fixed top-12 left-6 z-[3000] flex gap-3 items-center">
-                <Link
-                  to="/site"
-                  onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); }}
+                <button
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    soundService.playUIClick();
+                    window.open("https://www.numbergame.it/site", "_blank");
+                  }}
                   className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group cursor-pointer"
                   title="Vai al Sito"
                 >
                   <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
-                  <Globe size={22} className="relative z-20 text-white drop-shadow-md" strokeWidth={2.5} />
-                </Link>
+                  <Globe size={22} className="relative z-20 text-white drop-shadow-md opacity-100" strokeWidth={2.5} />
+                </button>
               </div>
 
               {/* TOP RIGHT: Action Buttons (Audio) */}
@@ -4376,28 +4379,43 @@ const GameView: React.FC = () => {
                         goToHome(e);
                         setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
                       }}
-                      className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-[0_2px_8px_rgba(0,0,0,0.5)] overflow-hidden z-10"
-                      style={{ background: 'radial-gradient(circle at 40% 35%, #d0d0d0 0%, #808080 50%, #404040 100%)', border: '2px solid rgba(255,255,255,0.5)' }}
+                      className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-[0_4px_10px_rgba(0,0,0,0.35)] overflow-hidden z-10"
+                      style={{
+                        background: 'radial-gradient(circle at 30% 30%, #ffa84c 0%, #ff8800 50%, #c45a00 100%)',
+                        border: '2px solid rgba(255,255,255,0.65)',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                      }}
                       title="Home"
                     >
-                      {/* Radial brushed metal texture */}
-                      <div className="absolute inset-0 rounded-full pointer-events-none" style={{
-                        background: 'repeating-conic-gradient(rgba(255,255,255,0.07) 0deg, transparent 1deg, transparent 3deg, rgba(255,255,255,0.07) 4deg)'
-                      }}></div>
-                      <Home className="w-5 h-5 relative z-10" style={{ color: '#1a1a1a', filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.3))' }} />
+                      <div className="absolute top-0 inset-x-0 h-[40%] rounded-t-full pointer-events-none z-20" style={{
+                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.30), transparent)'
+                      }} />
+                      <div className="absolute top-[12%] left-[12%] w-[20%] h-[20%] rounded-full filter blur-[0.5px] pointer-events-none z-20" style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.05))'
+                      }} />
+                      <Home className="w-5 h-5 relative z-10 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
                     </button>
                     <button
                       onPointerDown={toggleMute}
-                      className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-[0_2px_8px_rgba(0,0,0,0.5)] overflow-hidden z-10"
-                      style={{ background: 'radial-gradient(circle at 40% 35%, #d0d0d0 0%, #808080 50%, #404040 100%)', border: '2px solid rgba(255,255,255,0.5)' }}
+                      className="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-[0_4px_10px_rgba(0,0,0,0.35)] overflow-hidden z-10"
+                      style={{
+                        background: 'radial-gradient(circle at 30% 30%, #4ea8ff 0%, #0077ff 50%, #004fb0 100%)',
+                        border: '2px solid rgba(255,255,255,0.65)',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                      }}
                     >
-                      <div className="absolute inset-0 rounded-full pointer-events-none" style={{
-                        background: 'repeating-conic-gradient(rgba(255,255,255,0.07) 0deg, transparent 1deg, transparent 3deg, rgba(255,255,255,0.07) 4deg)'
-                      }}></div>
-                      {isMuted ? <VolumeX className="w-5 h-5 relative z-10" style={{ color: '#1a1a1a' }} /> : <Volume2 className="w-5 h-5 relative z-10" style={{ color: '#1a1a1a' }} />}
+                      <div className="absolute top-0 inset-x-0 h-[40%] rounded-t-full pointer-events-none z-20" style={{
+                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.30), transparent)'
+                      }} />
+                      <div className="absolute top-[12%] left-[12%] w-[20%] h-[20%] rounded-full filter blur-[0.5px] pointer-events-none z-20" style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.05))'
+                      }} />
+                      {isMuted ? (
+                        <VolumeX className="w-5 h-5 relative z-10 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
+                      ) : (
+                        <Volume2 className="w-5 h-5 relative z-10 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
+                      )}
                     </button>
-
-
                   </div>
 
                   {/* Center: Floating Timer (Half-In/Half-Out) */}
@@ -4465,7 +4483,7 @@ const GameView: React.FC = () => {
                       const timerColor = timerPct > 80 ? '#00f0ff' : timerPct > 40 ? '#00ff66' : timerPct > 15 ? '#FF8800' : '#ff003c';
 
                       return (
-                        <div className={`relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110 shadow-none' : 'group-hover:scale-105'}`}
+                        <div className={`relative w-28 h-28 rounded-full flex items-center justify-center transition-all duration-300 ${isPaused ? 'scale-110 shadow-none' : 'group-hover:scale-105'}`}
                         style={{
                           /* Real carbon fiber diagonal weave */
                           background: 'repeating-linear-gradient(135deg, #1c1c1c 0px, #1c1c1c 2px, #2a2a2a 2px, #2a2a2a 4px, #222 4px, #222 6px, #303030 6px, #303030 8px)',
@@ -4646,17 +4664,35 @@ const GameView: React.FC = () => {
                   ) : (
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-3">
-                        <div id="score-display-game" className="relative w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.5)] overflow-hidden z-10"
-                          style={{ background: 'radial-gradient(circle at 40% 35%, #d0d0d0 0%, #808080 50%, #404040 100%)', border: '2px solid rgba(255,255,255,0.5)' }}>
-                          <div className="absolute inset-0 rounded-full pointer-events-none" style={{ background: 'repeating-conic-gradient(rgba(255,255,255,0.07) 0deg, transparent 1deg, transparent 3deg, rgba(255,255,255,0.07) 4deg)' }}></div>
-                          <span className="text-[6px] font-black uppercase leading-none mb-0.5 relative z-10" style={{ color: '#1a1a1a', textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}>PTS</span>
-                          <span className="text-[10px] font-black font-orbitron leading-none tracking-tighter relative z-10" style={{ color: '#1a1a1a', textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}>{gameState.totalScore}</span>
+                        <div id="score-display-game" className="relative w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.35)] overflow-hidden z-10"
+                          style={{
+                            background: 'radial-gradient(circle at 30% 30%, #5dff78 0%, #00c735 50%, #008722 100%)',
+                            border: '2px solid rgba(255,255,255,0.65)',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                          }}>
+                          <div className="absolute top-0 inset-x-0 h-[40%] rounded-t-full pointer-events-none z-20" style={{
+                            background: 'linear-gradient(to bottom, rgba(255,255,255,0.30), transparent)'
+                          }} />
+                          <div className="absolute top-[12%] left-[12%] w-[20%] h-[20%] rounded-full filter blur-[0.5px] pointer-events-none z-20" style={{
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.05))'
+                          }} />
+                          <span className="text-[6px] font-black uppercase leading-none mb-0.5 relative z-10 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">PTS</span>
+                          <span className="text-[10px] font-black font-orbitron leading-none tracking-tighter relative z-10 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">{gameState.totalScore}</span>
                         </div>
-                        <div className="relative w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.5)] overflow-hidden z-10"
-                          style={{ background: 'radial-gradient(circle at 40% 35%, #d0d0d0 0%, #808080 50%, #404040 100%)', border: '2px solid rgba(255,255,255,0.5)' }}>
-                          <div className="absolute inset-0 rounded-full pointer-events-none" style={{ background: 'repeating-conic-gradient(rgba(255,255,255,0.07) 0deg, transparent 1deg, transparent 3deg, rgba(255,255,255,0.07) 4deg)' }}></div>
-                          <span className="text-[6px] font-black uppercase leading-none mb-0.5 relative z-10" style={{ color: '#1a1a1a', textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}>{gameState.isBossLevel ? 'BOSS' : 'LV'}</span>
-                          <span className="text-sm font-black font-orbitron leading-none relative z-10" style={{ color: '#1a1a1a', textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}>{gameState.isBossLevel ? gameState.bossLevelId : gameState.level}</span>
+                        <div className="relative w-11 h-11 rounded-full flex flex-col items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.35)] overflow-hidden z-10"
+                          style={{
+                            background: 'radial-gradient(circle at 30% 30%, #ff6ee8 0%, #e600a1 50%, #99006b 100%)',
+                            border: '2px solid rgba(255,255,255,0.65)',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                          }}>
+                          <div className="absolute top-0 inset-x-0 h-[40%] rounded-t-full pointer-events-none z-20" style={{
+                            background: 'linear-gradient(to bottom, rgba(255,255,255,0.30), transparent)'
+                          }} />
+                          <div className="absolute top-[12%] left-[12%] w-[20%] h-[20%] rounded-full filter blur-[0.5px] pointer-events-none z-20" style={{
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.05))'
+                          }} />
+                          <span className="text-[6px] font-black uppercase leading-none mb-0.5 relative z-10 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">{gameState.isBossLevel ? 'BOSS' : 'LV'}</span>
+                          <span className="text-sm font-black font-orbitron leading-none relative z-10 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">{gameState.isBossLevel ? gameState.bossLevelId : gameState.level}</span>
                         </div>
                       </div>
                     </div>
@@ -5010,13 +5046,16 @@ const GameView: React.FC = () => {
                           }
                         }
                       }}
-                      className={`flex flex-row-reverse items-center p-0 rounded-l-2xl border-[3px] border-r-0 border-white/75 transition-all group relative overflow-hidden h-[80px]
-                        ${adBannerActive ? 'shadow-[0_0_50px_rgba(255,0,128,0.9)] animate-pulse' : 'shadow-[-8px_0_15px_rgba(255,0,128,0.45)]'}
+                      className={`flex flex-row-reverse items-center p-0 rounded-l-2xl border-[3px] border-r-0 border-white/75 transition-all group relative overflow-hidden h-[80px] backdrop-blur-xl
+                        ${adBannerActive ? 'animate-pulse' : ''}
                         ${ADS_CONFIG.enabled ? 'cursor-pointer' : 'from-gray-600 to-gray-800 bg-gradient-to-r cursor-default grayscale opacity-80'}`}
                       style={ADS_CONFIG.enabled ? {
-                        background: 'linear-gradient(135deg, rgb(255, 0, 128), rgb(255, 0, 255), rgb(255, 85, 0), rgb(0, 235, 255))',
+                        background: 'linear-gradient(135deg, rgba(255, 0, 128, 0.6), rgba(255, 0, 255, 0.6), rgba(255, 85, 0, 0.6), rgba(0, 235, 255, 0.6))',
                         backgroundSize: '300% 300%',
                         animation: 'adGradientFlow 4s linear infinite',
+                        boxShadow: adBannerActive 
+                          ? '0 0 50px rgba(255,0,128,0.8), inset 0 3px 6px rgba(255,255,255,0.65), inset 0 -3px 6px rgba(0,0,0,0.45)' 
+                          : '-8px 0 15px rgba(255,0,128,0.4), inset 0 3px 6px rgba(255,255,255,0.65), inset 0 -3px 6px rgba(0,0,0,0.45)'
                       } : undefined}
                     >
                       {/* Carbon Texture */}
@@ -5104,19 +5143,34 @@ const GameView: React.FC = () => {
 
 
               {gameState.status === 'game-over' && (
-                <div className={`bg-slate-900/60 p-5 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md relative overflow-hidden border-[4px] shadow-[0_40px_100px_rgba(0,0,0,0.6)] backdrop-blur-2xl
+                <div className={`p-6 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-md relative overflow-hidden border-[4px] backdrop-blur-2xl transition-all duration-300
                   ${gameState.bossLevelId === 2
-                    ? 'border-amber-600/50 shadow-[0_0_50px_rgba(120,53,15,0.4)]'
+                    ? 'border-amber-500/80 shadow-[0_40px_100px_rgba(0,0,0,0.85),0_0_40px_rgba(217,119,6,0.3)]'
                     : gameState.isBossLevel
-                      ? 'border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.3)]'
-                      : 'border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.3)]'}`}>
-                  {/* Background Texture Removed */}
+                      ? 'border-emerald-400/80 shadow-[0_40px_100px_rgba(0,0,0,0.85),0_0_40px_rgba(16,185,129,0.3)]'
+                      : 'border-red-500/80 shadow-[0_40px_100px_rgba(0,0,0,0.85),0_0_40px_rgba(239,68,68,0.3)]'}`}
+                  style={{
+                    background: gameState.bossLevelId === 2 
+                      ? 'linear-gradient(135deg, rgba(40,25,10,0.75) 0%, rgba(20,10,5,0.9) 100%)' 
+                      : gameState.isBossLevel 
+                        ? 'linear-gradient(135deg, rgba(10,35,20,0.75) 0%, rgba(5,15,10,0.9) 100%)' 
+                        : 'linear-gradient(135deg, rgba(30,10,10,0.75) 0%, rgba(15,5,5,0.9) 100%)',
+                    boxShadow: '0 40px 100px rgba(0,0,0,0.85), inset 0 4px 12px rgba(255,255,255,0.35), inset 0 -4px 12px rgba(0,0,0,0.6)'
+                  }}>
+                  
+                  {/* Glass layout elements */}
+                  <div className="absolute inset-0 pointer-events-none z-0" style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.03) 70.1%, rgba(255,255,255,0.1) 100%)'
+                  }}></div>
+                  <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-[2.5rem] z-0" style={{
+                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.18), transparent)'
+                  }}></div>
 
                   <div className="relative z-10">
                     {/* Header */}
                     <div className="text-center mb-4">
-                      <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl border-2 border-white/30 mb-2 ${gameState.bossLevelId === 2
-                        ? 'bg-gradient-to-br from-amber-600 to-amber-800 shadow-[0_0_20px_rgba(120,53,15,0.5)]'
+                      <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl border-[3px] border-white/50 mb-2 ${gameState.bossLevelId === 2
+                        ? 'bg-gradient-to-br from-amber-550 to-amber-700 shadow-[0_0_20px_rgba(120,53,15,0.5)]'
                         : gameState.isBossLevel
                           ? 'bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
                           : 'bg-gradient-to-br from-red-500 to-red-700 shadow-[0_0_20px_rgba(239,68,68,0.4)]'
@@ -5131,8 +5185,8 @@ const GameView: React.FC = () => {
                     </div>
 
                     {/* Info Card */}
-                    <div className={`bg-black/40 border-2 rounded-2xl p-4 mb-4 backdrop-blur-md ${gameState.bossLevelId === 2 ? 'border-amber-600/20' : gameState.isBossLevel ? 'border-emerald-500/20' : 'border-red-500/20'
-                      }`}>
+                    <div className={`border-[2px] rounded-2xl p-4 mb-5 backdrop-blur-md shadow-[inset_0_2px_6px_rgba(255,255,255,0.15)] bg-white/5
+                      ${gameState.bossLevelId === 2 ? 'border-amber-500/30' : gameState.isBossLevel ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="flex items-center gap-2">
                           <Target className={`w-5 h-5 ${gameState.bossLevelId === 2 ? 'text-amber-400' : gameState.isBossLevel ? 'text-emerald-400' : 'text-red-400'}`} />
@@ -5141,7 +5195,7 @@ const GameView: React.FC = () => {
                           </span>
                         </div>
 
-                        <div className="w-full bg-white/5 rounded-xl p-3 border border-white/5">
+                        <div className="w-full bg-black/30 rounded-xl p-3 border border-white/10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-1.5">
                               <Trophy size={14} className="text-amber-400" />
@@ -5151,7 +5205,7 @@ const GameView: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="w-full bg-white/5 rounded-xl p-3 border border-white/5">
+                        <div className="w-full bg-black/30 rounded-xl p-3 border border-white/10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-1.5">
                               <Award size={14} className="text-amber-400" />
@@ -5174,12 +5228,21 @@ const GameView: React.FC = () => {
                           startGame(gameState.level);
                         }
                       }}
-                        className={`w-full text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-base shadow-[0_8px_16px_rgba(255,255,255,0.2)] active:translate-y-1 transition-all border-b-4 flex items-center justify-center gap-3 group ${gameState.isBossLevel
-                          ? (gameState.bossLevelId === 2 ? 'bg-gradient-to-r from-amber-600 to-amber-800 border-amber-900' : 'bg-gradient-to-r from-emerald-500 to-emerald-700 border-emerald-900')
-                          : 'bg-gradient-to-r from-[#FF8800] to-orange-600 border-orange-800'
+                        className={`w-full relative overflow-hidden text-white py-5 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-base border-[4px] border-white active:translate-y-1 transition-all hover:scale-[1.02] duration-300 flex items-center justify-center gap-3 group shadow-[0_8px_0_rgba(0,0,0,0.3),inset_0_4px_8px_rgba(255,255,255,0.5),inset_0_-4px_8px_rgba(0,0,0,0.5)]
+                          ${gameState.isBossLevel
+                            ? (gameState.bossLevelId === 2 ? 'bg-gradient-to-r from-amber-550 to-amber-700' : 'bg-gradient-to-r from-emerald-500 to-emerald-700')
+                            : 'bg-[#FF8800]'
                           }`}>
-                        <RefreshCw className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        <span>{gameState.isBossLevel ? 'RIPROVA BOSS' : 'RIGIOCA'}</span>
+                        {/* 3D Glass shine layer */}
+                        <div className="absolute inset-0 pointer-events-none z-10" style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                        }}></div>
+                        <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                          background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                        }}></div>
+
+                        <RefreshCw className="w-5 h-5 relative z-20 group-hover:rotate-180 transition-transform duration-550 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
+                        <span className="relative z-20 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">{gameState.isBossLevel ? 'RIPROVA BOSS' : 'RIGIOCA'}</span>
                       </button>
 
                       <button onPointerDown={(e) => {
@@ -5187,9 +5250,12 @@ const GameView: React.FC = () => {
                         resetDuelState(activeMatch?.id, currentUser?.id);
                         goToHome();
                       }}
-                        className="w-full bg-slate-800 text-slate-400 py-3.5 rounded-lg font-orbitron font-black uppercase tracking-widest text-xs border border-slate-700 active:scale-95 transition-all hover:bg-white/5 hover:text-white flex items-center justify-center gap-2">
-                        <Home size={14} />
-                        TORNA ALLA HOME
+                        className="w-full relative overflow-hidden bg-slate-800 text-white/90 py-4 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-sm border-[3px] border-white/20 active:translate-y-1 transition-all hover:scale-[1.02] duration-300 hover:bg-slate-750 flex items-center justify-center gap-2 shadow-[0_6px_0_rgba(0,0,0,0.25),inset_0_3px_6px_rgba(255,255,255,0.25),inset_0_-3px_6px_rgba(0,0,0,0.45)]">
+                        <div className="absolute inset-0 pointer-events-none z-10" style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%)'
+                        }}></div>
+                        <Home size={16} className="relative z-20" />
+                        <span className="relative z-20">TORNA ALLA HOME</span>
                       </button>
                     </div>
                   </div>
@@ -5198,23 +5264,34 @@ const GameView: React.FC = () => {
 
               {/* SURRENDER RECAP SCREEN */}
               {gameState.status === 'opponent-surrendered' && (
-                <div className="bg-slate-900/60 p-5 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md relative overflow-hidden border-[4px] border-cyan-500/50 shadow-[0_40px_100px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
-                  {/* Background Texture Removed */}
+                <div className="p-6 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-md relative overflow-hidden border-[4px] border-cyan-400/80 backdrop-blur-2xl shadow-[0_40px_100px_rgba(0,0,0,0.85),0_0_40px_rgba(6,182,212,0.3)] transition-all duration-300"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(8,47,73,0.75) 0%, rgba(3,7,18,0.9) 100%)',
+                    boxShadow: '0 40px 100px rgba(0,0,0,0.85), inset 0 4px 12px rgba(255,255,255,0.35), inset 0 -4px 12px rgba(0,0,0,0.6)'
+                  }}>
+                  
+                  {/* Glass layout elements */}
+                  <div className="absolute inset-0 pointer-events-none z-0" style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.03) 70.1%, rgba(255,255,255,0.1) 100%)'
+                  }}></div>
+                  <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-[2.5rem] z-0" style={{
+                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.18), transparent)'
+                  }}></div>
 
                   <div className="relative z-10">
                     {/* Header */}
                     <div className="text-center mb-4">
-                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl border-2 border-white/30 mb-2 bg-gradient-to-br from-cyan-500 to-cyan-700 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+                      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl border-[3px] border-white/50 mb-2 bg-gradient-to-br from-cyan-400 to-cyan-600 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
                         <Trophy className="w-7 h-7 text-white" />
                       </div>
                       <h2 className="text-2xl font-black font-orbitron uppercase tracking-widest mb-1 drop-shadow-lg text-cyan-400">
                         HAI VINTO
                       </h2>
-                      <div className="h-0.5 w-24 bg-gradient-to-r from-transparent via-cyan-500 to-transparent mx-auto rounded-full"></div>
+                      <div className="h-0.5 w-24 bg-gradient-to-r from-transparent via-cyan-400 to-transparent mx-auto rounded-full"></div>
                     </div>
 
                     {/* Info Card */}
-                    <div className="bg-black/40 border-2 rounded-2xl p-4 mb-4 backdrop-blur-md border-cyan-500/20">
+                    <div className="border-[2px] border-cyan-500/30 rounded-2xl p-4 mb-5 backdrop-blur-md shadow-[inset_0_2px_6px_rgba(255,255,255,0.15)] bg-white/5">
                       <div className="flex flex-col items-center gap-3">
                         <div className="flex items-center gap-2">
                           <Shield className="w-5 h-5 text-cyan-400" />
@@ -5223,7 +5300,7 @@ const GameView: React.FC = () => {
                           </span>
                         </div>
 
-                        <div className="w-full bg-white/5 rounded-xl p-3 border border-white/5">
+                        <div className="w-full bg-black/30 rounded-xl p-3 border border-white/10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-1.5">
                               <Award size={14} className="text-amber-400" />
@@ -5233,7 +5310,7 @@ const GameView: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="w-full bg-white/5 rounded-xl p-3 border border-white/5">
+                        <div className="w-full bg-black/30 rounded-xl p-3 border border-white/10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-1.5">
                               <Swords size={14} className="text-cyan-400" />
@@ -5252,9 +5329,17 @@ const GameView: React.FC = () => {
                         resetDuelState();
                         setActiveModal('duel_selection');
                       }}
-                        className="w-full text-white py-4 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-base shadow-[0_8px_16px_rgba(255,255,255,0.2)] active:translate-y-1 transition-all border-b-4 flex items-center justify-center gap-3 group bg-gradient-to-r from-cyan-500 to-cyan-700 border-cyan-900">
-                        <Swords className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        <span>NUOVA SFIDA</span>
+                        className="w-full relative overflow-hidden text-white py-5 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-base border-[4px] border-white active:translate-y-1 transition-all hover:scale-[1.02] duration-300 flex items-center justify-center gap-3 group bg-gradient-to-r from-cyan-500 to-cyan-700 shadow-[0_8px_0_rgba(0,0,0,0.3),inset_0_4px_8px_rgba(255,255,255,0.5),inset_0_-4px_8px_rgba(0,0,0,0.5)]">
+                        {/* 3D Glass shine layer */}
+                        <div className="absolute inset-0 pointer-events-none z-10" style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                        }}></div>
+                        <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                          background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                        }}></div>
+                        
+                        <Swords className="w-5 h-5 relative z-20 group-hover:scale-110 transition-transform text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
+                        <span className="relative z-20 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">NUOVA SFIDA</span>
                       </button>
 
                       <button onPointerDown={(e) => {
@@ -5262,9 +5347,12 @@ const GameView: React.FC = () => {
                         resetDuelState();
                         goToHome();
                       }}
-                        className="w-full bg-slate-800 text-slate-400 py-3.5 rounded-lg font-orbitron font-black uppercase tracking-widest text-xs border border-slate-700 active:scale-95 transition-all hover:bg-white/5 hover:text-white flex items-center justify-center gap-2">
-                        <Home size={14} />
-                        TORNA ALLA HOME
+                        className="w-full relative overflow-hidden bg-slate-800 text-white/90 py-4 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-sm border-[3px] border-white/20 active:translate-y-1 transition-all hover:scale-[1.02] duration-300 hover:bg-slate-750 flex items-center justify-center gap-2 shadow-[0_6px_0_rgba(0,0,0,0.25),inset_0_3px_6px_rgba(255,255,255,0.25),inset_0_-3px_6px_rgba(0,0,0,0.45)]">
+                        <div className="absolute inset-0 pointer-events-none z-10" style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%)'
+                        }}></div>
+                        <Home size={16} className="relative z-20" />
+                        <span className="relative z-20">TORNA ALLA HOME</span>
                       </button>
                     </div>
                   </div>
@@ -5272,8 +5360,24 @@ const GameView: React.FC = () => {
               )}
 
               {gameState.status === 'level-complete' && (
-                <div className="bg-slate-900/60 p-5 rounded-[2rem] text-center modal-content animate-screen-in w-full max-w-md relative overflow-hidden border-[4px] border-[#FF8800] shadow-[0_40px_100px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
-                  {/* Background Texture Removed */}
+                <div className={`p-6 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-md relative overflow-hidden border-[4px] backdrop-blur-2xl transition-all duration-300
+                  ${gameState.isBossLevel
+                    ? 'border-yellow-400/80 shadow-[0_40px_100px_rgba(0,0,0,0.85),0_0_40px_rgba(250,204,21,0.3)]'
+                    : 'border-orange-500/80 shadow-[0_40px_100px_rgba(0,0,0,0.85),0_0_40px_rgba(251,146,60,0.3)]'}`}
+                  style={{
+                    background: gameState.isBossLevel
+                      ? 'linear-gradient(135deg, rgba(45,35,10,0.75) 0%, rgba(20,15,5,0.9) 100%)'
+                      : 'linear-gradient(135deg, rgba(45,20,5,0.75) 0%, rgba(20,10,2,0.9) 100%)',
+                    boxShadow: '0 40px 100px rgba(0,0,0,0.85), inset 0 4px 12px rgba(255,255,255,0.35), inset 0 -4px 12px rgba(0,0,0,0.6)'
+                  }}>
+                  
+                  {/* Glass layout elements */}
+                  <div className="absolute inset-0 pointer-events-none z-0" style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.03) 70.1%, rgba(255,255,255,0.1) 100%)'
+                  }}></div>
+                  <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-[2.5rem] z-0" style={{
+                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.18), transparent)'
+                  }}></div>
 
                   {gameState.isBossLevel ? (
                     // BOSS WIN SCREEN
@@ -5282,7 +5386,7 @@ const GameView: React.FC = () => {
                       <h2 className="text-4xl font-black font-orbitron text-yellow-400 mb-2 uppercase tracking-wider drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]">BOSS SCONFITTO!</h2>
                       <div className="text-xs font-bold text-white mb-6 uppercase tracking-[0.1em] bg-yellow-500/20 py-1 rounded">Dominio Matematico Stabilito</div>
 
-                      <div className="bg-slate-900/60 p-5 rounded-2xl mb-6 border border-yellow-500/20">
+                      <div className="border-[2px] border-yellow-500/30 rounded-2xl p-5 mb-6 backdrop-blur-md shadow-[inset_0_2px_6px_rgba(255,255,255,0.15)] bg-white/5">
                         <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block mb-2">Ricompensa</span>
                         <div className="text-3xl font-black font-orbitron text-white text-shadow-neon-yellow flex flex-col items-center gap-1">
                           <span>{BOSS_LEVELS.find(b => b.id === gameState.bossLevelId)?.reward || "BOUNTY"}</span>
@@ -5292,13 +5396,19 @@ const GameView: React.FC = () => {
 
                       <button onPointerDown={async (e) => {
                         e.stopPropagation();
-                        // Badge already saved when targets completed (lines 2611-2638)
-                        // Just return to home
+                        // Badge already saved when targets completed
                         console.log(`🏠 Tornando alla home. Boss ${gameState.bossLevelId} già salvato.`);
                         setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null, status: 'idle' }));
                       }}
-                        className="w-full bg-yellow-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border border-yellow-400 hover:bg-yellow-500">
-                        RISCATTA & TORNA ALLA BASE
+                        className="w-full relative overflow-hidden text-white py-5 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-base border-[4px] border-white active:translate-y-1 transition-all hover:scale-[1.02] duration-300 flex items-center justify-center gap-3 group bg-gradient-to-r from-yellow-550 to-yellow-700 shadow-[0_8px_0_rgba(0,0,0,0.3),inset_0_4px_8px_rgba(255,255,255,0.5),inset_0_-4px_8px_rgba(0,0,0,0.5)]">
+                        {/* 3D Glass shine layer */}
+                        <div className="absolute inset-0 pointer-events-none z-10" style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                        }}></div>
+                        <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                          background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                        }}></div>
+                        <span className="relative z-20 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">RISCATTA & TORNA ALLA BASE</span>
                       </button>
                     </div>
                   ) : (
@@ -5306,7 +5416,7 @@ const GameView: React.FC = () => {
                     <div className="relative z-10">
                       {/* Header with Level Progression */}
                       <div className="text-center mb-4">
-                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-2 border-white/30 shadow-[0_0_20px_rgba(255,136,0,0.4)] mb-2">
+                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-[3px] border-white/50 shadow-[0_0_20px_rgba(255,136,0,0.4)] mb-2">
                           <Trophy className="w-7 h-7 text-white" />
                         </div>
                         <h2 className="text-2xl font-black font-orbitron text-white uppercase tracking-widest mb-1 drop-shadow-lg">
@@ -5316,7 +5426,7 @@ const GameView: React.FC = () => {
                       </div>
 
                       {/* Level Progression Card */}
-                      <div className="bg-black/40 border-2 border-[#FF8800]/20 rounded-2xl p-4 mb-4 backdrop-blur-md">
+                      <div className="border-[2px] border-orange-500/30 rounded-2xl p-4 mb-5 backdrop-blur-md shadow-[inset_0_2px_6px_rgba(255,255,255,0.15)] bg-white/5">
                         <div className="flex justify-center items-center gap-4 mb-3">
                           <div className="flex flex-col items-center">
                             <span className="text-[8px] uppercase font-black text-white/40 tracking-[0.2em] mb-0.5">COMPLETATO</span>
@@ -5327,7 +5437,7 @@ const GameView: React.FC = () => {
                           <ChevronRight className="w-8 h-8 text-[#FF8800] animate-pulse" strokeWidth={3} />
                           <div className="flex flex-col items-center">
                             <span className="text-[8px] uppercase font-black text-[#FF8800] tracking-[0.2em] mb-0.5">PROSSIMO</span>
-                            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-2 border-white/20 flex items-center justify-center shadow-lg">
+                            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-[2px] border-white/40 flex items-center justify-center shadow-lg">
                               <span className="text-3xl font-black font-orbitron text-white drop-shadow-md">{gameState.level + 1}</span>
                             </div>
                           </div>
@@ -5335,7 +5445,7 @@ const GameView: React.FC = () => {
 
                         {/* Stats Grid */}
                         <div className="space-y-2">
-                          <div className="bg-white/5 rounded-xl p-2.5 border border-white/5">
+                          <div className="bg-black/30 rounded-xl p-2.5 border border-white/10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
                             <div className="flex justify-between items-center">
                               <div className="flex items-center gap-1.5">
                                 <Sparkles size={12} className="text-[#FF8800]" />
@@ -5347,7 +5457,7 @@ const GameView: React.FC = () => {
                             </div>
                           </div>
 
-                          <div className="bg-white/5 rounded-xl p-2.5 border border-white/5">
+                          <div className="bg-black/30 rounded-xl p-2.5 border border-white/10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
                             <div className="flex justify-between items-center">
                               <div className="flex items-center gap-1.5">
                                 <Trophy size={12} className="text-amber-400" />
@@ -5379,32 +5489,46 @@ const GameView: React.FC = () => {
                       {/* Action Buttons */}
                       <div className="space-y-2.5">
                         <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }}
-                          className="w-full bg-gradient-to-r from-[#FF8800] to-orange-600 text-white py-3.5 px-6 rounded-xl font-orbitron font-black uppercase tracking-widest text-base shadow-[0_8px_16px_rgba(255,136,0,0.3)] active:translate-y-1 transition-all border-b-4 border-orange-800 flex items-center justify-center gap-3 group">
-                          <Play className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" />
-                          <span>PROSSIMO LIVELLO</span>
+                          className="w-full relative overflow-hidden text-white py-5 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-base border-[4px] border-white active:translate-y-1 transition-all hover:scale-[1.02] duration-300 flex items-center justify-center gap-3 group bg-gradient-to-r from-[#FF8800] to-orange-600 shadow-[0_8px_0_rgba(0,0,0,0.3),inset_0_4px_8px_rgba(255,255,255,0.5),inset_0_-4px_8px_rgba(0,0,0,0.5)]">
+                          {/* 3D Glass shine layer */}
+                          <div className="absolute inset-0 pointer-events-none z-10" style={{
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
+                          }}></div>
+                          <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                            background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
+                          }}></div>
+                          <Play className="w-5 h-5 fill-current relative z-20 group-hover:scale-110 transition-transform text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
+                          <span className="relative z-20 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">PROSSIMO LIVELLO</span>
                         </button>
 
                         <div className="grid grid-cols-2 gap-2">
                           <button onPointerDown={(e) => { e.stopPropagation(); startGame(gameState.level); }}
-                            className="bg-slate-800 text-slate-400 py-3 rounded-lg font-orbitron font-black uppercase tracking-widest text-[9px] border border-slate-700 active:scale-95 transition-all hover:bg-white/5 hover:text-white flex items-center justify-center gap-1.5">
-                            <RefreshCw size={12} />
-                            RIGIOCA
+                            className="relative overflow-hidden bg-slate-800 text-white/95 py-3 rounded-2xl font-orbitron font-black uppercase tracking-widest text-[9px] border-[3px] border-white/20 active:translate-y-1 transition-all hover:scale-[1.02] duration-300 hover:bg-slate-750 flex items-center justify-center gap-1.5 shadow-[0_5px_0_rgba(0,0,0,0.25),inset_0_2px_4px_rgba(255,255,255,0.25),inset_0_-2px_4px_rgba(0,0,0,0.45)]">
+                            <div className="absolute inset-0 pointer-events-none z-10" style={{
+                              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%)'
+                            }}></div>
+                            <RefreshCw size={12} className="relative z-20" />
+                            <span className="relative z-20">RIGIOCA</span>
                           </button>
+                          
                           <button onPointerDown={(e) => {
                             e.stopPropagation();
                             resetDuelState(activeMatch?.id, currentUser?.id);
                             goToHome(e);
                             setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
                           }}
-                            className="bg-slate-800 text-slate-400 py-3 rounded-lg font-orbitron font-black uppercase tracking-widest text-[9px] border border-slate-700 active:scale-95 transition-all hover:bg-white/5 hover:text-white flex items-center justify-center gap-1.5">
-                            <Home size={12} />
-                            HOME
+                            className="relative overflow-hidden bg-slate-800 text-white/95 py-3 rounded-2xl font-orbitron font-black uppercase tracking-widest text-[9px] border-[3px] border-white/20 active:translate-y-1 transition-all hover:scale-[1.02] duration-300 hover:bg-slate-750 flex items-center justify-center gap-1.5 shadow-[0_5px_0_rgba(0,0,0,0.25),inset_0_2px_4px_rgba(255,255,255,0.25),inset_0_-2px_4px_rgba(0,0,0,0.45)]">
+                            <div className="absolute inset-0 pointer-events-none z-10" style={{
+                              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%)'
+                            }}></div>
+                            <Home size={12} className="relative z-20" />
+                            <span className="relative z-20">HOME</span>
                           </button>
                         </div>
 
-                        <div className="flex items-center justify-center gap-2 pt-1 opacity-50">
+                        <div className="flex items-center justify-center gap-2 pt-1 opacity-55">
                           <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
-                          <span className="text-[8px] text-cyan-400 uppercase font-black tracking-[0.2em]">Salvataggio Automatico</span>
+                          <span className="text-[8px] text-cyan-400 uppercase font-black tracking-[0.2em] drop-shadow-[0_0_2px_rgba(34,211,238,0.5)]">Salvataggio Automatico</span>
                         </div>
                       </div>
                     </div>
