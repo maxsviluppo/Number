@@ -2628,13 +2628,13 @@ const GameView: React.FC = () => {
         setPathStatus('correct');
         setMatchedTargetValue(result!);
         
-        // Attende 970ms mostrando la celebre animazione a 4 fasi del target prima di completarlo!
+        // Attende 500ms mostrando la celebre animazione a 4 fasi del target prima di completarlo!
         setTimeout(() => {
           handleSuccess(result!);
           setSelectedPath([]);
           setPathStatus(null);
           setMatchedTargetValue(null);
-        }, 970);
+        }, 500);
       } else {
         setPathStatus('wrong');
         handleError();
@@ -4548,7 +4548,7 @@ const GameView: React.FC = () => {
                   {/* TIMER IN SOVRAPPOSIZIONE ASSOLUTA */}
                   <div
                     id="timer-display-game"
-                    className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-[100] cursor-pointer group"
+                    className="absolute left-1/2 -translate-x-1/2 top-1/2 translate-y-[-20%] z-[100] cursor-pointer group"
                     onPointerDown={activeMatch?.isDuel ? undefined : togglePause}
                   >
                     {gameState.isBossLevel ? (
