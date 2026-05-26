@@ -324,23 +324,9 @@
       10%  { transform: scale3d(1.2, 1.2, 1); opacity: 1; }
       20%  { transform: scale3d(1, 1, 1); opacity: 1; }
 
-      /* STEP 2: Specular reflect sweep - Target immobile per far passare il riflesso (20% - 40%) */
+      /* STEP 2: Specular reflect sweep - Target immobile per far passare il riflesso (20% - 85%) */
       20%  { transform: scale3d(1, 1, 1) translateY(0) rotate(0deg); }
-      40%  { transform: scale3d(1, 1, 1) translateY(0) rotate(0deg); }
-
-      /* STEP 3: 3 piccoli saltelli sul posto con schiacciamento/allungamento e oscillazione (40% - 85%) */
-      /* Saltello 1 (oscillazione a sinistra) */
-      40%  { transform: translateY(0) scale3d(1.26, 0.74, 1) rotate(-3deg); }
-      47%  { transform: translateY(-16px) scale3d(0.84, 1.24, 1) rotate(-7deg); }
-      55%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
-      /* Saltello 2 (oscillazione a destra) */
-      55%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
-      62%  { transform: translateY(-16px) scale3d(0.84, 1.24, 1) rotate(7deg); }
-      70%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
-      /* Saltello 3 (oscillazione a sinistra) */
-      70%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
-      77%  { transform: translateY(-12px) scale3d(0.88, 1.16, 1) rotate(-4deg); }
-      85%  { transform: translateY(0) scale3d(1.16, 0.84, 1) rotate(0deg); }
+      85%  { transform: scale3d(1, 1, 1) translateY(0) rotate(0deg); }
 
       /* STEP 4: Rimpicciolimento rapido fino a sparire nel nulla (85% - 100%) */
       85%  { transform: translateY(0) scale3d(1, 1, 1) rotate(0deg); opacity: 1; }
