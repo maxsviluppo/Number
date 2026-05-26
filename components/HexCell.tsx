@@ -127,7 +127,7 @@ const HexCell: React.FC<HexCellProps> = ({
       className={`absolute transition-all duration-[250ms] cursor-pointer flex items-center justify-center 
         ${isOrangeTheme ? '' : shapeClass} 
         ${!isOrangeTheme ? 'border-2' : ''} 
-        ${data.isFallen ? 'animate-fallen' : (data.isVibrating ? 'animate-vibrate' : (isSelected && pathStatus === 'correct' ? 'animate-hex-correct-bounce' : animationClass))}
+        ${data.isFallen ? 'animate-fallen' : (data.isVibrating ? 'animate-vibrate' : animationClass)}
         ${isOrangeTheme && isNumber ? 'w-[calc(64px*var(--hex-scale))] h-[calc(64px*var(--hex-scale))]' : ''}
         ${isOrangeTheme && !isNumber ? 'w-[calc(40px*var(--hex-scale))] h-[calc(40px*var(--hex-scale))]' : ''}
         ${!isOrangeTheme ? 'w-[calc(64px*var(--hex-scale))] h-[calc(72px*var(--hex-scale))]' : ''}
