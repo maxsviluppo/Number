@@ -348,6 +348,7 @@ const GameView: React.FC = () => {
   const [leaderboardData, setLeaderboardData] = useState<{ byScore: any[], byLevel: any[] } | null>(null);
 
   const [savedGame, setSavedGame] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [pauseLocked, setPauseLocked] = useState(false);
   const [winVideoSrc, setWinVideoSrc] = useState(WIN_VIDEOS[0]);
@@ -1119,6 +1120,7 @@ const GameView: React.FC = () => {
   }, [showToast]);
 
   const loadProfile = useCallback(async (userId: string) => {
+    setProfileLoading(true);
     try {
       const profile = await profileService.getProfile(userId);
       const save = await profileService.loadGameState(userId);
@@ -1212,6 +1214,8 @@ const GameView: React.FC = () => {
       } catch (e) {
         console.warn("Offline fallback failed:", e);
       }
+    } finally {
+      setProfileLoading(false);
     }
   }, [checkAndUnlockBadges]);
 
@@ -1222,9 +1226,12 @@ const GameView: React.FC = () => {
       if (session?.user) {
         setCurrentUser(session.user);
         loadProfile(session.user.id);
+      } else {
+        setProfileLoading(false);
       }
     }).catch(e => {
       // Silent error for session check
+      setProfileLoading(false);
     });
 
     // 2. Listen for Auth Changes (Login, Logout, Email Confirmation Redirects)
@@ -1254,6 +1261,7 @@ const GameView: React.FC = () => {
         setCurrentUser(null);
         setUserProfile(null);
         setSavedGame(null);
+        setProfileLoading(false);
         localStorage.removeItem('career_time_bonus'); // Clear sensitive session data
         resetDuelState(); // Ensure match state is cleared locally
         setGameState(prev => ({ ...prev, status: 'idle' }));
@@ -4105,9 +4113,10 @@ const GameView: React.FC = () => {
 
               <div className="flex flex-col gap-4 items-center w-full max-w-sm relative z-20">
                 <button
+                  disabled={profileLoading}
                   onPointerDown={handleStartGameClick}
                   id="play-btn-home"
-                  className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[#FF8800] text-white py-5 rounded-2xl font-orbitron font-black text-xl border-[4px] border-white hover:scale-105 transition-all duration-300 active:translate-y-1"
+                  className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[#FF8800] text-white py-5 rounded-2xl font-orbitron font-black text-xl border-[4px] border-white hover:scale-105 transition-all duration-300 active:translate-y-1 disabled:opacity-50 disabled:pointer-events-none"
                   style={{
                     boxShadow: '0 8px 0 rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.5), inset 0 -4px 8px rgba(0,0,0,0.5)'
                   }}
@@ -4130,7 +4139,9 @@ const GameView: React.FC = () => {
                   }}></div>
 
                   <Play className="w-8 h-8 fill-current relative z-20" />
-                  <span className="tracking-widest relative z-20">{savedGame && savedGame.level > 1 ? `CONTINUA LVL ${savedGame.level}` : "GIOCA"}</span>
+                  <span className="tracking-widest relative z-20">
+                    {profileLoading ? 'CARICAMENTO...' : (savedGame && savedGame.level > 1 ? `CONTINUA LVL ${savedGame.level}` : 'GIOCA')}
+                  </span>
                 </button>
  
                 <div className="grid grid-cols-2 gap-3 w-full">
@@ -6012,8 +6023,9 @@ const GameView: React.FC = () => {
                 {/* Actions Section */}
                 <div className="space-y-4 relative z-10">
                   <button
+                    disabled={profileLoading}
                     onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); savedGame ? restoreGame() : startGame(); }}
-                    className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[#FF8800] text-white py-5 rounded-2xl font-orbitron font-black text-lg border-[4px] border-white hover:scale-105 transition-all duration-300 active:translate-y-1"
+                    className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[#FF8800] text-white py-5 rounded-2xl font-orbitron font-black text-lg border-[4px] border-white hover:scale-105 transition-all duration-300 active:translate-y-1 disabled:opacity-50 disabled:pointer-events-none"
                     style={{
                       boxShadow: '0 8px 0 rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.5), inset 0 -4px 8px rgba(0,0,0,0.5)'
                     }}
@@ -6036,65 +6048,38 @@ const GameView: React.FC = () => {
                     }}></div>
 
                     <Play className="w-6 h-6 fill-current relative z-20" />
-                    <span className="tracking-widest relative z-20">{savedGame ? 'RIPRENDI' : 'INIZIA'} PARTITA</span>
+                    <span className="tracking-widest relative z-20">
+                      {profileLoading ? 'CARICAMENTO...' : (savedGame ? 'RIPRENDI PARTITA' : 'INIZIA PARTITA')}
+                    </span>
                   </button>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal('full_reset_confirm'); }}
-                      className="relative overflow-hidden bg-slate-800 text-slate-200 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border-[3px] border-white/60 active:translate-y-0.5 transition-all hover:scale-105 flex items-center justify-center gap-2 group"
-                      style={{
-                        boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
-                      }}
-                    >
-                      {/* Glass layout elements */}
-                      <div className="absolute inset-0 pointer-events-none z-10" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
-                      }}></div>
-                      <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
-                      }}></div>
-                      <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
-                      }}></div>
-                      <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                        background: 'linear-gradient(225deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
-                      }}></div>
-                      <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                        background: 'linear-gradient(to top, rgba(0,0,0,0.2), transparent)'
-                      }}></div>
+                  <button
+                    onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
+                    className="w-full relative overflow-hidden bg-slate-800 text-slate-200 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border-[3px] border-white/60 active:translate-y-0.5 transition-all hover:scale-105 flex items-center justify-center gap-2 group"
+                    style={{
+                      boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                    }}
+                  >
+                    {/* Glass layout elements */}
+                    <div className="absolute inset-0 pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
+                    }}></div>
+                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
+                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
+                    }}></div>
+                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                    }}></div>
+                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(225deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
+                    }}></div>
+                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.2), transparent)'
+                    }}></div>
 
-                      <AlertTriangle size={14} className="relative z-20 text-red-400" />
-                      <span className="relative z-20">NUOVA PARTITA</span>
-                    </button>
-                    <button
-                      onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
-                      className="relative overflow-hidden bg-slate-800 text-slate-200 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border-[3px] border-white/60 active:translate-y-0.5 transition-all hover:scale-105 flex items-center justify-center gap-2 group"
-                      style={{
-                        boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
-                      }}
-                    >
-                      {/* Glass layout elements */}
-                      <div className="absolute inset-0 pointer-events-none z-10" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
-                      }}></div>
-                      <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
-                      }}></div>
-                      <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
-                      }}></div>
-                      <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                        background: 'linear-gradient(225deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
-                      }}></div>
-                      <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                        background: 'linear-gradient(to top, rgba(0,0,0,0.2), transparent)'
-                      }}></div>
-
-                      <Home size={14} className="relative z-20 text-slate-300" />
-                      <span className="relative z-20">INDIETRO</span>
-                    </button>
-                  </div>
+                    <Home size={14} className="relative z-20 text-slate-300" />
+                    <span className="relative z-20">INDIETRO</span>
+                  </button>
                 </div>
 
               </div>
