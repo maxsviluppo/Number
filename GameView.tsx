@@ -446,7 +446,7 @@ const GameView: React.FC = () => {
     };
   }, [gameState.status, isPaused, hasUsedAdvThisLevel, activeMatch, gameState.isBossLevel]);
 
-  // NEW: AdMob Initialization & Banner Management
+  // NEW: AdMob Initialization
   useEffect(() => {
     if (!ADS_CONFIG.enabled) return;
 
@@ -457,18 +457,6 @@ const GameView: React.FC = () => {
           testingDevices: [],
           initializeForTesting: true,
         });
-
-        // Preload Banner only on Android/iOS (Web will use mock)
-        if (['android', 'ios'].includes((window as any).Capacitor?.getPlatform())) {
-          await AdMob.showBanner({
-            adId: ADS_CONFIG.bannerId,
-            adSize: BannerAdSize.ADAPTIVE_BANNER,
-            position: BannerAdPosition.BOTTOM_CENTER,
-            margin: 0,
-            isTesting: true,
-          });
-          setAdBannerActive(true);
-        }
       } catch (e) {
         console.error("AdMob Init Error:", e);
       }
@@ -478,39 +466,26 @@ const GameView: React.FC = () => {
 
     return () => {
       if (['android', 'ios'].includes((window as any).Capacitor?.getPlatform())) {
-        AdMob.removeBanner();
+        AdMob.removeBanner().catch(() => {});
       }
     };
   }, []);
 
-  // Update Banner visibility based on isPaused (as requested by previous code logic)
+  // Ensure no banners are shown on visibility/state changes
   useEffect(() => {
     if (!ADS_CONFIG.enabled) return;
 
-    const updateBannerVisibility = async () => {
+    const hideBanner = async () => {
       const isMobile = ['android', 'ios'].includes((window as any).Capacitor?.getPlatform());
       if (!isMobile) return;
-
       try {
-        if (isPaused || gameState.status === 'idle' || gameState.status === 'victory' || gameState.status === 'game-over') {
-          await AdMob.showBanner({
-            adId: ADS_CONFIG.bannerId,
-            adSize: BannerAdSize.ADAPTIVE_BANNER,
-            position: BannerAdPosition.BOTTOM_CENTER,
-            margin: 0,
-            isTesting: true,
-          });
-        } else {
-          // Hide banner during active gameplay if preferred, or keep it.
-          // The user specifically asked to SEE IT, so I'll keep it visible or show it.
-          // Let's follow the adBannerActive logic from original file (line 320)
-        }
+        await AdMob.removeBanner();
       } catch (e) {
-        console.debug("Banner Visibility Error:", e);
+        console.debug("Banner Removal Error:", e);
       }
     };
 
-    updateBannerVisibility();
+    hideBanner();
   }, [isPaused, gameState.status]);
 
   const handleUserInteraction = useCallback(async () => {
