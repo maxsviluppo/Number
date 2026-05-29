@@ -1,9 +1,10 @@
 {
+  "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
-    { "source": "/ads.txt", "destination": "/ads.txt" },
-    { "source": "/app-ads.txt", "destination": "/app-ads.txt" },
-    { "source": "/robots.txt", "destination": "/robots.txt" },
-    { "source": "/assets/:path*", "destination": "/assets/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/((?!assets/|.*\\.).*)",
+      "destination": "/index.html"
+    }
   ]
 }
