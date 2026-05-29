@@ -379,7 +379,7 @@ const GameView: React.FC = () => {
     adsenseSlot: '4546676285',
     // TEST IDS (Replace with ca-app-pub-2753359398526340/xxxxxxxxxx)
     bannerId: 'ca-app-pub-3940256099942544/6300978111',
-    rewardedId: 'ca-app-pub-3940256099942544/5224354917',
+    rewardedId: 'ca-app-pub-8620196010585213/5397002761',
   };
 
   useEffect(() => {
