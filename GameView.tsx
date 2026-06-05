@@ -456,6 +456,10 @@ const GameView: React.FC = () => {
           requestTrackingAuthorization: true,
           testingDevices: [],
           initializeForTesting: true,
+          requestConfiguration: {
+            tagForChildDirectedTreatment: true,
+            maxAdContentRating: 'G',
+          }
         });
       } catch (e) {
         console.error("AdMob Init Error:", e);
