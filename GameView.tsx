@@ -1728,8 +1728,18 @@ const GameView: React.FC = () => {
 
     soundService.playUIClick();
     const joinUrl = `${window.location.origin}/?ref=${userProfile.referral_code}`;
+    const text = `Ricevi 60s EXTRA! Usa il mio link per iscriverti a NumberGame!`;
 
     if (navigator.share) {
+      try {
+        await navigator.share({ title: "Regalo NumberGame!", text, url: joinUrl });
+      } catch (err) {
+        console.log('Share dismissed', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(joinUrl);
+        showToast("🎁 Link copiato! Condividilo per i 60s bonus!");
       } catch (err) {
         showToast("Impossibile copiare il link.");
       }
