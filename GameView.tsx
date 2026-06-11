@@ -7,7 +7,7 @@ import CharacterHelper from './components/CharacterHelper';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { matchService } from './services/matchService';
-import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronLeft, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward, Clock, Crown, Lock, Target, Send, XCircle, Globe } from 'lucide-react';
+import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronLeft, ChevronRight, Play, Award, BarChart3, HelpCircle, Sparkles, Home, X, Volume2, VolumeX, User, Pause, Shield, Swords, Info, AlertTriangle, FastForward, Clock, Crown, Lock, Target, Send, XCircle, Globe, Gift } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
@@ -1720,41 +1720,29 @@ const GameView: React.FC = () => {
   };
 
   const handleQuickInvite = async () => {
-    if (!currentUser) {
-      showToast("Accedi per invitare un amico!");
+    if (!currentUser || !userProfile?.referral_code) {
+      showToast("Accedi per invitare un amico e guadagnare bonus!");
       setShowAuthModal(true);
       return;
     }
 
     soundService.playUIClick();
-    const mode = 'standard';
-    const seed = Math.random().toString(36).substring(7);
+    const joinUrl = `${window.location.origin}/?ref=${userProfile.referral_code}`;
+    const text = `Gioca a NumberGame! Usa il mio link per ricevere subito 30 secondi di bonus extra nella tua prima partita!`;
 
-    try {
-      const newMatch = await matchService.createMatch(currentUser.id, seed, mode);
-      if (newMatch) {
-        setDuelMode(mode);
-        const joinUrl = `${window.location.origin}${window.location.pathname}?joinMatch=${newMatch.id}`;
-        const text = `Ti sfido a Neural Duel! 🧠⚔️\nClicca qui per accettare la sfida: ${joinUrl}`;
-
-        if (navigator.share) {
-          try {
-            await navigator.share({ title: "Sfida a Neural Duel!", text, url: joinUrl });
-          } catch (err) {
-            console.log('Share dismissed', err);
-          }
-        } else {
-          try {
-            await navigator.clipboard.writeText(text);
-            showToast("Link sfida copiato!");
-          } catch (err) {
-            showToast("Impossibile copiare il link.");
-          }
-        }
-        // Staying home after invite as requested
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "NumberGame Bonus 30s!", text, url: joinUrl });
+      } catch (err) {
+        console.log('Share dismissed', err);
       }
-    } catch (e: any) {
-      showToast(e.message || "Errore creazione invito");
+    } else {
+      try {
+        await navigator.clipboard.writeText(joinUrl);
+        showToast("Link bonus copiato!");
+      } catch (err) {
+        showToast("Impossibile copiare il link.");
+      }
     }
   };
 
@@ -4037,7 +4025,7 @@ const GameView: React.FC = () => {
                   title="Invita Amico"
                 >
                   <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
-                  <Send size={20} className="relative z-20 text-white drop-shadow-md ml-0.5" strokeWidth={3} />
+                  <Gift size={22} className="relative z-20 text-white drop-shadow-md ml-0.5" strokeWidth={2.5} />
                 </button>
 
                 {/* Admin Access */}
