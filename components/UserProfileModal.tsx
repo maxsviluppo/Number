@@ -242,9 +242,9 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                                     </div>
                                     <h3 className="text-white font-bold mb-2 flex items-center justify-center gap-2 mt-2">
                                         <Sparkles size={16} className="text-indigo-400" />
-                                        Invita e Guadagna 30s
+                                        Invita e Guadagna 60s
                                     </h3>
-                                    <p className="text-slate-400 text-xs mb-4">Condividi il tuo codice con gli amici. Quando si registrano, entrambi riceverete un Bonus di 30 secondi!</p>
+                                    <p className="text-slate-400 text-xs mb-4">Condividi il tuo codice con gli amici. Quando si registrano, entrambi riceverete un Bonus di 60 secondi!</p>
                                     
                                     <div className="flex items-center justify-between bg-slate-900/80 rounded-xl p-3 border border-indigo-500/20 mb-4">
                                         <span className="text-slate-500 text-xs uppercase tracking-widest font-bold">Il tuo codice</span>
@@ -257,7 +257,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                                             if (navigator.share) {
                                                 navigator.share({
                                                     title: 'Gioca a NumberGame!',
-                                                    text: 'Usa il mio link per ricevere subito 30 secondi di bonus extra nella tua prima partita!',
+                                                    text: 'Ricevi 60s EXTRA! Usa il mio link per ricevere subito 60 secondi di bonus extra nella tua prima partita!',
                                                     url: link,
                                                 }).catch(console.error);
                                             } else {

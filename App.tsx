@@ -19,19 +19,22 @@ const ScrollToTop = () => {
   return null;
 };
 
+// CATCH REFERRAL LINK BEFORE REACT ROUTER INITIALIZES (Anti-redirect safeguard)
+try {
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get('ref');
+  if (ref) {
+    localStorage.setItem('pending_referral', ref);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+} catch (e) {
+  console.warn("Could not parse referral before init", e);
+}
+
 const App: React.FC = () => {
   const [remoteConfig, setRemoteConfig] = useState<any>(null);
 
   useEffect(() => {
-    // Check for Referral Link
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get('ref');
-    if (ref) {
-      localStorage.setItem('pending_referral', ref);
-      // Clean up the URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-
     const loadConfig = async () => {
       try {
         const config = await configService.getSystemConfig();

@@ -112,10 +112,13 @@ export const authService = {
             if (pendingReferral) {
                 localStorage.removeItem('pending_referral');
                 try {
-                    // Cerca il profilo di chi ha inviato l'invito per assegnargli il premio
-                    const { data: sender } = await supabase.from('profiles').select('id, bonus_charges').eq('referral_code', pendingReferral).single();
-                    if (sender) {
-                        await supabase.from('profiles').update({ bonus_charges: (sender.bonus_charges || 0) + 1 }).eq('id', sender.id);
+                    // Chiamata alla Stored Procedure sicura che aggira RLS
+                    const { error: rpcError } = await supabase.rpc('grant_referral_bonus', { 
+                        ref_code: pendingReferral 
+                    });
+                    
+                    if (rpcError) {
+                        console.error('Error in RPC grant_referral_bonus:', rpcError);
                     }
                 } catch (e) {
                     console.error('Error handling referral bonus:', e);

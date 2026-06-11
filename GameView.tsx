@@ -1728,18 +1728,8 @@ const GameView: React.FC = () => {
 
     soundService.playUIClick();
     const joinUrl = `${window.location.origin}/?ref=${userProfile.referral_code}`;
-    const text = `Gioca a NumberGame! Usa il mio link per ricevere subito 30 secondi di bonus extra nella tua prima partita!`;
 
     if (navigator.share) {
-      try {
-        await navigator.share({ title: "NumberGame Bonus 30s!", text, url: joinUrl });
-      } catch (err) {
-        console.log('Share dismissed', err);
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(joinUrl);
-        showToast("Link bonus copiato!");
       } catch (err) {
         showToast("Impossibile copiare il link.");
       }
@@ -2320,13 +2310,13 @@ const GameView: React.FC = () => {
     // AUTOMATIC REFERRAL BONUS FOR NEW ACCOUNTS (or first run)
     let referralBonus = 0;
     if (userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 && !activeMatch?.isDuel && startLevel === 1) {
-      referralBonus = 30;
+      referralBonus = 60;
       const newCharges = userProfile.bonus_charges - 1;
       setUserProfile(prev => prev ? { ...prev, bonus_charges: newCharges } : null);
       if (currentUser) {
         profileService.updateProfile({ id: currentUser.id, bonus_charges: newCharges }).catch(e => console.error("Error updating referral bonus:", e));
       }
-      showToast("🎁 BONUS REFERRAL ATTIVATO! +30s EXTRA PER LA PARTITA!");
+      showToast("🎁 BONUS REFERRAL ATTIVATO! +60s EXTRA PER LA PARTITA!");
       soundService.playLevelComplete(); 
     }
 
