@@ -172,7 +172,7 @@ const GameView: React.FC = () => {
     }, []);
 
   const handleRequestExtraTime = async () => {
-    if (hasUsedAdvThisLevel || activeMatch) return;
+    if (advUsesThisLevel >= 3 || activeMatch) return;
 
     // 1. Pause and Setup
     togglePause(true);
@@ -272,7 +272,7 @@ const GameView: React.FC = () => {
     setIsAdvPlaying(false);
 
     if (getReward) {
-      setHasUsedAdvThisLevel(true);
+      setAdvUsesThisLevel(prev => prev + 1);
       setAdRewardTriggered(true);
 
       // 3. Reward: +30 seconds
@@ -362,7 +362,7 @@ const GameView: React.FC = () => {
   const [latestMatchData, setLatestMatchData] = useState<any>(null); // NEW: Full Match Object Store
 
   const [isAdvPlaying, setIsAdvPlaying] = useState(false);
-  const [hasUsedAdvThisLevel, setHasUsedAdvThisLevel] = useState(false);
+  const [advUsesThisLevel, setAdvUsesThisLevel] = useState(0);
   const [adBannerActive, setAdBannerActive] = useState(false);
   const [adTimer, setAdTimer] = useState(30);
   const [adCanSkip, setAdCanSkip] = useState(false);
@@ -421,7 +421,7 @@ const GameView: React.FC = () => {
       if (adBannerTimerRef.current) clearTimeout(adBannerTimerRef.current);
 
       // Condition: Playing, NOT a match, NOT boss level, AND IS PAUSED
-      if (gameState.status === 'playing' && isPaused && !hasUsedAdvThisLevel && !activeMatch && !gameState.isBossLevel) {
+      if (gameState.status === 'playing' && isPaused && advUsesThisLevel < 3 && !activeMatch && !gameState.isBossLevel) {
         adBannerTimerRef.current = setTimeout(() => {
           setAdBannerActive(true);
           adBannerTimerRef.current = setTimeout(() => {
@@ -434,7 +434,7 @@ const GameView: React.FC = () => {
       }
     };
 
-    if (gameState.status === 'playing' && isPaused && !hasUsedAdvThisLevel && !activeMatch && !gameState.isBossLevel) {
+    if (gameState.status === 'playing' && isPaused && advUsesThisLevel < 3 && !activeMatch && !gameState.isBossLevel) {
       startCycle();
     } else {
       setAdBannerActive(false);
@@ -444,7 +444,7 @@ const GameView: React.FC = () => {
     return () => {
       if (adBannerTimerRef.current) clearTimeout(adBannerTimerRef.current);
     };
-  }, [gameState.status, isPaused, hasUsedAdvThisLevel, activeMatch, gameState.isBossLevel]);
+  }, [gameState.status, isPaused, advUsesThisLevel, activeMatch, gameState.isBossLevel]);
 
   // NEW: AdMob Initialization
   useEffect(() => {
@@ -1596,7 +1596,7 @@ const GameView: React.FC = () => {
     await handleUserInteraction();
     soundService.playReset();
     vibrateDevice(15);
-    setHasUsedAdvThisLevel(false);
+    setAdvUsesThisLevel(0);
     setIsAdvPlaying(false);
 
     // SFIDA LOGIC (ABBANDONO)
@@ -3386,7 +3386,7 @@ const GameView: React.FC = () => {
       // CARRY OVER: Add 60s to whatever is left
       timeLeft: prev.timeLeft + 60,
     }));
-    setHasUsedAdvThisLevel(false); // Reset AD usage for new level
+    setAdvUsesThisLevel(0); // Reset AD usage for new level
     // Pass explicit level to avoid stale state
     generateGrid(nextLvl);
 
@@ -5428,15 +5428,15 @@ const GameView: React.FC = () => {
                         <div className="flex justify-center items-center gap-4 mb-3">
                           <div className="flex flex-col items-center">
                             <span className="text-[8px] uppercase font-black text-white/40 tracking-[0.2em] mb-0.5">COMPLETATO</span>
-                            <div className="w-16 h-16 rounded-xl bg-white/5 border-2 border-white/10 flex items-center justify-center">
-                              <span className="text-2xl font-black font-orbitron text-white">{gameState.level}</span>
+                            <div className="w-auto min-w-[4rem] px-2 h-16 rounded-xl bg-white/5 border-2 border-white/10 flex items-center justify-center">
+                              <span className={`font-black font-orbitron text-white ${gameState.level > 999 ? 'text-xl' : 'text-2xl'}`}>{gameState.level}</span>
                             </div>
                           </div>
                           <ChevronRight className="w-8 h-8 text-[#FF8800] animate-pulse" strokeWidth={3} />
                           <div className="flex flex-col items-center">
                             <span className="text-[8px] uppercase font-black text-[#FF8800] tracking-[0.2em] mb-0.5">PROSSIMO</span>
-                            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-[2px] border-white/40 flex items-center justify-center shadow-lg">
-                              <span className="text-3xl font-black font-orbitron text-white drop-shadow-md">{gameState.level + 1}</span>
+                            <div className="w-auto min-w-[4rem] px-2 h-16 rounded-xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-[2px] border-white/40 flex items-center justify-center shadow-lg">
+                              <span className={`font-black font-orbitron text-white drop-shadow-md ${gameState.level + 1 > 999 ? 'text-2xl' : 'text-3xl'}`}>{gameState.level + 1}</span>
                             </div>
                           </div>
                         </div>
