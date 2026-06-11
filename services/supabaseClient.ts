@@ -128,6 +128,9 @@ export const authService = {
 
     // 2. LOGIN: Username only (Resolves email behind scenes)
     async signIn(username: string, password: string) {
+        // Clear any pending referral since it's an existing user logging in
+        localStorage.removeItem('pending_referral');
+        
         // Step A: Find email for this username
         const { data: profile, error: lookupError } = await supabase
             .from('profiles')

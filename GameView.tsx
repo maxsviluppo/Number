@@ -2317,6 +2317,19 @@ const GameView: React.FC = () => {
       showToast(`🏆 BONUS BOSS ATTIVATO! +${careerBonus}s al tempo iniziale!`);
     }
 
+    // AUTOMATIC REFERRAL BONUS FOR NEW ACCOUNTS (or first run)
+    let referralBonus = 0;
+    if (userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 && !activeMatch?.isDuel && startLevel === 1) {
+      referralBonus = 30;
+      const newCharges = userProfile.bonus_charges - 1;
+      setUserProfile(prev => prev ? { ...prev, bonus_charges: newCharges } : null);
+      if (currentUser) {
+        profileService.updateProfile({ id: currentUser.id, bonus_charges: newCharges }).catch(e => console.error("Error updating referral bonus:", e));
+      }
+      showToast("🎁 BONUS REFERRAL ATTIVATO! +30s EXTRA PER LA PARTITA!");
+      soundService.playLevelComplete(); 
+    }
+
     setGameState(prev => {
       let nextTotalScore = prev.totalScore;
 
@@ -2332,7 +2345,7 @@ const GameView: React.FC = () => {
         totalScore: nextTotalScore,
         streak: 0,
         level: startLevel,
-        timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME + careerBonus,
+        timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME + careerBonus + referralBonus,
         targetResult: 0,
         status: 'playing',
         estimatedIQ: startLevel === 1 ? 100 : prev.estimatedIQ,
