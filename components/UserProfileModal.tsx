@@ -40,7 +40,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
         estimated_iq: 100,
         username: 'Ospite',
         badges: [],
-        avatar_url: undefined
+        avatar_url: undefined,
+        referral_code: undefined
     };
 
     const unlockedBadges = stats.badges || [];
@@ -232,6 +233,45 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Referral Section */}
+                            {stats.referral_code && (
+                                <div className="mt-6 p-4 bg-indigo-900/30 rounded-2xl border border-indigo-500/30 text-center relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-2 bg-indigo-600 rounded-bl-xl text-[10px] font-black text-white">
+                                        BONUS: {stats.bonus_charges || 0} CARICHE
+                                    </div>
+                                    <h3 className="text-white font-bold mb-2 flex items-center justify-center gap-2 mt-2">
+                                        <Sparkles size={16} className="text-indigo-400" />
+                                        Invita e Guadagna 30s
+                                    </h3>
+                                    <p className="text-slate-400 text-xs mb-4">Condividi il tuo codice con gli amici. Quando si registrano, entrambi riceverete un Bonus di 30 secondi!</p>
+                                    
+                                    <div className="flex items-center justify-between bg-slate-900/80 rounded-xl p-3 border border-indigo-500/20 mb-4">
+                                        <span className="text-slate-500 text-xs uppercase tracking-widest font-bold">Il tuo codice</span>
+                                        <span className="text-indigo-400 font-orbitron font-black tracking-wider">{stats.referral_code}</span>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => {
+                                            const link = `${window.location.origin}/?ref=${stats.referral_code}`;
+                                            if (navigator.share) {
+                                                navigator.share({
+                                                    title: 'Gioca a NumberGame!',
+                                                    text: 'Usa il mio link per ricevere subito 30 secondi di bonus extra nella tua prima partita!',
+                                                    url: link,
+                                                }).catch(console.error);
+                                            } else {
+                                                navigator.clipboard.writeText(link);
+                                                setToastMessage('Link copiato negli appunti!');
+                                                setTimeout(() => setToastMessage(null), 3000);
+                                            }
+                                        }}
+                                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-95 rounded-xl text-white font-black font-orbitron uppercase text-sm transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)]"
+                                    >
+                                        CONDIVIDI IL LINK
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 

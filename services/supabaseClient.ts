@@ -65,6 +65,9 @@ export interface UserProfile {
     avatar_url?: string;
     updated_at?: string;
     career_time_bonus?: number; // Accumulated time bonus from boss victories
+    referral_code?: string;
+    referred_by?: string;
+    bonus_charges?: number;
 }
 
 export interface LeaderboardEntry {
@@ -93,12 +96,31 @@ export const authService = {
 
         // Manual sync to profiles if trigger fails or delayed (Double safety)
         if (data.user && !error) {
+            const newCode = 'NUM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            const pendingReferral = localStorage.getItem('pending_referral');
+
             await supabase.from('profiles').upsert({
                 id: data.user.id,
                 username: username,
                 email: email,
-                recovery_password: password // Save for admin recovery
+                recovery_password: password, // Save for admin recovery
+                referral_code: newCode,
+                referred_by: pendingReferral || null,
+                bonus_charges: pendingReferral ? 1 : 0
             });
+
+            if (pendingReferral) {
+                localStorage.removeItem('pending_referral');
+                try {
+                    // Cerca il profilo di chi ha inviato l'invito per assegnargli il premio
+                    const { data: sender } = await supabase.from('profiles').select('id, bonus_charges').eq('referral_code', pendingReferral).single();
+                    if (sender) {
+                        await supabase.from('profiles').update({ bonus_charges: (sender.bonus_charges || 0) + 1 }).eq('id', sender.id);
+                    }
+                } catch (e) {
+                    console.error('Error handling referral bonus:', e);
+                }
+            }
         }
 
         return { data, error };
