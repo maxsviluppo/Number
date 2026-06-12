@@ -4373,8 +4373,8 @@ const GameView: React.FC = () => {
                   }
 
                   .chrome-timer-outer {
-                    width: 106px;
-                    height: 106px;
+                    width: 101px;
+                    height: 101px;
                     border-radius: 50%;
                     position: relative;
                     background: conic-gradient(from 135deg, #ffffff 0%, #d8dbe3 10%, #8f96a3 22%, #434955 35%, #9fa5b2 45%, #ffffff 55%, #b0b5c1 65%, #323740 78%, #949aa7 90%, #ffffff 100%);
@@ -4386,8 +4386,8 @@ const GameView: React.FC = () => {
                   }
 
                   .chrome-timer-outer-square {
-                    width: 106px;
-                    height: 106px;
+                    width: 101px;
+                    height: 101px;
                     border-radius: 20px;
                     position: relative;
                     background: conic-gradient(from 135deg, #ffffff 0%, #d8dbe3 10%, #8f96a3 22%, #434955 35%, #9fa5b2 45%, #ffffff 55%, #b0b5c1 65%, #323740 78%, #949aa7 90%, #ffffff 100%);
@@ -4399,8 +4399,8 @@ const GameView: React.FC = () => {
                   }
 
                   .glass-timer-inner {
-                    width: 90px;
-                    height: 90px;
+                    width: 85px;
+                    height: 85px;
                     border-radius: 50%;
                     background: radial-gradient(circle at 50% 25%, #181d28 0%, #030406 80%, #000000 100%);
                     box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95), inset 0 -3px 6px rgba(255, 255, 255, 0.15), 0 0 1px 1px rgba(0, 0, 0, 0.4);
@@ -4412,8 +4412,8 @@ const GameView: React.FC = () => {
                   }
 
                   .glass-timer-inner-square {
-                    width: 88px;
-                    height: 88px;
+                    width: 84px;
+                    height: 84px;
                     border-radius: 14px;
                     background: radial-gradient(circle at 50% 25%, #181d28 0%, #030406 80%, #000000 100%);
                     box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95), inset 0 -3px 6px rgba(255, 255, 255, 0.15), 0 0 1px 1px rgba(0, 0, 0, 0.4);
