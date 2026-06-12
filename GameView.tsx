@@ -3399,6 +3399,7 @@ const GameView: React.FC = () => {
         level: nextLvl,
         timeLeft: gameState.timeLeft + 60,
         estimatedIQ: gameState.estimatedIQ,
+        score: 0, // Reset level score in save state
       };
       profileService.saveGameState(currentUser.id, saveState).catch(e => {
         if (e?.name !== 'AbortError' && !e?.message?.includes('signal is aborted without reason')) {
