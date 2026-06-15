@@ -10,6 +10,8 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
+
+
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
@@ -18,5 +20,3 @@ root.render(
     </ErrorBoundary>
   </React.StrictMode>
 );
-
-// Trigger build: 1778666962537
