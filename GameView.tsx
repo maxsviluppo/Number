@@ -1581,6 +1581,12 @@ const GameView: React.FC = () => {
     loadProfile(user.id);
     setShowAuthModal(false);
     showToast(`Benvenuto, ${user.user_metadata?.username || 'Operatore'}`);
+
+    if (localStorage.getItem('just_registered_referral') === 'true') {
+      localStorage.removeItem('just_registered_referral');
+      setActiveModal('referral_bonus_info');
+      hasShownReferralModal.current = true;
+    }
   };
 
   const toggleMute = async (e?: React.PointerEvent) => {

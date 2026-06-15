@@ -50,6 +50,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess, showToast }) 
                 if (error) throw error;
                 if (data.user) {
                     if (pendingRef) {
+                        localStorage.setItem('just_registered_referral', 'true');
                         setRegisteredUser(data.user);
                         setMode('referral-success');
                     } else {
