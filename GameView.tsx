@@ -373,7 +373,7 @@ const GameView: React.FC = () => {
     // Forza l'attivazione sul Web come richiesto in attesa dell'autorizzazione AdSense
     enabled: true, 
     rewardDuration: 30, // Full duration for reward
-    skipOffset: 5, // REDUCED for testing, set to 30 for production
+    skipOffset: 5, // Set to 5 for production
     rewardValue: 30, // Seconds granted
     client: 'ca-pub-8620196010585213',
     adsenseSlot: '4546676285',
@@ -1720,14 +1720,21 @@ const GameView: React.FC = () => {
   };
 
   const handleQuickInvite = async () => {
-    if (!currentUser || !userProfile?.referral_code) {
+    if (!currentUser) {
       showToast("Accedi per invitare un amico e guadagnare bonus!");
       setShowAuthModal(true);
       return;
     }
 
+    let refCode = userProfile?.referral_code;
+    if (!refCode) {
+      refCode = 'NUM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      if (userProfile) setUserProfile({ ...userProfile, referral_code: refCode });
+      profileService.updateProfile({ id: currentUser.id, referral_code: refCode }).catch(e => console.warn("Referral code update err:", e));
+    }
+
     soundService.playUIClick();
-    const joinUrl = `${window.location.origin}/?ref=${userProfile.referral_code}`;
+    const joinUrl = `${window.location.origin}/?ref=${refCode}`;
     const text = `Ricevi 60s EXTRA! Usa il mio link per iscriverti a NumberGame!`;
 
     if (navigator.share) {
