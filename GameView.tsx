@@ -82,7 +82,7 @@ const GameView: React.FC = () => {
   const [matchedTargetValue, setMatchedTargetValue] = useState<number | null>(null);
   const [insight, setInsight] = useState<string>("");
 
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | 'full_reset_confirm' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | 'full_reset_confirm' | 'referral_bonus_info' | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean, isP1: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0);
@@ -145,6 +145,7 @@ const GameView: React.FC = () => {
   const gridRef = useRef(grid);
   const disconnectionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const adTouchStartX = useRef<number | null>(null);
+  const hasShownReferralModal = useRef(false);
 
   useEffect(() => {
     gridRef.current = grid;
@@ -1152,6 +1153,12 @@ const GameView: React.FC = () => {
 
       if (profile) {
         setUserProfile(profile);
+
+        // Check if user has pending referral bonus charges
+        if (profile.bonus_charges && profile.bonus_charges > 0 && !hasShownReferralModal.current && gameStateRef.current.status === 'idle') {
+          setActiveModal('referral_bonus_info');
+          hasShownReferralModal.current = true;
+        }
 
         // Sync Bonus State from DB (Source of Truth) to LocalStorage
         if (profile.career_time_bonus !== undefined) {
@@ -2326,7 +2333,7 @@ const GameView: React.FC = () => {
 
     // AUTOMATIC REFERRAL BONUS FOR NEW ACCOUNTS (or first run)
     let referralBonus = 0;
-    if (userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 && !activeMatch?.isDuel && startLevel === 1) {
+    if (userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 && !activeMatch?.isDuel) {
       referralBonus = 60;
       const newCharges = userProfile.bonus_charges - 1;
       setUserProfile(prev => prev ? { ...prev, bonus_charges: newCharges } : null);
@@ -2404,14 +2411,27 @@ const GameView: React.FC = () => {
 
     // Check for Career Bonus
     const careerBonus = parseInt(localStorage.getItem('career_time_bonus') || '0');
-    let newTimeLeft = savedGame.timeLeft || INITIAL_TIME;
+    let referralBonus = 0;
+
+    // Check for Referral Bonus on Restore
+    if (userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 && !activeMatch?.isDuel) {
+      referralBonus = 60;
+      const newCharges = userProfile.bonus_charges - 1;
+      setUserProfile(prev => prev ? { ...prev, bonus_charges: newCharges } : null);
+      if (currentUser) {
+        profileService.updateProfile({ id: currentUser.id, bonus_charges: newCharges }).catch(e => console.error("Error updating referral bonus:", e));
+      }
+      showToast("🎁 BONUS REFERRAL ATTIVATO! +60s EXTRA PER LA PARTITA!");
+      soundService.playLevelComplete();
+    }
+
+    let newTimeLeft = (savedGame.timeLeft || INITIAL_TIME) + careerBonus + referralBonus;
 
     if (careerBonus > 0) {
       localStorage.setItem('career_time_bonus', '0');
       if (currentUser) {
         profileService.updateProfile({ id: currentUser.id, career_time_bonus: 0 }).catch(e => console.error("Errore azzeramento bonus:", e));
       }
-      newTimeLeft += careerBonus;
       showToast(`🏆 BONUS BOSS ATTIVATO! +${careerBonus}s al tempo ripristinato!`);
     }
 
@@ -5945,6 +5965,71 @@ const GameView: React.FC = () => {
         }
 
         {
+          activeModal === 'referral_bonus_info' && userProfile && (
+            <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 modal-overlay bg-black/85 backdrop-blur-sm animate-fadeIn" onPointerDown={() => setActiveModal(null)}>
+              <div 
+                className="w-full max-w-sm p-8 rounded-[2.5rem] border-[3px] border-cyan-500/50 shadow-[0_0_60px_rgba(6,182,212,0.4)] bg-slate-900/95 relative overflow-hidden backdrop-blur-xl text-center"
+                onPointerDown={e => e.stopPropagation()}
+              >
+                {/* Background Effects */}
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent animate-pulse z-20"></div>
+                <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                
+                <div className="flex flex-col items-center space-y-6 py-2">
+                    <div className="w-16 h-16 bg-cyan-500/20 rounded-full flex items-center justify-center border-2 border-cyan-400 animate-bounce">
+                        <Gift className="w-8 h-8 text-cyan-400" />
+                    </div>
+                    <h3 className="text-xl font-black text-white uppercase tracking-wider font-orbitron">
+                        Regalo da Invito!
+                    </h3>
+                    <p className="text-slate-300 text-sm font-medium leading-relaxed">
+                        Hai ottenuto <strong className="text-cyan-400 text-lg font-black block mt-1">+60 Secondi Bonus</strong> per la tua prossima partita!
+                    </p>
+                    <p className="text-slate-400 text-[11px] leading-relaxed">
+                        Questo premio viene assegnato ai partecipanti del programma d'invito. Verrà applicato automaticamente all'avvio della partita.
+                    </p>
+                    
+                    <div className="w-full space-y-3 mt-4">
+                        <button 
+                            onClick={async () => {
+                                soundService.playSuccess();
+                                const nextLevel = userProfile.max_level || 1;
+                                if (savedGame) {
+                                  restoreGame();
+                                } else {
+                                  startGame(nextLevel);
+                                }
+                            }}
+                            className="w-full relative overflow-hidden bg-cyan-500 text-white py-4 rounded-xl font-black font-orbitron uppercase tracking-widest text-xs border-[3px] border-white hover:scale-105 active:translate-y-1 transition-all flex justify-center items-center gap-2 group cursor-pointer"
+                            style={{
+                              boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                            }}
+                        >
+                            {/* Glass layout elements */}
+                            <div className="absolute inset-0 pointer-events-none z-10" style={{
+                              background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
+                            }}></div>
+                            <span className="relative z-20 font-orbitron font-black">GIOCA ORA CON IL BONUS</span>
+                        </button>
+                        
+                        <button 
+                            onClick={() => {
+                                soundService.playUIClick();
+                                setActiveModal(null);
+                            }}
+                            className="w-full relative overflow-hidden bg-slate-800 hover:bg-slate-700 text-slate-400 py-3.5 rounded-xl font-black font-orbitron uppercase tracking-widest text-[10px] border-[3px] border-slate-700/50 hover:border-slate-500 hover:scale-105 active:translate-y-1 transition-all flex justify-center items-center gap-2 group cursor-pointer"
+                        >
+                            <span className="relative z-20 font-orbitron font-black">RISCATTA PIÙ TARDI</span>
+                        </button>
+                    </div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        {
           activeModal === 'resume_confirm' && (
             <div className="fixed inset-0 z-[5000] flex flex-col items-center justify-center p-4 md:p-6 modal-overlay bg-black/85 backdrop-blur-sm overflow-y-auto" onPointerDown={() => setActiveModal(null)}>
               
@@ -5991,17 +6076,26 @@ const GameView: React.FC = () => {
                           <span className="text-[9px] font-black uppercase tracking-wider">Tempo</span>
                         </div>
                         <span className="text-lg font-black font-orbitron text-white">
-                          {(savedGame?.timeLeft || 0) + parseInt(localStorage.getItem('career_time_bonus') || '0')}s
+                          {(savedGame?.timeLeft || 0) + parseInt(localStorage.getItem('career_time_bonus') || '0') + (userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 ? 60 : 0)}s
                         </span>
                       </div>
                     </div>
 
-                    {/* Bonus Indicator */}
+                    {/* Bonus Indicators */}
                     {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (
                       <div className="mt-3 w-full bg-orange-500/10 border border-orange-500/20 rounded-xl py-1.5 px-3 flex items-center justify-center gap-2 animate-pulse">
                         <Sparkles size={12} className="text-[#FF8800]" />
                         <span className="text-[9px] font-black text-[#FF8800] uppercase tracking-wider">
                           Bonus Boss Attivo (+{localStorage.getItem('career_time_bonus')}s)
+                        </span>
+                      </div>
+                    )}
+
+                    {userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 && (
+                      <div className="mt-2 w-full bg-cyan-500/10 border border-cyan-500/20 rounded-xl py-1.5 px-3 flex items-center justify-center gap-2 animate-pulse">
+                        <Gift size={12} className="text-cyan-400" />
+                        <span className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">
+                          Bonus Invito Attivo (+60s)
                         </span>
                       </div>
                     )}
