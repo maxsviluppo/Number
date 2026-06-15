@@ -4552,7 +4552,7 @@ const GameView: React.FC = () => {
                     <div className="btn-panel btn-panel-orange flex-grow rounded-md flex flex-col justify-center items-center text-amber-950 font-black">
                       <span className="text-[7px] leading-none text-amber-950/60 uppercase tracking-widest">PUNTI</span>
                       <span className="text-xl font-black font-orbitron leading-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.6)] mt-0.5">
-                        {activeMatch?.isDuel ? gameState.score : gameState.totalScore}
+                        {gameState.score}
                       </span>
                     </div>
 
