@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { HexCellData } from '../types';
 
@@ -30,20 +29,15 @@ const HexCell: React.FC<HexCellProps> = ({
   const isNumber = data.type === 'number';
 
   // Posizionamento basato su scala variabile CSS
-  // Orange theme uses tighter spacing with perfect octagon tessellation
   const isOrangeTheme = theme === 'orange';
 
   // For Orange theme: Rectilinear grid with centered alignment
-  // Octagon (64px) and Square (40px). Center-to-center distance 52px.
-  // To align centers: Square needs (64-40)/2 = 12px offset relative to Octagon grid 0,0.
   const rowSpacing = isOrangeTheme ? 52 : 65;
   const colSpacing = isOrangeTheme ? 52 : 75;
   const offsetAmount = isOrangeTheme ? 0 : 38;
 
-  const centeringOffset = (isOrangeTheme && !isNumber) ? 12 : 0;
-
-  const topValue = data.row * rowSpacing + centeringOffset;
-  const leftValue = data.col * colSpacing + (data.row % 2 === 1 ? offsetAmount : 0) + centeringOffset;
+  const topValue = data.row * rowSpacing;
+  const leftValue = data.col * colSpacing + (data.row % 2 === 1 ? offsetAmount : 0);
 
   // Tema visivo migliorato per operatori per massima leggibilità e stile
   const getOperatorTheme = (val: string) => {
@@ -79,20 +73,8 @@ const HexCell: React.FC<HexCellProps> = ({
   const operatorTheme = getOperatorTheme(data.value);
   // Shape logic: Default uses css-clip. Orange uses specific shapes per type.
   const shapeClass = theme === 'orange'
-    ? (isNumber ? 'octagon-clip' : 'rounded-xl')
+    ? 'octagon-clip'
     : 'hexagon-clip';
-
-  // Orange theme specific styling
-  const orangeNumberStyle = isOrangeTheme && isNumber
-    ? '' // Use image only, no container style
-    : '';
-  const orangeOperatorStyle = isOrangeTheme && !isNumber
-    ? isBossLevel
-      ? bossLevelId === 2
-        ? 'bg-gradient-to-br from-amber-900 to-amber-950 border-[3px] border-amber-700 shadow-[0_2px_0_rgba(120,53,15,0.5)]' // Brown for Boss 2
-        : 'bg-gradient-to-br from-green-800 to-emerald-950 border-[3px] border-emerald-700 shadow-[0_2px_0_rgba(0,50,0,0.5)]' // Green for other bosses
-      : 'bg-gradient-to-br from-[#E65100] to-[#B71C1C] border-[3px] border-white shadow-[0_2px_0_rgba(0,0,0,0.2)]'
-    : '';
 
   // Gestione animazioni di selezione e deselezione
   useEffect(() => {
@@ -104,14 +86,13 @@ const HexCell: React.FC<HexCellProps> = ({
     prevSelected.current = isSelected;
   }, [isSelected]);
 
-  // Delay di ingresso basato sulla posizione per un effetto "wave"
-  const entryDelay = (data.row * 0.05) + (data.col * 0.05);
-
   const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
     onMouseDown(data.id);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
     const touch = e.touches[0];
     const element = document.elementFromPoint(touch.clientX, touch.clientY);
     if (element) {
@@ -122,14 +103,20 @@ const HexCell: React.FC<HexCellProps> = ({
     }
   };
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    onMouseDown(data.id);
+  };
+
+  const isInteractive = (isSelectable || isSelected) && !data.isFallen;
+
   return (
     <div
-      className={`absolute transition-all duration-[250ms] cursor-pointer flex items-center justify-center 
+      className={`absolute transition-transform duration-[75ms] ease-out flex items-center justify-center pointer-events-none
         ${isOrangeTheme ? '' : shapeClass} 
         ${!isOrangeTheme ? 'border-2' : ''} 
         ${data.isFallen ? 'animate-fallen' : (data.isVibrating ? 'animate-vibrate' : animationClass)}
-        ${isOrangeTheme && isNumber ? 'w-[calc(64px*var(--hex-scale))] h-[calc(64px*var(--hex-scale))]' : ''}
-        ${isOrangeTheme && !isNumber ? 'w-[calc(40px*var(--hex-scale))] h-[calc(40px*var(--hex-scale))]' : ''}
+        ${isOrangeTheme ? 'w-[calc(52px*var(--hex-scale))] h-[calc(52px*var(--hex-scale))]' : ''}
         ${!isOrangeTheme ? 'w-[calc(64px*var(--hex-scale))] h-[calc(72px*var(--hex-scale))]' : ''}
         ${isSelected
           ? isOrangeTheme ? 'z-20 scale-110' : 'bg-cyan-400 shadow-[0_0_40px_rgba(34,211,238,1)] z-20 border-white scale-110'
@@ -144,60 +131,70 @@ const HexCell: React.FC<HexCellProps> = ({
                 : `${operatorTheme.bg} ${operatorTheme.border} active:scale-95 hover:brightness-125`
         }
         ${data.isFallen ? 'opacity-0 scale-50 pointer-events-none translate-y-20' : ''}
-        ${(!isSelectable && !isSelected) && !data.isFallen ? 'opacity-20 pointer-events-none' : ''}
+        ${(!isSelectable && !isSelected) && !data.isFallen ? 'opacity-20' : ''}
       `}
       style={{
         top: `calc(${topValue}px * var(--hex-scale))`,
         left: `calc(${leftValue}px * var(--hex-scale))`,
-        animationDelay: (animationClass === 'animate-hex-entry' && !data.isFallen) ? `${data.row * 0.12}s` : '0s'
+        animationDelay: (animationClass === 'animate-hex-entry' && !data.isFallen) ? `${data.row * 0.09}s` : '0s'
       }}
       data-cell-id={data.id}
-      onMouseDown={() => onMouseDown(data.id)}
-      onMouseEnter={() => onMouseEnter(data.id)}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
     >
+      {/* Interactive Hit Area - Clipped to shape only for default theme. For orange theme, uses full square to eliminate drag dead zones. */}
+      <div
+        className={`absolute inset-0 ${isInteractive ? 'pointer-events-auto cursor-pointer' : 'pointer-events-none'} ${isOrangeTheme ? '' : shapeClass} z-40`}
+        style={{ touchAction: 'none' }}
+        data-cell-id={data.id}
+        onMouseDown={() => onMouseDown(data.id)}
+        onMouseEnter={() => onMouseEnter(data.id)}
+        onPointerDown={handlePointerDown}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+      />
+
       {/* PNG Background for Orange Theme Octagons (Numbers and Operators) */}
       {isOrangeTheme && (
         <img
-          src="/CasellaGlass.png"
+          src="/ottagonocristallo.png"
           alt="cell"
           className="absolute inset-0 w-full h-full object-contain pointer-events-none"
           style={{
+            transform: isNumber ? 'scale(2.5)' : 'scale(1.17)',
+            opacity: isSelected ? 1 : 0.95,
             filter: (() => {
+              let glowEffect = '';
               if (isSelected) {
                 if (pathStatus === 'correct') {
-                  // GLOW SMERALDO (Successo!)
-                  return 'hue-rotate(95deg) saturate(2.4) brightness(1.25) drop-shadow(0 0 20px rgba(16,185,129,0.9))';
+                  glowEffect = ' hue-rotate(95deg) saturate(1.56) brightness(1.096) drop-shadow(0 0 12px rgba(16,185,129,0.38))';
                 } else if (pathStatus === 'wrong') {
-                  // GLOW ROSSO FUOCO (Errore!)
-                  return 'hue-rotate(335deg) saturate(2.6) brightness(1.25) drop-shadow(0 0 20px rgba(239,68,68,0.95))';
+                  glowEffect = ' hue-rotate(335deg) saturate(1.64) brightness(1.096) drop-shadow(0 0 12px rgba(239,68,68,0.39))';
                 } else {
-                  // GLOW GIALLO NEON (Selezione in corso per numeri e simboli!)
-                  return 'hue-rotate(35deg) saturate(2.2) brightness(1.25) drop-shadow(0 0 15px rgba(251,191,36,0.8))';
+                  glowEffect = ' hue-rotate(12deg) saturate(1.72) brightness(1.144) drop-shadow(0 0 12px rgba(255,150,0,0.38)) drop-shadow(0 0 6px rgba(255,200,0,0.34))';
                 }
               }
 
+              let baseFilter = 'drop-shadow(0 6px 12px rgba(0,0,0,0.6))';
               if (isNumber) {
+                baseFilter = 'drop-shadow(0 6px 12px rgba(0,0,0,0.6)) brightness(1.2) contrast(1.28) saturate(1.2)';
                 if (isBossLevel) {
-                  return bossLevelId === 2
-                    ? 'brightness(0.6) sepia(0.8) saturate(1.5)' // Dark Amber
-                    : 'hue-rotate(100deg) saturate(1.5) brightness(0.7)'; // Dark Green
+                  baseFilter = bossLevelId === 2
+                    ? 'brightness(0.6) sepia(0.8) saturate(1.5) drop-shadow(0 6px 12px rgba(0,0,0,0.6))' // Dark Amber
+                    : 'hue-rotate(100deg) saturate(1.5) brightness(0.7) drop-shadow(0 6px 12px rgba(0,0,0,0.6))'; // Dark Green
                 }
-                return 'none'; // Default Orange
               } else {
                 // Operators: dynamic hue-rotations for + (green), - (neon fuchsia), x (yellow), / (electric violet)
-                let baseFilter = 'none';
+                let opHue = 'none';
                 switch (data.value) {
-                  case '+': baseFilter = 'hue-rotate(95deg) saturate(1.1) brightness(1.0)'; break;
-                  case '-': baseFilter = 'hue-rotate(295deg) saturate(1.3) brightness(1.05)'; break;
-                  case '×': baseFilter = 'hue-rotate(25deg) saturate(1.8) brightness(1.2)'; break;
-                  case '÷': baseFilter = 'hue-rotate(235deg) saturate(2.2) brightness(0.9)'; break;
+                  case '+': opHue = 'hue-rotate(95deg) saturate(1.1) brightness(1.0)'; break;
+                  case '-': opHue = 'hue-rotate(295deg) saturate(1.3) brightness(1.05)'; break;
+                  case '×': opHue = 'hue-rotate(25deg) saturate(1.8) brightness(1.2)'; break;
+                  case '÷': opHue = 'hue-rotate(235deg) saturate(2.2) brightness(0.9)'; break;
                 }
-                return baseFilter;
+                baseFilter = `${opHue} drop-shadow(0 6px 12px rgba(0,0,0,0.6))`;
               }
+              return baseFilter + glowEffect;
             })(),
-            transition: 'filter 0.25s ease'
+            transition: 'opacity 0.08s ease-out'
           }}
         />
       )}
@@ -208,13 +205,12 @@ const HexCell: React.FC<HexCellProps> = ({
           className="absolute inset-0 pointer-events-none z-30 animate-hex-flash-reflect"
           style={{
             background: pathStatus === 'correct'
-              ? 'linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.15) 50%, transparent 100%)'
-              : 'linear-gradient(135deg, rgba(255,200,200,0.65) 0%, rgba(255,255,255,0.12) 50%, transparent 100%)',
+              ? 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.12) 50%, transparent 100%)'
+              : 'linear-gradient(135deg, rgba(255,200,200,0.52) 0%, rgba(255,255,255,0.1) 50%, transparent 100%)',
             // Clip al contorno esatto della cella per evitare alone quadrato
-            clipPath: isOrangeTheme && isNumber
+            clipPath: isOrangeTheme
               ? 'polygon(29.29% 0%, 70.71% 0%, 100% 29.29%, 100% 70.71%, 70.71% 100%, 29.29% 100%, 0% 70.71%, 0% 29.29%)'
               : undefined,
-            borderRadius: isOrangeTheme && !isNumber ? 'inherit' : undefined,
           }}
         />
       )}
@@ -224,7 +220,7 @@ const HexCell: React.FC<HexCellProps> = ({
       )}
 
       <span 
-        className={`font-orbitron font-black select-none transition-all duration-200 leading-none z-10
+        className={`font-orbitron font-black select-none transition-transform duration-[75ms] ease-out leading-none z-10 pointer-events-none
           ${isSelected
             ? 'text-white scale-110'
             : isOrangeTheme && isNumber
@@ -239,10 +235,10 @@ const HexCell: React.FC<HexCellProps> = ({
                     ? 'text-amber-200 text-[calc(3.4rem*var(--hex-scale))] drop-shadow-[0_0_15px_rgba(120,53,15,0.5)]'
                     : `${operatorTheme.text} text-[calc(3.4rem*var(--hex-scale))]`
           }`}
-        style={isOrangeTheme && isNumber ? {
+        style={isOrangeTheme ? {
           textShadow: isSelected
-            ? '0 2px 4px rgba(0,0,0,0.5), 0 -1px 0.5px rgba(255,255,255,0.8)'
-            : '0 3px 6px rgba(120,30,0,0.6), 0 -1.5px 0.5px rgba(255,255,255,0.8)'
+            ? '0 -2px 3px rgba(0, 0, 0, 0.95), 0 2px 3px rgba(255, 255, 255, 0.2), 0 0 8px rgba(255, 255, 255, 0.38), 0 0 12px rgba(255, 136, 0, 0.36), -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 1px 1px 0px #000'
+            : '0 -2px 3px rgba(0, 0, 0, 0.95), 0 2.5px 3px rgba(255, 255, 255, 0.35), 0 0 10px rgba(255, 136, 0, 0.6), -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 1px 1px 0px #000'
         } : undefined}
       >
         {data.value}
