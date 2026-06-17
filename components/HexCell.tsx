@@ -157,42 +157,42 @@ const HexCell: React.FC<HexCellProps> = ({
         <img
           src="/ottagonocristallo.png"
           alt="cell"
-          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+          className="hex-crystal-img absolute inset-0 w-full h-full object-contain pointer-events-none"
           style={{
             transform: isNumber ? 'scale(2.5)' : 'scale(1.17)',
             opacity: isSelected ? 1 : 0.95,
             filter: (() => {
+              const tone = `brightness(var(--hex-crystal-brightness)) contrast(var(--hex-crystal-contrast)) saturate(var(--hex-crystal-saturate))`;
+              const shadow = 'drop-shadow(0 6px 12px rgba(0,0,0,0.6))';
+
               let glowEffect = '';
               if (isSelected) {
                 if (pathStatus === 'correct') {
-                  glowEffect = ' hue-rotate(95deg) saturate(1.56) brightness(1.096) drop-shadow(0 0 12px rgba(16,185,129,0.38))';
+                  glowEffect = ' hue-rotate(95deg) saturate(1.05) brightness(1.04) drop-shadow(0 0 10px rgba(16,185,129,0.28))';
                 } else if (pathStatus === 'wrong') {
-                  glowEffect = ' hue-rotate(335deg) saturate(1.64) brightness(1.096) drop-shadow(0 0 12px rgba(239,68,68,0.39))';
+                  glowEffect = ' hue-rotate(335deg) saturate(1.08) brightness(1.04) drop-shadow(0 0 10px rgba(239,68,68,0.28))';
                 } else {
-                  glowEffect = ' hue-rotate(12deg) saturate(1.72) brightness(1.144) drop-shadow(0 0 12px rgba(255,150,0,0.38)) drop-shadow(0 0 6px rgba(255,200,0,0.34))';
+                  glowEffect = ' saturate(0.88) brightness(1.03) drop-shadow(0 0 8px rgba(180,100,0,0.12))';
                 }
               }
 
-              let baseFilter = 'drop-shadow(0 6px 12px rgba(0,0,0,0.6))';
               if (isNumber) {
-                baseFilter = 'drop-shadow(0 6px 12px rgba(0,0,0,0.6)) brightness(1.2) contrast(1.28) saturate(1.2)';
                 if (isBossLevel) {
-                  baseFilter = bossLevelId === 2
-                    ? 'brightness(0.6) sepia(0.8) saturate(1.5) drop-shadow(0 6px 12px rgba(0,0,0,0.6))' // Dark Amber
-                    : 'hue-rotate(100deg) saturate(1.5) brightness(0.7) drop-shadow(0 6px 12px rgba(0,0,0,0.6))'; // Dark Green
+                  return bossLevelId === 2
+                    ? `brightness(0.6) sepia(0.8) saturate(1.1) ${shadow}`
+                    : `hue-rotate(100deg) saturate(1.1) brightness(0.7) ${shadow}`;
                 }
-              } else {
-                // Operators: dynamic hue-rotations for + (green), - (neon fuchsia), x (yellow), / (electric violet)
-                let opHue = 'none';
-                switch (data.value) {
-                  case '+': opHue = 'hue-rotate(95deg) saturate(1.1) brightness(1.0)'; break;
-                  case '-': opHue = 'hue-rotate(295deg) saturate(1.3) brightness(1.05)'; break;
-                  case '×': opHue = 'hue-rotate(25deg) saturate(1.8) brightness(1.2)'; break;
-                  case '÷': opHue = 'hue-rotate(235deg) saturate(2.2) brightness(0.9)'; break;
-                }
-                baseFilter = `${opHue} drop-shadow(0 6px 12px rgba(0,0,0,0.6))`;
+                return `${shadow} ${tone}${glowEffect}`;
               }
-              return baseFilter + glowEffect;
+
+              let opHue = 'none';
+              switch (data.value) {
+                case '+': opHue = 'hue-rotate(95deg) saturate(0.9) brightness(1.0)'; break;
+                case '-': opHue = 'hue-rotate(295deg) saturate(0.92) brightness(1.02)'; break;
+                case '×': opHue = 'hue-rotate(18deg) saturate(0.9) brightness(1.02)'; break;
+                case '÷': opHue = 'hue-rotate(235deg) saturate(1.0) brightness(0.95)'; break;
+              }
+              return `${opHue} ${shadow} ${tone}${glowEffect}`;
             })(),
             transition: 'opacity 0.08s ease-out'
           }}
@@ -237,8 +237,8 @@ const HexCell: React.FC<HexCellProps> = ({
           }`}
         style={isOrangeTheme ? {
           textShadow: isSelected
-            ? '0 -2px 3px rgba(0, 0, 0, 0.95), 0 2px 3px rgba(255, 255, 255, 0.2), 0 0 8px rgba(255, 255, 255, 0.38), 0 0 12px rgba(255, 136, 0, 0.36), -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 1px 1px 0px #000'
-            : '0 -2px 3px rgba(0, 0, 0, 0.95), 0 2.5px 3px rgba(255, 255, 255, 0.35), 0 0 10px rgba(255, 136, 0, 0.6), -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 1px 1px 0px #000'
+            ? `0 -2px 3px rgba(0, 0, 0, 0.95), 0 2px 3px rgba(255, 255, 255, 0.2), 0 0 8px rgba(255, 255, 255, 0.28), 0 0 10px rgba(255, 136, 0, var(--hex-num-orange-glow-selected)), -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 1px 1px 0px #000`
+            : `0 -2px 3px rgba(0, 0, 0, 0.95), 0 2px 3px rgba(255, 255, 255, 0.28), 0 0 8px rgba(255, 136, 0, var(--hex-num-orange-glow)), -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 1px 1px 0px #000`
         } : undefined}
       >
         {data.value}
