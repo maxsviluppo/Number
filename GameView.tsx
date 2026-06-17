@@ -5138,11 +5138,11 @@ const GameView: React.FC = () => {
               </header>
             )}
 
-            <main className="relative flex-grow w-full flex flex-col items-center justify-center">
+            <main className="relative flex-grow w-full flex flex-col items-center justify-start">
               {gameState.status === 'playing' && (
                 <div className="w-full flex flex-col items-center h-full relative">
                   {/* Info Row: Current Calculation Badge (Left) */}
-                  <div className="w-full max-w-2xl px-4 flex justify-start items-center min-h-[50px] mb-2 mt-2">
+                  <div className="w-full max-w-2xl px-4 flex justify-start items-center mb-1 mt-[-50px]">
                     {(() => {
                       const isTargetMatched = previewResult !== null && (gameState.isBossLevel
                         ? (gameState.levelTargets.find(t => !t.completed)?.value === previewResult)
@@ -5214,7 +5214,7 @@ const GameView: React.FC = () => {
                   </div>
 
                   {/* TARGETS - Crystal Frame with targetcristalli.png */}
-                  <div className="flex justify-center w-full mb-[52px]">
+                  <div className="flex justify-center w-full mb-2">
                     <div className="targets-glass-bar flex items-center justify-between px-4 transition-all duration-500 ease-in-out">
                       <div
                         className="flex w-full items-center justify-between relative z-10"
@@ -5288,7 +5288,7 @@ const GameView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="relative flex-grow w-full flex items-center justify-center overflow-visible">
+                  <div className="relative flex-grow w-full flex items-center justify-center overflow-visible mt-[50px]">
 
                     {isPaused && (
                       <div id="pause-overlay-game" className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl rounded-3xl transition-all animate-fadeIn">
