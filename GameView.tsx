@@ -3798,7 +3798,7 @@ const GameView: React.FC = () => {
         <div 
           className={`fixed inset-0 bg-[url('/sfondo.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           style={{
-            filter: 'brightness(0.85) contrast(1.6) saturate(1.43) hue-rotate(-5deg)'
+            filter: 'brightness(0.92) contrast(1.08) saturate(1)'
           }}
         ></div>
 
