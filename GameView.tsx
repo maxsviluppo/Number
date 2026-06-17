@@ -4375,6 +4375,20 @@ const GameView: React.FC = () => {
                   .hud-icon-btn:active { transform: scale(0.90) !important; }
                   .hud-icon-btn { transition: transform 0.1s ease !important; -webkit-tap-highlight-color: transparent !important; touch-action: manipulation !important; }
 
+                  /* ── HUD Smoke Blobs ── */
+                  @keyframes hudSmoke1 {
+                    0%,100% { transform: translateX(-12%) translateY(0%) scale(1);    opacity: 0.55; }
+                    50%     { transform: translateX(8%)  translateY(-18%) scale(1.15); opacity: 0.80; }
+                  }
+                  @keyframes hudSmoke2 {
+                    0%,100% { transform: translateX(8%)  translateY(6%)  scale(1.05); opacity: 0.45; }
+                    50%     { transform: translateX(-6%) translateY(-12%) scale(0.92); opacity: 0.70; }
+                  }
+                  @keyframes hudSmoke3 {
+                    0%,100% { transform: translateX(0%)  translateY(-8%) scale(1);    opacity: 0.50; }
+                    50%     { transform: translateX(-10%) translateY(10%) scale(1.12); opacity: 0.72; }
+                  }
+
                   /* ── Bonus Banner HUD ── */
                   .bonus-banner-hud { transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease !important; }
                   .bonus-banner-hud:hover { transform: translateY(5px) !important; box-shadow: 0 0 0 1px rgba(0,220,255,0.55), 0 0 20px rgba(0,200,255,0.6), 0 0 42px rgba(0,170,255,0.3) !important; }
@@ -4730,11 +4744,42 @@ const GameView: React.FC = () => {
                 <div className="relative w-full top-chrome-bar">
                   <div style={{
                     display: 'flex', gap: '10px', alignItems: 'stretch',
-                    background: 'linear-gradient(180deg, #0d1325 0%, #09101e 55%, #060c18 100%)',
-                    borderRadius: '14px', border: '1px solid #1a2c45',
-                    boxShadow: '0 6px 28px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px rgba(0,180,255,0.06)',
-                    padding: '8px 10px',
+                    background: 'rgba(6, 12, 26, 0.70)',
+                    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                    borderRadius: '14px', border: '1px solid rgba(0,140,255,0.20)',
+                    boxShadow: '0 6px 28px rgba(0,0,0,0.80), inset 0 1px 0 rgba(0,160,255,0.08), 0 0 0 1px rgba(0,180,255,0.10)',
+                    padding: '8px 10px', position: 'relative', overflow: 'hidden',
                   }}>
+
+                    {/* ── Smoke Blobs (match app background) ── */}
+                    <div style={{ position:'absolute', inset:0, borderRadius:'14px', overflow:'hidden', pointerEvents:'none' }}>
+                      {/* Blob 1 – left, large deep-blue */}
+                      <div style={{
+                        position:'absolute', width:'55%', height:'200%',
+                        top:'-50%', left:'-8%',
+                        background:'radial-gradient(ellipse at 50% 50%, rgba(10,90,200,0.38) 0%, rgba(5,50,140,0.18) 45%, transparent 70%)',
+                        filter:'blur(22px)',
+                        animation:'hudSmoke1 10s ease-in-out infinite',
+                      }}/>
+                      {/* Blob 2 – center, cyan-blue */}
+                      <div style={{
+                        position:'absolute', width:'50%', height:'220%',
+                        top:'-60%', left:'28%',
+                        background:'radial-gradient(ellipse at 50% 50%, rgba(0,140,255,0.30) 0%, rgba(0,80,200,0.12) 45%, transparent 68%)',
+                        filter:'blur(26px)',
+                        animation:'hudSmoke2 13s ease-in-out infinite',
+                        animationDelay:'-4s',
+                      }}/>
+                      {/* Blob 3 – right, lighter cyan */}
+                      <div style={{
+                        position:'absolute', width:'48%', height:'200%',
+                        top:'-55%', right:'-5%',
+                        background:'radial-gradient(ellipse at 50% 50%, rgba(20,170,255,0.26) 0%, rgba(0,100,210,0.10) 45%, transparent 68%)',
+                        filter:'blur(20px)',
+                        animation:'hudSmoke3 11s ease-in-out infinite',
+                        animationDelay:'-7s',
+                      }}/>
+                    </div>
 
                     {/* ── LEFT: HOME + AUDIO ── */}
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexShrink: 0 }}>
@@ -5169,7 +5214,7 @@ const GameView: React.FC = () => {
                   </div>
 
                   {/* TARGETS - Crystal Frame with targetcristalli.png */}
-                  <div className="flex justify-center w-full mb-3">
+                  <div className="flex justify-center w-full mb-[52px]">
                     <div className="targets-glass-bar flex items-center justify-between px-4 transition-all duration-500 ease-in-out">
                       <div
                         className="flex w-full items-center justify-between relative z-10"
