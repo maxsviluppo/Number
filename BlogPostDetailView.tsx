@@ -24,7 +24,7 @@ const BlogPostDetailView: React.FC = () => {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-[#020617] text-white flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-[url('/sfondo.png')] bg-cover bg-center bg-no-repeat bg-fixed text-white flex flex-col items-center justify-center p-6">
         <h1 className="text-4xl font-black font-['Orbitron'] mb-4 text-[#FF8800]">404</h1>
         <p className="text-slate-400 mb-8">Articolo non trovato.</p>
         <Link to="/blog" className="bg-[#FF8800] text-black px-6 py-2 rounded-full font-black text-sm">
@@ -35,7 +35,7 @@ const BlogPostDetailView: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white flex flex-col font-['Inter']">
+    <div className="min-h-screen bg-[url('/sfondo.png')] bg-cover bg-center bg-no-repeat bg-fixed text-white flex flex-col font-['Inter']">
       {/* Navigation Header */}
 
       <nav className="fixed top-0 w-full z-[100] glass-panel border-b border-white/5 py-4 px-6 flex justify-between items-center">

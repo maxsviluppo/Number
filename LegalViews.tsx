@@ -33,7 +33,7 @@ const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.
   }, [seoConfig]);
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white flex flex-col font-['Inter']">
+    <div className="min-h-screen bg-[url('/sfondo.png')] bg-cover bg-center bg-no-repeat bg-fixed text-white flex flex-col font-['Inter']">
 
       {/* Navigation Header */}
       <nav className="fixed top-0 w-full z-[100] glass-panel border-b border-white/5 py-4 px-6 flex justify-between items-center">

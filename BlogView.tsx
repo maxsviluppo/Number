@@ -20,7 +20,7 @@ const BlogView: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white flex flex-col font-['Inter']">
+    <div className="min-h-screen bg-[url('/sfondo.png')] bg-cover bg-center bg-no-repeat bg-fixed text-white flex flex-col font-['Inter']">
 
       {/* Navigation Header */}
       {/* Navigation Header */}

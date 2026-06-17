@@ -123,6 +123,9 @@ const GameView: React.FC = () => {
   }, []);
   const [showHomeTutorial, setShowHomeTutorial] = useState(false);
   const [showGameTutorial, setShowGameTutorial] = useState(false);
+  const [timerParticles, setTimerParticles] = useState<{ id: number; x: number; y: number; color: string; size: number; vx: number; vy: number }[]>([]);
+  const timerParticleIdRef = useRef(0);
+  const lastTickTimeRef = useRef(performance.now());
   const theme = 'orange';
   const [levelBuffer, setLevelBuffer] = useState<{ grid: HexCellData[], targets: number[] }[]>([]);
   const timerRef = useRef<number | null>(null);
@@ -352,6 +355,64 @@ const GameView: React.FC = () => {
   const [profileLoading, setProfileLoading] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [pauseLocked, setPauseLocked] = useState(false);
+
+  useEffect(() => {
+    const isTimeDuel = activeMatch?.mode === 'time_attack' || activeMatch?.mode === 'blitz';
+    const isTimerActive = gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && !showGameTutorial && (!activeMatch?.isDuel || isTimeDuel);
+
+    if (!isTimerActive) return;
+
+    const interval = setInterval(() => {
+      const now = performance.now();
+      const elapsedSinceLastTick = now - lastTickTimeRef.current;
+      const elapsedSec = Math.min(0.99, elapsedSinceLastTick / 1000);
+      const fractionalTimeLeft = gameState.timeLeft - elapsedSec;
+      
+      const timerLimit = (activeMatch?.mode === 'time_attack') ? 60 : (60 + parseInt(typeof window !== 'undefined' ? localStorage.getItem('career_time_bonus') || '0' : '0'));
+      const timerPct = Math.max(0, Math.min(100, (fractionalTimeLeft / timerLimit) * 100));
+      
+      // Calculate tip coordinates (radius 44%, center 50%)
+      const angleRad = (-90 + (timerPct * 3.6)) * Math.PI / 180;
+      const px = 50 + Math.cos(angleRad) * 44;
+      const py = 50 + Math.sin(angleRad) * 44;
+
+      const timerColor = timerPct > 80 ? '#00f0ff' : timerPct > 40 ? '#00ff66' : timerPct > 15 ? '#FF8800' : '#ff003c';
+
+      // Spawn 3 particles per 80ms tick to build a dense, magical trail of light
+      const newParticles = Array.from({ length: 3 }).map(() => {
+        timerParticleIdRef.current++;
+        const randColorChoice = Math.random();
+        let pColor = timerColor;
+        
+        // Infuse magic sparkles: golden or white
+        if (randColorChoice > 0.75) {
+          pColor = '#FFF5CC'; // Golden sparkle
+        } else if (randColorChoice > 0.5) {
+          pColor = '#FFFFFF'; // White sparkle
+        }
+        
+        return {
+          id: timerParticleIdRef.current,
+          x: px + (Math.random() - 0.5) * 1.0,
+          y: py + (Math.random() - 0.5) * 1.0,
+          color: pColor,
+          size: Math.random() * 2.5 + 1.2, // sizes from 1.2px to 3.7px
+          vx: (Math.random() - 0.5) * 1.5, // minimal drift to keep on circular path
+          vy: (Math.random() - 0.5) * 1.5,
+        };
+      });
+
+      setTimerParticles(prev => [...prev.slice(-60), ...newParticles]);
+    }, 80);
+
+    return () => clearInterval(interval);
+  }, [gameState.timeLeft, gameState.status, isPaused, showGameTutorial, showVideo, isVictoryAnimating, activeMatch?.mode]);
+
+  useEffect(() => {
+    if (gameState.status === 'idle') {
+      setTimerParticles([]);
+    }
+  }, [gameState.status]);
   const [winVideoSrc, setWinVideoSrc] = useState(WIN_VIDEOS[0]);
   const [loseVideoSrc, setLoseVideoSrc] = useState(LOSE_VIDEOS[0]);
   const [surrenderVideoSrc, setSurrenderVideoSrc] = useState(SURRENDER_VIDEOS[0]);
@@ -1556,10 +1617,13 @@ const GameView: React.FC = () => {
     const isTimeDuel = activeMatch?.mode === 'time_attack' || activeMatch?.mode === 'blitz';
     // ADDED: !showGameTutorial blocks timer during tutorials
     if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && !showGameTutorial && (!activeMatch?.isDuel || isTimeDuel)) {
+      lastTickTimeRef.current = performance.now();
       timerRef.current = window.setInterval(() => {
         setGameState(prev => {
           if (prev.timeLeft <= 0) return prev;
           const newTime = prev.timeLeft - 1;
+          
+          lastTickTimeRef.current = performance.now();
 
           // TIME SYNC BROADCAST (Role: Host/P1)
           if (activeMatch?.isDuel && activeMatch.isP1 && newTime % 5 === 0) {
@@ -2649,23 +2713,22 @@ const GameView: React.FC = () => {
         setPathStatus('correct');
         setMatchedTargetValue(result!);
         
-        // Attende 500ms mostrando la celebre animazione a 4 fasi del target prima di completarlo!
+        // Attende animazione target prima di completare
         setTimeout(() => {
           handleSuccess(result!);
           setSelectedPath([]);
           setPathStatus(null);
           setMatchedTargetValue(null);
-        }, 500);
+        }, 300);
       } else {
         setPathStatus('wrong');
         handleError();
         vibrateDevice(80); // Single hard pulse for error
         
-        // Attende 420ms mostrando il flash rosso fuoco prima di pulire la selezione!
         setTimeout(() => {
           setSelectedPath([]);
           setPathStatus(null);
-        }, 420);
+        }, 220);
       }
       setPreviewResult(null);
     } catch (err: any) {
@@ -3486,10 +3549,10 @@ const GameView: React.FC = () => {
     return true;
   };
 
-  const onStartInteraction = async (id: string) => {
+  const onStartInteraction = (id: string) => {
     if (!canInteract()) return;
     setAdBannerActive(false); // Close banner on grid interaction
-    await handleUserInteraction();
+    soundService.init();
 
     const cell = grid.find(c => c.id === id);
     if (cell && cell.type === 'number') {
@@ -3508,8 +3571,19 @@ const GameView: React.FC = () => {
           }
           return prev;
         });
-      }, 420);
+      }, 260);
     }
+  };
+
+  const resolveCellIdFromPoint = (clientX: number, clientY: number) => {
+    const element = document.elementFromPoint(clientX, clientY);
+    return element?.closest('[data-cell-id]')?.getAttribute('data-cell-id') ?? null;
+  };
+
+  const onGridPointerMove = (e: React.PointerEvent) => {
+    if (!isDragging || !canInteract()) return;
+    const cellId = resolveCellIdFromPoint(e.clientX, e.clientY);
+    if (cellId) onMoveInteraction(cellId);
   };
 
   const isAdjacent = (cell1: HexCellData, cell2: HexCellData): boolean => {
@@ -3722,7 +3796,7 @@ const GameView: React.FC = () => {
       >
         {/* MAIN BLUE BACKGROUND IMAGE LAYER */}
         <div 
-          className={`fixed inset-0 bg-[url('/sfondoblu.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          className={`fixed inset-0 bg-[url('/sfondo.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           style={{
             filter: 'brightness(0.85) contrast(1.6) saturate(1.43) hue-rotate(-5deg)'
           }}
@@ -4286,133 +4360,261 @@ const GameView: React.FC = () => {
 
 
         {gameState.status !== 'idle' && (
-          <div className="w-full h-full flex flex-col items-center z-10 p-4 pt-12 sm:pt-4 max-w-4xl animate-screen-in">
+          <div className="w-full h-full flex flex-col items-center z-10 p-4 pt-4 max-w-4xl animate-screen-in">
             {gameState.status !== 'won' && gameState.status !== 'level-complete' && gameState.status !== 'game-over' && gameState.status !== 'opponent-surrendered' && (
-              <header className="w-full max-w-2xl mx-auto mb-2 relative z-50">
+              <header className="w-full max-w-[960px] mx-auto mb-2 relative z-50">
                 <style dangerouslySetInnerHTML={{__html: `
-                  .chrome-bar {
-                    background: linear-gradient(to bottom, #ffffff 0%, #e8ebf0 10%, #c2c7d2 25%, #858c99 50%, #535a66 75%, #a1a7b5 92%, #ffffff 100%);
-                    border: 4px solid #b1b6c0;
-                    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.9), inset 0 -4px 4px rgba(0, 0, 0, 0.6), 0 10px 20px rgba(0,0,0,0.5);
+                  .top-chrome-bar {
+                    background-image: url('/navbarmenutop.png') !important;
+                    background-size: 100% 100% !important;
+                    background-position: center !important;
+                    background-repeat: no-repeat !important;
+                    border: none !important;
+                    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.65)) !important;
+                    aspect-ratio: 1017 / 266 !important;
+                    height: auto !important;
+                    width: 100% !important;
+                    margin-top: -15px !important;
+                  }
+
+                  .targets-glass-bar {
+                    border: none !important;
+                    box-shadow: none !important;
+                    background-color: transparent !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                    width: 345px !important;
+                    height: 120px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    padding: 0 12px !important;
+                    position: relative;
+                    margin: -20px auto 0 auto !important;
+                  }
+
+                  @keyframes targetFlyInLeft {
+                    0% {
+                      opacity: 0;
+                      transform: translateX(-160px) scale(0.3);
+                    }
+                    100% {
+                      opacity: 1;
+                      transform: translateX(0) scale(1);
+                    }
+                  }
+
+                  @keyframes targetFlyInRight {
+                    0% {
+                      opacity: 0;
+                      transform: translateX(160px) scale(0.3);
+                    }
+                    100% {
+                      opacity: 1;
+                      transform: translateX(0) scale(1);
+                    }
+                  }
+
+                  @keyframes targetFlyInCenter {
+                    0% {
+                      opacity: 0;
+                      transform: scale(0.1);
+                    }
+                    100% {
+                      opacity: 1;
+                      transform: scale(1);
+                    }
+                  }
+
+                  .animate-target-fly-left {
+                    animation: targetFlyInLeft 0.85s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+                  }
+
+                  .animate-target-fly-right {
+                    animation: targetFlyInRight 0.85s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+                  }
+
+                  .animate-target-fly-center {
+                    animation: targetFlyInCenter 0.85s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+                  }
+
+                  @keyframes timerParticleFade {
+                    0% {
+                      opacity: 1;
+                      transform: translate(0, 0) scale(1) rotate(0deg);
+                    }
+                    30% {
+                      opacity: 1;
+                    }
+                    100% {
+                      opacity: 0;
+                      transform: translate(var(--vx), var(--vy)) scale(0.25) rotate(90deg);
+                    }
+                  }
+
+                  .timer-particle {
+                    position: absolute;
+                    border-radius: 50%;
+                    pointer-events: none;
+                    z-index: 40;
+                    animation: timerParticleFade 1.3s cubic-bezier(0.1, 0.8, 0.25, 1) forwards;
+                    filter: drop-shadow(0 0 3px var(--color)) drop-shadow(0 0 6px var(--color));
+                    box-shadow: 0 0 4px var(--color);
                   }
 
                   .chrome-divider {
-                    width: 5px;
-                    height: 80%;
-                    background: linear-gradient(to right, #404550 0%, #8c93a0 25%, #ffffff 50%, #8c93a0 75%, #2a2e37 100%);
-                    box-shadow: 1px 0 1px rgba(255,255,255,0.2), -1px 0 1px rgba(0,0,0,0.4);
+                    display: none !important;
                   }
 
                   .btn-panel {
-                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.6), inset -2px -3px 5px rgba(255, 255, 255, 0.2);
-                    transition: transform 0.1s ease, filter 0.2s ease, box-shadow 0.2s ease;
+                    background: transparent !important;
+                    box-shadow: none !important;
+                    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease !important;
                     position: relative;
                     overflow: hidden;
-                    height: 85%;
+                    height: 76% !important;
+                    border-radius: 9999px !important;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
+                    outline: none !important;
+                    border: none !important;
+                    -webkit-tap-highlight-color: transparent !important;
+                    -webkit-touch-callout: none !important;
+                    box-sizing: border-box !important;
                   }
 
                   button.btn-panel {
                     cursor: pointer;
                   }
 
-                  .btn-panel::after {
+                  button.btn-panel:focus,
+                  button.btn-panel:active,
+                  button.btn-panel:focus-visible {
+                    outline: none !important;
+                  }
+
+                  /* HOME / AUDIO: alone centrale piccolo sull'icona (non tutta la capsula) */
+                  button.btn-panel.btn-panel-green,
+                  button.btn-panel.btn-panel-blue {
+                    background: transparent !important;
+                    box-shadow: none !important;
+                    transition: transform 0.15s ease !important;
+                    isolation: isolate;
+                  }
+
+                  button.btn-panel.btn-panel-green::before,
+                  button.btn-panel.btn-panel-blue::before {
                     content: '';
                     position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    height: 40%;
-                    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.25), transparent);
+                    top: 46%;
+                    left: 50%;
+                    width: 34%;
+                    height: 48%;
+                    transform: translate(calc(-50% + 3px), calc(-50% - 2px));
+                    border-radius: 50%;
                     pointer-events: none;
+                    z-index: 0;
+                    opacity: 0;
+                    transition: opacity 0.18s ease;
+                    background: radial-gradient(
+                      circle at 50% 42%,
+                      rgba(255, 215, 130, 0.92) 0%,
+                      rgba(255, 150, 50, 0.55) 38%,
+                      rgba(255, 136, 0, 0.18) 58%,
+                      transparent 72%
+                    );
                   }
 
-                  .btn-panel:active {
-                    transform: scale(0.95);
+                  /* HOME: spento default, acceso solo su pressione / touch / click */
+                  button.btn-panel.btn-panel-green:active::before {
+                    opacity: 1;
+                    background: radial-gradient(
+                      circle at 50% 42%,
+                      rgba(255, 230, 150, 1) 0%,
+                      rgba(255, 160, 60, 0.72) 38%,
+                      rgba(255, 136, 0, 0.28) 58%,
+                      transparent 72%
+                    );
                   }
 
-                  .btn-panel-green {
-                    background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
-                  }
-                  .btn-panel-green:hover {
-                    filter: brightness(1.2);
-                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.4), inset -2px -3px 5px rgba(255, 255, 255, 0.3), 0 0 15px rgba(16, 185, 129, 0.8), 0 0 5px rgba(16, 185, 129, 0.4);
-                  }
-                  .btn-panel-green:hover svg {
-                    filter: drop-shadow(0 0 6px #10b981) !important;
-                  }
-                  .btn-panel-green:active {
-                    filter: brightness(1.35);
-                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.3), inset -2px -3px 5px rgba(255, 255, 255, 0.4), 0 0 25px rgba(16, 185, 129, 1), 0 0 10px rgba(16, 185, 129, 0.6);
-                  }
-                  .btn-panel-green:active svg {
-                    filter: drop-shadow(0 0 10px #10b981) !important;
+                  button.btn-panel.btn-panel-green:hover,
+                  button.btn-panel.btn-panel-green:focus,
+                  button.btn-panel.btn-panel-green:active {
+                    background: transparent !important;
+                    box-shadow: none !important;
                   }
 
-                  .btn-panel-blue {
-                    background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #6366f1 100%);
-                  }
-                  .btn-panel-blue:hover {
-                    filter: brightness(1.2);
-                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.4), inset -2px -3px 5px rgba(255, 255, 255, 0.3), 0 0 15px rgba(6, 182, 212, 0.8), 0 0 5px rgba(6, 182, 212, 0.4);
-                  }
-                  .btn-panel-blue:hover svg {
-                    filter: drop-shadow(0 0 6px #06b6d4) !important;
-                  }
-                  .btn-panel-blue:active {
-                    filter: brightness(1.35);
-                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.3), inset -2px -3px 5px rgba(255, 255, 255, 0.4), 0 0 25px rgba(6, 182, 212, 1), 0 0 10px rgba(6, 182, 212, 0.6);
-                  }
-                  .btn-panel-blue:active svg {
-                    filter: drop-shadow(0 0 10px #06b6d4) !important;
+                  button.btn-panel.btn-panel-green:active {
+                    transform: scale(0.96);
                   }
 
-                  .btn-panel-orange {
-                    background: linear-gradient(135deg, #db2777 0%, #f97316 60%, #eab308 100%);
-                  }
-                  .btn-panel-orange:hover {
-                    filter: brightness(1.2);
-                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.4), inset -2px -3px 5px rgba(255, 255, 255, 0.3), 0 0 15px rgba(249, 115, 22, 0.8), 0 0 5px rgba(249, 115, 22, 0.4);
-                  }
-                  .btn-panel-orange:hover span {
-                    filter: drop-shadow(0 0 6px #f97316) !important;
-                  }
-                  .btn-panel-orange:active {
-                    filter: brightness(1.35);
-                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.3), inset -2px -3px 5px rgba(255, 255, 255, 0.4), 0 0 25px rgba(249, 115, 22, 1), 0 0 10px rgba(249, 115, 22, 0.6);
-                  }
-                  .btn-panel-orange:active span {
-                    filter: drop-shadow(0 0 10px #f97316) !important;
+                  /* Audio ON: alone sempre acceso fino al mute */
+                  button.btn-panel.btn-panel-blue.audio-active-glow::before {
+                    opacity: 0.78;
+                    background: radial-gradient(
+                      circle at 50% 42%,
+                      rgba(255, 210, 120, 0.88) 0%,
+                      rgba(255, 140, 40, 0.5) 38%,
+                      rgba(255, 136, 0, 0.16) 58%,
+                      transparent 72%
+                    );
                   }
 
-                  .btn-panel-yellow {
-                    background: linear-gradient(135deg, #fde047 0%, #eab308 60%, #ca8a04 100%);
+                  button.btn-panel.btn-panel-blue.audio-active-glow:active::before {
+                    opacity: 1;
+                    background: radial-gradient(
+                      circle at 50% 42%,
+                      rgba(255, 235, 160, 1) 0%,
+                      rgba(255, 155, 55, 0.75) 38%,
+                      rgba(255, 136, 0, 0.3) 58%,
+                      transparent 72%
+                    );
                   }
-                  .btn-panel-yellow:hover {
-                    filter: brightness(1.2);
-                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.4), inset -2px -3px 5px rgba(255, 255, 255, 0.3), 0 0 15px rgba(234, 179, 8, 0.8), 0 0 5px rgba(234, 179, 8, 0.4);
+
+                  button.btn-panel.btn-panel-blue.audio-active-glow:hover,
+                  button.btn-panel.btn-panel-blue.audio-active-glow:focus,
+                  button.btn-panel.btn-panel-blue.audio-active-glow:active {
+                    background: transparent !important;
+                    box-shadow: none !important;
+                    filter: none !important;
                   }
-                  .btn-panel-yellow:hover span {
-                    filter: drop-shadow(0 0 6px #eab308) !important;
+
+                  button.btn-panel.btn-panel-blue.audio-active-glow:active {
+                    transform: scale(0.96);
                   }
-                  .btn-panel-yellow:active {
-                    filter: brightness(1.35);
-                    box-shadow: inset 2px 3px 6px rgba(0, 0, 0, 0.3), inset -2px -3px 5px rgba(255, 255, 255, 0.4), 0 0 25px rgba(234, 179, 8, 1), 0 0 10px rgba(234, 179, 8, 0.6);
+
+                  /* Audio OFF: spento, niente alone */
+                  button.btn-panel.btn-panel-blue.audio-muted {
+                    background: transparent !important;
+                    box-shadow: none !important;
+                    filter: grayscale(0.85) brightness(0.72);
                   }
-                  .btn-panel-yellow:active span {
-                    filter: drop-shadow(0 0 10px #eab308) !important;
+
+                  button.btn-panel.btn-panel-blue.audio-muted::before {
+                    opacity: 0 !important;
                   }
+
+                  button.btn-panel.btn-panel-blue.audio-muted:hover,
+                  button.btn-panel.btn-panel-blue.audio-muted:focus,
+                  button.btn-panel.btn-panel-blue.audio-muted:active {
+                    background: transparent !important;
+                    box-shadow: none !important;
+                    filter: grayscale(0.75) brightness(0.78);
+                  }
+
+                  .btn-panel-orange { background: transparent !important; box-shadow: none !important; }
+                  .btn-panel-yellow { background: transparent !important; box-shadow: none !important; }
 
                   .chrome-timer-outer {
-                    width: 101px;
-                    height: 101px;
+                    height: 86% !important;
+                    aspect-ratio: 1 / 1 !important;
+                    width: auto !important;
                     border-radius: 50%;
                     position: relative;
-                    background: conic-gradient(from 135deg, #ffffff 0%, #d8dbe3 10%, #8f96a3 22%, #434955 35%, #9fa5b2 45%, #ffffff 55%, #b0b5c1 65%, #323740 78%, #949aa7 90%, #ffffff 100%);
-                    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.65), inset 0 2px 3px rgba(255, 255, 255, 0.9), inset 0 -2px 3px rgba(0, 0, 0, 0.8);
+                    background: transparent !important;
+                    box-shadow: none !important;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -4420,12 +4622,13 @@ const GameView: React.FC = () => {
                   }
 
                   .chrome-timer-outer-square {
-                    width: 101px;
-                    height: 101px;
+                    height: 86% !important;
+                    aspect-ratio: 1 / 1 !important;
+                    width: auto !important;
                     border-radius: 20px;
                     position: relative;
-                    background: conic-gradient(from 135deg, #ffffff 0%, #d8dbe3 10%, #8f96a3 22%, #434955 35%, #9fa5b2 45%, #ffffff 55%, #b0b5c1 65%, #323740 78%, #949aa7 90%, #ffffff 100%);
-                    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.65), inset 0 2px 3px rgba(255, 255, 255, 0.9), inset 0 -2px 3px rgba(0, 0, 0, 0.8);
+                    background: transparent !important;
+                    box-shadow: none !important;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -4433,11 +4636,11 @@ const GameView: React.FC = () => {
                   }
 
                   .glass-timer-inner {
-                    width: 85px;
-                    height: 85px;
+                    width: 96% !important;
+                    height: 96% !important;
                     border-radius: 50%;
-                    background: radial-gradient(circle at 50% 25%, #181d28 0%, #030406 80%, #000000 100%);
-                    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95), inset 0 -3px 6px rgba(255, 255, 255, 0.15), 0 0 1px 1px rgba(0, 0, 0, 0.4);
+                    background: radial-gradient(circle at 50% 25%, #181c22 0%, #050608 72%, #000000 100%) !important;
+                    box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.95), inset 0 -3px 6px rgba(255, 255, 255, 0.2), 0 0 10px rgba(255, 255, 255, 0.15), 0 8px 20px rgba(0, 0, 0, 0.95) !important;
                     position: relative;
                     display: flex;
                     align-items: center;
@@ -4446,11 +4649,11 @@ const GameView: React.FC = () => {
                   }
 
                   .glass-timer-inner-square {
-                    width: 84px;
-                    height: 84px;
+                    width: 96% !important;
+                    height: 96% !important;
                     border-radius: 14px;
-                    background: radial-gradient(circle at 50% 25%, #181d28 0%, #030406 80%, #000000 100%);
-                    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.95), inset 0 -3px 6px rgba(255, 255, 255, 0.15), 0 0 1px 1px rgba(0, 0, 0, 0.4);
+                    background: radial-gradient(circle at 50% 25%, #181c22 0%, #050608 72%, #000000 100%) !important;
+                    box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.95), inset 0 -3px 6px rgba(255, 255, 255, 0.2), 0 0 10px rgba(255, 255, 255, 0.15), 0 8px 20px rgba(0, 0, 0, 0.95) !important;
                     position: relative;
                     display: flex;
                     flex-direction: column;
@@ -4505,75 +4708,61 @@ const GameView: React.FC = () => {
                     filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)) !important;
                     transition: transform 0.1s ease, filter 0.1s ease !important;
                   }
+                  
+                  #grid-container-game {
+                    margin-top: -31px !important;
+                  }
                  `}} />
 
-                <div className="relative w-full h-16 chrome-bar rounded-[2.5rem] flex items-center px-2.5 justify-between">
+                <div className="relative w-full top-chrome-bar flex items-stretch px-2.5 justify-between">
                   
                   {/* LATO SINISTRO: HOME + DIVISORE + AUDIO */}
-                  <div className="flex w-[40%] h-full items-center gap-1.5">
+                  <div className="flex w-[40%] items-center gap-1.5">
                     {/* HOME */}
                     <button
-                      onPointerDown={(e) => {
-                        e.stopPropagation();
-                        soundService.playUIClick();
-                        resetDuelState(activeMatch?.id, currentUser?.id);
-                        goToHome(e);
-                        setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
-                      }}
-                      className="btn-panel btn-panel-green flex-grow rounded-l-[1.8rem] rounded-r-md text-emerald-950 font-black flex items-center justify-center"
+                       onPointerDown={(e) => {
+                         e.stopPropagation();
+                         soundService.playUIClick();
+                         resetDuelState(activeMatch?.id, currentUser?.id);
+                         goToHome(e);
+                         setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
+                       }}
+                       className="btn-panel btn-panel-green flex-grow rounded-full text-emerald-950 font-black flex items-center justify-center"
                     >
-                      <Home className="w-7 h-7 text-emerald-950/90 drop-shadow-[0_2px_4px_rgba(255,255,255,0.35),0_1px_2px_rgba(0,0,0,0.4)]" />
                     </button>
 
-                    {/* SOLCO */}
                     <div className="chrome-divider" />
 
-                    {/* AUDIO */}
                     <button
                       onPointerDown={toggleMute}
-                      className="btn-panel btn-panel-blue flex-grow rounded-md text-indigo-950 font-black flex items-center justify-center"
+                      className={`btn-panel btn-panel-blue flex-grow rounded-full text-indigo-950 font-black flex items-center justify-center ${isMuted ? 'audio-muted' : 'audio-active-glow'}`}
                     >
-                      {isMuted ? (
-                        <VolumeX className="w-7 h-7 text-indigo-950/90 drop-shadow-[0_2px_4px_rgba(255,255,255,0.35),0_1px_2px_rgba(0,0,0,0.4)]" />
-                      ) : (
-                        <Volume2 className="w-7 h-7 text-indigo-950/90 drop-shadow-[0_2px_4px_rgba(255,255,255,0.35),0_1px_2px_rgba(0,0,0,0.4)]" />
-                      )}
                     </button>
                   </div>
 
-                  {/* CENTRO: TIMER (assoluto per sporgere sopra/sotto) */}
                   <div className="w-[16%] flex justify-center">
-                    {/* Spazio vuoto occupato dal timer assoluto */}
                   </div>
 
-                  {/* LATO DESTRO: PUNTI + DIVISORE + LIVELLI */}
-                  <div className="flex w-[40%] h-full items-center gap-1.5">
-                    {/* PUNTI */}
-                    <div className="btn-panel btn-panel-orange flex-grow rounded-md flex flex-col justify-center items-center text-amber-950 font-black">
-                      <span className="text-[7px] leading-none text-amber-950/60 uppercase tracking-widest">PUNTI</span>
-                      <span className="text-xl font-black font-orbitron leading-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.6)] mt-0.5">
+                  <div className="flex w-[40%] items-center gap-1.5">
+                    <div className="btn-panel btn-panel-orange flex-grow rounded-full flex items-center justify-center text-amber-950 font-black">
+                      <span className="font-orbitron font-black leading-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.6)] text-xl sm:text-2xl md:text-3xl" style={{ transform: 'translate(0px, -15px)' }}>
                         {gameState.score}
                       </span>
                     </div>
 
-                    {/* SOLCO */}
                     <div className="chrome-divider" />
 
-                    {/* LIVELLI */}
-                    <div className="btn-panel btn-panel-yellow flex-grow rounded-r-[1.8rem] rounded-l-md flex flex-col justify-center items-center text-yellow-950 font-black">
-                      <span className="text-[7px] leading-none text-yellow-950/60 uppercase tracking-widest">
-                        {gameState.isBossLevel ? 'BOSS' : 'LIVELLO'}
-                      </span>
-                      <span className="text-xl font-black font-orbitron leading-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.6)] mt-0.5">
+                    <div className="btn-panel btn-panel-yellow flex-grow rounded-full flex items-center justify-center text-yellow-950 font-black">
+                      <span className="font-orbitron font-black leading-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.6)] text-xl sm:text-2xl md:text-3xl" style={{ transform: 'translate(-12px, -17px)' }}>
                         {gameState.isBossLevel ? gameState.bossLevelId : gameState.level}
                       </span>
                     </div>
                   </div>
 
-                  {/* TIMER IN SOVRAPPOSIZIONE ASSOLUTA */}
                   <div
                     id="timer-display-game"
-                    className="absolute left-1/2 -translate-x-1/2 top-1/2 translate-y-[-20%] z-[100] cursor-pointer group"
+                    className="absolute left-1/2 z-[100] cursor-pointer group h-full flex items-center justify-center"
+                    style={{ top: '50%', transform: 'translate(-50%, calc(-50% + 8px))' }}
                     onPointerDown={activeMatch?.isDuel ? undefined : togglePause}
                   >
                     {gameState.isBossLevel ? (
@@ -4586,7 +4775,7 @@ const GameView: React.FC = () => {
                           ) : (
                             <>
                               <span className="text-[7px] font-black uppercase leading-none mb-0.5 text-emerald-400 tracking-widest">BOSS</span>
-                              <span className="font-black font-orbitron text-2xl leading-none drop-shadow-md text-white">{gameState.timeLeft}</span>
+                              <span className="font-black font-orbitron text-[20px] leading-none text-white" style={{ textShadow: '0 2px 4px #000, 0 4px 8px #000' }}>{gameState.timeLeft}</span>
                             </>
                           )}
                         </div>
@@ -4597,9 +4786,10 @@ const GameView: React.FC = () => {
                       const timerColor = timerPct > 80 ? '#00f0ff' : timerPct > 40 ? '#00ff66' : timerPct > 15 ? '#FF8800' : '#ff003c';
                       const getTimerFontSize = (n: number) => {
                         const digits = Math.abs(n).toString().length;
-                        if (digits >= 4) return 'text-sm tracking-tight';
-                        if (digits === 3) return 'text-xl';
-                        return 'text-3xl';
+                        if (digits >= 4) return 'text-xs tracking-tight';
+                        if (digits === 3) return 'text-lg';
+                        if (digits === 2) return 'text-[22px]';
+                        return 'text-[30px]';
                       };
 
                       return (
@@ -4607,6 +4797,7 @@ const GameView: React.FC = () => {
                           <div className="glass-timer-inner">
                             <div className="glass-timer-reflection" />
                             <div className="glass-timer-glint" />
+                            
                             
                             <svg className="absolute inset-0 w-full h-full -rotate-90 scale-95" style={{ overflow: 'visible' }}>
                               <circle cx="50%" cy="50%" r="44%" stroke={`${timerColor}18`} strokeWidth="4" fill="none" />
@@ -4666,7 +4857,7 @@ const GameView: React.FC = () => {
                                     <span className={`font-black font-orbitron leading-none tracking-tighter ${getTimerFontSize(gameState.timeLeft)}`}
                                       style={{ 
                                         color: timerColor, 
-                                        textShadow: `0 0 8px ${timerColor}, 0 0 16px ${timerColor}80`,
+                                        textShadow: `0 2px 4px #000, 0 4px 8px #000, 0 0 8px ${timerColor}, 0 0 16px ${timerColor}80`,
                                         ...(gameState.timeLeft <= 5 ? {
                                           animation: 'heartBeatPulse 1s ease-in-out infinite',
                                           display: 'inline-block'
@@ -4691,8 +4882,8 @@ const GameView: React.FC = () => {
                                             style={{ 
                                               color: (activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz') ? '#FF8800' : timerColor, 
                                               textShadow: (activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz')
-                                                ? '0 0 8px rgba(255,136,0,0.9), 0 0 16px rgba(255,136,0,0.5)'
-                                                : `0 0 8px ${timerColor}, 0 0 16px ${timerColor}80`,
+                                                ? '0 2px 4px #000, 0 4px 8px #000, 0 0 8px rgba(255,136,0,0.9), 0 0 16px rgba(255,136,0,0.5)'
+                                                : `0 2px 4px #000, 0 4px 8px #000, 0 0 8px ${timerColor}, 0 0 16px ${timerColor}80`,
                                               ...(gameState.timeLeft <= 5 && !(activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz') ? {
                                                 animation: 'heartBeatPulse 1s ease-in-out infinite',
                                                 display: 'inline-block'
@@ -4720,7 +4911,7 @@ const GameView: React.FC = () => {
               {gameState.status === 'playing' && (
                 <div className="w-full flex flex-col items-center h-full relative">
                   {/* Info Row: Current Calculation Badge (Left) */}
-                  <div className="w-full max-w-2xl px-4 flex justify-start items-center min-h-[50px] mb-2 mt-6">
+                  <div className="w-full max-w-2xl px-4 flex justify-start items-center min-h-[50px] mb-2 mt-2">
                     {(() => {
                       const isTargetMatched = previewResult !== null && (gameState.isBossLevel
                         ? (gameState.levelTargets.find(t => !t.completed)?.value === previewResult)
@@ -4791,206 +4982,80 @@ const GameView: React.FC = () => {
                     })()}
                   </div>
 
-                  {/* TARGETS - Chrome Frame: auto-sizing to remaining targets */}
-                  {(() => {
-                    const activeTargetCount = gameState.isBossLevel && gameState.bossLevelId === 1
-                      ? (gameState.levelTargets.find(t => !t.completed) ? 1 : 0)
-                      : gameState.levelTargets.filter(t => !t.completed).length;
-                    const totalCount = gameState.levelTargets.length;
-                    return (
-                      <div className="flex justify-center w-full mb-5">
-                        <div
-                          className="chrome-bar rounded-[2rem] flex items-center justify-center transition-all duration-500 ease-in-out"
-                          style={{
-                            boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.9), inset 0 -4px 4px rgba(0,0,0,0.6), 0 8px 18px rgba(0,0,0,0.5)',
-                            padding: activeTargetCount === 0 ? '6px 16px' : '10px 12px',
-                          }}
-                        >
-                          <div
-                            className="flex gap-2 items-center flex-nowrap justify-center transition-all duration-500"
-                            id="targets-display-tutorial"
-                            style={{ maxWidth: `${Math.max(activeTargetCount, 1) * 68}px` }}
-                          >
-                        {gameState.isBossLevel && gameState.bossLevelId === 1 ? (
-                          // BOSS 1: Sequential Large Target
-                          (() => {
-                            const activeTarget = gameState.levelTargets.find(t => !t.completed);
-                            if (!activeTarget) return null;
-                            const remainingCount = gameState.levelTargets.filter(t => !t.completed).length;
-                            const totalCount = gameState.levelTargets.length;
-                            const currentIndex = totalCount - remainingCount + 1;
+                  {/* TARGETS - Crystal Frame with targetcristalli.png */}
+                  <div className="flex justify-center w-full mb-3">
+                    <div className="targets-glass-bar flex items-center justify-between px-4 transition-all duration-500 ease-in-out">
+                      <div
+                        className="flex w-full items-center justify-between relative z-10"
+                        id="targets-display-tutorial"
+                      >
+                        {gameState.levelTargets.map((t, i) => {
+                          const isCompleted = t.completed;
+                          const isMatchingPreview = !isCompleted && (previewResult === t.value);
+                          
+                          // Style settings: Completed targets glow green; matching preview glows orange; others glow dark-pearl/smoke.
+                          let numStyle: React.CSSProperties = {
+                            color: isCompleted ? '#00ff66' : (isMatchingPreview ? '#ffaa44' : '#ffffff'),
+                            textShadow: isCompleted 
+                              ? '0 0 10px rgba(0,255,102,0.85), 0 0 20px rgba(0,255,102,0.45), -1.5px -1.5px 0px #000, 1.5px -1.5px 0px #000, -1.5px 1.5px 0px #000, 1.5px 1.5px 0px #000, 0 3px 6px rgba(0,0,0,0.95)'
+                              : (isMatchingPreview 
+                                ? '0 0 12px rgba(255,136,0,0.85), 0 0 22px rgba(255,136,0,0.45), -1.5px -1.5px 0px #000, 1.5px -1.5px 0px #000, -1.5px 1.5px 0px #000, 1.5px 1.5px 0px #000, 0 3px 6px rgba(0,0,0,0.95)'
+                                : '0 0 8px rgba(70,70,70,0.95), 0 0 16px rgba(0,0,0,0.98), -1.5px -1.5px 0px #000, 1.5px -1.5px 0px #000, -1.5px 1.5px 0px #000, 1.5px 1.5px 0px #000, 0 3px 6px rgba(0,0,0,0.95)'),
+                            fontSize: '31.5px',
+                            fontWeight: '900',
+                            fontFamily: 'Orbitron, sans-serif',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '100%',
+                            height: '100%'
+                          };
+                          
+                          const entryAnimationClass = i === 0 || i === 1
+                             ? 'animate-target-fly-left'
+                             : i === 2
+                               ? 'animate-target-fly-center'
+                               : 'animate-target-fly-right';
 
-                            return (
-                              <div className="flex flex-col items-center animate-bounce-short w-full">
-                                <div data-target-value={activeTarget.value} className={`relative overflow-hidden flex flex-col items-center justify-center w-full max-w-[240px] h-24 px-4 rounded-xl border-[4px] border-emerald-400 bg-emerald-900/80 shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all duration-300 transform hover:scale-105 ${matchedTargetValue === activeTarget.value ? 'animate-hex-correct-bounce-delayed' : ''}`}>
-                                  {/* Circular/Rounded 3D Glass Embossed Reflection Cover */}
-                                  <div 
-                                    className="absolute inset-0 rounded-lg pointer-events-none overflow-hidden z-20"
-                                    style={{
-                                      boxShadow: 'inset 0 6px 12px rgba(255,255,255,0.55), inset 0 -6px 12px rgba(0,0,0,0.45)'
-                                    }}
-                                  >
-                                    {/* Glossy Curved Bevel Cover (Cupola superiore lucida) */}
-                                    <div 
-                                      className="absolute top-0 inset-x-0 h-[42%] rounded-t-lg"
-                                      style={{
-                                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.35), transparent)'
-                                      }}
-                                    ></div>
-                                    
-                                    {/* Diagonal Spotlight Reflection - Outer Soft (Riflesso morbido) */}
-                                    <div 
-                                      className="absolute top-[8%] left-[8%] w-[32%] h-[32%] rounded-full filter blur-[2.5px] rotate-[15deg]"
-                                      style={{
-                                        background: 'linear-gradient(to bottom right, rgba(255,255,255,0.3), transparent)'
-                                      }}
-                                    ></div>
+                           const animationDelay = i === 2 ? '0.15s' : (i === 1 || i === 3 ? '0.08s' : '0s');
 
-                                    {/* Diagonal Spotlight Reflection - Inner Sharp Core (Punto luce super specchiato) */}
-                                    <div 
-                                      className="absolute top-[12%] left-[12%] w-[15%] h-[15%] rounded-full filter blur-[0.5px] rotate-[15deg]"
-                                      style={{
-                                        background: 'linear-gradient(to bottom right, rgba(255,255,255,0.7), rgba(255,255,255,0.05))'
-                                      }}
-                                    ></div>
-                                  </div>
-
-                                  <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-[0.2em] mb-1 z-10">
-                                    TARGET {currentIndex}/{totalCount}
-                                  </span>
-                                  <span className={`font-orbitron font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none z-10
-                                    ${activeTarget.displayValue ? 'text-3xl tracking-widest' : 'text-6xl'}`}>
-                                    {activeTarget.displayValue || activeTarget.value}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })()
-                        ) : (
-                          // STANDARD & BOSS 2+: Career-style Target List
-                          gameState.levelTargets.map((t, i) => {
-                            const isDominion = activeMatch?.isDuel && duelMode === 'blitz';
-                            const isCompleted = t.completed;
-                            
-                            // Style settings based on status
-                            let targetBg = 'linear-gradient(135deg, #0a1733 0%, #030814 100%)';
-                            let targetBorder = '2px solid #00d2ff';
-                            let targetGlow = '0 0 25px rgba(0, 210, 255, 0.95), 0 0 8px rgba(0, 210, 255, 0.9), inset 0 3px 6px rgba(255, 255, 255, 0.45), inset 0 -3px 6px rgba(0, 0, 0, 0.7)';
-                            let numStyle: React.CSSProperties = {
-                              color: '#ffffff',
-                              textShadow: '0 0 8px #00d2ff, 0 0 16px rgba(0, 210, 255, 0.9), 0 0 24px rgba(0, 210, 255, 0.5)'
-                            };
-
-                            if (isCompleted) {
-                              targetBg = 'linear-gradient(135deg, #052e16 0%, #022c22 100%)';
-                              targetBorder = '2px solid rgba(16, 185, 129, 0.7)';
-                              targetGlow = '0 0 20px rgba(16, 185, 129, 0.8), 0 0 6px rgba(16, 185, 129, 1), inset 0 3px 6px rgba(255, 255, 255, 0.35), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
-                              numStyle = {
-                                color: '#d1fae5',
-                                textShadow: '0 0 8px rgba(16, 185, 129, 0.95), 0 0 15px rgba(16, 185, 129, 0.5)'
-                              };
-                            } else if (isDominion) {
-                              const isMyTarget = (t.owner === 'p1' && activeMatch?.isP1) || (t.owner === 'p2' && !activeMatch?.isP1);
-                              const isEnemyTarget = (t.owner === 'p1' && !activeMatch?.isP1) || (t.owner === 'p2' && activeMatch?.isP1);
-                              if (isMyTarget) {
-                                targetBg = 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)';
-                                targetBorder = '2px solid rgba(52, 211, 153, 0.8)';
-                                targetGlow = '0 0 25px rgba(52, 211, 153, 0.9), 0 0 8px rgba(52, 211, 153, 1), inset 0 3px 6px rgba(255, 255, 255, 0.4), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
-                              } else if (isEnemyTarget) {
-                                targetBg = 'linear-gradient(135deg, #4c0519 0%, #31000e 100%)';
-                                targetBorder = '2px solid rgba(244, 63, 94, 0.7)';
-                                targetGlow = '0 0 15px rgba(244, 63, 94, 0.6), inset 0 3px 6px rgba(255, 255, 255, 0.25), inset 0 -3px 6px rgba(0, 0, 0, 0.65)';
-                                numStyle = {
-                                  color: '#ffe4e6',
-                                  textShadow: '0 0 8px rgba(244, 63, 94, 0.8)'
-                                };
-                              }
-                            }
-
-                            const valStr = String(t.value || '');
-                            let sizeClasses = 'w-14 h-14 text-2xl sm:text-3xl';
-                            if (t.displayValue) {
-                              sizeClasses = 'w-14 h-14 text-[10px] sm:text-[11px] leading-tight whitespace-nowrap px-1';
-                            } else if (valStr.length >= 3) {
-                              sizeClasses = 'min-w-[3.5rem] px-2 h-14 text-base sm:text-lg';
-                            } else if (valStr.length === 2) {
-                              sizeClasses = 'min-w-[3.5rem] px-1.5 h-14 text-xl sm:text-2xl';
-                            }
-
-                            const completedClass = isCompleted ? 'animate-target-completed' : '';
-
-                            return (
-                              <div key={i} data-target-value={t.value} 
-                                className={`relative overflow-hidden flex items-center justify-center rounded-xl transition-all duration-300 font-orbitron font-black shadow-lg ${sizeClasses} ${completedClass} ${matchedTargetValue === t.value && !t.completed ? 'animate-hex-correct-bounce-delayed' : ''}`}
-                                style={{
-                                  background: isCompleted ? 'transparent' : targetBg,
-                                  border: isCompleted ? 'none' : targetBorder,
-                                  boxShadow: isCompleted ? 'none' : targetGlow
-                                }}
-                              >
-                                {isCompleted ? (
-                                  <div className="plasma-core-wrapper">
-                                    <div className="plasma-bloom"></div>
-                                    <div className="plasma-sphere"></div>
-                                    <div className="plasma-nucleus"></div>
-                                    <div className="plasma-cluster">
-                                      <span className="micro-particle mp1"></span>
-                                      <span className="micro-particle mp2"></span>
-                                      <span className="micro-particle mp3"></span>
-                                      <span className="micro-particle mp4"></span>
-                                      <span className="micro-particle mp5"></span>
-                                      <span className="micro-particle mp6"></span>
-                                      <span className="micro-particle mp7"></span>
-                                      <span className="micro-particle mp8"></span>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <>
-                                    {/* Circular/Rounded 3D Glass Embossed Reflection Cover */}
-                                    <div 
-                                      className="absolute inset-0 rounded-lg pointer-events-none overflow-hidden z-20"
-                                      style={{
-                                        boxShadow: 'inset 0 4px 8px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.5)'
-                                      }}
-                                    >
-                                      {/* Glossy Curved Bevel Cover */}
-                                      <div 
-                                        className="absolute top-0 inset-x-0 h-[42%] rounded-t-lg"
-                                        style={{
-                                          background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
-                                        }}
-                                      ></div>
-                                      
-                                      {/* Diagonal Spotlight - Outer Soft */}
-                                      <div 
-                                        className="absolute top-[8%] left-[8%] w-[35%] h-[35%] rounded-full filter blur-[2px] rotate-[15deg]"
-                                        style={{
-                                          background: 'linear-gradient(to bottom right, rgba(255,255,255,0.20), transparent)'
-                                        }}
-                                      ></div>
-
-                                      {/* Diagonal Spotlight - Inner Sharp */}
-                                      <div 
-                                        className="absolute top-[12%] left-[12%] w-[16%] h-[16%] rounded-full filter blur-[0.5px] rotate-[15deg]"
-                                        style={{
-                                          background: 'linear-gradient(to bottom right, rgba(255,255,255,0.55), rgba(255,255,255,0.05))'
-                                        }}
-                                      ></div>
-                                    </div>
-                                    <span className="z-10" style={numStyle}>{t.displayValue || t.value}</span>
-                                  </>
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
-
-                        {/* EXTRA TIME BUBBLE REMOVED AS IT GAVE ERRORS */}
-                          </div>
-                        </div>
+                          return (
+                            <div key={`${gameState.level}-${i}`} data-target-value={t.value} 
+                              className={`relative flex items-center justify-center w-[99px] h-[99px] transition-all duration-300 ${entryAnimationClass}`}
+                              style={{ animationDelay }}
+                            >
+                               {/* Individual background crystal octagon for each target */}
+                               <img
+                                 src="/ottagonocristallo.png"
+                                 alt="target background"
+                                 className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                                 style={{
+                                   transform: 'scale(1.17)',
+                                   opacity: (isCompleted || isMatchingPreview) ? 1 : 0.9,
+                                   filter: (() => {
+                                     if (isCompleted) {
+                                       // VERDE SOFFUSO (Completed!)
+                                       return 'drop-shadow(0 6px 12px rgba(0,0,0,0.6)) hue-rotate(95deg) saturate(2.0) brightness(1.15) drop-shadow(0 0 18px rgba(16,185,129,0.85))';
+                                     } else if (isMatchingPreview) {
+                                       // ARANCIO NEON SOFFUSO (Preview matching!)
+                                       return 'drop-shadow(0 6px 12px rgba(0,0,0,0.6)) hue-rotate(12deg) saturate(2.4) brightness(1.2) drop-shadow(0 0 18px rgba(255,136,0,0.85))';
+                                     } else {
+                                       // LUCE NERO PERLA SCURA
+                                       return 'drop-shadow(0 6px 12px rgba(0,0,0,0.75)) brightness(1.05) contrast(1.3) grayscale(0.95) drop-shadow(0 0 8px rgba(0, 0, 0, 0.9))';
+                                     }
+                                   })(),
+                                   transition: 'filter 0.25s ease, opacity 0.25s ease'
+                                 }}
+                               />
+                              <span className={`z-10 transition-all duration-300 ${(isCompleted || isMatchingPreview) ? 'scale-110' : ''}`} style={numStyle}>
+                                {t.displayValue || t.value}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })()}
+                    </div>
+                  </div>
 
                   <div className="relative flex-grow w-full flex items-center justify-center overflow-visible">
 
@@ -5010,8 +5075,10 @@ const GameView: React.FC = () => {
                         : 'w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))]'
                       }`}
                       style={{
-                        filter: isPaused ? 'blur(16px) grayscale(1)' : 'none'
-                      }}>
+                        filter: isPaused ? 'blur(16px) grayscale(1)' : 'none',
+                        touchAction: 'none'
+                      }}
+                      onPointerMove={onGridPointerMove}>
                       {grid.map(cell => (
                         <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} bossLevelId={gameState.bossLevelId} pathStatus={pathStatus} />
                       ))}
@@ -6624,85 +6691,81 @@ const GameView: React.FC = () => {
           }}
         />
 
-        {/* ADV OVERLAY (MOCK UNTIL APPROVAL) */}
+        {/* ADV OVERLAY — verticale 9:16 */}
         {
           isAdvPlaying && (
-            <div className="fixed inset-0 z-[10000] bg-black flex flex-col items-center justify-center animate-screen-in">
-              <div className="absolute top-12 right-4 z-[50] flex items-center gap-4">
-                {adCanSkip && (
-                  <button
-                    onPointerDown={() => handleFinishAd(adTimer <= 0)}
-                    className="bg-black/50 hover:bg-white/10 text-white px-4 py-2 rounded-lg font-orbitron font-black text-[10px] uppercase tracking-widest border border-white/20 transition-all active:scale-95 flex items-center gap-2 backdrop-blur-md"
-                  >
-                    {adTimer <= 0 ? (
-                      <>CHIUDI <X size={14} /></>
-                    ) : (
-                      <>SALTA <FastForward size={14} /></>
-                    )}
-                  </button>
-                )}
-              </div>
+            <div className="fixed inset-0 z-[10000] bg-black flex items-center justify-center animate-screen-in">
+              <div
+                className="relative h-[100dvh] w-full max-w-[min(100vw,calc(100dvh*9/16))] aspect-[9/16] bg-[#020617] overflow-hidden shadow-[0_0_80px_rgba(255,136,0,0.15)]"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-[#FF8800]/10 to-transparent pointer-events-none" />
 
-              {/* Progress Ring / Ad Placeholder */}
-              <div className="relative w-full h-full flex-1 bg-[#020617] overflow-hidden flex flex-col items-center justify-center group">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#FF8800]/10 to-transparent"></div>
-
-                {/* MOCK AD CONTENT OR REAL ADSENSE */}
-                <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 w-full h-full max-w-2xl py-8">
+                <div className="relative z-10 flex flex-col items-center justify-center text-center px-3 w-full h-full py-6">
                   {ADS_CONFIG.enabled ? (
-                    <div className="w-full h-full flex items-center justify-center bg-[#050b20] rounded-2xl border border-white/10 overflow-hidden p-2 shadow-2xl">
-                      <ins className="adsbygoogle"
-                           style={{ display: 'block', width: '100%', height: '100%', minHeight: '320px' }}
-                           data-ad-client={ADS_CONFIG.client}
-                           data-ad-slot={ADS_CONFIG.adsenseSlot}
-                           data-ad-format="auto"
-                           data-full-width-responsive="true"></ins>
+                    <div className="w-full h-full flex items-center justify-center bg-[#050b20] rounded-xl border border-white/10 overflow-hidden p-2 shadow-2xl">
+                      <ins
+                        className="adsbygoogle"
+                        style={{ display: 'block', width: '100%', height: '100%', minHeight: '280px' }}
+                        data-ad-client={ADS_CONFIG.client}
+                        data-ad-slot={ADS_CONFIG.adsenseSlot}
+                        data-ad-format="auto"
+                        data-full-width-responsive="true"
+                      />
                     </div>
                   ) : (
-                    <>
-                      <div className="w-20 h-20 mb-6 relative">
-                        <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-ping opacity-20"></div>
-                        <div className="absolute inset-0 border-4 border-[#FF8800] rounded-full animate-spin border-t-transparent shadow-[0_0_20px_#FF8800]"></div>
-                        <div className="absolute inset-3 bg-[#FF8800]/20 rounded-full flex items-center justify-center">
-                          <Play size={28} className="text-[#FF8800] fill-[#FF8800] ml-1" />
-                        </div>
-                      </div>
-
-                      <h3 className="font-orbitron font-black text-white text-lg tracking-[0.2em] mb-2 uppercase">Google Adsense</h3>
-                      <p className="text-[#FF8800] font-orbitron text-[8px] font-black tracking-[0.3em] uppercase opacity-70 mb-4">In attesa di approvazione</p>
-
-                      <div className="bg-white/5 border border-white/10 rounded-xl py-3 px-6">
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <div className="bg-white/5 border border-white/10 rounded-xl py-4 px-6">
                         <span className="text-white/40 text-[9px] font-black uppercase tracking-widest block mb-1">Premio al termine</span>
-                        <span className="text-2xl font-black font-orbitron text-white text-shadow-neon-orange">+30 SECONDI</span>
+                        <span className="text-2xl font-black font-orbitron text-white">+{ADS_CONFIG.rewardValue} SECONDI</span>
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
 
-                {/* AD PROGRESS BAR */}
-                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/5">
+                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/5 z-20">
                   <div
                     className="h-full bg-gradient-to-r from-yellow-400 to-[#FF8800] transition-all duration-1000 ease-linear shadow-[0_0_15px_#FF8800]"
                     style={{ width: `${(1 - adTimer / ADS_CONFIG.rewardDuration) * 100}%` }}
-                  ></div>
+                  />
                 </div>
-              </div>
 
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex items-center gap-3">
+                <div className="absolute bottom-16 left-0 right-0 z-20 flex items-center justify-center gap-3 pointer-events-none">
                   <div className="w-12 h-12 rounded-full border-2 border-[#FF8800] flex items-center justify-center bg-[#FF8800]/10">
                     <span className="font-orbitron font-black text-white text-xl">{adTimer}</span>
                   </div>
                   <div className="text-left">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] block">Sincronizzazione</span>
-                    <span className="text-xs font-black text-white uppercase tracking-widest">ADV NEURAL {adTimer > 0 ? 'STREAMING' : 'READY'}</span>
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] block">Bonus tempo</span>
+                    <span className="text-xs font-black text-white uppercase tracking-widest">
+                      {adTimer > 0 ? 'GUARDA PER IL PREMIO' : 'PREMIO PRONTO'}
+                    </span>
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    handleFinishAd(adTimer <= 0);
+                  }}
+                  className="absolute top-3 right-3 z-[30] w-10 h-10 rounded-full bg-black/60 hover:bg-white/15 text-white border border-white/25 transition-all active:scale-95 flex items-center justify-center backdrop-blur-md"
+                  aria-label="Chiudi"
+                >
+                  <X size={20} />
+                </button>
               </div>
 
-              <footer className="absolute bottom-8 text-[7px] text-white/20 font-black tracking-[0.5em] uppercase pointer-events-none">
-                {ADS_CONFIG.enabled ? "GOOGLE AD NETWORK ACTIVE" : "ADS_MOCK_ENGINE_V1.2 / PENDING APPROVAL"}
-              </footer>
+              {adCanSkip && adTimer > 0 && (
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    handleFinishAd(false);
+                  }}
+                  className="fixed bottom-5 right-5 z-[10002] bg-black/70 hover:bg-white/15 text-white px-5 py-2.5 rounded-xl font-orbitron font-black text-[10px] uppercase tracking-widest border border-white/25 transition-all active:scale-95 flex items-center gap-2 backdrop-blur-md shadow-lg"
+                >
+                  SALTA <FastForward size={14} />
+                </button>
+              )}
             </div>
           )
         }
