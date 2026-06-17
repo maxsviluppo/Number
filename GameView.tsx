@@ -4365,16 +4365,28 @@ const GameView: React.FC = () => {
               <header className="w-full max-w-[960px] mx-auto mb-2 relative z-50">
                 <style dangerouslySetInnerHTML={{__html: `
                   .top-chrome-bar {
-                    background-image: url('/navbarmenutop.png') !important;
-                    background-size: 100% 100% !important;
-                    background-position: center !important;
-                    background-repeat: no-repeat !important;
+                    background: transparent !important;
                     border: none !important;
-                    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.65)) !important;
-                    aspect-ratio: 1017 / 266 !important;
-                    height: auto !important;
+                    filter: none !important;
                     width: 100% !important;
-                    margin-top: -15px !important;
+                    margin-top: 0 !important;
+                  }
+
+                  .hud-icon-btn:active { transform: scale(0.90) !important; }
+                  .hud-icon-btn { transition: transform 0.1s ease !important; -webkit-tap-highlight-color: transparent !important; touch-action: manipulation !important; }
+
+                  /* ── Bonus Banner HUD ── */
+                  .bonus-banner-hud { transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease !important; }
+                  .bonus-banner-hud:hover { transform: translateY(5px) !important; box-shadow: 0 0 0 1px rgba(0,220,255,0.55), 0 0 20px rgba(0,200,255,0.6), 0 0 42px rgba(0,170,255,0.3) !important; }
+                  .bonus-banner-hud:hover .bonus-hover-text { opacity: 1 !important; }
+                  .bonus-banner-hud:active { transform: translateY(5px) scale(0.96) !important; box-shadow: 0 0 0 2px rgba(0,230,255,1), 0 0 32px rgba(0,210,255,1), 0 0 64px rgba(0,180,255,0.7) !important; }
+                  @keyframes hudBonusGlow {
+                    0%,100% { box-shadow: 0 0 0 1px rgba(0,200,255,0.12), 0 0 14px rgba(0,180,255,0.2), 0 0 28px rgba(0,160,255,0.08); }
+                    50%     { box-shadow: 0 0 0 1px rgba(0,220,255,0.32), 0 0 20px rgba(0,200,255,0.38), 0 0 40px rgba(0,180,255,0.18); }
+                  }
+                  @keyframes bonusSheen {
+                    0%   { transform: translateX(-120%) skewX(-20deg); }
+                    100% { transform: translateX(600%) skewX(-20deg); }
                   }
 
                   .targets-glass-bar {
@@ -4714,52 +4726,163 @@ const GameView: React.FC = () => {
                   }
                  `}} />
 
-                <div className="relative w-full top-chrome-bar flex items-stretch px-2.5 justify-between">
-                  
-                  {/* LATO SINISTRO: HOME + DIVISORE + AUDIO */}
-                  <div className="flex w-[40%] items-center gap-1.5">
-                    {/* HOME */}
-                    <button
-                       onPointerDown={(e) => {
-                         e.stopPropagation();
-                         soundService.playUIClick();
-                         resetDuelState(activeMatch?.id, currentUser?.id);
-                         goToHome(e);
-                         setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
-                       }}
-                       className="btn-panel btn-panel-green flex-grow rounded-full text-emerald-950 font-black flex items-center justify-center"
-                    >
-                    </button>
+                {/* ══ GAME HUD BAR – Sci-Fi Design ══ */}
+                <div className="relative w-full top-chrome-bar">
+                  <div style={{
+                    display: 'flex', gap: '10px', alignItems: 'stretch',
+                    background: 'linear-gradient(180deg, #0d1325 0%, #09101e 55%, #060c18 100%)',
+                    borderRadius: '14px', border: '1px solid #1a2c45',
+                    boxShadow: '0 6px 28px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px rgba(0,180,255,0.06)',
+                    padding: '8px 10px',
+                  }}>
 
-                    <div className="chrome-divider" />
-
-                    <button
-                      onPointerDown={toggleMute}
-                      className={`btn-panel btn-panel-blue flex-grow rounded-full text-indigo-950 font-black flex items-center justify-center ${isMuted ? 'audio-muted' : 'audio-active-glow'}`}
-                    >
-                    </button>
-                  </div>
-
-                  <div className="w-[16%] flex justify-center">
-                  </div>
-
-                  <div className="flex w-[40%] items-center gap-1.5">
-                    <div className="btn-panel btn-panel-orange flex-grow rounded-full flex items-center justify-center text-amber-950 font-black">
-                      <span className="font-orbitron font-black leading-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.6)] text-xl sm:text-2xl md:text-3xl" style={{ transform: 'translate(0px, -15px)' }}>
-                        {gameState.score}
-                      </span>
+                    {/* ── LEFT: HOME + AUDIO ── */}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                        <span style={{ fontSize: '7.5px', fontWeight: 800, letterSpacing: '0.12em', color: '#3a6880', textTransform: 'uppercase', fontFamily: 'Orbitron, monospace' }}>HOME</span>
+                        <button
+                          className="hud-icon-btn"
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            soundService.playUIClick();
+                            resetDuelState(activeMatch?.id, currentUser?.id);
+                            goToHome(e);
+                            setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
+                          }}
+                          style={{
+                            width: '46px', height: '46px', borderRadius: '50%',
+                            background: 'radial-gradient(circle at 50% 32%, #1e3050 0%, #0c1830 65%, #070e20 100%)',
+                            border: '2px solid #263d5e',
+                            boxShadow: '0 0 0 1px #101e38, inset 0 3px 8px rgba(0,0,0,0.92), inset 0 -1px 3px rgba(255,255,255,0.04), 0 3px 12px rgba(0,0,0,0.75)',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none',
+                          }}
+                        >
+                          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" style={{ filter: 'drop-shadow(0 0 5px #00ccff) drop-shadow(0 0 10px rgba(0,180,255,0.45))', pointerEvents: 'none' }}>
+                            <path d="M12 3L3 10V21H9V15H15V21H21V10L12 3Z" fill="rgba(0,210,255,0.15)" stroke="#00ddff" strokeWidth="1.75" strokeLinejoin="round"/>
+                            <rect x="10" y="15" width="4" height="6" rx="0.5" fill="rgba(0,210,255,0.25)" stroke="#00ddff" strokeWidth="1.2"/>
+                          </svg>
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                        <span style={{ fontSize: '7.5px', fontWeight: 800, letterSpacing: '0.08em', color: '#3a6880', textTransform: 'uppercase', fontFamily: 'Orbitron, monospace' }}>AUDIO</span>
+                        <button
+                          className="hud-icon-btn"
+                          onPointerDown={toggleMute}
+                          style={{
+                            width: '46px', height: '46px', borderRadius: '50%',
+                            background: 'radial-gradient(circle at 50% 32%, #1e3050 0%, #0c1830 65%, #070e20 100%)',
+                            border: `2px solid ${isMuted ? '#18263a' : '#263d5e'}`,
+                            boxShadow: isMuted
+                              ? '0 0 0 1px #101e38, inset 0 3px 8px rgba(0,0,0,0.92)'
+                              : '0 0 0 1px #101e38, inset 0 3px 8px rgba(0,0,0,0.92), 0 0 12px rgba(0,200,255,0.32), 0 0 24px rgba(0,200,255,0.13)',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            outline: 'none', transition: 'border-color 0.25s ease, box-shadow 0.25s ease',
+                            filter: isMuted ? 'grayscale(0.88) brightness(0.5)' : 'none',
+                          }}
+                        >
+                          {isMuted ? (
+                            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" style={{ pointerEvents: 'none' }}>
+                              <path d="M11 5L6 9H2V15H6L11 19V5Z" stroke="#385570" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                              <line x1="22" y1="9" x2="16" y2="15" stroke="#385570" strokeWidth="2" strokeLinecap="round"/>
+                              <line x1="16" y1="9" x2="22" y2="15" stroke="#385570" strokeWidth="2" strokeLinecap="round"/>
+                            </svg>
+                          ) : (
+                            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" style={{ filter: 'drop-shadow(0 0 5px #00ccff) drop-shadow(0 0 10px rgba(0,180,255,0.45))', pointerEvents: 'none' }}>
+                              <path d="M11 5L6 9H2V15H6L11 19V5Z" stroke="#00ddff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M19.07 4.93C20.94 6.81 22 9.35 22 12C22 14.65 20.94 17.19 19.07 19.07" stroke="#00ddff" strokeWidth="1.8" strokeLinecap="round"/>
+                              <path d="M15.54 8.46C16.48 9.4 17 12 17 12C17 12 16.48 14.6 15.54 15.54" stroke="#00ddff" strokeWidth="1.8" strokeLinecap="round"/>
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="chrome-divider" />
+                    {/* ── RIGHT: Timer bar + Score / Level ── */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
 
-                    <div className="btn-panel btn-panel-yellow flex-grow rounded-full flex items-center justify-center text-yellow-950 font-black">
-                      <span className="font-orbitron font-black leading-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.6)] text-xl sm:text-2xl md:text-3xl" style={{ transform: 'translate(-12px, -17px)' }}>
-                        {gameState.isBossLevel ? gameState.bossLevelId : gameState.level}
-                      </span>
-                    </div>
-                  </div>
+                      {/* ── Timer bar ── */}
+                      {(() => {
+                        const tLimit = (activeMatch?.mode === 'time_attack') ? 60 : (60 + parseInt(typeof window !== 'undefined' ? localStorage.getItem('career_time_bonus') || '0' : '0'));
+                        const isDuelProgress = !!(activeMatch?.isDuel && duelMode !== 'time_attack' && duelMode !== 'blitz');
+                        const isDuelBlitz = !!(activeMatch?.isDuel && duelMode === 'blitz');
+                        const displayVal = isDuelProgress ? (opponentTargets || 0) : gameState.timeLeft;
+                        const tPct = isDuelProgress
+                          ? Math.max(0, Math.min(1, (opponentTargets || 0) / 5))
+                          : Math.max(0, Math.min(1, gameState.timeLeft / tLimit));
+                        const tColor = tPct > 0.6 ? '#00f0ff' : tPct > 0.35 ? '#00ff88' : tPct > 0.15 ? '#FF8800' : '#ff003c';
+                        const tRgb = tPct > 0.6 ? '0,240,255' : tPct > 0.35 ? '0,255,136' : tPct > 0.15 ? '255,136,0' : '255,0,60';
+                        const totalSegs = 24;
+                        const filledSegs = Math.round(tPct * totalSegs);
+                        return (
+                          <div
+                            style={{ cursor: activeMatch?.isDuel ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', gap: '3px' }}
+                            onPointerDown={activeMatch?.isDuel ? undefined : togglePause}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingRight: '2px' }}>
+                              <span style={{ fontSize: '7.5px', fontWeight: 800, letterSpacing: '0.12em', color: '#3a6880', textTransform: 'uppercase', fontFamily: 'Orbitron, monospace' }}>
+                                {gameState.isBossLevel ? 'BOSS' : isDuelProgress ? 'ENEMY' : isDuelBlitz ? 'BLITZ' : 'TIME'}
+                              </span>
+                              {!isPaused && (
+                                <span style={{ fontSize: '7.5px', fontWeight: 700, color: `rgba(${tRgb},0.65)`, fontFamily: 'Orbitron, monospace' }}>
+                                  {isDuelProgress ? `${displayVal}/5` : isDuelBlitz
+                                    ? `${gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p1' : 'p2')).length}v${gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p2' : 'p1')).length}`
+                                    : `${gameState.timeLeft}s`}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{
+                              position: 'relative', width: '100%', height: '36px',
+                              background: '#040810', border: '1px solid #152235', borderRadius: '8px',
+                              boxShadow: `inset 0 2px 8px rgba(0,0,0,0.92), 0 0 14px rgba(${tRgb},0.1)`,
+                              display: 'flex', alignItems: 'center', padding: '5px 6px', gap: '2px', overflow: 'hidden',
+                            }}>
+                              {Array.from({ length: totalSegs }, (_, i) => (
+                                <div key={i} style={{
+                                  flex: 1, height: '100%', borderRadius: '2px',
+                                  background: i < filledSegs ? `linear-gradient(180deg, rgba(${tRgb},0.95) 0%, rgba(${tRgb},0.72) 100%)` : 'rgba(255,255,255,0.03)',
+                                  boxShadow: i < filledSegs ? `0 0 4px rgba(${tRgb},0.8), 0 0 9px rgba(${tRgb},0.4)` : 'none',
+                                  transition: 'background 0.5s ease, box-shadow 0.5s ease',
+                                }} />
+                              ))}
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                                {isPaused ? (
+                                  <span style={{ fontSize: '11px', fontWeight: 900, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.28em', fontFamily: 'Orbitron, monospace', textShadow: '0 2px 6px #000' }}>PAUSA</span>
+                                ) : isDuelBlitz ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span style={{ fontFamily: 'Orbitron, monospace', fontWeight: 900, fontSize: '17px', color: '#22d3ee', textShadow: '0 0 8px rgba(34,211,238,0.8)', lineHeight: 1 }}>{gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p1' : 'p2')).length}</span>
+                                    <span style={{ fontFamily: 'Orbitron, monospace', fontWeight: 700, fontSize: '10px', color: 'rgba(255,255,255,0.3)', lineHeight: 1 }}>VS</span>
+                                    <span style={{ fontFamily: 'Orbitron, monospace', fontWeight: 900, fontSize: '17px', color: '#ef4444', textShadow: '0 0 8px rgba(239,68,68,0.8)', lineHeight: 1 }}>{gameState.levelTargets.filter(t => t.owner === (activeMatch?.isP1 ? 'p2' : 'p1')).length}</span>
+                                  </div>
+                                ) : (
+                                  <span style={{
+                                    fontSize: '19px', fontWeight: 900, fontFamily: 'Orbitron, monospace', color: '#fff',
+                                    textShadow: `0 2px 6px #000, 0 0 12px rgba(${tRgb},0.9)`, display: 'inline-block',
+                                    ...(gameState.timeLeft <= 5 && !isDuelProgress ? { animation: 'heartBeatPulse 1s ease-in-out infinite' } : {}),
+                                  }}>{displayVal}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
-                  <div
+                      {/* ── Score + Level LCD ── */}
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4px 6px 5px', borderRadius: '8px', background: '#040710', border: '1px solid #142030', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.88), 0 0 0 1px #0a1525', position: 'relative', overflow: 'hidden' }}>
+                          <div style={{ position: 'absolute', inset: 0, borderRadius: '8px', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,210,255,0.02) 3px, rgba(0,210,255,0.02) 4px), repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,210,255,0.02) 3px, rgba(0,210,255,0.02) 4px)', pointerEvents: 'none' }} />
+                          <span style={{ fontSize: '7.5px', fontWeight: 700, color: '#3a6880', textTransform: 'uppercase', letterSpacing: '0.14em', fontFamily: 'Orbitron, monospace', position: 'relative', zIndex: 1 }}>SCORE</span>
+                          <span style={{ fontFamily: 'Orbitron, monospace', fontWeight: 900, fontSize: '19px', color: '#00ddff', textShadow: '0 0 7px rgba(0,210,255,0.95), 0 0 14px rgba(0,210,255,0.45)', lineHeight: 1.1, position: 'relative', zIndex: 1, letterSpacing: '-0.01em' }}>{gameState.score.toLocaleString()}</span>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4px 6px 5px', borderRadius: '8px', background: '#040710', border: '1px solid #142030', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.88), 0 0 0 1px #0a1525', position: 'relative', overflow: 'hidden' }}>
+                          <div style={{ position: 'absolute', inset: 0, borderRadius: '8px', backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,210,255,0.02) 3px, rgba(0,210,255,0.02) 4px), repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,210,255,0.02) 3px, rgba(0,210,255,0.02) 4px)', pointerEvents: 'none' }} />
+                          <span style={{ fontSize: '7.5px', fontWeight: 700, color: '#3a6880', textTransform: 'uppercase', letterSpacing: '0.14em', fontFamily: 'Orbitron, monospace', position: 'relative', zIndex: 1 }}>LEVEL</span>
+                          <span style={{ fontFamily: 'Orbitron, monospace', fontWeight: 900, fontSize: '19px', color: '#00ddff', textShadow: '0 0 7px rgba(0,210,255,0.95), 0 0 14px rgba(0,210,255,0.45)', lineHeight: 1.1, position: 'relative', zIndex: 1 }}>{gameState.isBossLevel ? `B${gameState.bossLevelId}` : gameState.level}</span>
+                        </div>
+                      </div>
+                    </div>{/* end right column */}
+                  </div>{/* end hud container */}
+                {/* BELOW: old timer placeholder - kept for reference, not rendered */}
+                {false && <div
                     id="timer-display-game"
                     className="absolute left-1/2 z-[100] cursor-pointer group h-full flex items-center justify-center"
                     style={{ top: '50%', transform: 'translate(-50%, calc(-50% + 8px))' }}
@@ -4901,9 +5024,72 @@ const GameView: React.FC = () => {
                         </div>
                       );
                     })()}
-                  </div>
-
+                  </div>}
                 </div>
+
+                {/* ── +Ns BONUS BANNER – Centered below HUD, sci-fi neon style ── */}
+                {!activeMatch?.isDuel && (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '7px', paddingBottom: '2px' }}>
+                    <div
+                      className="bonus-banner-hud"
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        if (ADS_CONFIG.enabled) {
+                          handleRequestExtraTime();
+                        } else {
+                          showToast("Pubblicità in arrivo!");
+                        }
+                      }}
+                      style={{
+                        position: 'relative',
+                        display: 'inline-flex', alignItems: 'center', gap: '12px',
+                        padding: '0 28px', height: '50px', borderRadius: '999px',
+                        background: 'linear-gradient(90deg, #030a14 0%, #060e1c 50%, #030a14 100%)',
+                        border: '1px solid rgba(0,180,255,0.22)',
+                        boxShadow: '0 0 0 1px rgba(0,200,255,0.1), 0 0 14px rgba(0,180,255,0.2), 0 0 28px rgba(0,155,255,0.08)',
+                        cursor: ADS_CONFIG.enabled ? 'pointer' : 'default',
+                        overflow: 'hidden',
+                        animation: ADS_CONFIG.enabled ? 'hudBonusGlow 3.2s ease-in-out infinite' : 'none',
+                        filter: ADS_CONFIG.enabled ? 'none' : 'grayscale(0.7) brightness(0.65)',
+                        WebkitTapHighlightColor: 'transparent',
+                        touchAction: 'manipulation',
+                      }}
+                    >
+                      {/* Neon retro backlight bottom edge */}
+                      <div style={{ position: 'absolute', bottom: '-1px', left: '12%', right: '12%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,220,255,0.85), transparent)', boxShadow: '0 0 8px rgba(0,220,255,0.65), 0 0 18px rgba(0,180,255,0.35)', pointerEvents: 'none' }} />
+                      {/* Neon retro backlight top edge */}
+                      <div style={{ position: 'absolute', top: '-1px', left: '20%', right: '20%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(0,200,255,0.45), transparent)', pointerEvents: 'none' }} />
+                      {/* Sheen sweep animation */}
+                      <div style={{ position: 'absolute', top: 0, bottom: 0, width: '45px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)', animation: 'bonusSheen 4s ease-in-out infinite', animationDelay: '1.5s', pointerEvents: 'none' }} />
+
+                      {/* +Ns value */}
+                      <span style={{ fontFamily: 'Orbitron, monospace', fontWeight: 900, fontSize: '22px', color: '#00e2ff', textShadow: '0 0 10px rgba(0,226,255,0.95), 0 0 22px rgba(0,200,255,0.5)', lineHeight: 1, letterSpacing: '-0.02em', position: 'relative', zIndex: 1 }}>
+                        +{ADS_CONFIG.rewardValue}s
+                      </span>
+
+                      {/* Vertical separator */}
+                      <div style={{ width: '1px', height: '26px', background: 'rgba(0,180,255,0.25)', flexShrink: 0, position: 'relative', zIndex: 1 }} />
+
+                      {/* BONUS label */}
+                      <span style={{ fontFamily: 'Orbitron, monospace', fontWeight: 700, fontSize: '11px', color: '#3a7a90', textTransform: 'uppercase', letterSpacing: '0.14em', position: 'relative', zIndex: 1 }}>
+                        {ADS_CONFIG.enabled ? 'BONUS' : 'PRESTO'}
+                      </span>
+
+                      {/* Hover overlay – "clicca qui" */}
+                      <div className="bonus-hover-text" style={{
+                        position: 'absolute', inset: 0, borderRadius: '999px',
+                        background: 'rgba(0,6,18,0.9)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        opacity: 0, transition: 'opacity 0.22s ease', pointerEvents: 'none', zIndex: 2,
+                      }}>
+                        <span style={{ fontFamily: 'Orbitron, monospace', fontWeight: 700, fontSize: '10px', color: '#00ddff', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', textShadow: '0 0 8px rgba(0,220,255,0.8)' }}>
+                          Clicca per la pubblicità
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               </header>
             )}
 
@@ -5085,8 +5271,8 @@ const GameView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* PREMIUM AD REWARD BANNER - Vertical Tab */}
-                  <div className={`fixed right-0 top-[120px] md:top-[100px] z-[500] transition-all duration-700 ease-out transform
+                  {/* PREMIUM AD REWARD BANNER - Vertical Tab (hidden: replaced by HUD banner above) */}
+                  {false && <div className={`fixed right-0 top-[120px] md:top-[100px] z-[500] transition-all duration-700 ease-out transform
                     ${adBannerActive ? 'translate-x-0' : 'translate-x-[calc(100%-70px)]'}`}>
                     {/* Keyframes for the fluid moving gradient flow and crystal glass reflections */}
                     <style>{`
@@ -5221,7 +5407,7 @@ const GameView: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </div>}
                 </div>
               )}
 

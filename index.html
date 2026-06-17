@@ -56,6 +56,23 @@
   <style>
     :root {
       --hex-scale: 1.70;
+      /* Cristalli: saturazione ridotta per evitare arancione eccessivo */
+      --hex-crystal-brightness: 1;
+      --hex-crystal-contrast: 1;
+      --hex-crystal-saturate: 0.80;
+      --hex-num-orange-glow: 0;
+      --hex-num-orange-glow-selected: 0.18;
+    }
+
+    /* Telefono / touch: ulteriore desaturazione (OLED e Safari amplificano i colori) */
+    @media (hover: none) and (pointer: coarse) {
+      :root {
+        --hex-crystal-saturate: 0.68;
+        --hex-crystal-brightness: 1;
+        --hex-crystal-contrast: 1;
+        --hex-num-orange-glow: 0;
+        --hex-num-orange-glow-selected: 0.10;
+      }
     }
 
     @media (max-width: 1024px) {
