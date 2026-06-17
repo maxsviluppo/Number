@@ -5086,7 +5086,7 @@ const GameView: React.FC = () => {
                   </div>
 
                   {/* PREMIUM AD REWARD BANNER - Vertical Tab */}
-                  <div className={`fixed right-0 top-[140px] md:top-[120px] z-[500] transition-all duration-700 ease-out transform
+                  <div className={`fixed right-0 top-[120px] md:top-[100px] z-[500] transition-all duration-700 ease-out transform
                     ${adBannerActive ? 'translate-x-0' : 'translate-x-[calc(100%-70px)]'}`}>
                     {/* Keyframes for the fluid moving gradient flow and crystal glass reflections */}
                     <style>{`
