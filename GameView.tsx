@@ -4383,12 +4383,12 @@ const GameView: React.FC = () => {
                     background-color: transparent !important;
                     backdrop-filter: none !important;
                     -webkit-backdrop-filter: none !important;
-                    width: 345px !important;
-                    height: 120px !important;
+                    width: 242px !important;
+                    height: 84px !important;
                     display: flex !important;
                     align-items: center !important;
                     justify-content: space-between !important;
-                    padding: 0 12px !important;
+                    padding: 0 8px !important;
                     position: relative;
                     margin: -20px auto 0 auto !important;
                   }
@@ -4396,7 +4396,7 @@ const GameView: React.FC = () => {
                   @keyframes targetFlyInLeft {
                     0% {
                       opacity: 0;
-                      transform: translateX(-160px) scale(0.3);
+                      transform: translateX(-112px) scale(0.3);
                     }
                     100% {
                       opacity: 1;
@@ -4407,7 +4407,7 @@ const GameView: React.FC = () => {
                   @keyframes targetFlyInRight {
                     0% {
                       opacity: 0;
-                      transform: translateX(160px) scale(0.3);
+                      transform: translateX(112px) scale(0.3);
                     }
                     100% {
                       opacity: 1;
@@ -5001,7 +5001,7 @@ const GameView: React.FC = () => {
                               : (isMatchingPreview 
                                 ? '0 0 12px rgba(255,136,0,0.85), 0 0 22px rgba(255,136,0,0.45), -1.5px -1.5px 0px #000, 1.5px -1.5px 0px #000, -1.5px 1.5px 0px #000, 1.5px 1.5px 0px #000, 0 3px 6px rgba(0,0,0,0.95)'
                                 : '0 0 8px rgba(70,70,70,0.95), 0 0 16px rgba(0,0,0,0.98), -1.5px -1.5px 0px #000, 1.5px -1.5px 0px #000, -1.5px 1.5px 0px #000, 1.5px 1.5px 0px #000, 0 3px 6px rgba(0,0,0,0.95)'),
-                            fontSize: '31.5px',
+                            fontSize: '22px',
                             fontWeight: '900',
                             fontFamily: 'Orbitron, sans-serif',
                             display: 'flex',
@@ -5021,7 +5021,7 @@ const GameView: React.FC = () => {
 
                           return (
                             <div key={`${gameState.level}-${i}`} data-target-value={t.value} 
-                              className={`relative flex items-center justify-center w-[99px] h-[99px] transition-all duration-300 ${entryAnimationClass}`}
+                              className={`relative flex items-center justify-center w-[69px] h-[69px] transition-all duration-300 ${entryAnimationClass}`}
                               style={{ animationDelay }}
                             >
                                {/* Individual background crystal octagon for each target */}
