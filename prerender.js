@@ -183,7 +183,7 @@ const BLOG_POSTS = [
 
 // Helper to write static file inside a subdirectory (e.g. dist/site/index.html)
 function writePage(routePath, htmlContent, metaTags = {}) {
-  const dir = path.join(DIST_DIR, routePath);
+  const dir = routePath === '__root__' ? DIST_DIR : path.join(DIST_DIR, routePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -225,7 +225,7 @@ function writePage(routePath, htmlContent, metaTags = {}) {
   }
 
   fs.writeFileSync(path.join(dir, 'index.html'), pageHtml, 'utf8');
-  console.log(`Pre-rendered: ${routePath}/index.html`);
+  console.log(`Pre-rendered: ${routePath === '__root__' ? '/' : routePath + '/'}index.html`);
 }
 
 // Common Layout components to replicate for crawler
@@ -233,10 +233,10 @@ const headerHtml = `
 <header style="background: rgba(15, 23, 42, 0.9); border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
   <div style="display: flex; align-items: center; gap: 8px;">
     <div style="width: 32px; height: 32px; background: #FF8800; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; color: white; font-style: italic;">N</div>
-    <a href="/site" style="font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 20px; color: #FF8800; text-decoration: none;">number</a>
+    <a href="/" style="font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 20px; color: #FF8800; text-decoration: none;">number</a>
   </div>
   <nav style="display: flex; gap: 24px;">
-    <a href="/site" style="color: #cbd5e1; text-decoration: none; font-weight: 600; font-size: 14px;">Home</a>
+    <a href="/" style="color: #cbd5e1; text-decoration: none; font-weight: 600; font-size: 14px;">Home</a>
     <a href="/play" style="color: #ffffff; text-decoration: none; font-weight: 900; font-size: 14px;">Gioca</a>
     <a href="/blog" style="color: #cbd5e1; text-decoration: none; font-weight: 600; font-size: 14px;">Blog</a>
     <a href="/about" style="color: #cbd5e1; text-decoration: none; font-weight: 600; font-size: 14px;">About</a>
@@ -301,9 +301,24 @@ const siteHtml = `
       </div>
     </div>
   </section>
+
+  <section style="max-width: 1200px; margin: 0 auto; padding: 60px 24px 80px;">
+    <h2 style="font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 900; text-align: center; margin-bottom: 12px;">Blog e approfondimenti</h2>
+    <p style="color: #94a3b8; text-align: center; max-width: 640px; margin: 0 auto 32px; line-height: 1.7;">Articoli originali su calcolo mentale, neuroplasticità, strategie di studio e benessere cognitivo. Contenuti pensati per chi vuole allenare la mente oltre la partita.</p>
+    <div style="text-align: center;">
+      <a href="/blog" style="color: #FF8800; font-weight: 900; text-decoration: none; margin-right: 24px;">Vai al Blog →</a>
+      <a href="/about" style="color: #cbd5e1; font-weight: 700; text-decoration: none;">Chi Siamo</a>
+    </div>
+  </section>
   ${footerHtml}
 </div>
 `;
+writePage('__root__', siteHtml, {
+  title: "Numbergame | Allena la mente con i puzzle matematici",
+  description: "Sfida la tua mente con Numbergame.it, il gioco di logica matematica più avanzato. Allena il tuo cervello, partecipa a duelli 1vs1 online e migliora il tuo QI.",
+  keywords: "numbergame, gioco logica matematica, allenamento mentale, cervello, duelli logica, calcolo mentale"
+});
+
 writePage('site', siteHtml, {
   title: "Numbergame | Allena la mente con i puzzle matematici",
   description: "Sfida la tua mente con Numbergame.it, il gioco di logica matematica più avanzato. Allena il tuo cervello, partecipa a duelli 1vs1 online e migliora il tuo QI.",
@@ -389,9 +404,28 @@ const createSimpleStaticPage = (pathName, title, headline, bodyText) => {
   });
 };
 
-createSimpleStaticPage('about', 'Chi Siamo', 'Chi Siamo - La nostra Mission', `
-  <p>Benvenuto su <strong>Numbergame</strong>, il progetto leader nell'allenamento mentale e nel neural gaming competitivo.</p>
-  <p>La nostra missione è unire la scienza cognitiva e il game design per offrire un'esperienza divertente, accessibile e stimolante che aiuti a mantenere la mente lucida e sviluppare capacità di risoluzione rapida dei problemi.</p>
+createSimpleStaticPage('about', 'Chi Siamo', 'Chi Siamo — Numbergame.it', `
+  <p><strong>Numbergame.it</strong> è una piattaforma italiana di intrattenimento educativo sviluppata da <strong>Giulincy srl</strong>. Uniamo game design, logica matematica e competizione online per offrire un'esperienza gratuita di brain training accessibile a studenti, adulti e appassionati di puzzle numerici.</p>
+
+  <h2 style="color: #FF8800; font-family: 'Orbitron', sans-serif; margin-top: 32px;">Cosa trovi su Numbergame</h2>
+  <ul style="line-height: 1.9; padding-left: 20px;">
+    <li><strong>Modalità Campagna:</strong> risolvi combinazioni numeriche su una griglia esagonale, completa obiettivi a tempo e scala i livelli.</li>
+    <li><strong>Neural Duel 1vs1:</strong> sfida altri giocatori in tempo reale nelle modalità Standard e Blitz.</li>
+    <li><strong>Classifiche globali:</strong> accumula punteggio, monitora il tuo QI stimato e confrontati con la community.</li>
+    <li><strong>Boss Challenge:</strong> livelli speciali con regole avanzate per giocatori esperti.</li>
+    <li><strong>Blog editoriale:</strong> articoli su calcolo mentale, neuroplasticità, strategie di studio e benessere cognitivo.</li>
+  </ul>
+
+  <h2 style="color: #FF8800; font-family: 'Orbitron', sans-serif; margin-top: 32px;">Perché allenare la mente con i numeri</h2>
+  <p>La ricerca in ambito cognitivo suggerisce che esercizi regolari di calcolo mentale e risoluzione di problemi possono sostenere attenzione, memoria di lavoro e flessibilità mentale. Numbergame trasforma questo allenamento in un gioco coinvolgente, con feedback immediato e progressione graduale.</p>
+
+  <h2 style="color: #FF8800; font-family: 'Orbitron', sans-serif; margin-top: 32px;">Il team</h2>
+  <p>Il progetto è ideato da <strong>Giovanni Coda</strong> (Product Manager) e sviluppato da <strong>Castro Massimo</strong>, con focus su performance mobile, accessibilità e sicurezza dei dati (GDPR).</p>
+
+  <h2 style="color: #FF8800; font-family: 'Orbitron', sans-serif; margin-top: 32px;">Contenuti e trasparenza</h2>
+  <p>Oltre al gioco, pubblichiamo regolarmente contenuti originali nel <a href="/blog" style="color: #FF8800;">blog</a>, pagine legali complete (privacy, cookie, termini) e un canale di contatto diretto per assistenza e partnership: <a href="mailto:info@numbergame.it" style="color: #FF8800;">info@numbergame.it</a>.</p>
+
+  <p style="margin-top: 24px;"><a href="/play" style="background: #FF8800; color: #000; padding: 12px 24px; border-radius: 8px; font-weight: 900; text-decoration: none; display: inline-block;">Inizia a giocare gratis</a></p>
 `);
 
 createSimpleStaticPage('contact', 'Contatti', 'Contattaci', `

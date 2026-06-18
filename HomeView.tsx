@@ -46,13 +46,13 @@ const HomeView: React.FC = () => {
         {/* Desktop Menu */}
         <div className="hidden md:flex gap-8 text-sm font-semibold uppercase tracking-widest text-slate-400">
           <Link to="/site" className="hover:text-[#FF8800] transition-colors">Home</Link>
-          <Link to="/" className="hover:text-[#FF8800] transition-colors font-black text-white">Gioca</Link>
+          <Link to="/play" className="hover:text-[#FF8800] transition-colors font-black text-white">Gioca</Link>
           <Link to="/blog" className="hover:text-[#FF8800] transition-colors">Blog</Link>
           <Link to="/about" className="hover:text-[#FF8800] transition-colors">About</Link>
         </div>
 
         <div className="flex items-center gap-4">
-          <Link to="/" className="hidden sm:block bg-[#FF8800] text-black px-6 py-2 rounded-full font-black text-sm hover:scale-105 active:scale-95 transition-all">
+          <Link to="/play" className="hidden sm:block bg-[#FF8800] text-black px-6 py-2 rounded-full font-black text-sm hover:scale-105 active:scale-95 transition-all">
             ENTRA ORA
           </Link>
           
@@ -69,12 +69,12 @@ const HomeView: React.FC = () => {
         {isMenuOpen && (
           <div className="fixed inset-0 top-[72px] bg-black z-[9999] flex flex-col p-8 gap-6 animate-screen-in md:hidden h-[calc(100vh-72px)] overflow-y-auto">
             <Link to="/site" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4">HOME</Link>
-            <Link to="/" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4">GIOCA</Link>
+            <Link to="/play" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4">GIOCA</Link>
             <Link to="/blog" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4">BLOG</Link>
             <Link to="/about" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4">ABOUT</Link>
             <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4">CONTATTI</Link>
             
-            <Link to="/" onClick={() => setIsMenuOpen(false)} className="mt-4 bg-[#FF8800] text-black w-full py-4 rounded-2xl font-black text-center text-xl shadow-[0_0_30px_rgba(255,136,0,0.3)]">
+            <Link to="/play" onClick={() => setIsMenuOpen(false)} className="mt-4 bg-[#FF8800] text-black w-full py-4 rounded-2xl font-black text-center text-xl shadow-[0_0_30px_rgba(255,136,0,0.3)]">
               SFIDA ORA
             </Link>
           </div>
@@ -95,7 +95,7 @@ const HomeView: React.FC = () => {
             Pronto a superare i tuoi limiti?
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-            <Link to="/" className="group relative bg-[#FF8800] text-black px-10 py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 overflow-hidden transition-all hover:scale-[1.02] active:scale-95 shadow-[0_0_30px_rgba(255,136,0,0.3)]">
+            <Link to="/play" className="group relative bg-[#FF8800] text-black px-10 py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 overflow-hidden transition-all hover:scale-[1.02] active:scale-95 shadow-[0_0_30px_rgba(255,136,0,0.3)]">
               <Play className="fill-current w-6 h-6" />
               INIZIA L'AVVENTURA
               <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500"></div>
@@ -159,7 +159,7 @@ const HomeView: React.FC = () => {
           <div>
             <h4 className="font-bold mb-6 uppercase text-xs tracking-widest text-[#FF8800]">Link Utili</h4>
             <ul className="space-y-4 text-sm text-slate-400">
-              <li><Link to="/" className="hover:text-white transition-colors">Gioca Ora</Link></li>
+              <li><Link to="/play" className="hover:text-white transition-colors">Gioca Ora</Link></li>
               <li><Link to="/blog" className="hover:text-white transition-colors">Blog & News</Link></li>
               <li><Link to="/about" className="hover:text-white transition-colors">Chi Siamo</Link></li>
               <li><Link to="/contact" className="hover:text-white transition-colors">Contatti</Link></li>

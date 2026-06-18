@@ -33,13 +33,13 @@ const BlogView: React.FC = () => {
         {/* Desktop Menu */}
         <div className="hidden md:flex gap-8 text-sm font-semibold uppercase tracking-widest text-slate-400">
           <Link to="/site" className="hover:text-white transition-colors">Home</Link>
-          <Link to="/" className="hover:text-[#FF8800] transition-colors">Gioca</Link>
+          <Link to="/play" className="hover:text-[#FF8800] transition-colors">Gioca</Link>
           <Link to="/blog" className="text-white border-b border-white transition-colors">Blog</Link>
           <Link to="/about" className="hover:text-white transition-colors">About</Link>
         </div>
 
         <div className="flex items-center gap-4">
-          <Link to="/" className="hidden sm:block bg-[#FF8800] text-black px-6 py-2 rounded-full font-black text-sm hover:scale-105 active:scale-95 transition-all">
+          <Link to="/play" className="hidden sm:block bg-[#FF8800] text-black px-6 py-2 rounded-full font-black text-sm hover:scale-105 active:scale-95 transition-all">
             GIOCA ORA
           </Link>
           
@@ -56,7 +56,7 @@ const BlogView: React.FC = () => {
         {isMenuOpen && (
           <div className="fixed inset-0 top-[72px] bg-black z-[9999] flex flex-col p-8 gap-6 animate-screen-in md:hidden h-[calc(100vh-72px)] overflow-y-auto">
             <Link to="/site" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4">HOME</Link>
-            <Link to="/" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4">GIOCA</Link>
+            <Link to="/play" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4">GIOCA</Link>
             <Link to="/blog" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4 text-white">BLOG</Link>
             <Link to="/about" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4">ABOUT</Link>
             <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800] border-b border-white/5 pb-4">CONTATTI</Link>

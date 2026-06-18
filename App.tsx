@@ -66,7 +66,7 @@ const App: React.FC = () => {
       <ScrollToTop />
       <ErrorBoundary>
         <Routes>
-          <Route path="/" element={<GameView />} />
+          <Route path="/" element={<HomeView />} />
           <Route path="/site" element={<HomeView />} />
           <Route path="/play" element={<GameView />} />
           <Route path="/blog" element={<BlogView />} />
@@ -79,7 +79,7 @@ const App: React.FC = () => {
           <Route path="/contact" element={<ContactView />} />
           
           {/* Fallback */}
-          <Route path="*" element={<GameView />} />
+          <Route path="*" element={<HomeView />} />
         </Routes>
       </ErrorBoundary>
       <CookieBanner />

@@ -46,7 +46,7 @@ const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.
         {/* Desktop Menu */}
         <div className="hidden md:flex gap-8 text-sm font-semibold uppercase tracking-widest text-slate-400">
           <Link to="/site" className="hover:text-white transition-colors">Home</Link>
-          <Link to="/" className="hover:text-white transition-colors">Gioca</Link>
+          <Link to="/play" className="hover:text-white transition-colors">Gioca</Link>
           <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
           <Link to="/about" className="hover:text-white transition-colors">About</Link>
         </div>
@@ -69,7 +69,7 @@ const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.
         {isMenuOpen && (
           <div className="fixed inset-0 top-[72px] bg-black z-[9999] flex flex-col p-8 gap-6 animate-screen-in md:hidden">
             <Link to="/site" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">HOME</Link>
-            <Link to="/" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">GIOCA</Link>
+            <Link to="/play" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">GIOCA</Link>
             <Link to="/blog" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">BLOG</Link>
             <Link to="/about" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">ABOUT</Link>
             <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">CONTATTI</Link>
@@ -178,10 +178,33 @@ export const AboutView: React.FC = () => (
           "La matematica non è un'opinione, è un'avventura."
         </p>
         <p className="mt-6">
-          Numbergame.it è un progetto di <strong>Giulincy srl</strong> che nasce dall'idea di trasformare il calcolo mentale in un'esperienza competitiva e visivamente gratificante. Crediamo fermamente che il **Brain Training** debba essere accessibile a tutti, gratuito e divertente.
+          <strong>Numbergame.it</strong> è una piattaforma italiana di intrattenimento educativo sviluppata da <strong>Giulincy srl</strong>. Trasformiamo il calcolo mentale in un'esperienza competitiva, visivamente curata e gratuita, pensata per studenti, adulti e appassionati di puzzle logici.
         </p>
-        
-        <div className="grid md:grid-cols-2 gap-8 mt-12 pt-12 border-t border-white/5">
+      </section>
+
+      <section>
+        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em]">Cosa offre la piattaforma</h2>
+        <ul className="list-disc pl-6 space-y-3">
+          <li><strong>Campagna a livelli:</strong> obiettivi numerici, timer e progressione graduale sulla griglia esagonale.</li>
+          <li><strong>Neural Duel 1vs1:</strong> sfide online in tempo reale (Standard e Blitz).</li>
+          <li><strong>Ranking globale:</strong> punteggi, streak e stima QI per monitorare i progressi.</li>
+          <li><strong>Boss Challenge:</strong> livelli speciali con regole avanzate.</li>
+          <li><strong>Blog editoriale:</strong> articoli su calcolo mentale, neuroplasticità e strategie di studio.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em]">Brain training accessibile</h2>
+        <p>
+          Esercizi regolari di logica e calcolo possono sostenere attenzione, memoria di lavoro e velocità di risposta. Numbergame rende questo allenamento concreto e motivante, con feedback immediato e obiettivi chiari a ogni partita.
+        </p>
+        <p className="mt-4">
+          Esplora gli approfondimenti nel nostro <Link to="/blog" className="text-[#FF8800] font-bold hover:underline">blog</Link> o inizia subito una partita dalla sezione <Link to="/play" className="text-[#FF8800] font-bold hover:underline">Gioca</Link>.
+        </p>
+      </section>
+
+      <section>
+        <div className="grid md:grid-cols-2 gap-8 pt-8 border-t border-white/5">
            <div className="bg-slate-900/50 p-6 rounded-2xl border border-white/5">
               <h3 className="text-[#FF8800] font-black uppercase text-sm tracking-widest mb-2">Ideatore & PM</h3>
               <p className="text-white text-lg font-bold">Giovanni Coda</p>

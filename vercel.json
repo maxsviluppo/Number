@@ -1,9 +1,25 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/ads.txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    },
+    {
+      "source": "/app-ads.txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    }
+  ],
   "rewrites": [
     {
-      "source": "/((?!assets/|.*\\.).*)",
+      "source": "/((?!assets/|ads\\.txt|app-ads\\.txt|robots\\.txt|sitemap\\.xml|.*\\.).*)",
       "destination": "/index.html"
     }
   ]
