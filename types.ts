@@ -9,6 +9,13 @@ export interface HexCellData {
   col: number;
   isFallen?: boolean;
   isVibrating?: boolean;
+  finaleMode?: 'win' | 'lose';
+  finaleBurstX?: number;
+  finaleBurstY?: number;
+  finaleBurstRot?: number;
+  finaleDelayMs?: number;
+  finaleFallDrift?: number;
+  finaleFallRot?: number;
 }
 
 export interface GameState {

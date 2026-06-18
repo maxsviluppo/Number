@@ -108,20 +108,45 @@ const HexCell: React.FC<HexCellProps> = ({
     onMouseDown(data.id);
   };
 
-  const isInteractive = (isSelectable || isSelected) && !data.isFallen;
+  const isInteractive = (isSelectable || isSelected) && !data.isFallen && !data.finaleMode;
+
+  const cellAnimation = data.finaleMode === 'win'
+    ? 'animate-crystal-finale-burst'
+    : data.finaleMode === 'lose'
+      ? 'animate-crystal-finale-fall'
+      : data.isFallen
+        ? 'animate-fallen'
+        : data.isVibrating
+          ? 'animate-vibrate'
+          : animationClass;
+
+  const finaleStyle: React.CSSProperties = data.finaleMode === 'win'
+    ? {
+        ['--burst-x' as string]: `${data.finaleBurstX ?? 0}px`,
+        ['--burst-y' as string]: `${data.finaleBurstY ?? 0}px`,
+        ['--burst-rot' as string]: `${data.finaleBurstRot ?? 90}deg`,
+        animationDelay: `${data.finaleDelayMs ?? 0}ms`,
+      }
+    : data.finaleMode === 'lose'
+      ? {
+          ['--fall-drift' as string]: `${data.finaleFallDrift ?? 0}px`,
+          ['--fall-rot' as string]: `${data.finaleFallRot ?? 0}deg`,
+          animationDelay: `${data.finaleDelayMs ?? 0}ms`,
+        }
+      : {};
 
   return (
     <div
       className={`absolute transition-transform duration-[75ms] ease-out flex items-center justify-center pointer-events-none
         ${isOrangeTheme ? '' : shapeClass} 
         ${!isOrangeTheme ? 'border-2' : ''} 
-        ${data.isFallen ? 'animate-fallen' : (data.isVibrating ? 'animate-vibrate' : animationClass)}
+        ${cellAnimation}
         ${isOrangeTheme ? 'w-[calc(52px*var(--hex-scale))] h-[calc(52px*var(--hex-scale))]' : ''}
         ${!isOrangeTheme ? 'w-[calc(64px*var(--hex-scale))] h-[calc(72px*var(--hex-scale))]' : ''}
-        ${isSelected
-          ? isOrangeTheme ? 'z-20 scale-110' : 'bg-cyan-400 shadow-[0_0_40px_rgba(34,211,238,1)] z-20 border-white scale-110'
+        ${isSelected && !data.finaleMode
+          ? isOrangeTheme ? 'z-20 scale-[1.14]' : 'bg-cyan-400 shadow-[0_0_48px_rgba(34,211,238,1)] z-20 border-white scale-110'
           : isOrangeTheme
-            ? 'active:scale-95'
+            ? data.finaleMode ? '' : 'active:scale-95'
             : isNumber
               ? bossLevelId === 2
                 ? 'bg-gradient-to-br from-amber-700 to-amber-500 border-amber-600 active:scale-95 text-amber-50'
@@ -130,13 +155,14 @@ const HexCell: React.FC<HexCellProps> = ({
                 ? 'bg-gradient-to-br from-amber-800 to-amber-600 border-amber-700 active:scale-95 text-amber-100'
                 : `${operatorTheme.bg} ${operatorTheme.border} active:scale-95 hover:brightness-125`
         }
-        ${data.isFallen ? 'opacity-0 scale-50 pointer-events-none translate-y-20' : ''}
-        ${(!isSelectable && !isSelected) && !data.isFallen ? 'opacity-20' : ''}
+        ${data.isFallen && !data.finaleMode ? 'opacity-0 scale-50 pointer-events-none translate-y-20' : ''}
+        ${(!isSelectable && !isSelected) && !data.isFallen && !data.finaleMode ? 'opacity-20' : ''}
       `}
       style={{
         top: `calc(${topValue}px * var(--hex-scale))`,
         left: `calc(${leftValue}px * var(--hex-scale))`,
-        animationDelay: (animationClass === 'animate-hex-entry' && !data.isFallen) ? `${data.row * 0.09}s` : '0s'
+        animationDelay: (!data.finaleMode && animationClass === 'animate-hex-entry' && !data.isFallen) ? `${data.row * 0.09}s` : undefined,
+        ...finaleStyle,
       }}
       data-cell-id={data.id}
     >
@@ -151,6 +177,17 @@ const HexCell: React.FC<HexCellProps> = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
       />
+
+      {isOrangeTheme && isSelected && !pathStatus && (
+        <div
+          className="absolute inset-0 pointer-events-none z-[4]"
+          style={{
+            background: 'radial-gradient(circle at 50% 50%, rgba(255,160,50,0.32) 0%, rgba(255,120,20,0.14) 42%, transparent 72%)',
+            clipPath: 'polygon(29.29% 0%, 70.71% 0%, 100% 29.29%, 100% 70.71%, 70.71% 100%, 29.29% 100%, 0% 70.71%, 0% 29.29%)',
+            transform: isNumber ? 'scale(2.2)' : 'scale(1.05)',
+          }}
+        />
+      )}
 
       {/* PNG Background for Orange Theme Octagons (Numbers and Operators) */}
       {isOrangeTheme && (
@@ -167,12 +204,13 @@ const HexCell: React.FC<HexCellProps> = ({
 
               let glowEffect = '';
               if (isSelected) {
+                const selectBoost = ' brightness(var(--hex-select-brightness)) contrast(var(--hex-select-contrast)) saturate(var(--hex-select-saturate)) drop-shadow(0 0 var(--hex-select-glow-spread) rgba(255,136,0,var(--hex-select-glow-alpha))) drop-shadow(0 0 calc(var(--hex-select-glow-spread) * 1.65) rgba(255,190,80,calc(var(--hex-select-glow-alpha) * 0.58)))';
                 if (pathStatus === 'correct') {
-                  glowEffect = ' hue-rotate(95deg) saturate(1.05) brightness(1.04) drop-shadow(0 0 10px rgba(16,185,129,0.28))';
+                  glowEffect = `${selectBoost} hue-rotate(95deg) saturate(1.16) brightness(1.08) drop-shadow(0 0 12px rgba(16,185,129,0.31))`;
                 } else if (pathStatus === 'wrong') {
-                  glowEffect = ' hue-rotate(335deg) saturate(1.08) brightness(1.04) drop-shadow(0 0 10px rgba(239,68,68,0.28))';
+                  glowEffect = `${selectBoost} hue-rotate(335deg) saturate(1.18) brightness(1.08) drop-shadow(0 0 12px rgba(239,68,68,0.31))`;
                 } else {
-                  glowEffect = ' saturate(0.88) brightness(1.03) drop-shadow(0 0 8px rgba(180,100,0,0.12))';
+                  glowEffect = selectBoost;
                 }
               }
 
@@ -222,7 +260,7 @@ const HexCell: React.FC<HexCellProps> = ({
       <span 
         className={`font-orbitron font-black select-none transition-transform duration-[75ms] ease-out leading-none z-10 pointer-events-none
           ${isSelected
-            ? 'text-white scale-110'
+            ? 'text-white scale-[1.14]'
             : isOrangeTheme && isNumber
               ? 'text-white text-[calc(2.8rem*var(--hex-scale))] drop-shadow-lg'
               : isOrangeTheme && !isNumber
@@ -237,7 +275,7 @@ const HexCell: React.FC<HexCellProps> = ({
           }`}
         style={isOrangeTheme ? {
           textShadow: isSelected
-            ? `0 -2px 3px rgba(0, 0, 0, 0.95), 0 2px 3px rgba(255, 255, 255, 0.2), 0 0 8px rgba(255, 255, 255, 0.28), 0 0 10px rgba(255, 136, 0, var(--hex-num-orange-glow-selected)), -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 1px 1px 0px #000`
+            ? `0 -2px 3px rgba(0, 0, 0, 0.95), 0 2px 4px rgba(255, 255, 255, 0.32), 0 0 10px rgba(255, 255, 255, 0.38), 0 0 14px rgba(255, 136, 0, var(--hex-num-orange-glow-selected)), 0 0 22px rgba(255, 180, 60, calc(var(--hex-num-orange-glow-selected) * 0.72)), -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 1px 1px 0px #000`
             : `0 -2px 3px rgba(0, 0, 0, 0.95), 0 2px 3px rgba(255, 255, 255, 0.28), 0 0 8px rgba(255, 136, 0, var(--hex-num-orange-glow)), -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 1px 1px 0px #000`
         } : undefined}
       >

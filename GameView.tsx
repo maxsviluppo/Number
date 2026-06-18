@@ -3,7 +3,9 @@ import { HexCellData, GameState } from './types';
 import { INITIAL_TIME, BASE_POINTS_START, MAX_STREAK, GRID_ROWS, GRID_COLS, OPERATORS, MOCK_LEADERBOARD, APP_CONFIG } from './constants';
 import HexCell from './components/HexCell';
 import ParticleEffect from './components/ParticleEffect';
+import TargetStarDustEffect from './components/TargetStarDustEffect';
 import CharacterHelper from './components/CharacterHelper';
+import { buildGridFinaleCells } from './utils/gridFinale';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { matchService } from './services/matchService';
@@ -80,6 +82,7 @@ const GameView: React.FC = () => {
   const [previewResult, setPreviewResult] = useState<number | null>(null);
   const [pathStatus, setPathStatus] = useState<'correct' | 'wrong' | null>(null);
   const [matchedTargetValue, setMatchedTargetValue] = useState<number | null>(null);
+  const [celebratingTarget, setCelebratingTarget] = useState<{ index: number; key: number } | null>(null);
   const [insight, setInsight] = useState<string>("");
 
   const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | 'full_reset_confirm' | 'referral_bonus_info' | null>(null);
@@ -92,6 +95,9 @@ const GameView: React.FC = () => {
   const [targetAnimKey, setTargetAnimKey] = useState(0);
   const [scoreAnimKey, setScoreAnimKey] = useState(0);
   const [isVictoryAnimating, setIsVictoryAnimating] = useState(false);
+  const [gridFinale, setGridFinale] = useState<{ mode: 'win' | 'lose'; showTitle: boolean } | null>(null);
+  const loseFinaleTriggeredRef = useRef(false);
+  const gridFinaleTitleTimerRef = useRef<number | null>(null);
   const [triggerParticles, setTriggerParticles] = useState(false);
   const [toast, setToast] = useState<{ message: string, visible: boolean, actions?: { label: string, onClick: () => void, variant?: 'primary' | 'secondary' }[] }>({ message: '', visible: false });
   const [isMuted, setIsMuted] = useState(false);
@@ -123,8 +129,6 @@ const GameView: React.FC = () => {
   }, []);
   const [showHomeTutorial, setShowHomeTutorial] = useState(false);
   const [showGameTutorial, setShowGameTutorial] = useState(false);
-  const [timerParticles, setTimerParticles] = useState<{ id: number; x: number; y: number; color: string; size: number; vx: number; vy: number }[]>([]);
-  const timerParticleIdRef = useRef(0);
   const lastTickTimeRef = useRef(performance.now());
   const theme = 'orange';
   const [levelBuffer, setLevelBuffer] = useState<{ grid: HexCellData[], targets: number[] }[]>([]);
@@ -356,63 +360,6 @@ const GameView: React.FC = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [pauseLocked, setPauseLocked] = useState(false);
 
-  useEffect(() => {
-    const isTimeDuel = activeMatch?.mode === 'time_attack' || activeMatch?.mode === 'blitz';
-    const isTimerActive = gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && !showGameTutorial && (!activeMatch?.isDuel || isTimeDuel);
-
-    if (!isTimerActive) return;
-
-    const interval = setInterval(() => {
-      const now = performance.now();
-      const elapsedSinceLastTick = now - lastTickTimeRef.current;
-      const elapsedSec = Math.min(0.99, elapsedSinceLastTick / 1000);
-      const fractionalTimeLeft = gameState.timeLeft - elapsedSec;
-      
-      const timerLimit = (activeMatch?.mode === 'time_attack') ? 60 : (60 + parseInt(typeof window !== 'undefined' ? localStorage.getItem('career_time_bonus') || '0' : '0'));
-      const timerPct = Math.max(0, Math.min(100, (fractionalTimeLeft / timerLimit) * 100));
-      
-      // Calculate tip coordinates (radius 44%, center 50%)
-      const angleRad = (-90 + (timerPct * 3.6)) * Math.PI / 180;
-      const px = 50 + Math.cos(angleRad) * 44;
-      const py = 50 + Math.sin(angleRad) * 44;
-
-      const timerColor = timerPct > 80 ? '#00f0ff' : timerPct > 40 ? '#00ff66' : timerPct > 15 ? '#FF8800' : '#ff003c';
-
-      // Spawn 3 particles per 80ms tick to build a dense, magical trail of light
-      const newParticles = Array.from({ length: 3 }).map(() => {
-        timerParticleIdRef.current++;
-        const randColorChoice = Math.random();
-        let pColor = timerColor;
-        
-        // Infuse magic sparkles: golden or white
-        if (randColorChoice > 0.75) {
-          pColor = '#FFF5CC'; // Golden sparkle
-        } else if (randColorChoice > 0.5) {
-          pColor = '#FFFFFF'; // White sparkle
-        }
-        
-        return {
-          id: timerParticleIdRef.current,
-          x: px + (Math.random() - 0.5) * 1.0,
-          y: py + (Math.random() - 0.5) * 1.0,
-          color: pColor,
-          size: Math.random() * 2.5 + 1.2, // sizes from 1.2px to 3.7px
-          vx: (Math.random() - 0.5) * 1.5, // minimal drift to keep on circular path
-          vy: (Math.random() - 0.5) * 1.5,
-        };
-      });
-
-      setTimerParticles(prev => [...prev.slice(-60), ...newParticles]);
-    }, 80);
-
-    return () => clearInterval(interval);
-  }, [gameState.timeLeft, gameState.status, isPaused, showGameTutorial, showVideo, isVictoryAnimating, activeMatch?.mode]);
-
-  useEffect(() => {
-    if (gameState.status === 'idle') {
-      setTimerParticles([]);
-    }
-  }, [gameState.status]);
   const [winVideoSrc, setWinVideoSrc] = useState(WIN_VIDEOS[0]);
   const [loseVideoSrc, setLoseVideoSrc] = useState(LOSE_VIDEOS[0]);
   const [surrenderVideoSrc, setSurrenderVideoSrc] = useState(SURRENDER_VIDEOS[0]);
@@ -1053,6 +1000,7 @@ const GameView: React.FC = () => {
     if (!levelData) return;
 
     setActiveModal(null);
+    clearGridFinale();
     setGrid(levelData.grid);
 
     // CRITICAL FIX: Preserve career level during boss challenges
@@ -1080,6 +1028,27 @@ const GameView: React.FC = () => {
     setIsVideoVisible(true);
   };
 
+  const clearGridFinale = useCallback(() => {
+    if (gridFinaleTitleTimerRef.current) {
+      window.clearTimeout(gridFinaleTitleTimerRef.current);
+      gridFinaleTitleTimerRef.current = null;
+    }
+    setGridFinale(null);
+    loseFinaleTriggeredRef.current = false;
+  }, []);
+
+  const triggerGridFinale = useCallback((mode: 'win' | 'lose') => {
+    if (gridFinaleTitleTimerRef.current) {
+      window.clearTimeout(gridFinaleTitleTimerRef.current);
+    }
+    setGrid(prev => buildGridFinaleCells(prev, mode, theme === 'orange'));
+    setGridFinale({ mode, showTitle: false });
+    gridFinaleTitleTimerRef.current = window.setTimeout(() => {
+      setGridFinale(prev => (prev ? { ...prev, showTitle: true } : null));
+      gridFinaleTitleTimerRef.current = null;
+    }, mode === 'win' ? 780 : 980);
+  }, []);
+
   const generateGrid = useCallback((forceStartLevel?: number, forcedSeed?: string) => {
     let nextLevelData;
     let newBuffer = [...levelBuffer];
@@ -1103,6 +1072,7 @@ const GameView: React.FC = () => {
     }
 
     setGrid(nextLevelData.grid);
+    clearGridFinale();
     setLevelBuffer(newBuffer);
 
     setGameState(prev => ({
@@ -1112,7 +1082,7 @@ const GameView: React.FC = () => {
       levelTargets: nextLevelData.targets.map(t => ({ value: t, completed: false, owner: undefined as any }))
     }));
     setTargetAnimKey(k => k + 1);
-  }, [levelBuffer, createLevelData, gameState.level]);
+  }, [levelBuffer, createLevelData, gameState.level, clearGridFinale]);
 
   // BADGE CHECKER
   const resetDuelState = async (matchId?: string, userId?: string) => {
@@ -1402,49 +1372,51 @@ const GameView: React.FC = () => {
 
       // STANDARD GAME OVER (Single Player)
       if (!activeMatch?.isDuel) {
-        setGameState(prev => ({ ...prev, status: 'game-over' }));
-        if (currentUser) {
-          // MODIFIED: Keep saved game to allow Retry/Checkpoint behavior
-          // profileService.clearSavedGame(currentUser.id);
-          loadProfile(currentUser.id);
-        }
+        if (loseFinaleTriggeredRef.current) return;
+        loseFinaleTriggeredRef.current = true;
+        triggerGridFinale('lose');
 
-        // VIDEO UNLOCK - AUTO PLAY MUTED ON TIMEOUT (Browser Policy)
-        let loseVid = '';
-        if (gameState.bossLevelId === 1) {
-          loseVid = '/Boss1sconfitta.mp4';
-        } else if (gameState.bossLevelId === 2) {
-          loseVid = '/RiprovaBoss2noaudio.mp4';
-        } else {
-          const loseIdx = Math.floor(Math.random() * LOSE_VIDEOS.length);
-          loseVid = LOSE_VIDEOS[loseIdx];
-          // Play Synchronized Audio Track (Lose1.mp3 / Lose2.mp3)
-          soundService.playLose(loseIdx);
-        }
-
-        setLoseVideoSrc(loseVid);
-        setShowLostVideo(true);
-        setIsVideoVisible(true);
-
-        // Force ref update in next tick to ensure element exists
         setTimeout(() => {
-          if (videoRef.current) {
-            videoRef.current.src = loseVid;
-            videoRef.current.muted = true; // REQUIRED for auto-play without click
-            videoRef.current.load();
-            const playPromise = videoRef.current.play();
-            if (playPromise !== undefined) {
-              playPromise.catch(e => console.warn("Loss video autoplay blocked:", e));
-            }
+          setGameState(prev => ({ ...prev, status: 'game-over' }));
+          if (currentUser) {
+            loadProfile(currentUser.id);
           }
-        }, 0);
+
+          let loseVid = '';
+          if (gameState.bossLevelId === 1) {
+            loseVid = '/Boss1sconfitta.mp4';
+          } else if (gameState.bossLevelId === 2) {
+            loseVid = '/RiprovaBoss2noaudio.mp4';
+          } else {
+            const loseIdx = Math.floor(Math.random() * LOSE_VIDEOS.length);
+            loseVid = LOSE_VIDEOS[loseIdx];
+            soundService.playLose(loseIdx);
+          }
+
+          setLoseVideoSrc(loseVid);
+          setShowLostVideo(true);
+          setIsVideoVisible(true);
+
+          setTimeout(() => {
+            if (videoRef.current) {
+              videoRef.current.src = loseVid;
+              videoRef.current.muted = true;
+              videoRef.current.load();
+              const playPromise = videoRef.current.play();
+              if (playPromise !== undefined) {
+                playPromise.catch(e => console.warn("Loss video autoplay blocked:", e));
+              }
+            }
+          }, 0);
+        }, 2200);
+        return;
       }
     } else if (gameState.status === 'playing' && !activeMatch?.isDuel && gameState.timeLeft <= 5 && gameState.timeLeft > 0) {
       // LOW TIME WARNING (Single Player Only)
       // Play a tick/beep for the last 5 seconds
       soundService.playTick();
     }
-  }, [gameState.timeLeft, gameState.status, activeMatch, currentUser, isVictoryAnimating, loadProfile]);
+  }, [gameState.timeLeft, gameState.status, activeMatch, currentUser, isVictoryAnimating, loadProfile, triggerGridFinale]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -2673,8 +2645,10 @@ const GameView: React.FC = () => {
         if (isLastTarget && !isTimeAttack && !isBlitzDominion && videoRef.current) {
           // 1. Play "Fine Partita" sound immediately on last click
           soundService.playLevelComplete();
+          triggerGridFinale('win');
+          setIsVictoryAnimating(true);
 
-          // 2. Delay the Victory Video (Win1/Win2) to let the first sound play
+          // 2. Delay the Victory Video to let the grid finale play
           setTimeout(() => {
             if (videoRef.current) {
 
@@ -2706,12 +2680,20 @@ const GameView: React.FC = () => {
                 setIsVideoVisible(true);
               }
             }
-          }, 800); // 0.8 second delay
+          }, 2200);
         }
 
         vibrateDevice([40, 30, 40]); // Subtle double-pulse for success on mobile
         setPathStatus('correct');
         setMatchedTargetValue(result!);
+        const matchedIndex = currentTargets.indexOf(matchedTarget);
+        if (matchedIndex >= 0) {
+          const celebrationKey = Date.now();
+          setCelebratingTarget({ index: matchedIndex, key: celebrationKey });
+          window.setTimeout(() => {
+            setCelebratingTarget((prev) => (prev?.key === celebrationKey ? null : prev));
+          }, 1800);
+        }
         
         // Attende animazione target prima di completare
         setTimeout(() => {
@@ -3029,7 +3011,7 @@ const GameView: React.FC = () => {
             }
           }
 
-          // START VIDEO SEQUENCE: STEP 1 (Bonus Video)
+          // START VIDEO SEQUENCE: STEP 1 (Bonus Video) — after grid finale
           setTimeout(() => {
             if (videoRef.current) {
               const vidSrc = gameStateRef.current.bossLevelId === 1
@@ -3050,7 +3032,7 @@ const GameView: React.FC = () => {
               setShowVideo(true);
               setIsVideoVisible(true);
             }
-          }, 300);
+          }, 2000);
 
           return;
         }
@@ -3798,7 +3780,7 @@ const GameView: React.FC = () => {
         <div 
           className={`fixed inset-0 bg-[url('/sfondo.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           style={{
-            filter: 'brightness(0.92) contrast(1.08) saturate(1)'
+            filter: 'brightness(0.92) contrast(var(--game-bg-contrast)) saturate(var(--game-bg-saturate))'
           }}
         ></div>
 
@@ -4372,6 +4354,24 @@ const GameView: React.FC = () => {
                     margin-top: 0 !important;
                   }
 
+                  .game-hud-panel {
+                    isolation: isolate;
+                    transform: translateZ(0);
+                    -webkit-transform: translateZ(0);
+                    backface-visibility: hidden;
+                    -webkit-backface-visibility: hidden;
+                  }
+
+                  .game-hud-smoke-layer {
+                    z-index: 0;
+                    will-change: opacity;
+                  }
+
+                  .game-hud-content {
+                    position: relative;
+                    z-index: 2;
+                  }
+
                   .hud-icon-btn:active { transform: scale(0.90) !important; }
                   .hud-icon-btn { transition: transform 0.1s ease !important; -webkit-tap-highlight-color: transparent !important; touch-action: manipulation !important; }
 
@@ -4417,6 +4417,7 @@ const GameView: React.FC = () => {
                     padding: 0 8px !important;
                     position: relative;
                     margin: -20px auto 0 auto !important;
+                    overflow: visible !important;
                   }
 
                   @keyframes targetFlyInLeft {
@@ -4478,15 +4479,7 @@ const GameView: React.FC = () => {
                     }
                   }
 
-                  .timer-particle {
-                    position: absolute;
-                    border-radius: 50%;
-                    pointer-events: none;
-                    z-index: 40;
-                    animation: timerParticleFade 1.3s cubic-bezier(0.1, 0.8, 0.25, 1) forwards;
-                    filter: drop-shadow(0 0 3px var(--color)) drop-shadow(0 0 6px var(--color));
-                    box-shadow: 0 0 4px var(--color);
-                  }
+                  /* timer-particle CSS kept for legacy timer widget */
 
                   .chrome-divider {
                     display: none !important;
@@ -4737,52 +4730,66 @@ const GameView: React.FC = () => {
                   
                   #grid-container-game {
                     margin-top: -31px !important;
+                    isolation: isolate;
+                  }
+
+                  #grid-container-game::after {
+                    content: '';
+                    position: absolute;
+                    left: 50%;
+                    bottom: -1.5%;
+                    transform: translateX(-50%);
+                    width: 92%;
+                    height: 14%;
+                    z-index: -1;
+                    pointer-events: none;
+                    background: radial-gradient(
+                      ellipse 100% 100% at 50% 50%,
+                      rgba(0, 10, 28, 0.62) 0%,
+                      rgba(0, 8, 22, 0.34) 38%,
+                      rgba(0, 6, 18, 0.12) 58%,
+                      transparent 76%
+                    );
+                    filter: blur(11px);
                   }
                  `}} />
 
                 {/* ══ GAME HUD BAR – Sci-Fi Design ══ */}
                 <div className="relative w-full top-chrome-bar">
-                  <div style={{
+                  <div className="game-hud-panel" style={{
                     display: 'flex', gap: '10px', alignItems: 'stretch',
-                    background: 'rgba(6, 12, 26, 0.70)',
-                    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                    background: 'rgba(6, 12, 26, 0.94)',
                     borderRadius: '14px', border: '1px solid rgba(0,140,255,0.20)',
                     boxShadow: '0 6px 28px rgba(0,0,0,0.80), inset 0 1px 0 rgba(0,160,255,0.08), 0 0 0 1px rgba(0,180,255,0.10)',
                     padding: '8px 10px', position: 'relative', overflow: 'hidden',
                   }}>
 
-                    {/* ── Smoke Blobs (match app background) ── */}
-                    <div style={{ position:'absolute', inset:0, borderRadius:'14px', overflow:'hidden', pointerEvents:'none' }}>
-                      {/* Blob 1 – left, large deep-blue */}
+                    {/* ── Smoke Blobs (static soft gradients — no filter/blur to avoid Chrome flicker) ── */}
+                    <div className="game-hud-smoke-layer" style={{ position:'absolute', inset:0, borderRadius:'14px', overflow:'hidden', pointerEvents:'none' }}>
                       <div style={{
                         position:'absolute', width:'55%', height:'200%',
                         top:'-50%', left:'-8%',
-                        background:'radial-gradient(ellipse at 50% 50%, rgba(10,90,200,0.38) 0%, rgba(5,50,140,0.18) 45%, transparent 70%)',
-                        filter:'blur(22px)',
+                        background:'radial-gradient(ellipse at 50% 50%, rgba(10,90,200,0.28) 0%, rgba(5,50,140,0.12) 45%, transparent 72%)',
                         animation:'hudSmoke1 10s ease-in-out infinite',
                       }}/>
-                      {/* Blob 2 – center, cyan-blue */}
                       <div style={{
                         position:'absolute', width:'50%', height:'220%',
                         top:'-60%', left:'28%',
-                        background:'radial-gradient(ellipse at 50% 50%, rgba(0,140,255,0.30) 0%, rgba(0,80,200,0.12) 45%, transparent 68%)',
-                        filter:'blur(26px)',
+                        background:'radial-gradient(ellipse at 50% 50%, rgba(0,140,255,0.22) 0%, rgba(0,80,200,0.08) 45%, transparent 70%)',
                         animation:'hudSmoke2 13s ease-in-out infinite',
                         animationDelay:'-4s',
                       }}/>
-                      {/* Blob 3 – right, lighter cyan */}
                       <div style={{
                         position:'absolute', width:'48%', height:'200%',
                         top:'-55%', right:'-5%',
-                        background:'radial-gradient(ellipse at 50% 50%, rgba(20,170,255,0.26) 0%, rgba(0,100,210,0.10) 45%, transparent 68%)',
-                        filter:'blur(20px)',
+                        background:'radial-gradient(ellipse at 50% 50%, rgba(20,170,255,0.18) 0%, rgba(0,100,210,0.07) 45%, transparent 70%)',
                         animation:'hudSmoke3 11s ease-in-out infinite',
                         animationDelay:'-7s',
                       }}/>
                     </div>
 
                     {/* ── LEFT: HOME + AUDIO ── */}
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexShrink: 0 }}>
+                    <div className="game-hud-content" style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexShrink: 0 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
                         <span style={{ fontSize: '7.5px', fontWeight: 800, letterSpacing: '0.12em', color: '#3a6880', textTransform: 'uppercase', fontFamily: 'Orbitron, monospace' }}>HOME</span>
                         <button
@@ -4843,7 +4850,7 @@ const GameView: React.FC = () => {
                     </div>
 
                     {/* ── RIGHT: Timer bar + Score / Level ── */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                    <div className="game-hud-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px', minWidth: 0 }}>
 
                       {/* ── Timer bar ── */}
                       {(() => {
@@ -5147,66 +5154,37 @@ const GameView: React.FC = () => {
                       const isTargetMatched = previewResult !== null && (gameState.isBossLevel
                         ? (gameState.levelTargets.find(t => !t.completed)?.value === previewResult)
                         : gameState.levelTargets.some(t => t.value === previewResult && !t.completed));
-                      
-                      const neonClass = isTargetMatched 
-                        ? 'text-[#00ff66] drop-shadow-[0_0_15px_rgba(0,255,102,0.9)] animate-pulse'
-                        : 'text-[#00f0ff] drop-shadow-[0_0_15px_rgba(0,240,255,0.9)]';
 
-                      const borderGlow = isTargetMatched
-                        ? 'shadow-[0_0_25px_rgba(0,255,102,0.6)] border-[#00ff66] scale-105'
-                        : 'shadow-[0_0_15px_rgba(0,240,255,0.3)] border-[#555]';
+                      const previewNumStyle: React.CSSProperties = isTargetMatched
+                        ? {
+                            color: '#ffaa44',
+                            textShadow: '0 0 12px rgba(255,136,0,0.85), 0 0 22px rgba(255,136,0,0.45), -1.5px -1.5px 0px #000, 1.5px -1.5px 0px #000, -1.5px 1.5px 0px #000, 1.5px 1.5px 0px #000, 0 3px 6px rgba(0,0,0,0.95)',
+                          }
+                        : {
+                            color: '#ffffff',
+                            textShadow: '0 0 8px rgba(70,70,70,0.95), 0 0 16px rgba(0,0,0,0.98), -1.5px -1.5px 0px #000, 1.5px -1.5px 0px #000, -1.5px 1.5px 0px #000, 1.5px 1.5px 0px #000, 0 3px 6px rgba(0,0,0,0.95)',
+                          };
 
                       return (
                         <div className={`transition-all duration-300 transform origin-left
                             ${isDragging && selectedPath.length > 0 ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-90 -translate-x-4 pointer-events-none'}`}>
-                          
-                          {/* Square Badge with Rounded Corners matching the Timer Circle */}
-                          <div 
-                            className={`relative w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 border-[5px] ${borderGlow}`}
-                            style={{
-                              background: 'repeating-linear-gradient(135deg, #1c1c1c 0px, #1c1c1c 2px, #2a2a2a 2px, #2a2a2a 4px, #222 4px, #222 6px, #303030 6px, #303030 8px)',
-                              boxShadow: isTargetMatched 
-                                ? '0 0 0 2px #00ff66, 0 0 0 3px #111, inset 0 1px 0 rgba(255,255,255,0.12), 0 0 20px rgba(0,255,102,0.5)'
-                                : '0 0 0 2px #888, 0 0 0 3px #333, inset 0 1px 0 rgba(255,255,255,0.12)'
-                            }}
-                          >
-                            {/* Glass reflection cover matching the timer circle */}
-                            <div 
-                              className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden z-20"
+                          <div className={`relative flex items-center justify-center w-[90px] h-[90px] transition-all duration-300 ${isTargetMatched ? 'scale-105' : ''}`}>
+                            <img
+                              src="/ottagonocristallo.png"
+                              alt="preview crystal"
+                              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
                               style={{
-                                boxShadow: 'inset 0 4px 8px rgba(255,255,255,0.35), inset 0 -4px 8px rgba(0,0,0,0.3)'
+                                transform: 'scale(1.17)',
+                                opacity: 1,
+                                filter: isTargetMatched
+                                  ? 'drop-shadow(0 6px 12px rgba(0,0,0,0.6)) hue-rotate(12deg) saturate(2.4) brightness(1.2) drop-shadow(0 0 18px rgba(255,136,0,0.85))'
+                                  : 'drop-shadow(0 6px 12px rgba(0,0,0,0.75)) brightness(1.05) contrast(1.3) grayscale(0.95) drop-shadow(0 0 8px rgba(0, 0, 0, 0.9))',
+                                transition: 'filter 0.25s ease, opacity 0.25s ease',
                               }}
-                            >
-                              {/* Glossy Curved Bevel Cover */}
-                              <div 
-                                className="absolute top-0 inset-x-0 h-[45%] rounded-t-xl"
-                                style={{
-                                  background: 'linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)'
-                                }}
-                              ></div>
-                              
-                              {/* Diagonal Spotlight Reflection - Outer Soft */}
-                              <div 
-                                className="absolute top-[8%] left-[8%] w-[32%] h-[32%] rounded-full filter blur-[3px] rotate-[15deg]"
-                                style={{
-                                  background: 'linear-gradient(to bottom right, rgba(255,255,255,0.18), transparent)'
-                                }}
-                              ></div>
-
-                              {/* Diagonal Spotlight Reflection - Inner Sharp Core */}
-                              <div 
-                                className="absolute top-[12%] left-[12%] w-[15%] h-[15%] rounded-full filter blur-[0.5px] rotate-[15deg]"
-                                style={{
-                                  background: 'linear-gradient(to bottom right, rgba(255,255,255,0.45), rgba(255,255,255,0.05))'
-                                }}
-                              ></div>
-                            </div>
-
-                            {/* The Number */}
-                            <span className={`text-2xl font-black font-orbitron leading-none z-10 ${neonClass}`}>
+                            />
+                            <span className="text-[29px] font-black font-orbitron leading-none z-10 transition-all duration-300" style={previewNumStyle}>
                               {previewResult !== null ? previewResult : ''}
                             </span>
-
                           </div>
                         </div>
                       );
@@ -5214,10 +5192,10 @@ const GameView: React.FC = () => {
                   </div>
 
                   {/* TARGETS - Crystal Frame with targetcristalli.png */}
-                  <div className="flex justify-center w-full mb-2">
-                    <div className="targets-glass-bar flex items-center justify-between px-4 transition-all duration-500 ease-in-out">
+                  <div className="flex justify-center w-full mb-2 overflow-visible">
+                    <div className="targets-glass-bar flex items-center justify-between px-4 transition-all duration-500 ease-in-out overflow-visible">
                       <div
-                        className="flex w-full items-center justify-between relative z-10"
+                        className="flex w-full items-center justify-between relative z-10 overflow-visible"
                         id="targets-display-tutorial"
                       >
                         {gameState.levelTargets.map((t, i) => {
@@ -5255,6 +5233,9 @@ const GameView: React.FC = () => {
                               className={`relative flex items-center justify-center w-[69px] h-[69px] transition-all duration-300 ${entryAnimationClass}`}
                               style={{ animationDelay }}
                             >
+                              {celebratingTarget?.index === i && (
+                                <TargetStarDustEffect activeKey={celebratingTarget.key} />
+                              )}
                                {/* Individual background crystal octagon for each target */}
                                <img
                                  src="/ottagonocristallo.png"
@@ -5288,7 +5269,7 @@ const GameView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="relative flex-grow w-full flex items-center justify-center overflow-visible mt-[50px]">
+                  <div className="relative flex-grow w-full flex items-center justify-center overflow-visible mt-[30px]">
 
                     {isPaused && (
                       <div id="pause-overlay-game" className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl rounded-3xl transition-all animate-fadeIn">
@@ -5299,20 +5280,34 @@ const GameView: React.FC = () => {
                       </div>
                     )}
 
-                    <div id="grid-container-game" className={`relative mx-auto transition-all duration-500 transform
-                    ${isPaused ? 'opacity-10 scale-95 filter blur-lg pointer-events-none grayscale' : 'opacity-100 scale-100 filter-none'}
+                    <div className={`relative mx-auto transition-all duration-500 transform
                     ${theme === 'orange'
                         ? 'w-[calc(272px*var(--hex-scale))] h-[calc(376px*var(--hex-scale))]'
                         : 'w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))]'
-                      }`}
+                      }`}>
+                      {gridFinale && (
+                        <div
+                          className={`grid-finale-title absolute inset-0 flex items-center justify-center z-0 pointer-events-none
+                            ${gridFinale.mode === 'win' ? 'grid-finale-title-win' : 'grid-finale-title-lose'}
+                            ${gridFinale.showTitle ? 'grid-finale-title-visible' : ''}`}
+                          aria-hidden={!gridFinale.showTitle}
+                        >
+                          <span>{gridFinale.mode === 'win' ? 'HAI VINTO!' : 'HAI PERSO!'}</span>
+                        </div>
+                      )}
+
+                    <div id="grid-container-game" className={`relative mx-auto transition-all duration-500 transform z-10 w-full h-full
+                    ${isPaused ? 'opacity-10 scale-95 filter blur-lg pointer-events-none grayscale' : 'opacity-100 scale-100 filter-none'}
+                      `}
                       style={{
                         filter: isPaused ? 'blur(16px) grayscale(1)' : 'none',
                         touchAction: 'none'
                       }}
                       onPointerMove={onGridPointerMove}>
                       {grid.map(cell => (
-                        <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} bossLevelId={gameState.bossLevelId} pathStatus={pathStatus} />
+                        <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused && !gridFinale} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} bossLevelId={gameState.bossLevelId} pathStatus={pathStatus} />
                       ))}
+                    </div>
                     </div>
                   </div>
 

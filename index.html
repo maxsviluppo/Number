@@ -57,21 +57,34 @@
     :root {
       --hex-scale: 1.70;
       /* Cristalli: saturazione ridotta per evitare arancione eccessivo */
-      --hex-crystal-brightness: 1;
-      --hex-crystal-contrast: 1;
-      --hex-crystal-saturate: 0.80;
+      --hex-crystal-brightness: 1.25;
+      --hex-crystal-contrast: 1.05;
+      --hex-crystal-saturate: 0.88;
       --hex-num-orange-glow: 0;
-      --hex-num-orange-glow-selected: 0.18;
+      --hex-num-orange-glow-selected: 0.20;
+      /* Boost selezione celle attive */
+      --hex-select-brightness: 1.14;
+      --hex-select-contrast: 1.10;
+      --hex-select-saturate: 1.12;
+      --hex-select-glow-alpha: 0.22;
+      --hex-select-glow-spread: 12px;
+      --game-bg-saturate: 1.05;
+      --game-bg-contrast: 1.13;
     }
 
     /* Telefono / touch: ulteriore desaturazione (OLED e Safari amplificano i colori) */
     @media (hover: none) and (pointer: coarse) {
       :root {
-        --hex-crystal-saturate: 0.68;
-        --hex-crystal-brightness: 1;
-        --hex-crystal-contrast: 1;
+        --hex-crystal-saturate: 0.75;
+        --hex-crystal-brightness: 1.25;
+        --hex-crystal-contrast: 1.05;
         --hex-num-orange-glow: 0;
-        --hex-num-orange-glow-selected: 0.10;
+        --hex-num-orange-glow-selected: 0.11;
+        --hex-select-brightness: 1.12;
+        --hex-select-contrast: 1.08;
+        --hex-select-saturate: 1.10;
+        --hex-select-glow-alpha: 0.18;
+        --hex-select-glow-spread: 10px;
       }
     }
 
@@ -412,6 +425,92 @@
     .animate-fallen {
       animation: fallen 0.48s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
       pointer-events: none;
+    }
+
+    /* Grid finale — win: radial burst from center */
+    @keyframes crystalFinaleBurst {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1) rotate(0deg);
+        filter: blur(0);
+      }
+      30% {
+        opacity: 1;
+        transform: translate(calc(var(--burst-x) * 0.5), calc(var(--burst-y) * 0.5)) scale(1.22) rotate(calc(var(--burst-rot) * 0.35));
+        filter: blur(0);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--burst-x), var(--burst-y)) scale(0.12) rotate(var(--burst-rot));
+        filter: blur(10px);
+      }
+    }
+
+    .animate-crystal-finale-burst {
+      animation: crystalFinaleBurst 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      pointer-events: none;
+      z-index: 30;
+    }
+
+    /* Grid finale — lose: random detach and fall */
+    @keyframes crystalFinaleFall {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) rotate(0deg) scale(1);
+        filter: blur(0);
+      }
+      12% {
+        transform: translate(calc(var(--fall-drift) * 0.25), -8px) rotate(calc(var(--fall-rot) * 0.12)) scale(1.04);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--fall-drift), 260px) rotate(var(--fall-rot)) scale(0.3);
+        filter: blur(8px);
+      }
+    }
+
+    .animate-crystal-finale-fall {
+      animation: crystalFinaleFall 1.1s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+      pointer-events: none;
+    }
+
+    .grid-finale-title {
+      opacity: 0;
+      transform: scale(0.82);
+      transition: opacity 0.65s ease, transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .grid-finale-title-visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .grid-finale-title-win span {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(1.35rem, 5.5vw, 2.15rem);
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      background: linear-gradient(165deg, #fff9e8 0%, #ffd080 22%, #ff8800 55%, #ff5500 85%, #ff3300 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 10px rgba(255, 136, 0, 0.95)) drop-shadow(0 0 22px rgba(255, 100, 0, 0.55)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.85));
+      -webkit-text-stroke: 0.5px rgba(255, 200, 120, 0.35);
+    }
+
+    .grid-finale-title-lose span {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(1.35rem, 5.5vw, 2.15rem);
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      background: linear-gradient(165deg, #fff0f0 0%, #ffaaaa 25%, #ee4444 60%, #aa2222 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.8)) drop-shadow(0 0 18px rgba(200, 40, 40, 0.45)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.85));
+      -webkit-text-stroke: 0.5px rgba(255, 180, 180, 0.3);
     }
 
     @keyframes vibrate {
