@@ -7,15 +7,15 @@ const BottomNav: React.FC = () => {
   const path = location.pathname;
 
   const navItems = [
-    { icon: <Home size={20} />, label: 'Home', path: '/site' },
-    { icon: <Play size={20} />, label: 'Gioca', path: '/' },
+    { icon: <Home size={20} />, label: 'Home', path: '/' },
+    { icon: <Play size={20} />, label: 'Gioca', path: '/play' },
     { icon: <BookOpen size={20} />, label: 'Blog', path: '/blog' },
     { icon: <Info size={20} />, label: 'About', path: '/about' },
     { icon: <Mail size={20} />, label: 'Contatti', path: '/contact' },
     { icon: <LayoutDashboard size={20} />, label: 'Admin', path: '/admin' },
   ];
 
-  const allowedPaths = ['/site', '/blog', '/about', '/contact', '/terms', '/privacy', '/cookies'];
+  const allowedPaths = ['/', '/site', '/blog', '/about', '/contact', '/terms', '/privacy', '/cookies'];
   const isAllowed = allowedPaths.some(p => path.startsWith(p));
 
   if (!isAllowed) return null;
