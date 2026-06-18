@@ -6,10 +6,10 @@
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>number</title>
-  <link rel="icon" type="image/svg+xml" href="/icon.svg">
-  <link rel="alternate icon" type="image/png" href="/app-icon.png">
-  <link rel="apple-touch-icon" href="/app-icon.png">
-  <link rel="apple-touch-icon-precomposed" href="/app-icon.png">
+  <link rel="icon" type="image/png" href="/Faviconottagonook.png">
+  <link rel="shortcut icon" type="image/png" href="/Faviconottagonook.png">
+  <link rel="apple-touch-icon" href="/Faviconottagonook.png">
+  <link rel="apple-touch-icon-precomposed" href="/Faviconottagonook.png">
   <link rel="manifest" href="/manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -56,6 +56,36 @@
   <style>
     :root {
       --hex-scale: 1.70;
+      /* Cristalli: saturazione ridotta per evitare arancione eccessivo */
+      --hex-crystal-brightness: 1.25;
+      --hex-crystal-contrast: 1.05;
+      --hex-crystal-saturate: 0.88;
+      --hex-num-orange-glow: 0;
+      --hex-num-orange-glow-selected: 0.20;
+      /* Boost selezione celle attive */
+      --hex-select-brightness: 1.14;
+      --hex-select-contrast: 1.10;
+      --hex-select-saturate: 1.12;
+      --hex-select-glow-alpha: 0.22;
+      --hex-select-glow-spread: 12px;
+      --game-bg-saturate: 1.05;
+      --game-bg-contrast: 1.13;
+    }
+
+    /* Telefono / touch: ulteriore desaturazione (OLED e Safari amplificano i colori) */
+    @media (hover: none) and (pointer: coarse) {
+      :root {
+        --hex-crystal-saturate: 0.75;
+        --hex-crystal-brightness: 1.25;
+        --hex-crystal-contrast: 1.05;
+        --hex-num-orange-glow: 0;
+        --hex-num-orange-glow-selected: 0.11;
+        --hex-select-brightness: 1.12;
+        --hex-select-contrast: 1.08;
+        --hex-select-saturate: 1.10;
+        --hex-select-glow-alpha: 0.18;
+        --hex-select-glow-spread: 10px;
+      }
     }
 
     @media (max-width: 1024px) {
@@ -123,7 +153,11 @@
       margin: 0;
       padding: 0;
       font-family: 'Inter', sans-serif;
-      background-color: #020617;
+      background-image: url('/sfondo.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
       color: #f8fafc;
       overflow: hidden;
       height: 100%;
@@ -260,7 +294,7 @@
     }
 
     .animate-hex-entry {
-      animation: hex-entry 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      animation: hex-entry 0.62s cubic-bezier(0.34, 1.45, 0.64, 1) forwards;
       opacity: 0;
     }
 
@@ -279,7 +313,7 @@
     }
 
     .animate-hex-select {
-      animation: hex-select 0.3s ease-out forwards;
+      animation: hex-select 0.11s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
 
     @keyframes hex-deselect {
@@ -293,7 +327,7 @@
     }
 
     .animate-hex-deselect {
-      animation: hex-deselect 0.3s ease-in-out forwards;
+      animation: hex-deselect 0.11s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
 
     /* Effetto Palloncino 3D (Inflate & Deflate +40%) - correct path celebration */
@@ -324,23 +358,9 @@
       10%  { transform: scale3d(1.2, 1.2, 1); opacity: 1; }
       20%  { transform: scale3d(1, 1, 1); opacity: 1; }
 
-      /* STEP 2: Specular reflect sweep - Target immobile per far passare il riflesso (20% - 40%) */
+      /* STEP 2: Specular reflect sweep - Target immobile per far passare il riflesso (20% - 85%) */
       20%  { transform: scale3d(1, 1, 1) translateY(0) rotate(0deg); }
-      40%  { transform: scale3d(1, 1, 1) translateY(0) rotate(0deg); }
-
-      /* STEP 3: 3 piccoli saltelli sul posto con schiacciamento/allungamento e oscillazione (40% - 85%) */
-      /* Saltello 1 (oscillazione a sinistra) */
-      40%  { transform: translateY(0) scale3d(1.26, 0.74, 1) rotate(-3deg); }
-      47%  { transform: translateY(-16px) scale3d(0.84, 1.24, 1) rotate(-7deg); }
-      55%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
-      /* Saltello 2 (oscillazione a destra) */
-      55%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
-      62%  { transform: translateY(-16px) scale3d(0.84, 1.24, 1) rotate(7deg); }
-      70%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
-      /* Saltello 3 (oscillazione a sinistra) */
-      70%  { transform: translateY(0) scale3d(1.22, 0.78, 1) rotate(0deg); }
-      77%  { transform: translateY(-12px) scale3d(0.88, 1.16, 1) rotate(-4deg); }
-      85%  { transform: translateY(0) scale3d(1.16, 0.84, 1) rotate(0deg); }
+      85%  { transform: scale3d(1, 1, 1) translateY(0) rotate(0deg); }
 
       /* STEP 4: Rimpicciolimento rapido fino a sparire nel nulla (85% - 100%) */
       85%  { transform: translateY(0) scale3d(1, 1, 1) rotate(0deg); opacity: 1; }
@@ -352,8 +372,8 @@
       position: relative;
       overflow: hidden;
       transform-origin: bottom center !important; /* Ancoraggio fisso alla base */
-      animation: hex-target-star-bounce 2.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-      animation-delay: 120ms !important; /* Ritardo di cascata dinamica */
+      animation: hex-target-star-bounce 0.47s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+      animation-delay: 25ms !important; /* Ritardo di cascata dinamica */
     }
 
     /* Pseudo-elemento per il riflesso di luce lucido (Step 2 pseudo shine sweep) */
@@ -373,19 +393,19 @@
       transform: skewX(-25deg);
       pointer-events: none;
       z-index: 30;
-      animation: hex-shine-sweep 2.2s linear forwards;
-      animation-delay: 120ms !important;
+      animation: hex-shine-sweep 0.47s linear forwards;
+      animation-delay: 25ms !important;
     }
 
     /* Flash Reflect - white specular flash for correct and wrong */
     @keyframes hex-flash-reflect {
       0%   { opacity: 0; }
-      25%  { opacity: 0.55; }
-      60%  { opacity: 0.35; }
+      25%  { opacity: 0.44; }
+      60%  { opacity: 0.28; }
       100% { opacity: 0; }
     }
     .animate-hex-flash-reflect {
-      animation: hex-flash-reflect 0.5s ease-out forwards;
+      animation: hex-flash-reflect 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
 
     @keyframes fallen {
@@ -403,8 +423,124 @@
     }
 
     .animate-fallen {
-      animation: fallen 0.6s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+      animation: fallen 0.48s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
       pointer-events: none;
+    }
+
+    /* Grid finale — win: radial burst from center, outer → inner wave */
+    @keyframes crystalFinaleBurst {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1) rotate(0deg);
+        filter: blur(0);
+      }
+      10% {
+        opacity: 1;
+        transform: translate(calc(var(--burst-x) * 0.06), calc(var(--burst-y) * 0.06)) scale(1.05) rotate(calc(var(--burst-rot) * 0.08));
+        filter: blur(0);
+      }
+      38% {
+        opacity: 1;
+        transform: translate(calc(var(--burst-x) * 0.32), calc(var(--burst-y) * 0.32)) scale(1.08) rotate(calc(var(--burst-rot) * 0.28));
+        filter: blur(0);
+      }
+      68% {
+        opacity: 0.9;
+        transform: translate(calc(var(--burst-x) * 0.68), calc(var(--burst-y) * 0.68)) scale(0.82) rotate(calc(var(--burst-rot) * 0.62));
+        filter: blur(1px);
+      }
+      88% {
+        opacity: 0.45;
+        transform: translate(calc(var(--burst-x) * 0.9), calc(var(--burst-y) * 0.9)) scale(0.55) rotate(calc(var(--burst-rot) * 0.85));
+        filter: blur(3px);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--burst-x), var(--burst-y)) scale(0.38) rotate(var(--burst-rot));
+        filter: blur(7px);
+      }
+    }
+
+    .animate-crystal-finale-burst {
+      animation: crystalFinaleBurst var(--burst-duration, 1.75s) cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      pointer-events: none;
+      z-index: 30;
+    }
+
+    /* Grid finale — lose: random detach and fall */
+    @keyframes crystalFinaleFall {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) rotate(0deg) scale(1);
+        filter: blur(0);
+      }
+      12% {
+        transform: translate(calc(var(--fall-drift) * 0.25), -8px) rotate(calc(var(--fall-rot) * 0.12)) scale(1.04);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--fall-drift), 260px) rotate(var(--fall-rot)) scale(0.3);
+        filter: blur(8px);
+      }
+    }
+
+    .animate-crystal-finale-fall {
+      animation: crystalFinaleFall 1.1s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+      pointer-events: none;
+    }
+
+    @keyframes gridFinaleTitlePop {
+      0% {
+        opacity: 0;
+        transform: scale(0.6);
+      }
+      60% {
+        opacity: 1;
+        transform: scale(1.06);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .grid-finale-title {
+      opacity: 0;
+      transform: scale(0.6);
+      width: 100%;
+      padding: 0 1rem;
+      box-sizing: border-box;
+    }
+
+    .grid-finale-title-visible {
+      animation: gridFinaleTitlePop 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .grid-finale-title-win span,
+    .grid-finale-title-lose span {
+      display: block;
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(1.15rem, calc((100vw - 3rem) / 10.5), 2.65rem);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: clamp(0.02em, 0.5vw, 0.05em);
+      text-transform: uppercase;
+      text-align: center;
+      max-width: calc(100vw - 2rem);
+      margin: 0 auto;
+      white-space: nowrap;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      background-color: transparent;
+    }
+
+    .grid-finale-title-win.grid-finale-title-visible span {
+      background-image: linear-gradient(168deg, #fffef5 0%, #ffe8a8 18%, #ffaa33 42%, #ff7700 68%, #ff4400 100%);
+    }
+
+    .grid-finale-title-lose.grid-finale-title-visible span {
+      background-image: linear-gradient(168deg, #fff8f8 0%, #ffcccc 20%, #ff5555 48%, #dd2222 72%, #991111 100%);
     }
 
     @keyframes vibrate {
@@ -507,13 +643,13 @@
       }
     }
     </script>
-  <script type="module" crossorigin src="/assets/index-ipbPNTlG.js"></script>
+  <script type="module" crossorigin src="/assets/index-B1AxYLWV.js"></script>
 </head>
 
 <body>
   <div id="root">
     <div
-      style="height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; background: #020617; color: #FF8800; font-family: 'Orbitron', monospace; flex-direction: column;">
+      style="height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; background: transparent; color: #FF8800; font-family: 'Orbitron', monospace; flex-direction: column;">
       <h1 style="font-size: 24px; margin-bottom: 20px;">SYSTEM BOOT</h1>
       <div style="font-size: 12px; opacity: 0.7;">LOADING MODULES...</div>
     </div>
