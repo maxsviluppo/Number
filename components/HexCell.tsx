@@ -125,6 +125,7 @@ const HexCell: React.FC<HexCellProps> = ({
         ['--burst-x' as string]: `${data.finaleBurstX ?? 0}px`,
         ['--burst-y' as string]: `${data.finaleBurstY ?? 0}px`,
         ['--burst-rot' as string]: `${data.finaleBurstRot ?? 90}deg`,
+        ['--burst-duration' as string]: `${((data.finaleDurationMs ?? 1750) / 1000).toFixed(2)}s`,
         animationDelay: `${data.finaleDelayMs ?? 0}ms`,
       }
     : data.finaleMode === 'lose'

@@ -16,6 +16,7 @@ export interface HexCellData {
   finaleDelayMs?: number;
   finaleFallDrift?: number;
   finaleFallRot?: number;
+  finaleDurationMs?: number;
 }
 
 export interface GameState {

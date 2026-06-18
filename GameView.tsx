@@ -4,8 +4,9 @@ import { INITIAL_TIME, BASE_POINTS_START, MAX_STREAK, GRID_ROWS, GRID_COLS, OPER
 import HexCell from './components/HexCell';
 import ParticleEffect from './components/ParticleEffect';
 import TargetStarDustEffect from './components/TargetStarDustEffect';
+import WinConfettiEffect from './components/WinConfettiEffect';
 import CharacterHelper from './components/CharacterHelper';
-import { buildGridFinaleCells } from './utils/gridFinale';
+import { buildGridFinaleCells, getGridFinalePostDelay, getGridFinaleTitleRevealMs, getGridFinaleWinAudioDelay, GRID_FINALE_TITLE_HOLD_MS } from './utils/gridFinale';
 import { getIQInsights } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { matchService } from './services/matchService';
@@ -96,8 +97,10 @@ const GameView: React.FC = () => {
   const [scoreAnimKey, setScoreAnimKey] = useState(0);
   const [isVictoryAnimating, setIsVictoryAnimating] = useState(false);
   const [gridFinale, setGridFinale] = useState<{ mode: 'win' | 'lose'; showTitle: boolean } | null>(null);
+  const [winConfettiKey, setWinConfettiKey] = useState(0);
   const loseFinaleTriggeredRef = useRef(false);
   const gridFinaleTitleTimerRef = useRef<number | null>(null);
+  const gridFinaleAudioTimerRef = useRef<number | null>(null);
   const [triggerParticles, setTriggerParticles] = useState(false);
   const [toast, setToast] = useState<{ message: string, visible: boolean, actions?: { label: string, onClick: () => void, variant?: 'primary' | 'secondary' }[] }>({ message: '', visible: false });
   const [isMuted, setIsMuted] = useState(false);
@@ -1033,6 +1036,10 @@ const GameView: React.FC = () => {
       window.clearTimeout(gridFinaleTitleTimerRef.current);
       gridFinaleTitleTimerRef.current = null;
     }
+    if (gridFinaleAudioTimerRef.current) {
+      window.clearTimeout(gridFinaleAudioTimerRef.current);
+      gridFinaleAudioTimerRef.current = null;
+    }
     setGridFinale(null);
     loseFinaleTriggeredRef.current = false;
   }, []);
@@ -1041,13 +1048,54 @@ const GameView: React.FC = () => {
     if (gridFinaleTitleTimerRef.current) {
       window.clearTimeout(gridFinaleTitleTimerRef.current);
     }
+    if (gridFinaleAudioTimerRef.current) {
+      window.clearTimeout(gridFinaleAudioTimerRef.current);
+    }
     setGrid(prev => buildGridFinaleCells(prev, mode, theme === 'orange'));
     setGridFinale({ mode, showTitle: false });
+
+    if (mode === 'win') {
+      gridFinaleAudioTimerRef.current = window.setTimeout(() => {
+        soundService.playWinner(Math.floor(Math.random() * WIN_VIDEOS.length));
+        gridFinaleAudioTimerRef.current = null;
+      }, getGridFinaleWinAudioDelay());
+    }
+
     gridFinaleTitleTimerRef.current = window.setTimeout(() => {
       setGridFinale(prev => (prev ? { ...prev, showTitle: true } : null));
+      if (mode === 'win') {
+        setWinConfettiKey(k => k + 1);
+      } else {
+        soundService.playLose(Math.floor(Math.random() * LOSE_VIDEOS.length));
+      }
       gridFinaleTitleTimerRef.current = null;
-    }, mode === 'win' ? 780 : 980);
+    }, getGridFinaleTitleRevealMs(mode));
   }, []);
+
+  const finishWinAfterFinale = useCallback((options?: { isDuel?: boolean; isBoss?: boolean }) => {
+    setIsVictoryAnimating(false);
+    clearGridFinale();
+
+    if (options?.isBoss) {
+      setActiveModal('boss_selection');
+      setGameState(prev => ({ ...prev, status: 'idle', isBossLevel: false, bossLevelId: null }));
+      return;
+    }
+
+    if (options?.isDuel || activeMatch?.isDuel) {
+      setShowDuelRecap(true);
+      setGameState(prev => ({ ...prev, status: 'idle' }));
+      return;
+    }
+
+    setGameState(prev => ({ ...prev, status: 'level-complete' }));
+  }, [clearGridFinale, activeMatch]);
+
+  const finishWinWithAudioOnly = useCallback((options?: { isDuel?: boolean; isBoss?: boolean; winIdx?: number }) => {
+    const winIdx = options?.winIdx ?? Math.floor(Math.random() * WIN_VIDEOS.length);
+    soundService.playWinner(winIdx);
+    finishWinAfterFinale(options);
+  }, [finishWinAfterFinale]);
 
   const generateGrid = useCallback((forceStartLevel?: number, forcedSeed?: string) => {
     let nextLevelData;
@@ -1381,34 +1429,7 @@ const GameView: React.FC = () => {
           if (currentUser) {
             loadProfile(currentUser.id);
           }
-
-          let loseVid = '';
-          if (gameState.bossLevelId === 1) {
-            loseVid = '/Boss1sconfitta.mp4';
-          } else if (gameState.bossLevelId === 2) {
-            loseVid = '/RiprovaBoss2noaudio.mp4';
-          } else {
-            const loseIdx = Math.floor(Math.random() * LOSE_VIDEOS.length);
-            loseVid = LOSE_VIDEOS[loseIdx];
-            soundService.playLose(loseIdx);
-          }
-
-          setLoseVideoSrc(loseVid);
-          setShowLostVideo(true);
-          setIsVideoVisible(true);
-
-          setTimeout(() => {
-            if (videoRef.current) {
-              videoRef.current.src = loseVid;
-              videoRef.current.muted = true;
-              videoRef.current.load();
-              const playPromise = videoRef.current.play();
-              if (playPromise !== undefined) {
-                playPromise.catch(e => console.warn("Loss video autoplay blocked:", e));
-              }
-            }
-          }, 0);
-        }, 2200);
+        }, getGridFinalePostDelay('lose'));
         return;
       }
     } else if (gameState.status === 'playing' && !activeMatch?.isDuel && gameState.timeLeft <= 5 && gameState.timeLeft > 0) {
@@ -1978,28 +1999,9 @@ const GameView: React.FC = () => {
             setIsDragging(false);
             setSelectedPath([]);
 
-            if (videoRef.current && isFirstProcess) {
-              const loseVid = LOSE_VIDEOS[Math.floor(Math.random() * LOSE_VIDEOS.length)];
-              setLoseVideoSrc(loseVid);
-              setShowLostVideo(true);
-              setIsVideoVisible(true);
-
-              // FORCE SOUND PLAYBACK
+            if (isFirstProcess) {
               soundService.playLose();
-
-              videoRef.current.src = loseVid;
-              videoRef.current.muted = false;
-              videoRef.current.load();
-              videoRef.current.play().catch(e => {
-                console.warn("Loss video blocked:", e);
-                // Fallback if video fails to play
-                setTimeout(() => setShowDuelRecap(true), 2000);
-              });
-            } else if (isFirstProcess) {
-              // Fallback if video element is missing
-              soundService.playLose();
-              setGameState(prev => ({ ...prev, status: 'idle' })); // RE-FORCE IDLE
-              setShowDuelRecap(true);
+              setTimeout(() => setShowDuelRecap(true), 1500);
             }
           }
         }
@@ -2041,30 +2043,15 @@ const GameView: React.FC = () => {
           const targetScore = latestMatchData.target_score || (duelMode === 'blitz' ? 3 : 5);
           setOpponentTargets(targetScore);
 
-          if (videoRef.current) {
-            const loseVid = LOSE_VIDEOS[0];
-            videoRef.current.src = loseVid;
-            videoRef.current.muted = true;
-            videoRef.current.load();
-            videoRef.current.play().catch(e => console.warn("Duel loss video blocked:", e));
-
-            soundService.playLose();
-            setLoseVideoSrc(loseVid);
-            setShowLostVideo(true);
-            setIsVideoVisible(true);
-          }
+          soundService.playLose();
+          setTimeout(() => setShowDuelRecap(true), 1500);
         }
 
         setGameState(prev => ({ ...prev, status: 'idle' }));
         setIsDragging(false);
         setSelectedPath([]);
 
-        // Delay Recap controlled by video end
-        if (!amIWinner && !videoRef.current) {
-          // Fallback if no video plays
-          setShowDuelRecap(true);
-        } else if (amIWinner && !videoRef.current) {
-          // If I won but no video (rare), show recap
+        if (amIWinner && !videoRef.current) {
           setShowDuelRecap(true);
         }
       }
@@ -2180,23 +2167,8 @@ const GameView: React.FC = () => {
 
             setOpponentTargets(duelMode === 'blitz' ? 3 : 5);
 
-            if (videoRef.current) {
-              const loseVid = LOSE_VIDEOS[Math.floor(Math.random() * LOSE_VIDEOS.length)];
-              setLoseVideoSrc(loseVid);
-              setShowLostVideo(true);
-              setIsVideoVisible(true);
-              soundService.playLose();
-              videoRef.current.src = loseVid;
-              videoRef.current.muted = false;
-              videoRef.current.load();
-              videoRef.current.play().catch(e => {
-                console.warn("Loss video blocked (via broadcast):", e);
-                setTimeout(() => setShowDuelRecap(true), 2000);
-              });
-            } else {
-              soundService.playLose();
-              setShowDuelRecap(true);
-            }
+            soundService.playLose();
+            setTimeout(() => setShowDuelRecap(true), 1500);
           }
         }
       });
@@ -2642,45 +2614,20 @@ const GameView: React.FC = () => {
         const isTimeAttack = !!activeMatch && (activeMatch.mode === 'time_attack' || duelMode === 'time_attack');
 
         // CRITICAL MOBILE FIX: Set source and play synchronously within the event handler
-        if (isLastTarget && !isTimeAttack && !isBlitzDominion && videoRef.current) {
+        if (isLastTarget && !isTimeAttack && !isBlitzDominion) {
           // 1. Play "Fine Partita" sound immediately on last click
           soundService.playLevelComplete();
           triggerGridFinale('win');
           setIsVictoryAnimating(true);
 
-          // 2. Delay the Victory Video to let the grid finale play
+          // 2. Audio + modal after grid finale (no win video)
           setTimeout(() => {
-            if (videoRef.current) {
-
-              if (gameStateRef.current.isBossLevel) {
-                // BOSS LEVELS: Skip video here — handleSuccess manages the full victory sequence
-                console.log('🎬 [evaluatePath] Boss level last target — delegating video to handleSuccess');
-              } else {
-                // STANDARD LEVEL WIN
-                const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-                const vidSrc = WIN_VIDEOS[winIdx];
-
-                videoRef.current.src = vidSrc;
-                videoRef.current.muted = true; // Still muted for browser policy, user un-mutes
-                videoRef.current.load();
-
-                // Play Sync Win Audio (matching the video) instead of relying on video track
-                soundService.playWinner(winIdx);
-
-                const playPromise = videoRef.current.play();
-                if (playPromise !== undefined) {
-                  playPromise.catch(error => {
-                    console.warn("Video play blocked by browser policy:", error);
-                    // Fallback: If video blocked, at least we heard the audio
-                  });
-                }
-
-                setWinVideoSrc(vidSrc);
-                setShowVideo(true);
-                setIsVideoVisible(true);
-              }
+            if (gameStateRef.current.isBossLevel) {
+              console.log('🎬 [evaluatePath] Boss level last target — delegating to handleSuccess');
+            } else {
+              finishWinAfterFinale({ isDuel: !!activeMatch?.isDuel });
             }
-          }, 2200);
+          }, getGridFinalePostDelay('win'));
         }
 
         vibrateDevice([40, 30, 40]); // Subtle double-pulse for success on mobile
@@ -3011,28 +2958,10 @@ const GameView: React.FC = () => {
             }
           }
 
-          // START VIDEO SEQUENCE: STEP 1 (Bonus Video) — after grid finale
+          // After grid finale: audio only, no boss bonus video
           setTimeout(() => {
-            if (videoRef.current) {
-              const vidSrc = gameStateRef.current.bossLevelId === 1
-                ? '/Bonus30secondiboss.mp4'
-                : '/Bonus45secondiboss.MP4';
-
-              videoRef.current.src = vidSrc;
-              videoRef.current.muted = true; // Stay muted for bonus video as it has no audio usually
-              videoRef.current.load();
-
-              const playPromise = videoRef.current.play();
-              if (playPromise !== undefined) {
-                playPromise.catch(e => console.warn("Video blocked:", e));
-              }
-
-              setIsBossBonusPlaying(true);
-              setWinVideoSrc(vidSrc);
-              setShowVideo(true);
-              setIsVideoVisible(true);
-            }
-          }, 2000);
+            finishWinAfterFinale({ isBoss: true });
+          }, Math.max(0, getGridFinalePostDelay('win') - 320));
 
           return;
         }
@@ -3085,21 +3014,7 @@ const GameView: React.FC = () => {
                 await loadProfile(currentUser.id);
 
                 soundService.playLevelComplete();
-
-                setTimeout(() => {
-                  if (videoRef.current) {
-                    const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-                    const vidSrc = WIN_VIDEOS[winIdx];
-                    videoRef.current.src = vidSrc;
-                    videoRef.current.muted = false;
-                    videoRef.current.load();
-                    videoRef.current.play().catch(e => console.warn("Duel win video blocked:", e));
-                    soundService.playWinner(winIdx);
-                    setWinVideoSrc(vidSrc);
-                    setShowVideo(true);
-                    setIsVideoVisible(true);
-                  }
-                }, 800);
+                // Win audio + recap handled by evaluatePath grid finale
 
               } catch (error: any) {
                 if (error?.name !== 'AbortError' && !error?.message?.includes('signal is aborted without reason')) {
@@ -3219,20 +3134,8 @@ const GameView: React.FC = () => {
                   await loadProfile(currentUser.id);
 
                   soundService.playLevelComplete();
+                  // Win audio + recap handled by evaluatePath grid finale
 
-                  setTimeout(() => {
-                    if (videoRef.current) {
-                      const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-                      const vidSrc = WIN_VIDEOS[winIdx];
-                      videoRef.current.src = vidSrc;
-                      videoRef.current.muted = false;
-                      videoRef.current.load();
-                      videoRef.current.play().catch(e => console.warn("Duel win video blocked (safe):", e)); // SAFE CATCH
-                      setWinVideoSrc(vidSrc);
-                      setShowVideo(true);
-                      setIsVideoVisible(true);
-                    }
-                  }, 800);
                 } catch (e: any) {
                   console.error("Duel Win Error (Handled):", e); // CATCH ALL ASYNC ERRORS
                   // Fallback recap
@@ -3385,42 +3288,15 @@ const GameView: React.FC = () => {
         })
         .catch(e => console.error("Error ending time attack/blitz:", e));
 
-      // 3. Play Video before Recap
+      // Audio only, then recap (no win/lose video)
       if (iWon) {
-        setTimeout(() => {
-          if (videoRef.current) {
-            const winIdx = Math.floor(Math.random() * WIN_VIDEOS.length);
-            const vidSrc = WIN_VIDEOS[winIdx];
-            videoRef.current.src = vidSrc;
-            videoRef.current.muted = true;
-            videoRef.current.load();
-            videoRef.current.play().catch(e => console.warn("TimeAttack win video blocked:", e));
-            soundService.playWinner(winIdx);
-            setWinVideoSrc(vidSrc);
-            setShowVideo(true);
-            setIsVideoVisible(true);
-          }
-        }, 800);
+        setTimeout(() => finishWinWithAudioOnly({ isDuel: true }), 800);
       } else {
         setTimeout(() => {
-          if (videoRef.current) {
-            const loseVid = LOSE_VIDEOS[0];
-            videoRef.current.src = loseVid;
-            videoRef.current.muted = true;
-            videoRef.current.load();
-            videoRef.current.play().catch(e => console.warn("TimeAttack loss video blocked:", e));
-            soundService.playLose();
-            setLoseVideoSrc(loseVid);
-            setShowLostVideo(true);
-            setIsVideoVisible(true);
-          }
+          soundService.playLose();
+          setGameState(prev => ({ ...prev, status: 'idle' }));
+          setShowDuelRecap(true);
         }, 800);
-      }
-
-      // 4. Show Recap trigger handles by Video Close
-      // Fallback only if no video
-      if (!iWon && !activeMatch?.isDuel) {
-        // Should not happen here given logic
       }
     } else {
       setGameState(prev => ({ ...prev, status: 'idle' }));
@@ -5280,22 +5156,26 @@ const GameView: React.FC = () => {
                       </div>
                     )}
 
-                    <div className={`relative mx-auto transition-all duration-500 transform
+                    {gridFinale && (
+                      <div
+                        className={`grid-finale-title absolute inset-0 flex items-center justify-center z-[8] pointer-events-none
+                          ${gridFinale.mode === 'win' ? 'grid-finale-title-win' : 'grid-finale-title-lose'}
+                          ${gridFinale.showTitle ? 'grid-finale-title-visible' : ''}`}
+                        aria-hidden={!gridFinale.showTitle}
+                      >
+                        <span>{gridFinale.mode === 'win' ? 'HAI VINTO!' : 'HAI PERSO!'}</span>
+                      </div>
+                    )}
+
+                    {gridFinale?.mode === 'win' && gridFinale.showTitle && (
+                      <WinConfettiEffect activeKey={winConfettiKey} durationMs={GRID_FINALE_TITLE_HOLD_MS + 1200} />
+                    )}
+
+                    <div className={`relative mx-auto transition-all duration-500 transform overflow-visible
                     ${theme === 'orange'
                         ? 'w-[calc(272px*var(--hex-scale))] h-[calc(376px*var(--hex-scale))]'
                         : 'w-[calc(400px*var(--hex-scale))] h-[calc(480px*var(--hex-scale))]'
                       }`}>
-                      {gridFinale && (
-                        <div
-                          className={`grid-finale-title absolute inset-0 flex items-center justify-center z-0 pointer-events-none
-                            ${gridFinale.mode === 'win' ? 'grid-finale-title-win' : 'grid-finale-title-lose'}
-                            ${gridFinale.showTitle ? 'grid-finale-title-visible' : ''}`}
-                          aria-hidden={!gridFinale.showTitle}
-                        >
-                          <span>{gridFinale.mode === 'win' ? 'HAI VINTO!' : 'HAI PERSO!'}</span>
-                        </div>
-                      )}
-
                     <div id="grid-container-game" className={`relative mx-auto transition-all duration-500 transform z-10 w-full h-full
                     ${isPaused ? 'opacity-10 scale-95 filter blur-lg pointer-events-none grayscale' : 'opacity-100 scale-100 filter-none'}
                       `}
