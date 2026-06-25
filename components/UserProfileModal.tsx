@@ -171,13 +171,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                     >
                         Badge
                     </button>
-                    <button
-                        onClick={() => setActiveTab('boss')}
-                        className={`flex-1 py-3 px-2 rounded-xl font-black font-orbitron uppercase text-[10px] tracking-wider transition-all border-2 min-w-[80px]
-                            ${activeTab === 'boss' ? 'bg-red-600 border-red-500 text-white shadow-lg scale-105' : 'bg-transparent border-slate-700 text-slate-500 hover:border-slate-500'}`}
-                    >
-                        Boss
-                    </button>
+
                     <button
                         onClick={() => setActiveTab('trophies')}
                         className={`flex-1 py-3 px-2 rounded-xl font-black font-orbitron uppercase text-[10px] tracking-wider transition-all border-2 min-w-[80px]

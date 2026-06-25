@@ -83,7 +83,7 @@ const App: React.FC = () => {
         </Routes>
       </ErrorBoundary>
       <CookieBanner />
-      <BottomNav />
+      {/* <BottomNav /> */}
     </BrowserRouter>
   );
 };

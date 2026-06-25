@@ -2387,13 +2387,15 @@ const GameView: React.FC = () => {
         nextTotalScore = 0;
       }
 
+      const freshTimeLimit = (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME;
+
       return {
         ...prev,
         score: 0,
         totalScore: nextTotalScore,
         streak: 0,
         level: startLevel,
-        timeLeft: (activeMatch?.mode === 'time_attack') ? 60 : INITIAL_TIME + careerBonus + referralBonus,
+        timeLeft: freshTimeLimit + careerBonus + referralBonus,
         targetResult: 0,
         status: 'playing',
         estimatedIQ: startLevel === 1 ? 100 : prev.estimatedIQ,
@@ -3934,10 +3936,10 @@ const GameView: React.FC = () => {
                       soundService.playUIClick();
                       window.open("https://www.numbergame.it/site", "_blank");
                     }}
-                    className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group cursor-pointer"
+                    className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group cursor-pointer"
                     title="Vai al Sito"
                   >
-                    <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
+                    <img src="/ottagonocristallo.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
                     <Globe size={22} className="relative z-20 text-white drop-shadow-md opacity-100" strokeWidth={2.5} />
                   </button>
                 </div>
@@ -3947,12 +3949,12 @@ const GameView: React.FC = () => {
               <div className="fixed top-12 right-6 z-[3000] flex gap-3 items-center">
                 <button
                   onPointerDown={toggleMute}
-                  className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
+                  className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
                   title="Audio"
                   id="audio-btn-home"
                 >
                   <img 
-                    src="/CasellaGlass.png" 
+                    src="/ottagonocristallo.png" 
                     alt="Octagon" 
                     className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10 transition-all duration-300"
                     style={{
@@ -4016,11 +4018,11 @@ const GameView: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <span className="text-[9px] text-white/30 font-black ml-3 font-mono tracking-wider select-none pointer-events-none">v2.3.1</span>
+                <span className="text-[9px] text-white/30 font-black ml-3 font-mono tracking-wider select-none pointer-events-none">v2.3.2</span>
               </div>
 
               {/* BOTTOM RIGHT ICONS: Admin & Tutorial (FIXED Position) */}
-              <div className="fixed bottom-4 right-4 z-[2000] flex gap-3" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
+              <div className="fixed bottom-4 right-4 z-[2000] flex -space-x-8" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
 
                 {/* Tutorial Icon */}
                 <button
@@ -4032,10 +4034,10 @@ const GameView: React.FC = () => {
                     setActiveModal('tutorial');
                   }}
                   id="tutorial-btn-home"
-                  className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
+                  className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group z-10"
                   title="Tutorial"
                 >
-                  <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
+                  <img src="/ottagonocristallo.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
                   <HelpCircle size={22} className="relative z-20 text-white drop-shadow-md" strokeWidth={2.5} />
                 </button>
 
@@ -4043,10 +4045,10 @@ const GameView: React.FC = () => {
                 <button
                   onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); handleQuickInvite(); }}
                   id="invite-btn-home"
-                  className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
+                  className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group z-20"
                   title="Invita Amico"
                 >
-                  <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
+                  <img src="/ottagonocristallo.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
                   <Gift size={22} className="relative z-20 text-white drop-shadow-md ml-0.5" strokeWidth={2.5} />
                 </button>
 
@@ -4059,15 +4061,15 @@ const GameView: React.FC = () => {
                       soundService.playUIClick();
                       setActiveModal('admin');
                     }}
-                    className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
+                    className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group z-30"
                     title="Admin Access"
                   >
-                    <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
+                    <img src="/ottagonocristallo.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
                     <Shield size={22} className="relative z-20 text-white drop-shadow-md" strokeWidth={2.5} />
                   </button>
                 )}
               </div>
-              <div className="mb-6 flex flex-col items-center">
+              <div className="mb-4 flex flex-col items-center">
                 {/* Logo: Custom Shape Image with White Border & Brain */}
                 {/* Logo: Pure Color CSS Mask Implementation */}
                 {/* Logo: Custom Shape Image with White Border & Brain */}
@@ -4097,158 +4099,114 @@ const GameView: React.FC = () => {
 
                 </div>
 
-                <h1 className="text-6xl sm:text-8xl font-black font-orbitron tracking-tighter text-[#FF8800] lowercase" style={{ WebkitTextStroke: '3px white' }}>
+                <h1 className="text-6xl sm:text-8xl font-black font-orbitron tracking-tighter text-transparent bg-clip-text select-none relative z-10 leading-none lowercase"
+                    style={{
+                      backgroundImage: 'linear-gradient(to bottom, #FFE699 0%, #FFD54F 35%, #FFB300 65%, #FF6F00 100%)',
+                      filter: 'drop-shadow(0 2px 0px rgba(0,0,0,0.8)) drop-shadow(0 4px 6px rgba(0,0,0,0.6)) drop-shadow(0 0 15px rgba(255,179,0,0.8))',
+                      WebkitTextStroke: '1px rgba(255, 255, 255, 0.2)'
+                    }}
+                >
                   number
                 </h1>
               </div>
 
-              <div className="flex flex-col gap-4 items-center w-full max-w-sm relative z-20">
+              <div className="flex flex-col gap-0 items-center w-full max-w-sm relative z-20">
                 <button
                   disabled={profileLoading}
                   onPointerDown={handleStartGameClick}
                   id="play-btn-home"
-                  className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[#FF8800] text-white py-5 rounded-2xl font-orbitron font-black text-xl border-[4px] border-white hover:scale-105 transition-all duration-300 active:translate-y-1 disabled:opacity-50 disabled:pointer-events-none"
+                  className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1 disabled:opacity-50 disabled:pointer-events-none"
                   style={{
-                    boxShadow: '0 8px 0 rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.5), inset 0 -4px 8px rgba(0,0,0,0.5)'
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
                   }}
                 >
-                  {/* Glass layout elements */}
-                  <div className="absolute inset-0 pointer-events-none z-10" style={{
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
-                  }}></div>
-                  <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-2xl z-10" style={{
-                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                  }}></div>
-                  <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                  }}></div>
-                  <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                    background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                  }}></div>
-                  <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
-                  }}></div>
-
-                  <Play className="w-8 h-8 fill-current relative z-20" />
-                  <span className="tracking-widest relative z-20">
-                    {profileLoading ? 'CARICAMENTO...' : (savedGame && savedGame.level > 1 ? `CONTINUA LVL ${savedGame.level}` : 'GIOCA')}
-                  </span>
+                  <img 
+                    src="/svgpulsantecristal.svg" 
+                    alt="Gioca" 
+                    className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center gap-4 z-20">
+                    <Play className="w-8 h-8 fill-current text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                    <span className="font-orbitron font-black text-xl tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                      {profileLoading ? 'CARICAMENTO...' : (savedGame && savedGame.level > 1 ? `CONTINUA LVL ${savedGame.level}` : 'GIOCA')}
+                    </span>
+                  </div>
                 </button>
  
-                <div className="grid grid-cols-2 gap-3 w-full">
-                  {/* 1VS1 MODE BUTTON */}
-                  <button
-                    className="flex items-center justify-center gap-2 bg-red-600 text-white py-4 rounded-xl border-[3px] border-white hover:scale-105 transition-all duration-300 col-span-2 relative overflow-hidden group active:translate-y-1"
-                    id="duel-btn-home"
+                {/* DUELLI BUTTON */}
+                <button
+                  id="duel-btn-home"
+                  onPointerDown={async (e) => {
+                    e.stopPropagation();
+                    await handleUserInteraction();
+                    soundService.playUIClick();
+                    if (!currentUser) {
+                      showToast("Accedi per sfidare altri giocatori!");
+                      setShowAuthModal(true);
+                    } else {
+                      setActiveModal('duel_selection');
+                    }
+                  }}
+                  className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    marginTop: '-25px',
+                  }}
+                >
+                  <img 
+                    src="/svgpulsantecristal.svg" 
+                    alt="Duelli" 
+                    className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                     style={{
-                      boxShadow: '0 6px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
+                      filter: 'hue-rotate(320deg) saturate(1.6) brightness(0.95)'
                     }}
-                    onPointerDown={async (e) => {
-                      e.stopPropagation();
-                      await handleUserInteraction();
-                      soundService.playUIClick();
-                      if (!currentUser) {
-                        showToast("Accedi per sfidare altri giocatori!");
-                        setShowAuthModal(true);
-                      } else {
-                        setActiveModal('duel_selection');
-                      }
-                    }}
-                  >
-                    {/* Glass layout elements */}
-                    <div className="absolute inset-0 pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
-                    }}></div>
-                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                    }}></div>
-                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                    }}></div>
-                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                    }}></div>
-                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
-                    }}></div>
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center gap-4 z-20">
+                    <Swords className="w-8 h-8 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-pulse" />
+                    <span className="font-orbitron font-black text-xl tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                      DUELLI
+                    </span>
+                  </div>
+                  {/* Badge */}
+                  <div className="absolute top-4 right-6 bg-red-600/90 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-white animate-pulse shadow-lg z-20">NEW</div>
+                </button>
 
-                    <Swords className="w-8 h-8 animate-pulse text-yellow-300 relative z-20" />
-                    <div className="flex flex-col items-start leading-none relative z-20">
-                      <span className="font-orbitron text-xl font-black uppercase tracking-widest italic drop-shadow-md">NEURAL DUEL</span>
-                      <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Sfida 1vs1 Realtime</span>
-                    </div>
-                    {/* Badge */}
-                    <div className="absolute top-2 right-2 bg-red-600/90 backdrop-blur-md border border-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-white animate-pulse shadow-lg z-20">NEW</div>
-                  </button>
- 
-                  {/* BOSS LEVELS BUTTON - COLS-SPAN-1 */}
-                  <button
-                    className="flex flex-col items-center justify-center pt-5 pb-4 gap-2 bg-slate-700 text-white/50 rounded-xl border-[3px] border-white/20 col-span-1 relative overflow-hidden group cursor-not-allowed"
-                    id="boss-btn-home"
+                {/* CLASSIFICHE BUTTON */}
+                <button
+                  id="ranking-btn-home"
+                  onPointerDown={async (e) => { 
+                    e.stopPropagation(); 
+                    await handleUserInteraction(); 
+                    soundService.playUIClick(); 
+                    setActiveModal('leaderboard'); 
+                  }}
+                  className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    marginTop: '-25px',
+                  }}
+                >
+                  <img 
+                    src="/svgpulsantecristal.svg" 
+                    alt="Classifiche" 
+                    className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                     style={{
-                      boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.1), inset 0 -4px 8px rgba(0,0,0,0.45)'
+                      filter: 'hue-rotate(35deg) saturate(1.5) brightness(1.15)'
                     }}
-                    onPointerDown={async (e) => {
-                      e.stopPropagation();
-                      await handleUserInteraction();
-                      soundService.playUIClick();
-                      showToast("La modalità BOSS sarà disponibile a breve!");
-                    }}
-                  >
-                    {/* Glass layout elements */}
-                    <div className="absolute inset-0 pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.04) 70.1%, rgba(255,255,255,0.1) 100%)'
-                    }}></div>
-                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)'
-                    }}></div>
-                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.01))'
-                    }}></div>
-                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(225deg, rgba(255,255,255,0.2), rgba(255,255,255,0.01))'
-                    }}></div>
-                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.15), transparent)'
-                    }}></div>
-
-                    <Crown className="w-8 h-8 text-white/40 relative z-20" />
-                    <span className="font-orbitron text-[13px] sm:text-[14px] font-black uppercase tracking-widest drop-shadow-md relative z-20 mt-1">BOSS</span>
-                    
-                    {/* Badge COMING SOON */}
-                    <div className="absolute top-1.5 right-1.5 bg-yellow-500 text-black px-1.5 py-0.5 rounded-[4px] text-[7px] font-black tracking-widest uppercase shadow-md z-20 animate-pulse">COMING SOON</div>
-                  </button>
- 
-                  {/* RANKING BUTTON - COLS-SPAN-1 */}
-                  <button
-                    id="ranking-btn-home"
-                    onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); soundService.playUIClick(); setActiveModal('leaderboard'); }}
-                    className="flex flex-col items-center justify-center pt-5 pb-4 gap-2 bg-yellow-500 text-slate-900 rounded-xl border-[3px] border-white hover:scale-105 transition-all duration-300 col-span-1 relative overflow-hidden group active:translate-y-1"
-                    style={{
-                      boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
-                    }}
-                  >
-                    {/* Glass layout elements */}
-                    <div className="absolute inset-0 pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
-                    }}></div>
-                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                    }}></div>
-                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                    }}></div>
-                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                    }}></div>
-                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
-                    }}></div>
-
-                    <BarChart3 className="w-8 h-8 relative z-20 text-slate-800 drop-shadow-md" />
-                    <span className="font-orbitron text-[13px] sm:text-[14px] font-black uppercase tracking-widest relative z-20 mt-1">RANKING</span>
-                  </button>
-                </div>
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center gap-4 z-20">
+                    <BarChart3 className="w-8 h-8 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                    <span className="font-orbitron font-black text-xl tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                      CLASSIFICHE
+                    </span>
+                  </div>
+                </button>
                 {/* AUTH BUTTON */}
                 {/* Auth Button Moved to Top Right - Removed from here */}
 
@@ -5357,14 +5315,13 @@ const GameView: React.FC = () => {
 
                   <div className="relative z-10">
                     {/* Header */}
-                    <div className="text-center mb-4">
-                      <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl border-[3px] border-white/50 mb-2 ${gameState.bossLevelId === 2
-                        ? 'bg-gradient-to-br from-amber-550 to-amber-700 shadow-[0_0_20px_rgba(120,53,15,0.5)]'
-                        : gameState.isBossLevel
-                          ? 'bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
-                          : 'bg-gradient-to-br from-red-500 to-red-700 shadow-[0_0_20px_rgba(239,68,68,0.4)]'
-                        }`}>
-                        <XCircle className="w-7 h-7 text-white" />
+                    <div className="flex flex-col items-center mb-6">
+                      {/* 3D Octagonal Crystal Emblem with X icon */}
+                      <div className="relative w-32 h-32 flex items-center justify-center mb-1">
+                        <img src="/ottagonocristallo.png" alt="Emblema Ottagono" className="absolute inset-0 w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(239,68,68,0.5)]" />
+                        <div className="relative z-10 flex items-center justify-center">
+                          <X size={36} className="text-white opacity-60 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]" strokeWidth={3} />
+                        </div>
                       </div>
                       <h2 className={`text-2xl font-black font-orbitron uppercase tracking-widest mb-1 drop-shadow-lg ${gameState.bossLevelId === 2 ? 'text-amber-400' : gameState.isBossLevel ? 'text-emerald-400' : 'text-red-400'
                         }`}>
@@ -5377,12 +5334,14 @@ const GameView: React.FC = () => {
                     <div className={`border-[2px] rounded-2xl p-4 mb-5 backdrop-blur-md shadow-[inset_0_2px_6px_rgba(255,255,255,0.15)] bg-white/5
                       ${gameState.bossLevelId === 2 ? 'border-amber-500/30' : gameState.isBossLevel ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
                       <div className="flex flex-col items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          <Target className={`w-5 h-5 ${gameState.bossLevelId === 2 ? 'text-amber-400' : gameState.isBossLevel ? 'text-emerald-400' : 'text-red-400'}`} />
-                          <span className="text-xs font-black text-white/70 uppercase tracking-wider">
-                            {gameState.isBossLevel ? 'Boss Sfidato' : 'Livello Non Superato'}
-                          </span>
-                        </div>
+                        {gameState.isBossLevel && (
+                          <div className="flex items-center gap-2">
+                            <Target className={`w-5 h-5 ${gameState.bossLevelId === 2 ? 'text-amber-400' : gameState.isBossLevel ? 'text-emerald-400' : 'text-red-400'}`} />
+                            <span className="text-xs font-black text-white/70 uppercase tracking-wider">
+                              Boss Sfidato
+                            </span>
+                          </div>
+                        )}
 
                         <div className="w-full bg-black/30 rounded-xl p-3 border border-white/10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
                           <div className="flex justify-between items-center">
@@ -5407,7 +5366,7 @@ const GameView: React.FC = () => {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="space-y-2.5">
+                    <div className="space-y-2 w-full flex flex-col items-center">
                       <button onPointerDown={(e) => {
                         e.stopPropagation();
                         resetDuelState();
@@ -5417,21 +5376,24 @@ const GameView: React.FC = () => {
                           startGame(gameState.level);
                         }
                       }}
-                        className={`w-full relative overflow-hidden text-white py-5 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-base border-[4px] border-white active:translate-y-1 transition-all hover:scale-[1.02] duration-300 flex items-center justify-center gap-3 group shadow-[0_8px_0_rgba(0,0,0,0.3),inset_0_4px_8px_rgba(255,255,255,0.5),inset_0_-4px_8px_rgba(0,0,0,0.5)]
-                          ${gameState.isBossLevel
-                            ? (gameState.bossLevelId === 2 ? 'bg-gradient-to-r from-amber-550 to-amber-700' : 'bg-gradient-to-r from-emerald-500 to-emerald-700')
-                            : 'bg-[#FF8800]'
-                          }`}>
-                        {/* 3D Glass shine layer */}
-                        <div className="absolute inset-0 pointer-events-none z-10" style={{
-                          background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
-                        }}></div>
-                        <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                          background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                        }}></div>
-
-                        <RefreshCw className="w-5 h-5 relative z-20 group-hover:rotate-180 transition-transform duration-550 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
-                        <span className="relative z-20 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">{gameState.isBossLevel ? 'RIPROVA BOSS' : 'RIGIOCA'}</span>
+                        className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                        }}
+                      >
+                        <img 
+                          src="/svgpulsantecristal.svg" 
+                          alt="Rigioca" 
+                          className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center gap-3 z-20">
+                          <RefreshCw className="w-5 h-5 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                          <span className="font-orbitron font-black text-lg tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                            {gameState.isBossLevel ? 'RIPROVA BOSS' : 'RIGIOCA'}
+                          </span>
+                        </div>
                       </button>
 
                       <button onPointerDown={(e) => {
@@ -5439,12 +5401,28 @@ const GameView: React.FC = () => {
                         resetDuelState(activeMatch?.id, currentUser?.id);
                         goToHome();
                       }}
-                        className="w-full relative overflow-hidden bg-slate-800 text-white/90 py-4 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-sm border-[3px] border-white/20 active:translate-y-1 transition-all hover:scale-[1.02] duration-300 hover:bg-slate-750 flex items-center justify-center gap-2 shadow-[0_6px_0_rgba(0,0,0,0.25),inset_0_3px_6px_rgba(255,255,255,0.25),inset_0_-3px_6px_rgba(0,0,0,0.45)]">
-                        <div className="absolute inset-0 pointer-events-none z-10" style={{
-                          background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%)'
-                        }}></div>
-                        <Home size={16} className="relative z-20" />
-                        <span className="relative z-20">TORNA ALLA HOME</span>
+                        className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          marginTop: '-15px',
+                        }}
+                      >
+                        <img 
+                          src="/svgpulsantecristal.svg" 
+                          alt="Home" 
+                          className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
+                          style={{
+                            filter: 'hue-rotate(185deg) saturate(1.4) brightness(0.9)'
+                          }}
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 z-20">
+                          <Home size={18} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                          <span className="font-orbitron font-black text-lg tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                            TORNA ALLA HOME
+                          </span>
+                        </div>
                       </button>
                     </div>
                   </div>
@@ -5518,17 +5496,24 @@ const GameView: React.FC = () => {
                         resetDuelState();
                         setActiveModal('duel_selection');
                       }}
-                        className="w-full relative overflow-hidden text-white py-5 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-base border-[4px] border-white active:translate-y-1 transition-all hover:scale-[1.02] duration-300 flex items-center justify-center gap-3 group bg-gradient-to-r from-cyan-500 to-cyan-700 shadow-[0_8px_0_rgba(0,0,0,0.3),inset_0_4px_8px_rgba(255,255,255,0.5),inset_0_-4px_8px_rgba(0,0,0,0.5)]">
-                        {/* 3D Glass shine layer */}
-                        <div className="absolute inset-0 pointer-events-none z-10" style={{
-                          background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
-                        }}></div>
-                        <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                          background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                        }}></div>
-                        
-                        <Swords className="w-5 h-5 relative z-20 group-hover:scale-110 transition-transform text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
-                        <span className="relative z-20 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">NUOVA SFIDA</span>
+                        className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                        }}
+                      >
+                        <img 
+                          src="/svgpulsantecristal.svg" 
+                          alt="Nuova Sfida" 
+                          className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center gap-3 z-20">
+                          <Swords className="w-5 h-5 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                          <span className="font-orbitron font-black text-lg tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                            NUOVA SFIDA
+                          </span>
+                        </div>
                       </button>
 
                       <button onPointerDown={(e) => {
@@ -5536,12 +5521,28 @@ const GameView: React.FC = () => {
                         resetDuelState();
                         goToHome();
                       }}
-                        className="w-full relative overflow-hidden bg-slate-800 text-white/90 py-4 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-sm border-[3px] border-white/20 active:translate-y-1 transition-all hover:scale-[1.02] duration-300 hover:bg-slate-750 flex items-center justify-center gap-2 shadow-[0_6px_0_rgba(0,0,0,0.25),inset_0_3px_6px_rgba(255,255,255,0.25),inset_0_-3px_6px_rgba(0,0,0,0.45)]">
-                        <div className="absolute inset-0 pointer-events-none z-10" style={{
-                          background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%)'
-                        }}></div>
-                        <Home size={16} className="relative z-20" />
-                        <span className="relative z-20">TORNA ALLA HOME</span>
+                        className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          marginTop: '-15px',
+                        }}
+                      >
+                        <img 
+                          src="/svgpulsantecristal.svg" 
+                          alt="Home" 
+                          className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
+                          style={{
+                            filter: 'hue-rotate(185deg) saturate(1.4) brightness(0.9)'
+                          }}
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 z-20">
+                          <Home size={18} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                          <span className="font-orbitron font-black text-lg tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                            TORNA ALLA HOME
+                          </span>
+                        </div>
                       </button>
                     </div>
                   </div>
@@ -5657,19 +5658,8 @@ const GameView: React.FC = () => {
                     )}
 
                     {/* Actions Section */}
-                    <div className="space-y-4 relative z-10">
-                      {/* Custom CSS for 3D crystal button active state */}
-                      <style dangerouslySetInnerHTML={{__html: `
-                        .crystal-3d-btn {
-                          transition: transform 0.1s ease, box-shadow 0.1s ease !important;
-                        }
-                        .crystal-3d-btn:active {
-                          transform: translateY(5px) !important;
-                          box-shadow: 0 1px 0 #b33600, 0 4px 10px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.4) !important;
-                        }
-                      `}} />
-
-                      {/* Pulsante Avvio: faceted 3D amber-gold crystal block */}
+                    <div className="space-y-2 relative z-10 w-full flex flex-col items-center">
+                      {/* Pulsante Avvio: faceted 3D orange crystal SVG button */}
                       <button
                         onPointerDown={async (e) => {
                           e.stopPropagation();
@@ -5680,38 +5670,52 @@ const GameView: React.FC = () => {
                             nextLevel();
                           }
                         }}
-                        className="w-full relative overflow-hidden py-4 rounded-xl flex items-center justify-center font-orbitron font-black tracking-wider text-cyan-300 border border-amber-300/80 hover:brightness-110 transition-all select-none crystal-3d-btn cursor-pointer"
+                        className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
                         style={{
-                          background: 'linear-gradient(135deg, #e65100 0%, #ff8800 25%, #ffb300 50%, #ff8800 75%, #e65100 100%)',
-                          boxShadow: '0 6px 0 #b33600, 0 10px 20px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.4)',
-                          textShadow: '0 0 8px rgba(34, 211, 238, 0.9)'
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
                         }}
                       >
-                        {/* Crystal Texture Overlay */}
-                        <img src="/ottagonocristallo.png" alt="Crystal Texture" className="absolute inset-0 w-full h-full object-cover opacity-35 mix-blend-overlay pointer-events-none" />
-                        <div className="absolute inset-0 pointer-events-none opacity-40 mix-blend-overlay" style={{
-                          background: 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%, rgba(0,0,0,0.6) 100%)'
-                        }} />
-                        <span className="relative z-10 text-lg uppercase tracking-widest">
-                          {gameState.isBossLevel ? 'RISCATTA & TORNA' : 'PROSSIMO LIVELLO'}
-                        </span>
+                        <img 
+                          src="/svgpulsantecristal.svg" 
+                          alt="Prossimo Livello" 
+                          className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center gap-3 z-20">
+                          <Play className="w-6 h-6 fill-current text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                          <span className="font-orbitron font-black text-lg tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                            {gameState.isBossLevel ? 'RISCATTA & TORNA' : 'PROSSIMO LIVELLO'}
+                          </span>
+                        </div>
                       </button>
 
                       {/* Sub-actions for standard levels */}
                       {!gameState.isBossLevel && (
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="flex gap-2 w-full mt-2" style={{ marginTop: '-15px' }}>
                           <button
                             onPointerDown={(e) => { e.stopPropagation(); startGame(gameState.level); }}
-                            className="relative overflow-hidden py-3 rounded-xl flex items-center justify-center gap-1.5 font-orbitron font-bold tracking-wider text-cyan-300 border border-slate-600/40 hover:border-cyan-400/50 hover:brightness-110 active:scale-95 transition-all select-none cursor-pointer"
+                            className="w-1/2 group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
                             style={{
-                              background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%)',
-                              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.5)',
-                              textShadow: '0 0 6px rgba(34, 211, 238, 0.6)',
-                              fontSize: '10px'
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
                             }}
                           >
-                            <RefreshCw size={11} className="relative z-10 text-cyan-400" />
-                            <span className="relative z-10 uppercase">RIGIOCA</span>
+                            <img 
+                              src="/svgpulsantecristal.svg" 
+                              alt="Rigioca" 
+                              className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
+                              style={{
+                                filter: 'hue-rotate(185deg) saturate(1.4) brightness(0.9)'
+                              }}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center gap-1.5 z-20">
+                              <RefreshCw size={12} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                              <span className="font-orbitron font-black text-[10px] tracking-wider text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                                RIGIOCA
+                              </span>
+                            </div>
                           </button>
                           
                           <button
@@ -5721,16 +5725,27 @@ const GameView: React.FC = () => {
                               goToHome(e);
                               setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
                             }}
-                            className="relative overflow-hidden py-3 rounded-xl flex items-center justify-center gap-1.5 font-orbitron font-bold tracking-wider text-cyan-300 border border-slate-600/40 hover:border-cyan-400/50 hover:brightness-110 active:scale-95 transition-all select-none cursor-pointer"
+                            className="w-1/2 group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
                             style={{
-                              background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%)',
-                              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.5)',
-                              textShadow: '0 0 6px rgba(34, 211, 238, 0.6)',
-                              fontSize: '10px'
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
                             }}
                           >
-                            <Home size={11} className="relative z-10 text-cyan-400" />
-                            <span className="relative z-10 uppercase">BASE</span>
+                            <img 
+                              src="/svgpulsantecristal.svg" 
+                              alt="Base" 
+                              className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
+                              style={{
+                                filter: 'hue-rotate(185deg) saturate(1.4) brightness(0.9)'
+                              }}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center gap-1.5 z-20">
+                              <Home size={12} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                              <span className="font-orbitron font-black text-[10px] tracking-wider text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                                BASE
+                              </span>
+                            </div>
                           </button>
                         </div>
                       )}
@@ -5794,120 +5809,104 @@ const GameView: React.FC = () => {
                 <h2 className="text-xl sm:text-3xl font-black font-orbitron text-white mb-2 uppercase text-center relative z-10 flex items-center justify-center gap-2 sm:gap-3">
                   <Swords className="w-6 h-6 sm:w-8 sm:h-8 text-red-500 animate-bounce" /> SELEZIONA SFIDA
                 </h2>
-                <p className="text-red-500 text-center text-[10px] sm:text-sm mb-4 sm:mb-8 font-orbitron font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] relative z-10 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse-slow">
-                  COMBATTI • VINCI • GLORIA
-                </p>
-
-                 <div className="flex flex-col gap-3 relative z-10 w-full">
-                   {/* Option 1: STANDARD */}
-                   <button
-                     className="w-full bg-red-600 text-white p-4 rounded-xl flex items-center gap-4 border-[3px] border-white hover:scale-[1.02] active:translate-y-1 transition-all group relative overflow-hidden"
-                     style={{
-                       boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
-                     }}
-                     onPointerDown={() => { soundService.playUIClick(); setDuelMode('standard'); setActiveModal('duel'); }}
-                   >
-                     {/* Glass layout elements */}
-                     <div className="absolute inset-0 pointer-events-none z-10" style={{
-                       background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
-                     }}></div>
-                     <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                       background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                     }}></div>
-                     <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                       background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                     }}></div>
-                     <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                       background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                     }}></div>
-                     <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                       background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
-                     }}></div>
-
-                     <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-20">
-                       <Swords size={22} className="text-yellow-300 drop-shadow-sm" />
-                     </div>
-                     <div className="text-left flex-1 relative z-20">
-                       <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">STANDARD</h3>
-                       <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Velocità Pura • Partita Secca</p>
-                     </div>
-                     <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-20" />
-                   </button>
+                            <div className="flex flex-col gap-0 relative z-10 w-full items-center">
+                    {/* Option 1: STANDARD */}
+                    <button
+                      className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                      }}
+                      onPointerDown={() => { soundService.playUIClick(); setDuelMode('standard'); setActiveModal('duel'); }}
+                    >
+                      <img 
+                        src="/svgpulsantecristal.svg" 
+                        alt="Standard" 
+                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
+                        style={{
+                          filter: 'hue-rotate(320deg) saturate(1.6) brightness(0.95)'
+                        }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-between px-8 z-20">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
+                            <Swords size={20} className="text-yellow-300 drop-shadow-sm" />
+                          </div>
+                          <div className="text-left">
+                            <h3 className="font-orbitron font-black text-white text-base uppercase leading-none mb-1 tracking-wider">STANDARD</h3>
+                            <p className="text-[9px] text-white/80 font-bold uppercase tracking-wide">Velocità Pura • Partita Secca</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="text-white/30 group-hover:text-white transition-colors" />
+                      </div>
+                    </button>
  
-                   {/* Option 2: BLITZ */}
-                   <button
-                     className="w-full bg-orange-500 text-white p-4 rounded-xl flex items-center gap-4 border-[3px] border-white hover:scale-[1.02] active:translate-y-1 transition-all group relative overflow-hidden"
-                     style={{
-                       boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
-                     }}
-                     onPointerDown={() => { soundService.playUIClick(); setDuelMode('blitz'); setActiveModal('duel'); }}
-                   >
-                     {/* Glass layout elements */}
-                     <div className="absolute inset-0 pointer-events-none z-10" style={{
-                       background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
-                     }}></div>
-                     <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                       background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                     }}></div>
-                     <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                       background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                     }}></div>
-                     <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                       background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                     }}></div>
-                     <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                       background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
-                     }}></div>
-
-                     <div className="absolute top-0 right-12 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20">NEW</div>
+                    {/* Option 2: BLITZ */}
+                    <button
+                      className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        marginTop: '-25px'
+                      }}
+                      onPointerDown={() => { soundService.playUIClick(); setDuelMode('blitz'); setActiveModal('duel'); }}
+                    >
+                      <img 
+                        src="/svgpulsantecristal.svg" 
+                        alt="Blitz Dominion" 
+                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
+                      />
+                      <div className="absolute top-0 right-14 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-30">NEW</div>
+                      <div className="absolute inset-0 flex items-center justify-between px-8 z-20">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
+                            <Zap size={20} className="text-white drop-shadow-sm" />
+                          </div>
+                          <div className="text-left">
+                            <h3 className="font-orbitron font-black text-white text-base uppercase leading-none mb-1 tracking-wider">BLITZ DOMINION</h3>
+                            <p className="text-[9px] text-white/80 font-bold uppercase tracking-wide">Alta Strategia • Conquista</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="text-white/30 group-hover:text-white transition-colors" />
+                      </div>
+                    </button>
  
-                     <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-20">
-                       <Zap size={22} className="text-white drop-shadow-sm" />
-                     </div>
-                     <div className="text-left flex-1 relative z-20">
-                       <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">BLITZ DOMINION</h3>
-                       <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">Alta Strategia • Conquista</p>
-                     </div>
-                     <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-20" />
-                   </button>
- 
-                   {/* Option 3: TIME ATTACK */}
-                   <button
-                     className="w-full bg-purple-600 text-white p-4 rounded-xl flex items-center gap-4 border-[3px] border-white hover:scale-[1.02] active:translate-y-1 transition-all group relative overflow-hidden"
-                     style={{
-                       boxShadow: '0 5px 0 rgba(0,0,0,0.15), inset 0 4px 8px rgba(255,255,255,0.45), inset 0 -4px 8px rgba(0,0,0,0.45)'
-                     }}
-                     onPointerDown={() => { soundService.playUIClick(); setDuelMode('time_attack'); setActiveModal('duel'); }}
-                   >
-                     {/* Glass layout elements */}
-                     <div className="absolute inset-0 pointer-events-none z-10" style={{
-                       background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
-                     }}></div>
-                     <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                       background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                     }}></div>
-                     <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                       background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                     }}></div>
-                     <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                       background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                     }}></div>
-                     <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                       background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
-                     }}></div>
-
-                     <div className="absolute top-0 right-12 bg-yellow-400 text-black text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-20 animate-pulse">HOT</div>
- 
-                     <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 group-hover:bg-white/20 transition-colors shadow-inner relative z-20">
-                       <Clock size={22} className="text-white drop-shadow-sm" />
-                     </div>
-                     <div className="text-left flex-1 relative z-20">
-                       <h3 className="font-orbitron font-black text-white text-lg uppercase leading-none mb-1 tracking-wider">TIME ATTACK</h3>
-                       <p className="text-[10px] text-white/80 font-bold uppercase tracking-wide">60 Secondi • Target Infiniti</p>
-                     </div>
-                     <ChevronRight className="text-white/30 group-hover:text-white transition-colors relative z-20" />
-                   </button>
-                 </div>
+                    {/* Option 3: TIME ATTACK */}
+                    <button
+                      className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        marginTop: '-25px'
+                      }}
+                      onPointerDown={() => { soundService.playUIClick(); setDuelMode('time_attack'); setActiveModal('duel'); }}
+                    >
+                      <img 
+                        src="/svgpulsantecristal.svg" 
+                        alt="Time Attack" 
+                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
+                        style={{
+                          filter: 'hue-rotate(240deg) saturate(1.5) brightness(0.95)'
+                        }}
+                      />
+                      <div className="absolute top-0 right-14 bg-yellow-400 text-black text-[8px] font-black px-2 py-0.5 rounded-b-lg shadow-sm z-30 animate-pulse">HOT</div>
+                      <div className="absolute inset-0 flex items-center justify-between px-8 z-20">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
+                            <Clock size={20} className="text-white drop-shadow-sm" />
+                          </div>
+                          <div className="text-left">
+                            <h3 className="font-orbitron font-black text-white text-base uppercase leading-none mb-1 tracking-wider">TIME ATTACK</h3>
+                            <p className="text-[9px] text-white/80 font-bold uppercase tracking-wide">60 Secondi • Target Infiniti</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="text-white/30 group-hover:text-white transition-colors" />
+                      </div>
+                    </button>
+                  </div>
 
 
               </div>
@@ -6205,10 +6204,13 @@ const GameView: React.FC = () => {
             </div>
           )
         }
-
         {
           activeModal === 'resume_confirm' && (
-            <div className="fixed inset-0 z-[5000] flex flex-col items-center justify-center p-4 md:p-6 modal-overlay bg-[#020617]/95 backdrop-blur-md overflow-y-auto" onPointerDown={() => setActiveModal(null)}>
+            <div 
+              className="fixed inset-0 z-[5000] flex flex-col items-center justify-center p-4 md:p-6 modal-overlay bg-[#020617]/95 backdrop-blur-md overflow-y-auto" 
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              onPointerDown={() => setActiveModal(null)}
+            >
               
               {/* Smoky background and crystalline floaters */}
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -6228,8 +6230,8 @@ const GameView: React.FC = () => {
                 
                 {/* Header Section (OUTSIDE of the main framed box, but centered above it) */}
                 <div className="flex flex-col items-center mb-6">
-                  {/* 3D Octagonal Crystal Emblem using ottagonocristallo.png (60% Larger) */}
-                  <div className="relative w-32 h-32 flex items-center justify-center mb-1">
+                  {/* 3D Octagonal Crystal Emblem using ottagonocristallo.png (60% Larger) - Lowered by 10px */}
+                  <div className="relative w-32 h-32 flex items-center justify-center mb-1 translate-y-[10px]">
                     <img src="/ottagonocristallo.png" alt="Emblema Ottagono Cristallo" className="absolute inset-0 w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(6,182,212,0.5)]" />
                     {/* Single white brain, centered, transparent at 60% */}
                     <div className="relative z-10 flex items-center justify-center">
@@ -6281,7 +6283,9 @@ const GameView: React.FC = () => {
                       <span className="text-[11px] font-black tracking-widest text-cyan-400 mb-2 uppercase font-orbitron drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]">SCORES</span>
                       <div className="flex items-center justify-center min-h-[2rem]">
                         <span className="text-2xl font-black font-orbitron text-cyan-300 tracking-wide drop-shadow-[0_0_12px_rgba(34,211,238,0.95)]">
-                          {savedGame?.totalScore && savedGame.totalScore > 0 ? savedGame.totalScore : ''}
+                          {savedGame?.totalScore && savedGame.totalScore > 0 
+                            ? savedGame.totalScore 
+                            : (userProfile?.total_score || 0)}
                         </span>
                       </div>
                     </div>
@@ -6335,45 +6339,56 @@ const GameView: React.FC = () => {
                   )}
 
                   {/* Actions Section */}
-                  <div className="space-y-4 relative z-10">
-                    {/* Pulsante Avvio: faceted 3D amber-gold crystal block */}
+                  <div className="space-y-2 relative z-10 w-full flex flex-col items-center">
+                    {/* Pulsante Avvio: faceted 3D orange crystal SVG button */}
                     <button
                       disabled={profileLoading}
-                      onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); savedGame ? restoreGame() : startGame(); }}
-                      className="w-full relative overflow-hidden py-4 rounded-xl flex items-center justify-center font-orbitron font-black tracking-wider text-cyan-300 border border-amber-300/80 hover:brightness-110 transition-all select-none disabled:opacity-50 disabled:pointer-events-none crystal-3d-btn cursor-pointer"
+                      onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); startGame(); }}
+                      className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1 disabled:opacity-50 disabled:pointer-events-none"
                       style={{
-                        background: 'linear-gradient(135deg, #e65100 0%, #ff8800 25%, #ffb300 50%, #ff8800 75%, #e65100 100%)',
-                        boxShadow: '0 6px 0 #b33600, 0 10px 20px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.4)',
-                        textShadow: '0 0 8px rgba(34, 211, 238, 0.9)'
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
                       }}
                     >
-                      {/* Crystal Texture Overlay */}
-                      <img src="/ottagonocristallo.png" alt="Crystal Texture" className="absolute inset-0 w-full h-full object-cover opacity-35 mix-blend-overlay pointer-events-none" />
-                      {/* Specular Facet Highlights */}
-                      <div className="absolute inset-0 pointer-events-none opacity-40 mix-blend-overlay" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%, rgba(0,0,0,0.6) 100%)'
-                      }} />
-                      <span className="relative z-10 text-lg uppercase tracking-widest">
-                        {profileLoading ? 'CARICAMENTO...' : 'INIZIA PARTITA'}
-                      </span>
+                      <img 
+                        src="/svgpulsantecristal.svg" 
+                        alt="Inizia Partita" 
+                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center gap-4 z-20">
+                        <Play className="w-6 h-6 fill-current text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                        <span className="font-orbitron font-black text-lg tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                          {profileLoading ? 'CARICAMENTO...' : 'INIZIA PARTITA'}
+                        </span>
+                      </div>
                     </button>
 
-                    {/* Pulsante Ritorno: dark smoke/anthracite crystal block */}
+                    {/* Pulsante Ritorno: faceted 3D blue crystal SVG button */}
                     <button
                       onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
-                      className="w-full relative overflow-hidden py-4 rounded-xl flex items-center justify-center gap-2 font-orbitron font-bold tracking-wider text-cyan-300 border border-slate-600/40 hover:border-cyan-400/50 hover:brightness-110 active:scale-95 transition-all select-none"
+                      className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
                       style={{
-                        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%)',
-                        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.5)',
-                        textShadow: '0 0 6px rgba(34, 211, 238, 0.6)'
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        marginTop: '-15px',
                       }}
                     >
-                      {/* Specular Facet Highlights */}
-                      <div className="absolute inset-0 pointer-events-none opacity-20 mix-blend-overlay" style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(0,0,0,0.4) 100%)'
-                      }} />
-                      <Home size={16} className="relative z-10 text-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.6)]" />
-                      <span className="relative z-10 text-sm uppercase tracking-widest">INDIETRO</span>
+                      <img 
+                        src="/svgpulsantecristal.svg" 
+                        alt="Indietro" 
+                        className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
+                        style={{
+                          filter: 'hue-rotate(185deg) saturate(1.4) brightness(0.9)'
+                        }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center gap-3 z-20">
+                        <Home size={18} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
+                        <span className="font-orbitron font-black text-lg tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                          INDIETRO
+                        </span>
+                      </div>
                     </button>
                   </div>
 
