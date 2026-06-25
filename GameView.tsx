@@ -6488,7 +6488,7 @@ const GameView: React.FC = () => {
                   Vuoi davvero disconnetterti?
                 </p>
 
-                <div className="space-y-3 relative z-10">
+                <div className="flex flex-col gap-0 items-center w-full relative z-10">
                   <button
                     onPointerDown={(e) => {
                       e.stopPropagation();
@@ -6500,55 +6500,50 @@ const GameView: React.FC = () => {
                       showToast(`Logout effettuato.`);
                       setActiveModal(null);
                     }}
-                    className="w-full relative overflow-hidden bg-red-600 text-white py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-xs border-[3px] border-white hover:scale-105 active:translate-y-1 transition-all flex items-center justify-center gap-2 group"
+                    className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
                     style={{
-                      boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
                     }}
                   >
-                    {/* Glass layout elements */}
-                    <div className="absolute inset-0 pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
-                    }}></div>
-                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
-                    }}></div>
-                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
-                    }}></div>
-                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(225deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
-                    }}></div>
-                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.2), transparent)'
-                    }}></div>
-
-                    <span className="relative z-20">CONFERMA USCITA</span>
+                    <img 
+                      src="/pulsantecristallo.png" 
+                      alt="Conferma Uscita" 
+                      className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
+                      style={{
+                        filter: 'hue-rotate(320deg) saturate(1.6) brightness(0.95)'
+                      }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center gap-4 z-20">
+                      <span className="font-orbitron font-black text-lg tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                        CONFERMA USCITA
+                      </span>
+                    </div>
                   </button>
                   <button
                     onPointerDown={(e) => { e.stopPropagation(); setActiveModal(null); }}
-                    className="w-full relative overflow-hidden bg-slate-800 text-slate-200 py-3 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border-[3px] border-white/60 hover:scale-105 active:translate-y-1 transition-all flex items-center justify-center gap-2 group"
+                    className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
                     style={{
-                      boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      marginTop: '-25px',
                     }}
                   >
-                    {/* Glass layout elements */}
-                    <div className="absolute inset-0 pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
-                    }}></div>
-                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
-                    }}></div>
-                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
-                    }}></div>
-                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(225deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
-                    }}></div>
-                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.2), transparent)'
-                    }}></div>
-
-                    <span className="relative z-20">ANNULLA</span>
+                    <img 
+                      src="/pulsantecristallo.png" 
+                      alt="Annulla" 
+                      className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
+                      style={{
+                        filter: 'hue-rotate(185deg) saturate(1.4) brightness(0.9)'
+                      }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center gap-4 z-20">
+                      <span className="font-orbitron font-black text-lg tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                        ANNULLA
+                      </span>
+                    </div>
                   </button>
                 </div>
               </div>
