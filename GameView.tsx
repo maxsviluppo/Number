@@ -6225,8 +6225,8 @@ const GameView: React.FC = () => {
                 <div className="absolute w-3 h-3 rotate-[60deg] bg-blue-400/20 blur-[1px] top-2/3 left-[75%] animate-[bounce_5s_infinite]" />
               </div>
 
-              {/* Centered GUI Container with 9:16 layout limits (shifted 64px higher) */}
-              <div className="w-full max-w-sm flex flex-col relative z-10 -translate-y-16" onPointerDown={e => e.stopPropagation()}>
+              {/* Centered GUI Container with 9:16 layout limits (shifted 8px higher instead of 64px, lowering it by 56px) */}
+              <div className="w-full max-w-sm flex flex-col relative z-10 -translate-y-2" onPointerDown={e => e.stopPropagation()}>
                 
                 {/* Header Section (OUTSIDE of the main framed box, but centered above it) */}
                 <div className="flex flex-col items-center mb-6">
