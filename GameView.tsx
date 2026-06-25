@@ -60,6 +60,7 @@ const SURRENDER_VIDEOS = ['/Resa1noaudio.mp4'];
 
 // BOSS_LEVELS imported from constants/boss_levels
 const GameView: React.FC = () => {
+  const isWebOnly = !(window as any).Capacitor?.isNativePlatform?.();
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
     totalScore: 0,
@@ -140,7 +141,6 @@ const GameView: React.FC = () => {
 
   // Web-only: hide bottom navigation bar when in a match
   useEffect(() => {
-    const isWebOnly = !(window as any).Capacitor?.isNativePlatform?.();
     if (isWebOnly && gameState.status !== 'idle') {
       document.body.classList.add('in-game');
     } else {
@@ -3926,20 +3926,22 @@ const GameView: React.FC = () => {
 
 
               {/* TOP LEFT: Site Link */}
-              <div className="fixed top-12 left-6 z-[3000] flex gap-3 items-center">
-                <button
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    soundService.playUIClick();
-                    window.open("https://www.numbergame.it/site", "_blank");
-                  }}
-                  className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group cursor-pointer"
-                  title="Vai al Sito"
-                >
-                  <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
-                  <Globe size={22} className="relative z-20 text-white drop-shadow-md opacity-100" strokeWidth={2.5} />
-                </button>
-              </div>
+              {isWebOnly && (
+                <div className="fixed top-12 left-6 z-[3000] flex gap-3 items-center">
+                  <button
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      soundService.playUIClick();
+                      window.open("https://www.numbergame.it/site", "_blank");
+                    }}
+                    className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group cursor-pointer"
+                    title="Vai al Sito"
+                  >
+                    <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
+                    <Globe size={22} className="relative z-20 text-white drop-shadow-md opacity-100" strokeWidth={2.5} />
+                  </button>
+                </div>
+              )}
 
               {/* TOP RIGHT: Action Buttons (Audio) */}
               <div className="fixed top-12 right-6 z-[3000] flex gap-3 items-center">
@@ -4049,19 +4051,21 @@ const GameView: React.FC = () => {
                 </button>
 
                 {/* Admin Access */}
-                <button
-                  onPointerDown={async (e) => {
-                    e.stopPropagation();
-                    await handleUserInteraction();
-                    soundService.playUIClick();
-                    setActiveModal('admin');
-                  }}
-                  className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
-                  title="Admin Access"
-                >
-                  <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
-                  <Shield size={22} className="relative z-20 text-white drop-shadow-md" strokeWidth={2.5} />
-                </button>
+                {isWebOnly && (
+                  <button
+                    onPointerDown={async (e) => {
+                      e.stopPropagation();
+                      await handleUserInteraction();
+                      soundService.playUIClick();
+                      setActiveModal('admin');
+                    }}
+                    className="relative w-12 h-12 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
+                    title="Admin Access"
+                  >
+                    <img src="/CasellaGlass.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
+                    <Shield size={22} className="relative z-20 text-white drop-shadow-md" strokeWidth={2.5} />
+                  </button>
+                )}
               </div>
               <div className="mb-6 flex flex-col items-center">
                 {/* Logo: Custom Shape Image with White Border & Brain */}
@@ -5545,179 +5549,194 @@ const GameView: React.FC = () => {
               )}
 
               {gameState.status === 'level-complete' && (
-                <div className={`p-6 rounded-[2.5rem] text-center modal-content animate-screen-in w-full max-w-md relative overflow-hidden border-[4px] backdrop-blur-2xl transition-all duration-300
-                  ${gameState.isBossLevel
-                    ? 'border-yellow-400/80 shadow-[0_40px_100px_rgba(0,0,0,0.85),0_0_40px_rgba(250,204,21,0.3)]'
-                    : 'border-orange-500/80 shadow-[0_40px_100px_rgba(0,0,0,0.85),0_0_40px_rgba(251,146,60,0.3)]'}`}
-                  style={{
-                    background: gameState.isBossLevel
-                      ? 'linear-gradient(135deg, rgba(45,35,10,0.75) 0%, rgba(20,15,5,0.9) 100%)'
-                      : 'linear-gradient(135deg, rgba(45,20,5,0.75) 0%, rgba(20,10,2,0.9) 100%)',
-                    boxShadow: '0 40px 100px rgba(0,0,0,0.85), inset 0 4px 12px rgba(255,255,255,0.35), inset 0 -4px 12px rgba(0,0,0,0.6)'
-                  }}>
+                <div className="w-full max-w-sm flex flex-col relative z-10 -translate-y-16" onPointerDown={e => e.stopPropagation()}>
                   
-                  {/* Glass layout elements */}
-                  <div className="absolute inset-0 pointer-events-none z-0" style={{
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.03) 70.1%, rgba(255,255,255,0.1) 100%)'
-                  }}></div>
-                  <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-[2.5rem] z-0" style={{
-                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.18), transparent)'
-                  }}></div>
-
-                  {gameState.isBossLevel ? (
-                    // BOSS WIN SCREEN
-                    <div className="relative z-10">
-                      <Crown className="w-20 h-20 text-yellow-400 mx-auto mb-4 animate-bounce" />
-                      <h2 className="text-4xl font-black font-orbitron text-yellow-400 mb-2 uppercase tracking-wider drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]">BOSS SCONFITTO!</h2>
-                      <div className="text-xs font-bold text-white mb-6 uppercase tracking-[0.1em] bg-yellow-500/20 py-1 rounded">Dominio Matematico Stabilito</div>
-
-                      <div className="border-[2px] border-yellow-500/30 rounded-2xl p-5 mb-6 backdrop-blur-md shadow-[inset_0_2px_6px_rgba(255,255,255,0.15)] bg-white/5">
-                        <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest block mb-2">Ricompensa</span>
-                        <div className="text-3xl font-black font-orbitron text-white text-shadow-neon-yellow flex flex-col items-center gap-1">
-                          <span>{BOSS_LEVELS.find(b => b.id === gameState.bossLevelId)?.reward || "BOUNTY"}</span>
-                          <span className="text-xs text-yellow-500 font-bold">+{gameState.bossLevelId === 2 ? '1500' : '1000'} PUNTI</span>
-                        </div>
+                  {/* Header Section (OUTSIDE of the main framed box, but centered above it) */}
+                  <div className="flex flex-col items-center mb-6">
+                    {/* 3D Octagonal Crystal Emblem using ottagonocristallo.png (shifted down 20px) */}
+                    <div className="relative w-32 h-32 flex items-center justify-center mb-1 translate-y-5">
+                      <img src="/ottagonocristallo.png" alt="Emblema Ottagono" className="absolute inset-0 w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(6,182,212,0.5)]" />
+                      <div className="relative z-10 flex items-center justify-center">
+                        {gameState.isBossLevel ? (
+                          <Crown size={36} className="text-yellow-300 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)] animate-pulse" />
+                        ) : (
+                          <Trophy size={36} className="text-white opacity-60 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]" strokeWidth={2.5} />
+                        )}
                       </div>
-
-                      <button onPointerDown={async (e) => {
-                        e.stopPropagation();
-                        // Badge already saved when targets completed
-                        console.log(`🏠 Tornando alla home. Boss ${gameState.bossLevelId} già salvato.`);
-                        setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null, status: 'idle' }));
-                      }}
-                        className="w-full relative overflow-hidden text-white py-5 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-base border-[4px] border-white active:translate-y-1 transition-all hover:scale-[1.02] duration-300 flex items-center justify-center gap-3 group bg-gradient-to-r from-yellow-550 to-yellow-700 shadow-[0_8px_0_rgba(0,0,0,0.3),inset_0_4px_8px_rgba(255,255,255,0.5),inset_0_-4px_8px_rgba(0,0,0,0.5)]">
-                        {/* 3D Glass shine layer */}
-                        <div className="absolute inset-0 pointer-events-none z-10" style={{
-                          background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
-                        }}></div>
-                        <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                          background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                        }}></div>
-                        <span className="relative z-20 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">RISCATTA & TORNA ALLA BASE</span>
-                      </button>
                     </div>
-                  ) : (
-                    // STANDARD LEVEL WIN
-                    <div className="relative z-10">
-                      {/* Header with Level Progression */}
-                      <div className="text-center mb-4">
-                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-[3px] border-white/50 shadow-[0_0_20px_rgba(255,136,0,0.4)] mb-2">
-                          <Trophy className="w-7 h-7 text-white" />
-                        </div>
-                        <h2 className="text-2xl font-black font-orbitron text-white uppercase tracking-widest mb-1 drop-shadow-lg">
-                          LIVELLO <span className="text-[#FF8800]">COMPLETATO</span>
-                        </h2>
-                        <div className="h-0.5 w-24 bg-gradient-to-r from-transparent via-[#FF8800] to-transparent mx-auto rounded-full"></div>
+                    <h2 className="text-2xl font-black font-orbitron text-cyan-400 uppercase tracking-widest text-center drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">
+                      {gameState.isBossLevel ? 'BOSS SCONFITTO!' : 'LIVELLO COMPLETATO'}
+                    </h2>
+                  </div>
+
+                  {/* Cornice Principale (Main Framed Card Container) */}
+                  <div className="bg-[#03091e]/90 border border-cyan-400 rounded-[2rem] shadow-[0_0_20px_rgba(34,211,238,0.5),_inset_0_0_15px_rgba(34,211,238,0.3)] w-full p-6 flex flex-col relative overflow-hidden backdrop-blur-xl">
+
+                    {/* Decorative neon corner highlights */}
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t border-l border-cyan-300" />
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t border-r border-cyan-300" />
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b border-l border-cyan-300" />
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b border-r border-cyan-300" />
+
+                    {/* Sub-title */}
+                    <div className="text-center mt-2 mb-4">
+                      <span className="text-[11px] text-slate-300 font-bold uppercase tracking-[0.25em] font-orbitron">
+                        {gameState.isBossLevel ? 'RISULTATO BATTAGLIA' : `COMPLETATO LVL ${gameState.level}`}
+                      </span>
+                    </div>
+
+                    {/* Large Level/Next Indicator (Cyan Neon Ring + Amber Gold 3D Level) */}
+                    <div className="relative flex items-center justify-center mb-6">
+                      <div className="w-36 h-36 rounded-full border-4 border-cyan-400 flex items-center justify-center relative shadow-[0_0_25px_rgba(34,211,238,0.8),_inset_0_0_20px_rgba(34,211,238,0.5)]"
+                           style={{ background: 'radial-gradient(circle, rgba(6, 182, 212, 0.05) 0%, rgba(3, 9, 30, 0.4) 100%)' }}>
+                        
+                        {gameState.isBossLevel ? (
+                          <Trophy size={48} className="text-amber-400 animate-pulse drop-shadow-[0_0_15px_rgba(251,191,36,0.8)]" />
+                        ) : (
+                          /* Crystalline 3D Number for Next Level */
+                          <div className="text-[5.5rem] font-black font-orbitron text-transparent bg-clip-text select-none relative z-10 leading-none mt-1 animate-pulse"
+                               style={{
+                                 backgroundImage: 'linear-gradient(to bottom, #FFE699 0%, #FFD54F 35%, #FFB300 65%, #FF6F00 100%)',
+                                 filter: 'drop-shadow(0 2px 0px rgba(0,0,0,0.8)) drop-shadow(0 4px 6px rgba(0,0,0,0.6)) drop-shadow(0 0 15px rgba(255,179,0,0.8))',
+                                 WebkitTextStroke: '1px rgba(255, 255, 255, 0.2)'
+                               }}>
+                            {gameState.level + 1}
+                          </div>
+                        )}
                       </div>
+                    </div>
 
-                      {/* Level Progression Card */}
-                      <div className="border-[2px] border-orange-500/30 rounded-2xl p-4 mb-5 backdrop-blur-md shadow-[inset_0_2px_6px_rgba(255,255,255,0.15)] bg-white/5">
-                        <div className="flex justify-center items-center gap-4 mb-3">
-                          <div className="flex flex-col items-center">
-                            <span className="text-[8px] uppercase font-black text-white/40 tracking-[0.2em] mb-0.5">COMPLETATO</span>
-                            <div className="w-auto min-w-[4rem] px-2 h-16 rounded-xl bg-white/5 border-2 border-white/10 flex items-center justify-center">
-                              <span className={`font-black font-orbitron text-white ${gameState.level > 999 ? 'text-xl' : 'text-2xl'}`}>{gameState.level}</span>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-8 h-8 text-[#FF8800] animate-pulse" strokeWidth={3} />
-                          <div className="flex flex-col items-center">
-                            <span className="text-[8px] uppercase font-black text-[#FF8800] tracking-[0.2em] mb-0.5">PROSSIMO</span>
-                            <div className="w-auto min-w-[4rem] px-2 h-16 rounded-xl bg-gradient-to-br from-[#FF8800] to-orange-700 border-[2px] border-white/40 flex items-center justify-center shadow-lg">
-                              <span className={`font-black font-orbitron text-white drop-shadow-md ${gameState.level + 1 > 999 ? 'text-2xl' : 'text-3xl'}`}>{gameState.level + 1}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Stats Grid */}
-                        <div className="space-y-2">
-                          <div className="bg-black/30 rounded-xl p-2.5 border border-white/10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-center gap-1.5">
-                                <Sparkles size={12} className="text-[#FF8800]" />
-                                <span className="text-[9px] font-black text-white/70 uppercase tracking-wider">Punti Livello</span>
-                              </div>
-                              <span className="text-lg font-orbitron font-black text-[#FF8800]">
-                                +{gameState.score > 0 ? (gameState.timeLeft * 2) + 50 + (10 * 5) : '...'}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="bg-black/30 rounded-xl p-2.5 border border-white/10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-center gap-1.5">
-                                <Trophy size={12} className="text-amber-400" />
-                                <span className="text-[9px] font-black text-white/70 uppercase tracking-wider">Punteggio Totale</span>
-                              </div>
-                              <span className="text-lg font-orbitron font-black text-white">{gameState.totalScore}</span>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-emerald-500/10 rounded-xl p-2.5 border border-emerald-500/20 flex flex-col items-center">
-                              <div className="flex items-center gap-1 mb-1">
-                                <Timer size={10} className="text-emerald-400" />
-                                <span className="text-[8px] font-black uppercase text-emerald-400 tracking-wider">Residuo</span>
-                              </div>
-                              <span className="text-base font-orbitron font-black text-emerald-300">{gameState.timeLeft}s</span>
-                            </div>
-                            <div className="bg-emerald-500/20 rounded-xl p-2.5 border border-emerald-500/30 flex flex-col items-center">
-                              <div className="flex items-center gap-1 mb-1">
-                                <Zap size={10} className="text-emerald-300" />
-                                <span className="text-[8px] font-black uppercase text-emerald-300 tracking-wider">Nuovo Totale</span>
-                              </div>
-                              <span className="text-base font-orbitron font-black text-white">{gameState.timeLeft + 60}s</span>
-                            </div>
-                          </div>
+                    {/* Metrics Stats (SCORES on left, TIME on right) - Styled as glowing cyan LED */}
+                    <div className="grid grid-cols-2 gap-6 w-full mb-8 relative z-10">
+                      
+                      {/* PUNTI LIVELLO */}
+                      <div className="flex flex-col items-center">
+                        <span className="text-[11px] font-black tracking-widest text-cyan-400 mb-2 uppercase font-orbitron drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]">PUNTI</span>
+                        <div className="flex items-center justify-center min-h-[2rem]">
+                          <span className="text-2xl font-black font-orbitron text-cyan-300 tracking-wide drop-shadow-[0_0_12px_rgba(34,211,238,0.95)]">
+                            +{gameState.isBossLevel 
+                              ? (gameState.bossLevelId === 2 ? '1500' : '1000')
+                              : (gameState.score > 0 ? (gameState.timeLeft * 2) + 50 + (10 * 5) : '')}
+                          </span>
                         </div>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="space-y-2.5">
-                        <button onPointerDown={(e) => { e.stopPropagation(); nextLevel(); }}
-                          className="w-full relative overflow-hidden text-white py-5 px-6 rounded-2xl font-orbitron font-black uppercase tracking-widest text-base border-[4px] border-white active:translate-y-1 transition-all hover:scale-[1.02] duration-300 flex items-center justify-center gap-3 group bg-gradient-to-r from-[#FF8800] to-orange-600 shadow-[0_8px_0_rgba(0,0,0,0.3),inset_0_4px_8px_rgba(255,255,255,0.5),inset_0_-4px_8px_rgba(0,0,0,0.5)]">
-                          {/* 3D Glass shine layer */}
-                          <div className="absolute inset-0 pointer-events-none z-10" style={{
-                            background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
-                          }}></div>
-                          <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                            background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                          }}></div>
-                          <Play className="w-5 h-5 fill-current relative z-20 group-hover:scale-110 transition-transform text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]" />
-                          <span className="relative z-20 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">PROSSIMO LIVELLO</span>
-                        </button>
+                      {/* TOTALE */}
+                      <div className="flex flex-col items-center">
+                        <span className="text-[11px] font-black tracking-widest text-cyan-400 mb-2 uppercase font-orbitron drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]">TOTALE</span>
+                        <div className="flex items-center justify-center min-h-[2rem]">
+                          <span className="text-2xl font-black font-orbitron text-cyan-300 tracking-wide drop-shadow-[0_0_12px_rgba(34,211,238,0.95)]">
+                            {gameState.totalScore}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
+                    {/* Time Residue Info */}
+                    {!gameState.isBossLevel && (
+                      <div className="grid grid-cols-2 gap-3 mb-6 w-full text-center">
+                        <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl py-1.5 px-3 flex flex-col items-center justify-center animate-pulse">
+                          <span className="text-[8px] text-cyan-400 uppercase font-black tracking-wider">Tempo residuo</span>
+                          <span className="text-sm font-orbitron font-black text-cyan-300">{gameState.timeLeft}s</span>
+                        </div>
+                        <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl py-1.5 px-3 flex flex-col items-center justify-center animate-pulse">
+                          <span className="text-[8px] text-cyan-400 uppercase font-black tracking-wider">Nuovo tempo</span>
+                          <span className="text-sm font-orbitron font-black text-cyan-300">{gameState.timeLeft + 60}s</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reward description if boss level */}
+                    {gameState.isBossLevel && (
+                      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl py-2 px-3 mb-6 text-center animate-pulse">
+                        <span className="text-[8px] text-yellow-400 uppercase font-black tracking-wider block">RICOMPENSA SBLOCCATA</span>
+                        <span className="text-sm font-orbitron font-black text-white">
+                          {BOSS_LEVELS.find(b => b.id === gameState.bossLevelId)?.reward || "BOUNTY"}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Actions Section */}
+                    <div className="space-y-4 relative z-10">
+                      {/* Custom CSS for 3D crystal button active state */}
+                      <style dangerouslySetInnerHTML={{__html: `
+                        .crystal-3d-btn {
+                          transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+                        }
+                        .crystal-3d-btn:active {
+                          transform: translateY(5px) !important;
+                          box-shadow: 0 1px 0 #b33600, 0 4px 10px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.4) !important;
+                        }
+                      `}} />
+
+                      {/* Pulsante Avvio: faceted 3D amber-gold crystal block */}
+                      <button
+                        onPointerDown={async (e) => {
+                          e.stopPropagation();
+                          if (gameState.isBossLevel) {
+                            console.log(`🏠 Tornando alla home. Boss ${gameState.bossLevelId} già salvato.`);
+                            setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null, status: 'idle' }));
+                          } else {
+                            nextLevel();
+                          }
+                        }}
+                        className="w-full relative overflow-hidden py-4 rounded-xl flex items-center justify-center font-orbitron font-black tracking-wider text-cyan-300 border border-amber-300/80 hover:brightness-110 transition-all select-none crystal-3d-btn cursor-pointer"
+                        style={{
+                          background: 'linear-gradient(135deg, #e65100 0%, #ff8800 25%, #ffb300 50%, #ff8800 75%, #e65100 100%)',
+                          boxShadow: '0 6px 0 #b33600, 0 10px 20px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.4)',
+                          textShadow: '0 0 8px rgba(34, 211, 238, 0.9)'
+                        }}
+                      >
+                        {/* Crystal Texture Overlay */}
+                        <img src="/ottagonocristallo.png" alt="Crystal Texture" className="absolute inset-0 w-full h-full object-cover opacity-35 mix-blend-overlay pointer-events-none" />
+                        <div className="absolute inset-0 pointer-events-none opacity-40 mix-blend-overlay" style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%, rgba(0,0,0,0.6) 100%)'
+                        }} />
+                        <span className="relative z-10 text-lg uppercase tracking-widest">
+                          {gameState.isBossLevel ? 'RISCATTA & TORNA' : 'PROSSIMO LIVELLO'}
+                        </span>
+                      </button>
+
+                      {/* Sub-actions for standard levels */}
+                      {!gameState.isBossLevel && (
                         <div className="grid grid-cols-2 gap-2">
-                          <button onPointerDown={(e) => { e.stopPropagation(); startGame(gameState.level); }}
-                            className="relative overflow-hidden bg-slate-800 text-white/95 py-3 rounded-2xl font-orbitron font-black uppercase tracking-widest text-[9px] border-[3px] border-white/20 active:translate-y-1 transition-all hover:scale-[1.02] duration-300 hover:bg-slate-750 flex items-center justify-center gap-1.5 shadow-[0_5px_0_rgba(0,0,0,0.25),inset_0_2px_4px_rgba(255,255,255,0.25),inset_0_-2px_4px_rgba(0,0,0,0.45)]">
-                            <div className="absolute inset-0 pointer-events-none z-10" style={{
-                              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%)'
-                            }}></div>
-                            <RefreshCw size={12} className="relative z-20" />
-                            <span className="relative z-20">RIGIOCA</span>
+                          <button
+                            onPointerDown={(e) => { e.stopPropagation(); startGame(gameState.level); }}
+                            className="relative overflow-hidden py-3 rounded-xl flex items-center justify-center gap-1.5 font-orbitron font-bold tracking-wider text-cyan-300 border border-slate-600/40 hover:border-cyan-400/50 hover:brightness-110 active:scale-95 transition-all select-none cursor-pointer"
+                            style={{
+                              background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%)',
+                              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.5)',
+                              textShadow: '0 0 6px rgba(34, 211, 238, 0.6)',
+                              fontSize: '10px'
+                            }}
+                          >
+                            <RefreshCw size={11} className="relative z-10 text-cyan-400" />
+                            <span className="relative z-10 uppercase">RIGIOCA</span>
                           </button>
                           
-                          <button onPointerDown={(e) => {
-                            e.stopPropagation();
-                            resetDuelState(activeMatch?.id, currentUser?.id);
-                            goToHome(e);
-                            setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
-                          }}
-                            className="relative overflow-hidden bg-slate-800 text-white/95 py-3 rounded-2xl font-orbitron font-black uppercase tracking-widest text-[9px] border-[3px] border-white/20 active:translate-y-1 transition-all hover:scale-[1.02] duration-300 hover:bg-slate-750 flex items-center justify-center gap-1.5 shadow-[0_5px_0_rgba(0,0,0,0.25),inset_0_2px_4px_rgba(255,255,255,0.25),inset_0_-2px_4px_rgba(0,0,0,0.45)]">
-                            <div className="absolute inset-0 pointer-events-none z-10" style={{
-                              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.05) 30%, transparent 30.1%)'
-                            }}></div>
-                            <Home size={12} className="relative z-20" />
-                            <span className="relative z-20">HOME</span>
+                          <button
+                            onPointerDown={(e) => {
+                              e.stopPropagation();
+                              resetDuelState(activeMatch?.id, currentUser?.id);
+                              goToHome(e);
+                              setGameState(prev => ({ ...prev, isBossLevel: false, bossLevelId: null }));
+                            }}
+                            className="relative overflow-hidden py-3 rounded-xl flex items-center justify-center gap-1.5 font-orbitron font-bold tracking-wider text-cyan-300 border border-slate-600/40 hover:border-cyan-400/50 hover:brightness-110 active:scale-95 transition-all select-none cursor-pointer"
+                            style={{
+                              background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%)',
+                              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.5)',
+                              textShadow: '0 0 6px rgba(34, 211, 238, 0.6)',
+                              fontSize: '10px'
+                            }}
+                          >
+                            <Home size={11} className="relative z-10 text-cyan-400" />
+                            <span className="relative z-10 uppercase">BASE</span>
                           </button>
                         </div>
-
-                        <div className="flex items-center justify-center gap-2 pt-1 opacity-55">
-                          <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
-                          <span className="text-[8px] text-cyan-400 uppercase font-black tracking-[0.2em] drop-shadow-[0_0_2px_rgba(34,211,238,0.5)]">Salvataggio Automatico</span>
-                        </div>
-                      </div>
+                      )}
                     </div>
-                  )}
+
+                  </div>
                 </div>
               )}
             </main>
@@ -6189,139 +6208,176 @@ const GameView: React.FC = () => {
 
         {
           activeModal === 'resume_confirm' && (
-            <div className="fixed inset-0 z-[5000] flex flex-col items-center justify-center p-4 md:p-6 modal-overlay bg-black/85 backdrop-blur-sm overflow-y-auto" onPointerDown={() => setActiveModal(null)}>
+            <div className="fixed inset-0 z-[5000] flex flex-col items-center justify-center p-4 md:p-6 modal-overlay bg-[#020617]/95 backdrop-blur-md overflow-y-auto" onPointerDown={() => setActiveModal(null)}>
               
-              {/* Header Section (OUTSIDE of the framed box) */}
-              <div className="relative z-10 text-center mb-4 flex flex-col items-center pointer-events-none" onPointerDown={e => e.stopPropagation()}>
-                <div className="relative inline-flex items-center justify-center w-14 h-14 mb-2 group active:scale-95 transition-all">
-                  <img src="/CasellaGlass.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
-                  <Brain className="relative w-7 h-7 text-white drop-shadow-md z-10 animate-pulse" strokeWidth={2.5} />
-                </div>
-                <h2 className="text-2xl font-black font-orbitron text-white uppercase tracking-widest mb-1 drop-shadow-md">
-                  MISSIONE <span className="text-[#FF8800]">CARRIERA</span>
-                </h2>
-                <div className="h-0.5 w-20 bg-[#FF8800]/50 mx-auto rounded-full"></div>
+              {/* Smoky background and crystalline floaters */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                {/* Blue smoke swirls */}
+                <div className="absolute w-[500px] h-[500px] rounded-full bg-cyan-500/10 blur-[120px] -top-40 -left-40 animate-[pulse_10s_infinite_alternate]" />
+                <div className="absolute w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[140px] -bottom-20 -right-20 animate-[pulse_8s_infinite_alternate]" />
+                <div className="absolute w-[300px] h-[300px] rounded-full bg-indigo-500/5 blur-[95px] top-1/3 left-1/4 animate-[pulse_12s_infinite]" />
+                
+                {/* Crystalline particles (blurry floaters) */}
+                <div className="absolute w-4 h-4 rotate-45 bg-cyan-400/20 blur-[1px] top-1/4 left-[10%] animate-[bounce_6s_infinite]" />
+                <div className="absolute w-6 h-6 rotate-12 bg-amber-400/10 blur-[2px] bottom-1/4 right-[15%] animate-[bounce_8s_infinite]" />
+                <div className="absolute w-3 h-3 rotate-[60deg] bg-blue-400/20 blur-[1px] top-2/3 left-[75%] animate-[bounce_5s_infinite]" />
               </div>
 
-              {/* Framed Card container starts from here (Level down to buttons) */}
-              <div className="bg-slate-900/90 border-[3px] border-[#FF8800]/50 w-full max-w-md p-6 md:p-8 rounded-[2.5rem] shadow-[0_0_60px_rgba(255,136,0,0.3)] flex flex-col relative overflow-hidden backdrop-blur-xl" onPointerDown={e => e.stopPropagation()}>
-
-                {/* Premium Background Decor */}
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#FF8800] to-transparent animate-pulse"></div>
-
-                {/* Main Info Card */}
-                <div className="bg-black/40 border border-[#FF8800]/20 rounded-3xl p-5 mb-6 relative z-10 backdrop-blur-md">
-                  <div className="flex flex-col items-center">
-                    <span className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] mb-1.5">LIVELLO ATTUALE</span>
-                    <div className="text-7xl font-black font-orbitron text-white drop-shadow-[0_0_30px_rgba(255,136,0,0.4)] mb-4">
-                      {savedGame?.level || 1}
+              {/* Centered GUI Container with 9:16 layout limits (shifted 64px higher) */}
+              <div className="w-full max-w-sm flex flex-col relative z-10 -translate-y-16" onPointerDown={e => e.stopPropagation()}>
+                
+                {/* Header Section (OUTSIDE of the main framed box, but centered above it) */}
+                <div className="flex flex-col items-center mb-6">
+                  {/* 3D Octagonal Crystal Emblem using ottagonocristallo.png (60% Larger) */}
+                  <div className="relative w-32 h-32 flex items-center justify-center mb-1">
+                    <img src="/ottagonocristallo.png" alt="Emblema Ottagono Cristallo" className="absolute inset-0 w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(6,182,212,0.5)]" />
+                    {/* Single white brain, centered, transparent at 60% */}
+                    <div className="relative z-10 flex items-center justify-center">
+                      <Brain size={36} className="text-white opacity-60 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]" strokeWidth={2.5} />
                     </div>
-
-                    {/* Progress Stats */}
-                    <div className="grid grid-cols-2 gap-3 w-full">
-                      <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col items-center">
-                        <div className="flex items-center gap-2 mb-1 text-amber-400">
-                          <Trophy size={12} />
-                          <span className="text-[9px] font-black uppercase tracking-wider">Punti Globali</span>
-                        </div>
-                        <span className="text-lg font-black font-orbitron text-white">{savedGame?.totalScore || 0}</span>
-                      </div>
-
-                      <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col items-center">
-                        <div className="flex items-center gap-2 mb-1 text-blue-400">
-                          <Timer size={12} />
-                          <span className="text-[9px] font-black uppercase tracking-wider">Tempo</span>
-                        </div>
-                        <span className="text-lg font-black font-orbitron text-white">
-                          {(savedGame?.timeLeft || 0) + parseInt(localStorage.getItem('career_time_bonus') || '0') + (userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 ? 60 : 0)}s
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Bonus Indicators */}
-                    {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (
-                      <div className="mt-3 w-full bg-orange-500/10 border border-orange-500/20 rounded-xl py-1.5 px-3 flex items-center justify-center gap-2 animate-pulse">
-                        <Sparkles size={12} className="text-[#FF8800]" />
-                        <span className="text-[9px] font-black text-[#FF8800] uppercase tracking-wider">
-                          Bonus Boss Attivo (+{localStorage.getItem('career_time_bonus')}s)
-                        </span>
-                      </div>
-                    )}
-
-                    {userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 && (
-                      <div className="mt-2 w-full bg-cyan-500/10 border border-cyan-500/20 rounded-xl py-1.5 px-3 flex items-center justify-center gap-2 animate-pulse">
-                        <Gift size={12} className="text-cyan-400" />
-                        <span className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">
-                          Bonus Invito Attivo (+60s)
-                        </span>
-                      </div>
-                    )}
                   </div>
+
+                  <h2 className="text-2xl font-black font-orbitron text-cyan-400 uppercase tracking-widest text-center drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">
+                    MISSIONE CARRIERA
+                  </h2>
                 </div>
 
-                {/* Actions Section */}
-                <div className="space-y-4 relative z-10">
-                  <button
-                    disabled={profileLoading}
-                    onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); savedGame ? restoreGame() : startGame(); }}
-                    className="w-full group relative overflow-hidden flex items-center justify-center gap-4 bg-[#FF8800] text-white py-5 rounded-2xl font-orbitron font-black text-lg border-[4px] border-white hover:scale-105 transition-all duration-300 active:translate-y-1 disabled:opacity-50 disabled:pointer-events-none"
-                    style={{
-                      boxShadow: '0 8px 0 rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.5), inset 0 -4px 8px rgba(0,0,0,0.5)'
-                    }}
-                  >
-                    {/* Glass layout elements */}
-                    <div className="absolute inset-0 pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.08) 70.1%, rgba(255,255,255,0.2) 100%)'
-                    }}></div>
-                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-2xl z-10" style={{
-                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)'
-                    }}></div>
-                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                    }}></div>
-                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(225deg, rgba(255,255,255,0.48), rgba(255,255,255,0.02))'
-                    }}></div>
-                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)'
-                    }}></div>
+                {/* Cornice Principale (Main Framed Card Container) */}
+                <div className="bg-[#03091e]/90 border border-cyan-400 rounded-[2rem] shadow-[0_0_20px_rgba(34,211,238,0.5),_inset_0_0_15px_rgba(34,211,238,0.3)] w-full p-6 flex flex-col relative overflow-hidden backdrop-blur-xl">
 
-                    <Play className="w-6 h-6 fill-current relative z-20" />
-                    <span className="tracking-widest relative z-20">
-                      {profileLoading ? 'CARICAMENTO...' : (savedGame ? 'RIPRENDI PARTITA' : 'INIZIA PARTITA')}
-                    </span>
-                  </button>
+                  {/* Decorative neon corner highlights */}
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t border-l border-cyan-300" />
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t border-r border-cyan-300" />
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b border-l border-cyan-300" />
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b border-r border-cyan-300" />
 
-                  <button
-                    onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
-                    className="w-full relative overflow-hidden bg-slate-800 text-slate-200 py-4 rounded-xl font-orbitron font-black uppercase tracking-widest text-[10px] border-[3px] border-white/60 active:translate-y-0.5 transition-all hover:scale-105 flex items-center justify-center gap-2 group"
-                    style={{
-                      boxShadow: '0 4px 0 rgba(0,0,0,0.15), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.45)'
-                    }}
-                  >
-                    {/* Glass layout elements */}
-                    <div className="absolute inset-0 pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 30%, transparent 30.1%, transparent 70%, rgba(255,255,255,0.05) 70.1%, rgba(255,255,255,0.15) 100%)'
-                    }}></div>
-                    <div className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-xl z-10" style={{
-                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.22), transparent)'
-                    }}></div>
-                    <div className="absolute top-[8%] left-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
-                    }}></div>
-                    <div className="absolute top-[8%] right-[4%] w-[20%] h-[20%] rounded-full filter blur-[1px] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(225deg, rgba(255,255,255,0.4), rgba(255,255,255,0.01))'
-                    }}></div>
-                    <div className="absolute bottom-0 inset-x-0 h-[25%] pointer-events-none z-10" style={{
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.2), transparent)'
-                    }}></div>
+                  {/* Sub-title */}
+                  <div className="text-center mt-2 mb-4">
+                    <span className="text-[11px] text-slate-300 font-bold uppercase tracking-[0.25em] font-orbitron">LIVELLO ATTUALE</span>
+                  </div>
 
-                    <Home size={14} className="relative z-20 text-slate-300" />
-                    <span className="relative z-20">INDIETRO</span>
-                  </button>
+                  {/* Large Level Indicator (Cyan Neon Ring + Amber Gold 3D Level) */}
+                  <div className="relative flex items-center justify-center mb-6">
+                    <div className="w-36 h-36 rounded-full border-4 border-cyan-400 flex items-center justify-center relative shadow-[0_0_25px_rgba(34,211,238,0.8),_inset_0_0_20px_rgba(34,211,238,0.5)]"
+                         style={{ background: 'radial-gradient(circle, rgba(6, 182, 212, 0.05) 0%, rgba(3, 9, 30, 0.4) 100%)' }}>
+                      
+                      {/* Crystalline 3D Number */}
+                      <div className="text-[5.5rem] font-black font-orbitron text-transparent bg-clip-text select-none relative z-10 leading-none mt-1 animate-pulse"
+                           style={{
+                             backgroundImage: 'linear-gradient(to bottom, #FFE699 0%, #FFD54F 35%, #FFB300 65%, #FF6F00 100%)',
+                             filter: 'drop-shadow(0 2px 0px rgba(0,0,0,0.8)) drop-shadow(0 4px 6px rgba(0,0,0,0.6)) drop-shadow(0 0 15px rgba(255,179,0,0.8))',
+                             WebkitTextStroke: '1px rgba(255, 255, 255, 0.2)'
+                           }}>
+                        {savedGame?.level || 1}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metrics Stats (SCORES on left, TIME on right) - Styled as glowing cyan LED */}
+                  <div className="grid grid-cols-2 gap-6 w-full mb-8 relative z-10">
+                    
+                    {/* SCORES */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[11px] font-black tracking-widest text-cyan-400 mb-2 uppercase font-orbitron drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]">SCORES</span>
+                      <div className="flex items-center justify-center min-h-[2rem]">
+                        <span className="text-2xl font-black font-orbitron text-cyan-300 tracking-wide drop-shadow-[0_0_12px_rgba(34,211,238,0.95)]">
+                          {savedGame?.totalScore && savedGame.totalScore > 0 ? savedGame.totalScore : ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* TIME */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[11px] font-black tracking-widest text-cyan-400 mb-2 uppercase font-orbitron drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]">TIME</span>
+                      <div className="flex items-center justify-center min-h-[2rem]">
+                        <span className="text-2xl font-black font-orbitron text-cyan-300 tracking-wide drop-shadow-[0_0_12px_rgba(34,211,238,0.95)]">
+                          {(() => {
+                            const t = (savedGame?.timeLeft || 0) + parseInt(localStorage.getItem('career_time_bonus') || '0') + (userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 ? 60 : 0);
+                            return t > 0 ? `${t}s` : '';
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Custom CSS for 3D crystal button active state */}
+                  <style dangerouslySetInnerHTML={{__html: `
+                    .crystal-3d-btn {
+                      transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+                    }
+                    .crystal-3d-btn:active {
+                      transform: translateY(5px) !important;
+                      box-shadow: 0 1px 0 #b33600, 0 4px 10px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.4) !important;
+                    }
+                  `}} />
+
+                  {/* Bonus Indicators (if any, styled cleanly inside the frame) */}
+                  {!!(parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 || (userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0)) && (
+                    <div className="flex flex-col gap-2 mb-6 w-full text-center">
+                      {parseInt(localStorage.getItem('career_time_bonus') || '0') > 0 && (
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl py-1.5 px-3 flex items-center justify-center gap-2 animate-pulse">
+                          <Sparkles size={12} className="text-[#FF8800]" />
+                          <span className="text-[9px] font-black text-[#FF8800] uppercase tracking-wider">
+                            Bonus Boss: +{localStorage.getItem('career_time_bonus')}s
+                          </span>
+                        </div>
+                      )}
+
+                      {userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 && (
+                        <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl py-1.5 px-3 flex items-center justify-center gap-2 animate-pulse">
+                          <Gift size={12} className="text-cyan-400" />
+                          <span className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">
+                            Bonus Invito: +60s
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Actions Section */}
+                  <div className="space-y-4 relative z-10">
+                    {/* Pulsante Avvio: faceted 3D amber-gold crystal block */}
+                    <button
+                      disabled={profileLoading}
+                      onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); savedGame ? restoreGame() : startGame(); }}
+                      className="w-full relative overflow-hidden py-4 rounded-xl flex items-center justify-center font-orbitron font-black tracking-wider text-cyan-300 border border-amber-300/80 hover:brightness-110 transition-all select-none disabled:opacity-50 disabled:pointer-events-none crystal-3d-btn cursor-pointer"
+                      style={{
+                        background: 'linear-gradient(135deg, #e65100 0%, #ff8800 25%, #ffb300 50%, #ff8800 75%, #e65100 100%)',
+                        boxShadow: '0 6px 0 #b33600, 0 10px 20px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255, 255, 255, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.4)',
+                        textShadow: '0 0 8px rgba(34, 211, 238, 0.9)'
+                      }}
+                    >
+                      {/* Crystal Texture Overlay */}
+                      <img src="/ottagonocristallo.png" alt="Crystal Texture" className="absolute inset-0 w-full h-full object-cover opacity-35 mix-blend-overlay pointer-events-none" />
+                      {/* Specular Facet Highlights */}
+                      <div className="absolute inset-0 pointer-events-none opacity-40 mix-blend-overlay" style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%, rgba(0,0,0,0.6) 100%)'
+                      }} />
+                      <span className="relative z-10 text-lg uppercase tracking-widest">
+                        {profileLoading ? 'CARICAMENTO...' : 'INIZIA PARTITA'}
+                      </span>
+                    </button>
+
+                    {/* Pulsante Ritorno: dark smoke/anthracite crystal block */}
+                    <button
+                      onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); setActiveModal(null); }}
+                      className="w-full relative overflow-hidden py-4 rounded-xl flex items-center justify-center gap-2 font-orbitron font-bold tracking-wider text-cyan-300 border border-slate-600/40 hover:border-cyan-400/50 hover:brightness-110 active:scale-95 transition-all select-none"
+                      style={{
+                        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%)',
+                        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.15), inset 0 -2px 4px rgba(0, 0, 0, 0.5)',
+                        textShadow: '0 0 6px rgba(34, 211, 238, 0.6)'
+                      }}
+                    >
+                      {/* Specular Facet Highlights */}
+                      <div className="absolute inset-0 pointer-events-none opacity-20 mix-blend-overlay" style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(0,0,0,0.4) 100%)'
+                      }} />
+                      <Home size={16} className="relative z-10 text-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.6)]" />
+                      <span className="relative z-10 text-sm uppercase tracking-widest">INDIETRO</span>
+                    </button>
+                  </div>
+
                 </div>
-
               </div>
             </div>
           )
