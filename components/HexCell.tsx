@@ -78,11 +78,6 @@ const HexCell: React.FC<HexCellProps> = ({
 
   // Gestione animazioni di selezione e deselezione
   useEffect(() => {
-    if (isSelected && !prevSelected.current) {
-      setAnimationClass('animate-hex-select');
-    } else if (!isSelected && prevSelected.current) {
-      setAnimationClass('animate-hex-deselect');
-    }
     prevSelected.current = isSelected;
   }, [isSelected]);
 
@@ -118,7 +113,9 @@ const HexCell: React.FC<HexCellProps> = ({
         ? 'animate-fallen'
         : data.isVibrating
           ? 'animate-vibrate'
-          : animationClass;
+          : isSelected
+            ? 'animate-hex-select'
+            : animationClass;
 
   const finaleStyle: React.CSSProperties = data.finaleMode === 'win'
     ? {
@@ -138,7 +135,7 @@ const HexCell: React.FC<HexCellProps> = ({
 
   return (
     <div
-      className={`absolute transition-transform duration-[75ms] ease-out flex items-center justify-center pointer-events-none
+      className={`absolute flex items-center justify-center pointer-events-none
         ${isOrangeTheme ? '' : shapeClass} 
         ${!isOrangeTheme ? 'border-2' : ''} 
         ${cellAnimation}

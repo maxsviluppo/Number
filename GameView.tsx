@@ -95,6 +95,8 @@ const GameView: React.FC = () => {
   const [tutorialStep, setTutorialStep] = useState(0);
   const [targetAnimKey, setTargetAnimKey] = useState(0);
   const [scoreAnimKey, setScoreAnimKey] = useState(0);
+  const [lastPointsGained, setLastPointsGained] = useState<number>(0);
+  const [floatingPointsPos, setFloatingPointsPos] = useState<{ x: number, y: number } | null>(null);
   const [isVictoryAnimating, setIsVictoryAnimating] = useState(false);
   const [gridFinale, setGridFinale] = useState<{ mode: 'win' | 'lose'; showTitle: boolean } | null>(null);
   const [winConfettiKey, setWinConfettiKey] = useState(0);
@@ -2651,6 +2653,26 @@ const GameView: React.FC = () => {
         vibrateDevice([40, 30, 40]); // Subtle double-pulse for success on mobile
         setPathStatus('correct');
         setMatchedTargetValue(result!);
+        
+        // Calculate coordinate for floating points on the grid
+        const matchedCells = pathIds.map(id => grid.find(c => c.id === id)).filter(Boolean) as HexCellData[];
+        if (matchedCells.length > 0) {
+          const lastCell = matchedCells[matchedCells.length - 1];
+          const isOrangeTheme = theme === 'orange';
+          const rowSpacing = isOrangeTheme ? 52 : 65;
+          const colSpacing = isOrangeTheme ? 52 : 75;
+          const offsetAmount = isOrangeTheme ? 0 : 38;
+          const topValue = lastCell.row * rowSpacing;
+          const leftValue = lastCell.col * colSpacing + (lastCell.row % 2 === 1 ? offsetAmount : 0);
+          
+          const cellWidth = isOrangeTheme ? 52 : 64;
+          const cellHeight = isOrangeTheme ? 52 : 72;
+          setFloatingPointsPos({
+            x: leftValue + cellWidth / 2,
+            y: topValue + cellHeight / 2
+          });
+        }
+
         const matchedIndex = currentTargets.indexOf(matchedTarget);
         if (matchedIndex >= 0) {
           const celebrationKey = Date.now();
@@ -2799,6 +2821,7 @@ const GameView: React.FC = () => {
       const totalWinBonuses = finalTimeBonus + finalVictoryBonus;
       const finalPointsToSync = newScore + totalWinBonuses;
 
+      setLastPointsGained(currentPoints);
       setScoreAnimKey(k => k + 1);
 
       const isTimeAttack = !!activeMatch && (activeMatch.mode === 'time_attack' || duelMode === 'time_attack');
@@ -4306,6 +4329,45 @@ const GameView: React.FC = () => {
                     100% { transform: scale(1); }
                   }
 
+                  @keyframes elastic-in-out {
+                    0% { transform: scale(0.3); opacity: 0; }
+                    50% { transform: scale(1.18); opacity: 1; }
+                    70% { transform: scale(0.92); }
+                    85% { transform: scale(1.04); }
+                    100% { transform: scale(1); opacity: 1; }
+                  }
+
+                  @keyframes scorePop {
+                    0% { transform: scale(1); filter: brightness(1); }
+                    40% { transform: scale(1.3); filter: brightness(1.8) drop-shadow(0 0 12px #00ddff); }
+                    70% { transform: scale(0.95); filter: brightness(1.2); }
+                    100% { transform: scale(1); filter: brightness(1); }
+                  }
+                  .animate-score-pop {
+                    animation: scorePop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+                  }
+
+                  @keyframes magicFadeOverlay {
+                    0% { opacity: 0; transform: scale(0.5) rotate(-15deg); }
+                    30% { opacity: 0.9; transform: scale(1.2) rotate(5deg); }
+                    75% { opacity: 0.9; transform: scale(1.1) rotate(0deg); }
+                    100% { opacity: 0; transform: scale(1.4) rotate(15deg); }
+                  }
+                  .animate-magic-fade {
+                    animation: magicFadeOverlay 1.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+                    mix-blend-mode: screen;
+                  }
+                  
+                  @keyframes pointsFloatUp {
+                    0% { opacity: 0; transform: translateY(10px) scale(0.6); }
+                    15% { opacity: 1; transform: translateY(-15px) scale(1.3); }
+                    65% { opacity: 1; transform: translateY(-30px) scale(1); }
+                    100% { opacity: 0; transform: translateY(-60px) scale(0.8); }
+                  }
+                  .animate-points-float {
+                    animation: pointsFloatUp 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                  }
+
                   .targets-glass-bar {
                     border: none !important;
                     box-shadow: none !important;
@@ -4668,7 +4730,7 @@ const GameView: React.FC = () => {
                   }}>
 
                     {/* ── LEFT FLOATING ISLAND: HOME button + SCORE below ── */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flexShrink: 0, position: 'relative' }}>
                       {/* HOME Button */}
                       <button
                         className="hud-icon-btn"
@@ -4693,9 +4755,15 @@ const GameView: React.FC = () => {
                         </svg>
                       </button>
                       {/* SCORE below HOME */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '64px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '64px', position: 'relative' }}>
                         <span style={{ fontSize: '6.5px', fontWeight: 800, letterSpacing: '0.18em', color: 'rgba(0,180,255,0.45)', textTransform: 'uppercase', fontFamily: 'Orbitron, monospace' }}>SCORE</span>
-                        <span style={{ fontFamily: 'Orbitron, monospace', fontWeight: 900, fontSize: '16px', color: '#00ddff', textShadow: '0 0 8px rgba(0,210,255,0.90), 0 0 16px rgba(0,200,255,0.40)', lineHeight: 1.1, letterSpacing: '-0.01em' }}>{gameState.score.toLocaleString()}</span>
+                        <span 
+                          key={scoreAnimKey}
+                          className="animate-score-pop"
+                          style={{ fontFamily: 'Orbitron, monospace', fontWeight: 900, fontSize: '16px', color: '#00ddff', textShadow: '0 0 8px rgba(0,210,255,0.90), 0 0 16px rgba(0,200,255,0.40)', lineHeight: 1.1, letterSpacing: '-0.01em', display: 'inline-block' }}
+                        >
+                          {gameState.score.toLocaleString()}
+                        </span>
                       </div>
                     </div>
 
@@ -4713,7 +4781,7 @@ const GameView: React.FC = () => {
                       const timerLabel = gameState.isBossLevel ? 'BOSS' : isDuelProgress ? 'ENEMY' : isDuelBlitz ? 'BLITZ' : 'TIME';
                       return (
                         <div
-                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0px', cursor: activeMatch?.isDuel ? 'default' : 'pointer', flexShrink: 0 }}
+                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0px', cursor: activeMatch?.isDuel ? 'default' : 'pointer', flexShrink: 0, transform: 'translateY(30px)' }}
                           onPointerDown={activeMatch?.isDuel ? undefined : togglePause}
                         >
                           {/* Floating glass timer capsule */}
@@ -4825,9 +4893,9 @@ const GameView: React.FC = () => {
 
                 {/* ── +Ns BONUS BANNER – 2-slide cycling every 3s ── */}
                 {!activeMatch?.isDuel && (
-                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px', paddingBottom: '2px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '40px', paddingBottom: '2px' }}>
                     <div
-                      key={bannerSlide}
+                      key="game-bonus-banner"
                       className="bonus-banner-hud"
                       onPointerDown={(e) => {
                         e.stopPropagation();
@@ -4846,7 +4914,7 @@ const GameView: React.FC = () => {
                         boxShadow: '0 8px 28px rgba(0,0,0,0.75), 0 0 0 1px rgba(0,200,255,0.08), 0 0 18px rgba(0,180,255,0.16), 0 0 36px rgba(0,150,255,0.07)',
                         cursor: ADS_CONFIG.enabled ? 'pointer' : 'default',
                         overflow: 'hidden',
-                        animation: 'hudBonusGlow 3.2s ease-in-out infinite, doPunchScale 0.55s cubic-bezier(0.36,0.07,0.19,0.97) both',
+                        animation: 'hudBonusGlow 3.2s ease-in-out infinite, elastic-in-out 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both',
                         filter: ADS_CONFIG.enabled ? 'none' : 'grayscale(0.7) brightness(0.65)',
                         WebkitTapHighlightColor: 'transparent',
                         touchAction: 'manipulation',
@@ -4921,7 +4989,8 @@ const GameView: React.FC = () => {
 
                       return (
                         <div className={`transition-all duration-300 transform origin-left
-                            ${isDragging && selectedPath.length > 0 ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-90 -translate-x-4 pointer-events-none'}`}>
+                            ${isDragging && selectedPath.length > 0 ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-90 -translate-x-4 pointer-events-none'}`}
+                             style={{ marginLeft: '-15px' }}>
                           <div className={`relative flex items-center justify-center w-[90px] h-[90px] transition-all duration-300 ${isTargetMatched ? 'scale-105' : ''}`}>
                             <img
                               src="/ottagonocristallo.png"
@@ -4982,14 +5051,15 @@ const GameView: React.FC = () => {
 
                            const animationDelay = i === 2 ? '0.15s' : (i === 1 || i === 3 ? '0.08s' : '0s');
 
+                          const isCelebrating = celebratingTarget?.index === i;
                           return (
-                            <div key={`${gameState.level}-${i}`} data-target-value={t.value} 
+                            <div 
+                              key={`${gameState.level}-${i}`}
+                              data-target-value={t.value} 
                               className={`relative flex items-center justify-center w-[69px] h-[69px] transition-all duration-300 ${entryAnimationClass}`}
                               style={{ animationDelay }}
                             >
-                              {celebratingTarget?.index === i && (
-                                <TargetStarDustEffect activeKey={celebratingTarget.key} />
-                              )}
+
                                {/* Individual background crystal octagon for each target */}
                                <img
                                  src="/ottagonocristallo.png"
@@ -5013,7 +5083,10 @@ const GameView: React.FC = () => {
                                    transition: 'filter 0.25s ease, opacity 0.25s ease'
                                  }}
                                />
-                              <span className={`z-10 transition-all duration-300 ${(isCompleted || isMatchingPreview) ? 'scale-110' : ''}`} style={numStyle}>
+                              <span 
+                                className={`z-10 transition-all duration-300 ${(isCompleted || isMatchingPreview) ? 'scale-110' : ''}`} 
+                                style={numStyle}
+                              >
                                 {t.displayValue || t.value}
                               </span>
                             </div>
@@ -5065,6 +5138,34 @@ const GameView: React.FC = () => {
                       {grid.map(cell => (
                         <HexCell key={cell.id} data={cell} isSelected={selectedPath.includes(cell.id)} isSelectable={!isVictoryAnimating && !isPaused && !gridFinale} onMouseEnter={onMoveInteraction} onMouseDown={onStartInteraction} theme={theme} isBossLevel={gameState.isBossLevel} bossLevelId={gameState.bossLevelId} pathStatus={pathStatus} />
                       ))}
+
+                      {lastPointsGained > 0 && floatingPointsPos && (
+                        <div
+                          key={`pts-${scoreAnimKey}`}
+                          style={{
+                            position: 'absolute',
+                            left: `calc(${floatingPointsPos.x}px * var(--hex-scale))`,
+                            top: `calc(${floatingPointsPos.y}px * var(--hex-scale))`,
+                            transform: 'translate(-50%, -50%)',
+                            pointerEvents: 'none',
+                            zIndex: 100,
+                          }}
+                        >
+                          <div
+                            className="animate-points-float"
+                            style={{
+                              color: '#00ff66',
+                              fontFamily: 'Orbitron, sans-serif',
+                              fontWeight: 900,
+                              fontSize: '42px',
+                              textShadow: '0 0 12px rgba(0,255,102,1), 0 0 24px rgba(0,255,102,0.6), -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 2px 2px 0px #000, 0 4px 8px rgba(0,0,0,0.95)',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            +{lastPointsGained}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     </div>
                   </div>
