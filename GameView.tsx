@@ -411,7 +411,7 @@ const GameView: React.FC = () => {
     adsenseSlot: '4546676285',
     // TEST IDS (Replace with ca-app-pub-2753359398526340/xxxxxxxxxx)
     bannerId: 'ca-app-pub-3940256099942544/6300978111',
-    rewardedId: 'ca-app-pub-8620196010585213/5397002761',
+    rewardedId: 'ca-app-pub-8620196010585213/8032728791',
   };
 
   useEffect(() => {
@@ -4123,7 +4123,7 @@ const GameView: React.FC = () => {
                   }}
                 >
                   <img 
-                    src="/svgpulsantecristal.svg" 
+                    src="/pulsantecristallo.png" 
                     alt="Gioca" 
                     className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
                   />
@@ -4158,7 +4158,7 @@ const GameView: React.FC = () => {
                   }}
                 >
                   <img 
-                    src="/svgpulsantecristal.svg" 
+                    src="/pulsantecristallo.png" 
                     alt="Duelli" 
                     className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                     style={{
@@ -4193,7 +4193,7 @@ const GameView: React.FC = () => {
                   }}
                 >
                   <img 
-                    src="/svgpulsantecristal.svg" 
+                    src="/pulsantecristallo.png" 
                     alt="Classifiche" 
                     className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                     style={{
@@ -5384,7 +5384,7 @@ const GameView: React.FC = () => {
                         }}
                       >
                         <img 
-                          src="/svgpulsantecristal.svg" 
+                          src="/pulsantecristallo.png" 
                           alt="Rigioca" 
                           className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
                         />
@@ -5410,7 +5410,7 @@ const GameView: React.FC = () => {
                         }}
                       >
                         <img 
-                          src="/svgpulsantecristal.svg" 
+                          src="/pulsantecristallo.png" 
                           alt="Home" 
                           className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                           style={{
@@ -5504,7 +5504,7 @@ const GameView: React.FC = () => {
                         }}
                       >
                         <img 
-                          src="/svgpulsantecristal.svg" 
+                          src="/pulsantecristallo.png" 
                           alt="Nuova Sfida" 
                           className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
                         />
@@ -5530,7 +5530,7 @@ const GameView: React.FC = () => {
                         }}
                       >
                         <img 
-                          src="/svgpulsantecristal.svg" 
+                          src="/pulsantecristallo.png" 
                           alt="Home" 
                           className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                           style={{
@@ -5678,7 +5678,7 @@ const GameView: React.FC = () => {
                         }}
                       >
                         <img 
-                          src="/svgpulsantecristal.svg" 
+                          src="/pulsantecristallo.png" 
                           alt="Prossimo Livello" 
                           className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
                         />
@@ -5703,7 +5703,7 @@ const GameView: React.FC = () => {
                             }}
                           >
                             <img 
-                              src="/svgpulsantecristal.svg" 
+                              src="/pulsantecristallo.png" 
                               alt="Rigioca" 
                               className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                               style={{
@@ -5733,7 +5733,7 @@ const GameView: React.FC = () => {
                             }}
                           >
                             <img 
-                              src="/svgpulsantecristal.svg" 
+                              src="/pulsantecristallo.png" 
                               alt="Base" 
                               className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                               style={{
@@ -5821,7 +5821,7 @@ const GameView: React.FC = () => {
                       onPointerDown={() => { soundService.playUIClick(); setDuelMode('standard'); setActiveModal('duel'); }}
                     >
                       <img 
-                        src="/svgpulsantecristal.svg" 
+                        src="/pulsantecristallo.png" 
                         alt="Standard" 
                         className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                         style={{
@@ -5854,7 +5854,7 @@ const GameView: React.FC = () => {
                       onPointerDown={() => { soundService.playUIClick(); setDuelMode('blitz'); setActiveModal('duel'); }}
                     >
                       <img 
-                        src="/svgpulsantecristal.svg" 
+                        src="/pulsantecristallo.png" 
                         alt="Blitz Dominion" 
                         className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                       />
@@ -5885,7 +5885,7 @@ const GameView: React.FC = () => {
                       onPointerDown={() => { soundService.playUIClick(); setDuelMode('time_attack'); setActiveModal('duel'); }}
                     >
                       <img 
-                        src="/svgpulsantecristal.svg" 
+                        src="/pulsantecristallo.png" 
                         alt="Time Attack" 
                         className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                         style={{
@@ -6352,7 +6352,7 @@ const GameView: React.FC = () => {
                       }}
                     >
                       <img 
-                        src="/svgpulsantecristal.svg" 
+                        src="/pulsantecristallo.png" 
                         alt="Inizia Partita" 
                         className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
                       />
@@ -6376,7 +6376,7 @@ const GameView: React.FC = () => {
                       }}
                     >
                       <img 
-                        src="/svgpulsantecristal.svg" 
+                        src="/pulsantecristallo.png" 
                         alt="Indietro" 
                         className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                         style={{
