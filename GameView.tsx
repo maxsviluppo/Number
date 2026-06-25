@@ -6296,8 +6296,9 @@ const GameView: React.FC = () => {
                       <div className="flex items-center justify-center min-h-[2rem]">
                         <span className="text-2xl font-black font-orbitron text-cyan-300 tracking-wide drop-shadow-[0_0_12px_rgba(34,211,238,0.95)]">
                           {(() => {
-                            const t = (savedGame?.timeLeft || 0) + parseInt(localStorage.getItem('career_time_bonus') || '0') + (userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 ? 60 : 0);
-                            return t > 0 ? `${t}s` : '';
+                            const baseTime = savedGame?.timeLeft || INITIAL_TIME;
+                            const t = baseTime + parseInt(localStorage.getItem('career_time_bonus') || '0') + (userProfile && userProfile.bonus_charges && userProfile.bonus_charges > 0 ? 60 : 0);
+                            return `${t}s`;
                           })()}
                         </span>
                       </div>
