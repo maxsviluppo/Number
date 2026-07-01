@@ -6344,7 +6344,15 @@ const GameView: React.FC = () => {
                     {/* Pulsante Avvio: faceted 3D orange crystal SVG button */}
                     <button
                       disabled={profileLoading}
-                      onPointerDown={(e) => { e.stopPropagation(); soundService.playUIClick(); startGame(); }}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        soundService.playUIClick();
+                        if (savedGame) {
+                          restoreGame();
+                        } else {
+                          startGame(userProfile?.max_level || 1);
+                        }
+                      }}
                       className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1 disabled:opacity-50 disabled:pointer-events-none"
                       style={{
                         background: 'none',

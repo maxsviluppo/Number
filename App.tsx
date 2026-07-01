@@ -66,7 +66,7 @@ const App: React.FC = () => {
       <ScrollToTop />
       <ErrorBoundary>
         <Routes>
-          <Route path="/" element={<HomeView />} />
+          <Route path="/" element={!(window as any).Capacitor?.isNativePlatform?.() ? <HomeView /> : <GameView />} />
           <Route path="/site" element={<HomeView />} />
           <Route path="/play" element={<GameView />} />
           <Route path="/blog" element={<BlogView />} />

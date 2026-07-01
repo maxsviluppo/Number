@@ -164,10 +164,17 @@ const TargetStarDustEffect: React.FC<TargetStarDustEffectProps> = ({
         if (trails.length > 168) trails.shift();
 
         const twinkle = 0.35 + Math.sin(now * (0.012 + p.wobbleFreq * 2) + p.twinkle) * 0.45 + Math.random() * 0.2;
-        ctx.globalAlpha = fadeOut * Math.min(1, twinkle);
-        ctx.shadowBlur = 4 + Math.random() * 5;
-        ctx.shadowColor = p.color;
+        const alphaVal = fadeOut * Math.min(1, twinkle);
+        
+        // Outer glow circle (efficient simulation of glow)
         ctx.fillStyle = p.color;
+        ctx.globalAlpha = alphaVal * 0.26;
+        ctx.beginPath();
+        ctx.arc(x, y, p.size * (0.85 + Math.sin(now * 0.02 + p.pulse) * 0.25) * 2.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner solid circle
+        ctx.globalAlpha = alphaVal;
         ctx.beginPath();
         ctx.arc(x, y, p.size * (0.85 + Math.sin(now * 0.02 + p.pulse) * 0.25), 0, Math.PI * 2);
         ctx.fill();
@@ -182,8 +189,6 @@ const TargetStarDustEffect: React.FC<TargetStarDustEffectProps> = ({
         }
         const alpha = (t.life / t.maxLife) * fadeOut * (0.25 + Math.random() * 0.35);
         ctx.globalAlpha = alpha;
-        ctx.shadowBlur = 3;
-        ctx.shadowColor = t.color;
         ctx.fillStyle = t.color;
         ctx.beginPath();
         ctx.arc(t.x, t.y, t.size * (t.life / t.maxLife), 0, Math.PI * 2);
@@ -201,10 +206,17 @@ const TargetStarDustEffect: React.FC<TargetStarDustEffectProps> = ({
           bursts.splice(i, 1);
           continue;
         }
-        ctx.globalAlpha = (b.life / b.maxLife) * fadeOut * 0.75;
-        ctx.shadowBlur = 6;
-        ctx.shadowColor = b.color;
+        const alpha = (b.life / b.maxLife) * fadeOut * 0.75;
+        
+        // Outer glow circle (efficient simulation of glow)
         ctx.fillStyle = b.color;
+        ctx.globalAlpha = alpha * 0.22;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.size * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner solid circle
+        ctx.globalAlpha = alpha;
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
         ctx.fill();

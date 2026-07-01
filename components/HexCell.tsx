@@ -160,6 +160,8 @@ const HexCell: React.FC<HexCellProps> = ({
         top: `calc(${topValue}px * var(--hex-scale))`,
         left: `calc(${leftValue}px * var(--hex-scale))`,
         animationDelay: (!data.finaleMode && animationClass === 'animate-hex-entry' && !data.isFallen) ? `${data.row * 0.09}s` : undefined,
+        willChange: 'transform, opacity',
+        transform: data.finaleMode ? undefined : 'translate3d(0,0,0)',
         ...finaleStyle,
       }}
       data-cell-id={data.id}
@@ -198,15 +200,15 @@ const HexCell: React.FC<HexCellProps> = ({
             opacity: isSelected ? 1 : 0.95,
             filter: (() => {
               const tone = `brightness(var(--hex-crystal-brightness)) contrast(var(--hex-crystal-contrast)) saturate(var(--hex-crystal-saturate))`;
-              const shadow = 'drop-shadow(0 6px 12px rgba(0,0,0,0.6))';
+              const shadow = 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))';
 
               let glowEffect = '';
               if (isSelected) {
-                const selectBoost = ' brightness(var(--hex-select-brightness)) contrast(var(--hex-select-contrast)) saturate(var(--hex-select-saturate)) drop-shadow(0 0 var(--hex-select-glow-spread) rgba(255,136,0,var(--hex-select-glow-alpha))) drop-shadow(0 0 calc(var(--hex-select-glow-spread) * 1.65) rgba(255,190,80,calc(var(--hex-select-glow-alpha) * 0.58)))';
+                const selectBoost = ' brightness(var(--hex-select-brightness)) contrast(var(--hex-select-contrast)) saturate(var(--hex-select-saturate)) drop-shadow(0 0 var(--hex-select-glow-spread) rgba(255,136,0,var(--hex-select-glow-alpha)))';
                 if (pathStatus === 'correct') {
-                  glowEffect = `${selectBoost} hue-rotate(95deg) saturate(1.16) brightness(1.08) drop-shadow(0 0 12px rgba(16,185,129,0.31))`;
+                  glowEffect = `${selectBoost} hue-rotate(95deg) saturate(1.16) brightness(1.08)`;
                 } else if (pathStatus === 'wrong') {
-                  glowEffect = `${selectBoost} hue-rotate(335deg) saturate(1.18) brightness(1.08) drop-shadow(0 0 12px rgba(239,68,68,0.31))`;
+                  glowEffect = `${selectBoost} hue-rotate(335deg) saturate(1.18) brightness(1.08)`;
                 } else {
                   glowEffect = selectBoost;
                 }
@@ -283,4 +285,4 @@ const HexCell: React.FC<HexCellProps> = ({
   );
 };
 
-export default HexCell;
+export default React.memo(HexCell);

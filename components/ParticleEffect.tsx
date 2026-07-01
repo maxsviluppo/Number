@@ -70,16 +70,17 @@ const ParticleEffect: React.FC<ParticleEffectProps> = ({ trigger }) => {
       }
 
       const opacity = p.life / p.maxLife;
-      ctx.globalAlpha = opacity;
-      
+
       if (p.glow) {
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = p.color;
-      } else {
-        ctx.shadowBlur = 0;
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = opacity * 0.28;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
+        ctx.fill();
       }
 
       ctx.fillStyle = p.color;
+      ctx.globalAlpha = opacity;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       ctx.fill();

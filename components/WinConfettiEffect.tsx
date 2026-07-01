@@ -110,8 +110,6 @@ const WinConfettiEffect: React.FC<WinConfettiEffectProps> = ({
         ctx.rotate(p.rot);
         ctx.globalAlpha = 0.93;
         ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 5;
 
         if (p.shape === 'diamond') {
           ctx.beginPath();
