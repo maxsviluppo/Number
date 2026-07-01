@@ -78,8 +78,19 @@ const HexCell: React.FC<HexCellProps> = ({
 
   // Gestione animazioni di selezione e deselezione
   useEffect(() => {
+    if (prevSelected.current && !isSelected) {
+      setAnimationClass('animate-hex-deselect');
+    }
     prevSelected.current = isSelected;
   }, [isSelected]);
+
+  // Rimuove l'animazione di entrata dopo il completamento per evitare che si ripeta al deselect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimationClass(prev => prev === 'animate-hex-entry' ? '' : prev);
+    }, 650);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
