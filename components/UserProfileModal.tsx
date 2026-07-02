@@ -33,6 +33,33 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
     const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
     const [previewAvatar, setPreviewAvatar] = useState<string | null>(null); // Local preview state
     const [toastMessage, setToastMessage] = useState<string | null>(null); // Toast state
+    const [referralInput, setReferralInput] = useState('');
+    const [redeemStatus, setRedeemStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+    const [redeemLoading, setRedeemLoading] = useState(false);
+
+    const handleRedeemReferral = async () => {
+        if (!referralInput.trim()) return;
+        setRedeemLoading(true);
+        setRedeemStatus({ type: 'idle', message: '' });
+        
+        try {
+            const { error } = await profileService.redeemReferral(referralInput.trim().toUpperCase());
+            if (error) {
+                setRedeemStatus({ type: 'error', message: error.message || 'Codice non valido o già riscattato.' });
+            } else {
+                setRedeemStatus({ type: 'success', message: 'Codice riscattato! Ricevuti +60 secondi!' });
+                setReferralInput('');
+                if (onUpdate && userProfile) {
+                    const updated = await profileService.getProfile(userProfile.id);
+                    if (updated) onUpdate(updated);
+                }
+            }
+        } catch (err) {
+            setRedeemStatus({ type: 'error', message: 'Errore durante il riscatto del codice.' });
+        } finally {
+            setRedeemLoading(false);
+        }
+    };
 
     // Fallback data if profile is missing (e.g. offline)
     const stats = userProfile || {
@@ -238,6 +265,41 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Riscatta Codice Referral */}
+                            {(!stats.referred_by) && (
+                                <div className="mt-6 p-4 bg-slate-800/30 rounded-2xl border border-white/5">
+                                    <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+                                        <Gift size={16} className="text-[#FF8800]" />
+                                        Hai un Codice Amico?
+                                    </h3>
+                                    <p className="text-slate-400 text-xs mb-3">Inserisci il codice di chi ti ha invitato per ricevere subito 60 secondi di bonus extra!</p>
+                                    
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={referralInput}
+                                            onChange={(e) => setReferralInput(e.target.value)}
+                                            placeholder="Esempio: NUM-XYZ123"
+                                            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm font-mono text-white placeholder-slate-600 focus:border-[#FF8800] focus:outline-none"
+                                            disabled={redeemLoading}
+                                        />
+                                        <button
+                                            onClick={handleRedeemReferral}
+                                            disabled={redeemLoading || !referralInput.trim()}
+                                            className="bg-[#FF8800] hover:bg-[#FF8800]/80 disabled:opacity-50 text-black font-black text-xs px-4 py-2 rounded-xl transition-all font-orbitron uppercase"
+                                        >
+                                            {redeemLoading ? '...' : 'Riscatta'}
+                                        </button>
+                                    </div>
+
+                                    {redeemStatus.type !== 'idle' && (
+                                        <p className={`text-xs mt-2 font-bold ${redeemStatus.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                                            {redeemStatus.message}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Referral Section */}
                             {stats.referral_code && (

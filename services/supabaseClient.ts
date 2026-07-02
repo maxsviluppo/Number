@@ -241,6 +241,12 @@ export const profileService = {
         return data;
     },
 
+    async redeemReferral(refCode: string) {
+        return await supabase.rpc('grant_referral_bonus', { 
+            ref_code: refCode 
+        });
+    },
+
     // FULL RESET: Wipe everything for a "fresh start"
     async resetUserProfile(userId: string) {
         const { data, error } = await supabase
