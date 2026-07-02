@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { User, Trophy, Award, Lock, X, Star, Zap, Brain, Target, Shield, Sparkles, BookOpen, Crown, Gem, Infinity, Layers, Swords, Camera, Trash2 } from 'lucide-react';
+import { User, Trophy, Award, Lock, X, Star, Zap, Brain, Target, Shield, Sparkles, BookOpen, Crown, Gem, Infinity, Layers, Swords, Camera, Trash2, Home } from 'lucide-react';
 import { UserProfile, profileService } from '../services/supabaseClient';
 import { BADGES } from '../constants/badges';
 import { BOSS_LEVELS } from '../constants/boss_levels';
 import { processAvatarImage } from '../utils/imageUtils';
+import { Link } from 'react-router-dom';
 
 interface UserProfileModalProps {
     currentUser: any;
@@ -28,7 +29,7 @@ export const getRank = (level: number) => {
 };
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userProfile, onClose, onUpdate }) => {
-    const [activeTab, setActiveTab] = useState<'profile' | 'badges' | 'trophies' | 'boss'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'badges' | 'trophies'>('profile');
     const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
     const [previewAvatar, setPreviewAvatar] = useState<string | null>(null); // Local preview state
     const [toastMessage, setToastMessage] = useState<string | null>(null); // Toast state
@@ -144,16 +145,27 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                         <div className="flex flex-col">
                             <h2 className="text-2xl font-black font-orbitron text-white uppercase tracking-wider leading-none">
                                 {stats.username}
-                            </h2>
+                             </h2>
                             <div className={`flex items-center gap-2 mt-2 px-3 py-1 rounded-lg border border-white/10 ${rank.bg} w-fit`}>
                                 <RankIcon size={12} className={rank.color} />
                                 <span className={`text-[10px] font-black uppercase tracking-widest ${rank.color}`}>{rank.title}</span>
                             </div>
                         </div>
                     </div>
-                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-black/20 hover:bg-red-500/20 flex items-center justify-center text-slate-400 hover:text-white transition-all">
-                        <X size={24} />
-                    </button>
+                    
+                    <div className="flex items-center">
+                        <Link
+                            to="/site"
+                            onClick={onClose}
+                            className="w-10 h-10 rounded-full bg-black/20 hover:bg-[#FF8800]/25 flex items-center justify-center text-[#FF8800] hover:text-white transition-all mr-2"
+                            title="Torna alla Home del Sito"
+                        >
+                            <Home size={20} />
+                        </Link>
+                        <button onClick={onClose} className="w-10 h-10 rounded-full bg-black/20 hover:bg-red-500/20 flex items-center justify-center text-slate-400 hover:text-white transition-all">
+                            <X size={24} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="relative z-10 px-6 py-4 flex gap-2 overflow-x-auto no-scrollbar">
@@ -171,7 +183,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                     >
                         Badge
                     </button>
-
                     <button
                         onClick={() => setActiveTab('trophies')}
                         className={`flex-1 py-3 px-2 rounded-xl font-black font-orbitron uppercase text-[10px] tracking-wider transition-all border-2 min-w-[80px]
@@ -306,59 +317,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                                     </button>
                                 );
                             })}
-                        </div>
-                    )}
-
-                    {/* BOSS TAB - CHRONO PATH */}
-                    {activeTab === 'boss' && (
-                        <div className="space-y-4 animate-fadeIn pb-8">
-                            <div className="text-center mb-6">
-                                <h3 className="text-white font-orbitron font-black uppercase text-lg">Cronopercorso Boss</h3>
-                                <p className="text-slate-400 text-[10px] uppercase tracking-widest">Sconfiggi i guardiani per avanzare</p>
-                            </div>
-
-                            <div className="relative border-l-2 border-slate-700 ml-4 pl-8 space-y-8">
-                                {BOSS_LEVELS.map((boss) => {
-                                    const isDefeated = unlockedBadges.includes(`boss_${boss.id}_defeated`) || (boss.id === 1 && unlockedBadges.includes('boss_matematico'));
-                                    const isNext = !isDefeated && stats.max_level >= boss.requiredLevel;
-                                    const isLocked = !isDefeated && !isNext;
-
-                                    return (
-                                        <div key={boss.id} className="relative group">
-                                            {/* Node Marker */}
-                                            <div className={`absolute -left-[41px] w-6 h-6 rounded-full border-4 transition-all duration-300 z-10 
-                                                ${isDefeated ? 'bg-green-500 border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)]' :
-                                                    isNext ? 'bg-red-500 border-red-500 animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.8)] scale-125' :
-                                                        'bg-slate-900 border-slate-700'}`}
-                                            >
-                                                {isDefeated && <span className="absolute inset-0 flex items-center justify-center text-black font-bold text-[8px]">✓</span>}
-                                            </div>
-
-                                            {/* Content Card */}
-                                            <div className={`p-4 rounded-xl border-2 transition-all relative overflow-hidden
-                                                ${isDefeated ? 'bg-slate-800/50 border-green-500/30 opacity-60' :
-                                                    isNext ? 'bg-gradient-to-r from-red-900/40 to-slate-900 border-red-500 shadow-xl scale-105' :
-                                                        'bg-slate-900/50 border-slate-700 grayscale opacity-40'}`}
-                                            >
-                                                {isNext && <div className="absolute top-0 right-0 px-2 py-0.5 bg-red-600 text-[8px] font-black text-white uppercase">Prossima Sfida</div>}
-
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${isNext ? 'text-red-400' : 'text-slate-500'}`}>Livello {boss.requiredLevel}</span>
-                                                        <h4 className={`text-sm font-bold font-orbitron uppercase mt-1 ${isDefeated ? (boss.id === 2 ? 'text-amber-500 line-through decoration-2' : 'text-green-400 line-through decoration-2') : 'text-white'}`}>
-                                                            {boss.title}
-                                                        </h4>
-                                                    </div>
-                                                    <div className="p-2 bg-black/30 rounded-lg">
-                                                        {isLocked ? <Lock size={16} className="text-slate-600" /> : <Swords size={16} className={isDefeated ? 'text-green-500' : 'text-red-500'} />}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                                <div className="absolute top-0 bottom-0 -left-[41px] w-0.5 bg-gradient-to-b from-green-500 via-red-500 to-slate-800 opacity-50 h-full"></div>
-                            </div>
                         </div>
                     )}
 

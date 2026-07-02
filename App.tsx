@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import HomeView from './HomeView';
 import BlogView from './BlogView';
 import GameView from './GameView';
+import InviteView from './InviteView';
 import BlogPostDetailView from './BlogPostDetailView';
 import { PrivacyView, CookieView, AboutView, ContactView, TermsView } from './LegalViews';
 import CookieBanner from './components/CookieBanner';
 import BottomNav from './components/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
 import { configService } from './services/supabaseClient';
+
+const isNativeApp = Capacitor.isNativePlatform();
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -61,16 +65,28 @@ const App: React.FC = () => {
     loadConfig();
   }, []);
 
+  // Android/iOS: solo il gioco a schermo intero — niente sito, menu web o cookie banner
+  if (isNativeApp) {
+    return (
+      <BrowserRouter>
+        <ErrorBoundary>
+          <GameView />
+        </ErrorBoundary>
+      </BrowserRouter>
+    );
+  }
+
   return (
     <BrowserRouter>
       <ScrollToTop />
       <ErrorBoundary>
         <Routes>
-          <Route path="/" element={!(window as any).Capacitor?.isNativePlatform?.() ? <HomeView /> : <GameView />} />
+          <Route path="/" element={<HomeView />} />
           <Route path="/site" element={<HomeView />} />
           <Route path="/play" element={<GameView />} />
           <Route path="/blog" element={<BlogView />} />
           <Route path="/blog/:slug" element={<BlogPostDetailView />} />
+          <Route path="/invite" element={<InviteView />} />
           
           <Route path="/about" element={<AboutView />} />
           <Route path="/privacy" element={<PrivacyView />} />
@@ -83,7 +99,7 @@ const App: React.FC = () => {
         </Routes>
       </ErrorBoundary>
       <CookieBanner />
-      {/* <BottomNav /> */}
+      <BottomNav />
     </BrowserRouter>
   );
 };

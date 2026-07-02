@@ -314,22 +314,15 @@
       }
     }
 
+    /* Selezione istantanea con zoom hardware-accelerato senza sfarfallio */
     .animate-hex-select {
-      animation: hex-select 0.11s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    }
-
-    @keyframes hex-deselect {
-      0% {
-        transform: scale(1.1);
-      }
-
-      100% {
-        transform: scale(1);
-      }
+      transform: scale(1.1) translate3d(0,0,0) !important;
+      transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1) !important;
     }
 
     .animate-hex-deselect {
-      animation: hex-deselect 0.11s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      transform: scale(1) translate3d(0,0,0) !important;
+      transition: transform 0.08s cubic-bezier(0.25, 1, 0.5, 1) !important;
     }
 
     /* Effetto Palloncino 3D (Inflate & Deflate +40%) - correct path celebration */

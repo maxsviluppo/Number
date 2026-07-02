@@ -152,8 +152,12 @@ const InviteView: React.FC = () => {
             <div className="absolute top-3 right-3 bg-green-500/20 border border-green-500/30 px-2 py-0.5 rounded text-[8px] font-bold text-green-400 uppercase">
               Consigliato
             </div>
-            <div className="w-12 h-12 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 mb-4">
-              <Download size={24} />
+            <div className="w-full flex items-center justify-center mb-4">
+              <img 
+                src="/icona-android-store.png" 
+                alt="Google Play Store" 
+                className="h-12 w-auto object-contain pointer-events-none select-none"
+              />
             </div>
             <h3 className="font-bold font-['Orbitron'] mb-2">App Android</h3>
             <p className="text-xs text-slate-400 mb-6">Nessuna barra degli indirizzi, caricamento istantaneo e performance top.</p>

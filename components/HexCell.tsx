@@ -126,7 +126,9 @@ const HexCell: React.FC<HexCellProps> = ({
           ? 'animate-vibrate'
           : isSelected
             ? 'animate-hex-select'
-            : animationClass;
+            : prevSelected.current
+              ? 'animate-hex-deselect'
+              : animationClass;
 
   const finaleStyle: React.CSSProperties = data.finaleMode === 'win'
     ? {

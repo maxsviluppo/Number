@@ -3927,23 +3927,7 @@ const GameView: React.FC = () => {
 
 
 
-              {/* TOP LEFT: Site Link */}
-              {isWebOnly && (
-                <div className="fixed top-12 left-6 z-[3000] flex gap-3 items-center">
-                  <button
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      soundService.playUIClick();
-                      window.open("https://www.numbergame.it/site", "_blank");
-                    }}
-                    className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group cursor-pointer"
-                    title="Vai al Sito"
-                  >
-                    <img src="/ottagonocristallo.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
-                    <Globe size={22} className="relative z-20 text-white drop-shadow-md opacity-100" strokeWidth={2.5} />
-                  </button>
-                </div>
-              )}
+
 
               {/* TOP RIGHT: Action Buttons (Audio) */}
               <div className="fixed top-12 right-6 z-[3000] flex gap-3 items-center">
@@ -4018,7 +4002,7 @@ const GameView: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <span className="text-[9px] text-white/30 font-black ml-3 font-mono tracking-wider select-none pointer-events-none">v2.3.2</span>
+                <span className="text-[9px] text-white/30 font-black ml-3 font-mono tracking-wider select-none pointer-events-none">v5.9 [50]</span>
               </div>
 
               {/* BOTTOM RIGHT ICONS: Admin & Tutorial (FIXED Position) */}
@@ -4041,31 +4025,16 @@ const GameView: React.FC = () => {
                   <HelpCircle size={22} className="relative z-20 text-white drop-shadow-md" strokeWidth={2.5} />
                 </button>
 
-                {/* Quick Invite Button */}
-                <button
-                  onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); handleQuickInvite(); }}
-                  id="invite-btn-home"
-                  className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group z-20"
-                  title="Invita Amico"
-                >
-                  <img src="/ottagonocristallo.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
-                  <Gift size={22} className="relative z-20 text-white drop-shadow-md ml-0.5" strokeWidth={2.5} />
-                </button>
-
-                {/* Admin Access */}
+                {/* Quick Invite Button - Web Only */}
                 {isWebOnly && (
                   <button
-                    onPointerDown={async (e) => {
-                      e.stopPropagation();
-                      await handleUserInteraction();
-                      soundService.playUIClick();
-                      setActiveModal('admin');
-                    }}
-                    className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group z-30"
-                    title="Admin Access"
+                    onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); handleQuickInvite(); }}
+                    id="invite-btn-home"
+                    className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group z-20"
+                    title="Invita Amico"
                   >
                     <img src="/ottagonocristallo.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
-                    <Shield size={22} className="relative z-20 text-white drop-shadow-md" strokeWidth={2.5} />
+                    <Gift size={22} className="relative z-20 text-white drop-shadow-md ml-0.5" strokeWidth={2.5} />
                   </button>
                 )}
               </div>
@@ -4135,7 +4104,7 @@ const GameView: React.FC = () => {
                   </div>
                 </button>
  
-                {/* DUELLI BUTTON */}
+                {/* 1VS1 MODE BUTTON */}
                 <button
                   id="duel-btn-home"
                   onPointerDown={async (e) => {
@@ -4178,11 +4147,11 @@ const GameView: React.FC = () => {
                 {/* CLASSIFICHE BUTTON */}
                 <button
                   id="ranking-btn-home"
-                  onPointerDown={async (e) => { 
-                    e.stopPropagation(); 
-                    await handleUserInteraction(); 
-                    soundService.playUIClick(); 
-                    setActiveModal('leaderboard'); 
+                  onPointerDown={async (e) => {
+                    e.stopPropagation();
+                    await handleUserInteraction();
+                    soundService.playUIClick();
+                    setActiveModal('leaderboard');
                   }}
                   className="w-full group relative overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 active:translate-y-1"
                   style={{
@@ -4192,9 +4161,9 @@ const GameView: React.FC = () => {
                     marginTop: '-25px',
                   }}
                 >
-                  <img 
-                    src="/pulsantecristallo.png" 
-                    alt="Classifiche" 
+                  <img
+                    src="/pulsantecristallo.png"
+                    alt="Classifiche"
                     className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                     style={{
                       filter: 'hue-rotate(35deg) saturate(1.5) brightness(1.15)'
@@ -4207,12 +4176,6 @@ const GameView: React.FC = () => {
                     </span>
                   </div>
                 </button>
-                {/* AUTH BUTTON */}
-                {/* Auth Button Moved to Top Right - Removed from here */}
-
-                {/* Audio Button Removed */}
-
-
               </div>
             </div>
           </>
@@ -6758,7 +6721,7 @@ const GameView: React.FC = () => {
           )
         }
 
-        <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-0">AI Evaluation Engine v3.6 - LOCAL DEV</footer>
+        <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v5.9 [50] - PRODUCTION</footer>
 
         {/* HOMEPAGE TUTORIAL OVERLAY */}
         <ComicTutorial

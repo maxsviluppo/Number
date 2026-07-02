@@ -1,52 +1,28 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Play, BookOpen, Info, Mail, LayoutDashboard } from 'lucide-react';
+import { Home, Play, BookOpen, Info, Mail, LayoutDashboard, Gift } from 'lucide-react';
 
 const BottomNav: React.FC = () => {
   const location = useLocation();
   const path = location.pathname;
-  const [isVisible, setIsVisible] = useState(true);
-  const lastScrollY = useRef(0);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      // Hide on scroll down, show on scroll up
-      if (currentScrollY > lastScrollY.current && currentScrollY > 60) {
-        setIsVisible(false);
-      } else {
-        setIsVisible(true);
-      }
-      
-      lastScrollY.current = currentScrollY;
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
 
   const navItems = [
     { icon: <Home size={20} />, label: 'Home', path: '/' },
     { icon: <Play size={20} />, label: 'Gioca', path: '/play' },
+    { icon: <Gift size={20} />, label: 'Invita', path: '/invite' },
     { icon: <BookOpen size={20} />, label: 'Blog', path: '/blog' },
     { icon: <Info size={20} />, label: 'About', path: '/about' },
     { icon: <Mail size={20} />, label: 'Contatti', path: '/contact' },
-    { icon: <LayoutDashboard size={20} />, label: 'Admin', path: '/admin' },
   ];
 
-  const allowedPaths = ['/', '/site', '/blog', '/about', '/contact', '/terms', '/privacy', '/cookies'];
-  const isAllowed = allowedPaths.some(p => path.startsWith(p));
+  const allowedPaths = ['/site', '/blog', '/about', '/contact', '/terms', '/privacy', '/cookies', '/invite'];
+  const isAllowed = (path === '/' || allowedPaths.some(p => path.startsWith(p))) && path !== '/play';
 
   if (!isAllowed) return null;
 
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 z-[1000] bg-black/80 backdrop-blur-xl border-t border-white/10 safe-area-bottom md:hidden overflow-hidden h-[72px] transition-transform duration-300 ease-in-out"
-      style={{ transform: isVisible ? 'translateY(0)' : 'translateY(100%)' }}
-    >
+
+    <nav className="fixed bottom-0 left-0 right-0 z-[1000] bg-black/80 backdrop-blur-xl border-t border-white/10 safe-area-bottom md:hidden overflow-hidden h-[72px]">
       <div className="flex items-center gap-1 px-4 overflow-x-auto no-scrollbar h-full touch-pan-x">
         {navItems.map((item) => {
           const isActive = path === item.path || (item.path === '/' && path === '/play');
