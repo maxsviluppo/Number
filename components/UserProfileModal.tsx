@@ -320,7 +320,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
 
                                     <button 
                                         onClick={() => {
-                                            const link = `${window.location.origin}/?ref=${stats.referral_code}`;
+                                            const link = `https://www.numbergame.it/site?ref=${stats.referral_code}`;
                                             if (navigator.share) {
                                                 navigator.share({
                                                     title: 'Gioca a NumberGame!',

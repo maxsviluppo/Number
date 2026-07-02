@@ -11,7 +11,7 @@ const InviteView: React.FC = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   // Generiamo un link referral dimostrativo per gli utenti non loggati
-  const sampleRefLink = `${window.location.origin}/site?ref=USER_ID`;
+  const sampleRefLink = `https://www.numbergame.it/site?ref=USER_ID`;
 
   useEffect(() => {
     const loadConfig = async () => {
