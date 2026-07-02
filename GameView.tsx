@@ -1809,38 +1809,9 @@ const GameView: React.FC = () => {
     if (timerRef.current) window.clearInterval(timerRef.current);
   };
 
-  const handleQuickInvite = async () => {
-    if (!currentUser) {
-      showToast("Accedi per invitare un amico e guadagnare bonus!");
-      setShowAuthModal(true);
-      return;
-    }
-
-    let refCode = userProfile?.referral_code;
-    if (!refCode) {
-      refCode = 'NUM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-      if (userProfile) setUserProfile({ ...userProfile, referral_code: refCode });
-      profileService.updateProfile({ id: currentUser.id, referral_code: refCode }).catch(e => console.warn("Referral code update err:", e));
-    }
-
+  const handleQuickInvite = () => {
     soundService.playUIClick();
-    const joinUrl = `${window.location.origin}/?ref=${refCode}`;
-    const text = `Ricevi 60s EXTRA! Usa il mio link per iscriverti a NumberGame!`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "Regalo NumberGame!", text, url: joinUrl });
-      } catch (err) {
-        console.log('Share dismissed', err);
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(joinUrl);
-        showToast("🎁 Link copiato! Condividilo per i 60s bonus!");
-      } catch (err) {
-        showToast("Impossibile copiare il link.");
-      }
-    }
+    window.location.href = '/invite';
   };
 
 
