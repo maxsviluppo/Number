@@ -1,6 +1,4 @@
 {
-  "cleanUrls": true,
-  "trailingSlash": false,
   "headers": [
     {
       "source": "/ads.txt",
@@ -19,27 +17,7 @@
   ],
   "rewrites": [
     {
-      "source": "/ads.txt",
-      "destination": "/ads.txt"
-    },
-    {
-      "source": "/app-ads.txt",
-      "destination": "/app-ads.txt"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/robots.txt"
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "/sitemap.xml"
-    },
-    {
-      "source": "/icona-android-store.png",
-      "destination": "/icona-android-store.png"
-    },
-    {
-      "source": "/((?!assets/|.*\\.).*)",
+      "source": "/((?!assets/|ads\\.txt|app-ads\\.txt|robots\\.txt|sitemap\\.xml|icona-android-store\\.png|.*\\.).*)",
       "destination": "/index.html"
     }
   ]
