@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Gift, Copy, Share2, ArrowLeft, Download, Info, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { APP_CONFIG } from './constants';
 import { configService } from './services/supabaseClient';
+import androidStoreIcon from './public/icona-android-store.png';
 
 const InviteView: React.FC = () => {
   const [copied, setCopied] = useState(false);
@@ -154,15 +155,15 @@ const InviteView: React.FC = () => {
             </div>
             <div className="w-full flex items-center justify-center mb-4">
               <img 
-                src="/icona-android-store.png" 
+                src={androidStoreIcon} 
                 alt="Google Play Store" 
                 className="h-12 w-auto object-contain pointer-events-none select-none"
               />
             </div>
             <h3 className="font-bold font-['Orbitron'] mb-2">App Android</h3>
             <p className="text-xs text-slate-400 mb-6">Nessuna barra degli indirizzi, caricamento istantaneo e performance top.</p>
-            <a href="/app-release.apk" download className="mt-auto w-full bg-green-600 hover:bg-green-700 text-white font-bold text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-1.5">
-              SCARICA APK <Download size={14} />
+            <a href="https://play.google.com/store/apps/details?id=com.max.numbergame.app&pcampaignid=web_share" target="_blank" rel="noopener noreferrer" className="mt-auto w-full bg-green-600 hover:bg-green-700 text-white font-bold text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-1.5">
+              SCARICA DA PLAY STORE <Download size={14} />
             </a>
           </div>
 
