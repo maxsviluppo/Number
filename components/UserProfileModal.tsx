@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Trophy, Award, Lock, X, Star, Zap, Brain, Target, Shield, Sparkles, BookOpen, Crown, Gem, Infinity, Layers, Swords, Camera, Trash2, Home } from 'lucide-react';
+import { User, Trophy, Award, Lock, X, Star, Zap, Brain, Target, Shield, Sparkles, BookOpen, Crown, Gem, Infinity, Layers, Swords, Camera, Trash2, Home, Gift } from 'lucide-react';
 import { UserProfile, profileService } from '../services/supabaseClient';
 import { BADGES } from '../constants/badges';
 import { BOSS_LEVELS } from '../constants/boss_levels';
