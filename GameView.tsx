@@ -1811,7 +1811,24 @@ const GameView: React.FC = () => {
 
   const handleQuickInvite = () => {
     soundService.playUIClick();
-    window.location.href = '/invite';
+    if (!currentUser) {
+      setShowAuthModal(true);
+      showToast("Accedi o Registrati per invitare un amico!");
+      return;
+    }
+    const referralCode = userProfile?.referral_code || '';
+    const link = referralCode ? `https://www.numbergame.it/invite?ref=${referralCode}` : 'https://www.numbergame.it/invite';
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'Gioca a NumberGame!',
+        text: 'Ricevi +60s EXTRA! Usa il mio link per ricevere subito 60 secondi di bonus extra nella tua prima partita!',
+        url: link,
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(link);
+      showToast("Link di invito copiato negli appunti!");
+    }
   };
 
 
@@ -3996,18 +4013,16 @@ const GameView: React.FC = () => {
                   <HelpCircle size={22} className="relative z-20 text-white drop-shadow-md" strokeWidth={2.5} />
                 </button>
 
-                {/* Quick Invite Button - Web Only */}
-                {isWebOnly && (
-                  <button
-                    onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); handleQuickInvite(); }}
-                    id="invite-btn-home"
-                    className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group z-20"
-                    title="Invita Amico"
-                  >
-                    <img src="/ottagonocristallo.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
-                    <Gift size={22} className="relative z-20 text-white drop-shadow-md ml-0.5" strokeWidth={2.5} />
-                  </button>
-                )}
+                {/* Quick Invite Button */}
+                <button
+                  onPointerDown={async (e) => { e.stopPropagation(); await handleUserInteraction(); handleQuickInvite(); }}
+                  id="invite-btn-home"
+                  className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group z-20"
+                  title="Invita Amico"
+                >
+                  <img src="/ottagonocristallo.png" alt="Octagon" className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10" />
+                  <Gift size={22} className="relative z-20 text-white drop-shadow-md ml-0.5" strokeWidth={2.5} />
+                </button>
               </div>
               <div className="mb-4 flex flex-col items-center">
                 {/* Logo: Custom Shape Image with White Border & Brain */}

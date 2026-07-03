@@ -2,16 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Gift, Copy, Share2, ArrowLeft, Download, Info, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { APP_CONFIG } from './constants';
-import { configService } from './services/supabaseClient';
+import { configService, supabase } from './services/supabaseClient';
 import androidStoreIcon from './public/icona-android-store.png';
 
 const InviteView: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [remoteConfig, setRemoteConfig] = useState<any>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [userCode, setUserCode] = useState<string | null>(null);
 
-  // Generiamo un link referral dimostrativo per gli utenti non loggati
-  const sampleRefLink = `https://www.numbergame.it/site?ref=USER_ID`;
+  const inviteLink = userCode 
+    ? `https://www.numbergame.it/invite?ref=${userCode}` 
+    : `https://www.numbergame.it/invite`;
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -23,6 +25,25 @@ const InviteView: React.FC = () => {
     };
     loadConfig();
 
+    const fetchUserCode = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('referral_code')
+            .eq('id', user.id)
+            .single();
+          if (data && data.referral_code) {
+            setUserCode(data.referral_code);
+          }
+        }
+      } catch (err) {
+        console.warn("Error fetching user referral code in InviteView:", err);
+      }
+    };
+    fetchUserCode();
+
     document.body.classList.add('allow-scroll');
     document.documentElement.classList.add('allow-scroll');
     return () => {
@@ -32,7 +53,7 @@ const InviteView: React.FC = () => {
   }, []);
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(sampleRefLink);
+    navigator.clipboard.writeText(inviteLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -117,11 +138,11 @@ const InviteView: React.FC = () => {
           {/* Demonstration copy section */}
           <div className="space-y-4">
             <label className="block text-xs font-black uppercase tracking-widest text-slate-400">
-              Esempio di Link di Invito (accedi per generare il tuo):
+              {userCode ? 'Link per inviare un amico:' : 'Link per inviare un amico (accedi al gioco per personalizzarlo):'}
             </label>
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs md:text-sm font-mono text-slate-300 select-all truncate flex items-center">
-                {sampleRefLink}
+                {inviteLink}
               </div>
               <button 
                 onClick={handleCopyLink}

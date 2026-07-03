@@ -26,7 +26,7 @@ const ScrollToTop = () => {
 // CATCH REFERRAL LINK BEFORE REACT ROUTER INITIALIZES (Anti-redirect safeguard)
 try {
   const params = new URLSearchParams(window.location.search);
-  const ref = params.get('ref');
+  const ref = params.get('ref') || params.get('code');
   if (ref) {
     localStorage.setItem('pending_referral', ref);
     window.history.replaceState({}, document.title, window.location.pathname);
