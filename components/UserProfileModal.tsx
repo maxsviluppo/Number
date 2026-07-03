@@ -61,18 +61,21 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
         }
     };
 
-    // Fallback data if profile is missing (e.g. offline)
-    const stats = userProfile || {
-        total_score: 0,
-        max_level: 1,
-        estimated_iq: 100,
-        username: 'Ospite',
-        badges: [],
-        avatar_url: undefined,
-        referral_code: undefined
+    // Fallback data if profile is missing or properties are missing (e.g. offline or new user)
+    const stats = {
+        id: userProfile?.id,
+        total_score: userProfile?.total_score ?? 0,
+        max_level: userProfile?.max_level ?? 1,
+        estimated_iq: userProfile?.estimated_iq ?? 100,
+        username: userProfile?.username || 'Ospite',
+        badges: userProfile?.badges || [],
+        avatar_url: userProfile?.avatar_url,
+        referral_code: userProfile?.referral_code,
+        referred_by: userProfile?.referred_by,
+        bonus_charges: userProfile?.bonus_charges
     };
 
-    const unlockedBadges = stats.badges || [];
+    const unlockedBadges = stats.badges;
 
     const rank = getRank(stats.max_level);
     const RankIcon = rank.icon;
