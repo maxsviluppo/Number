@@ -1491,8 +1491,18 @@ const GameView: React.FC = () => {
 
   // 4. URL DEEP LINKING (Invitation Handling)
   useEffect(() => {
+    // Check URL params first (Web)
     const params = new URLSearchParams(window.location.search);
-    const joinId = params.get('joinMatch');
+    let joinId = params.get('joinMatch');
+    
+    // Check localStorage (Mobile deep link fallback)
+    if (!joinId) {
+      joinId = localStorage.getItem('pending_match_invite');
+      if (joinId) {
+        localStorage.removeItem('pending_match_invite');
+      }
+    }
+    
     if (joinId) {
       console.log("🔗 Detected Match Invite Link:", joinId);
       setPendingMatchInvite(joinId);
@@ -1500,6 +1510,19 @@ const GameView: React.FC = () => {
       const newUrl = window.location.origin + window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }
+
+    // Add listener for runtime deep links
+    const handleDeepLink = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        console.log("🔗 Caught deep-link-invite event:", customEvent.detail);
+        setPendingMatchInvite(customEvent.detail);
+      }
+    };
+    window.addEventListener('deep-link-invite', handleDeepLink);
+    return () => {
+      window.removeEventListener('deep-link-invite', handleDeepLink);
+    };
   }, []);
 
   // 5. AUTO-JOIN PENDING INVITE
@@ -3690,6 +3713,21 @@ const GameView: React.FC = () => {
             filter: 'brightness(0.92) contrast(var(--game-bg-contrast)) saturate(var(--game-bg-saturate))'
           }}
         ></div>
+
+        <video
+          className={`fixed inset-0 h-full w-full object-cover transition-opacity duration-1000 z-[-1] motion-reduce:hidden ${
+            gameState.status === 'idle' && !gameState.isBossLevel
+              ? 'opacity-55'
+              : 'opacity-0 pointer-events-none'
+          }`}
+          src="/sfondonumberanimato.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-hidden="true"
+        />
 
         {/* BOSS 2 BACKGROUND IMAGE LAYER */}
         <div className={`fixed -inset-[20%] w-[140%] h-[140%] bg-[url('/sfondomarrone.png')] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 z-0 ${gameState.bossLevelId === 2 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}></div>
