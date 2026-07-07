@@ -1,18 +1,20 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Play, BookOpen, Info, Mail, LayoutDashboard, Gift } from 'lucide-react';
+import { Home, Play, BookOpen, Info, Mail, Gift } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const BottomNav: React.FC = () => {
   const location = useLocation();
   const path = location.pathname;
+  const { t } = useLanguage();
 
   const navItems = [
-    { icon: <Home size={20} />, label: 'Home', path: '/' },
-    { icon: <Play size={20} />, label: 'Gioca', path: '/play' },
-    { icon: <Gift size={20} />, label: 'Invita', path: '/invite' },
-    { icon: <BookOpen size={20} />, label: 'Blog', path: '/blog' },
-    { icon: <Info size={20} />, label: 'About', path: '/about' },
-    { icon: <Mail size={20} />, label: 'Contatti', path: '/contact' },
+    { icon: <Home size={20} />, label: t('bottomNav.home'), path: '/' },
+    { icon: <Play size={20} />, label: t('bottomNav.play'), path: '/play' },
+    { icon: <Gift size={20} />, label: t('bottomNav.invite'), path: '/invite' },
+    { icon: <BookOpen size={20} />, label: t('bottomNav.blog'), path: '/blog' },
+    { icon: <Info size={20} />, label: t('bottomNav.about'), path: '/about' },
+    { icon: <Mail size={20} />, label: t('bottomNav.contact'), path: '/contact' },
   ];
 
   const allowedPaths = ['/site', '/blog', '/about', '/contact', '/terms', '/privacy', '/cookies', '/invite'];
@@ -21,7 +23,6 @@ const BottomNav: React.FC = () => {
   if (!isAllowed) return null;
 
   return (
-
     <nav className="fixed bottom-0 left-0 right-0 z-[1000] bg-black/80 backdrop-blur-xl border-t border-white/10 safe-area-bottom md:hidden overflow-hidden h-[72px]">
       <div className="flex items-center gap-1 px-4 overflow-x-auto no-scrollbar h-full touch-pan-x">
         {navItems.map((item) => {
@@ -44,7 +45,6 @@ const BottomNav: React.FC = () => {
               }`}>
                 {item.label}
               </span>
-              
               {isActive && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-[#FF8800] rounded-b-full shadow-[0_0_15px_#FF8800]"></div>
               )}

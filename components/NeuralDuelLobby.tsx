@@ -189,9 +189,9 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
         const match = await handleInvite(user);
 
         if (match) {
-            const joinUrl = `${window.location.origin}${window.location.pathname}?joinMatch=${match.id}`;
+            const joinUrl = `https://numbergame.it/play?joinMatch=${match.id}`;
             const title = `Sfida a Neural Duel!`;
-            const text = `Ciao ${user.username}, ti sfido a Neural Duel! 🧠⚔️\nAccetta la sfida qui e DOVEVINCERE! 👇\n${joinUrl}`;
+            const text = `Ciao ${user.username}, ti sfido a Neural Duel! 🧠⚔️\nAccetta la sfida qui! 👇\n${joinUrl}`;
 
             if (navigator.share) {
                 try {
@@ -340,7 +340,7 @@ const NeuralDuelLobby: React.FC<NeuralDuelProps> = ({ currentUser, onClose, onMa
                     }
                 });
 
-                const joinUrl = `${window.location.origin}${window.location.pathname}?joinMatch=${newMatch.id}`;
+                const joinUrl = `https://numbergame.it/play?joinMatch=${newMatch.id}`;
                 const title = "Sfida a Neural Duel!";
                 const text = `Ti sfido a Neural Duel! 🧠\nClicca qui per accettare la sfida: ${joinUrl}`;
 

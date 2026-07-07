@@ -15,9 +15,20 @@ interface ComicTutorialProps {
     onComplete: (neverShowAgain: boolean) => void;
     onSkip: (neverShowAgain: boolean) => void;
     isVisible: boolean;
+    nextLabel?: string;
+    okLabel?: string;
+    neverShowLabel?: string;
 }
 
-const ComicTutorial: React.FC<ComicTutorialProps> = ({ steps, onComplete, onSkip, isVisible }) => {
+const ComicTutorial: React.FC<ComicTutorialProps> = ({
+    steps,
+    onComplete,
+    onSkip,
+    isVisible,
+    nextLabel = 'AVANTI',
+    okLabel = 'OK',
+    neverShowLabel = 'Non mostrare più',
+}) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [neverShowAgain, setNeverShowAgain] = useState(false);
     const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -171,7 +182,7 @@ const ComicTutorial: React.FC<ComicTutorialProps> = ({ steps, onComplete, onSkip
                                     onClick={handleNext}
                                     className="flex-1 bg-slate-900 text-white py-2 rounded-lg font-orbitron font-black uppercase text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-[#FF8800]"
                                 >
-                                    {currentStep === steps.length - 1 ? 'OK' : 'AVANTI'}
+                                    {currentStep === steps.length - 1 ? okLabel : nextLabel}
                                     <ArrowRight size={12} />
                                 </button>
                             </div>
@@ -184,7 +195,7 @@ const ComicTutorial: React.FC<ComicTutorialProps> = ({ steps, onComplete, onSkip
                                     checked={neverShowAgain}
                                     onChange={(e) => setNeverShowAgain(e.target.checked)}
                                 />
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide group-hover:text-slate-600">Non mostrare più</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide group-hover:text-slate-600">{neverShowLabel}</span>
                             </label>
                         </div>
                     </div>

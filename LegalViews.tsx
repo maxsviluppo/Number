@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { X, Menu, Shield, Lock, Info, CheckCircle, FileText, Mail } from 'lucide-react';
 import { APP_CONFIG } from './constants';
+import { useLanguage } from './i18n/LanguageContext';
+import LanguageSwitcher from './components/LanguageSwitcher';
 
 const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.seo; children: React.ReactNode }> = ({ title, configKey, children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { t } = useLanguage();
   const seoConfig = APP_CONFIG.seo[configKey] || {
     title: 'Number Game',
     description: 'Sfida Matematica & Brain Training',
@@ -34,30 +37,25 @@ const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.
 
   return (
     <div className="min-h-screen bg-[url('/sfondo.png')] bg-cover bg-center bg-no-repeat bg-fixed text-white flex flex-col font-['Inter']">
-
-      {/* Navigation Header */}
       <nav className="fixed top-0 w-full z-[100] glass-panel border-b border-white/5 py-4 px-6 flex justify-between items-center">
-
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-[#FF8800] rounded-lg flex items-center justify-center font-black text-white italic">N</div>
           <Link to="/site" className="font-['Orbitron'] font-black tracking-tighter text-xl text-[#FF8800]">number</Link>
         </div>
-        
-        {/* Desktop Menu */}
+
         <div className="hidden md:flex gap-8 text-sm font-semibold uppercase tracking-widest text-slate-400">
-          <Link to="/site" className="hover:text-white transition-colors">Home</Link>
-          <Link to="/play" className="hover:text-white transition-colors">Gioca</Link>
-          <Link to="/blog" className="hover:text-white transition-colors">Blog</Link>
-          <Link to="/about" className="hover:text-white transition-colors">About</Link>
+          <Link to="/site" className="hover:text-white transition-colors">{t('nav.home')}</Link>
+          <Link to="/play" className="hover:text-white transition-colors">{t('nav.play')}</Link>
+          <Link to="/blog" className="hover:text-white transition-colors">{t('nav.blog')}</Link>
+          <Link to="/about" className="hover:text-white transition-colors">{t('nav.about')}</Link>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <LanguageSwitcher className="scale-[0.45] sm:scale-50 origin-right -mr-8 sm:-mr-6" />
           <Link to="/contact" className="hidden sm:block bg-[#FF8800] text-black px-6 py-2 rounded-full font-black text-sm hover:scale-105 active:scale-95 transition-all">
-            CONTATTI
+            {t('nav.contacts')}
           </Link>
-          
-          {/* Mobile Menu Toggle */}
-          <button 
+          <button
             className="md:hidden p-2 text-white hover:text-[#FF8800] transition-colors"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
@@ -65,223 +63,221 @@ const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.
           </button>
         </div>
 
-        {/* Mobile Menu Overlay */}
         {isMenuOpen && (
           <div className="fixed inset-0 top-[72px] bg-black z-[9999] flex flex-col p-8 gap-6 animate-screen-in md:hidden">
             <Link to="/site" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">HOME</Link>
-            <Link to="/play" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">GIOCA</Link>
+            <Link to="/play" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">{t('nav.play').toUpperCase()}</Link>
             <Link to="/blog" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">BLOG</Link>
             <Link to="/about" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">ABOUT</Link>
-            <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">CONTATTI</Link>
+            <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black font-['Orbitron'] hover:text-[#FF8800]">{t('nav.contacts')}</Link>
           </div>
         )}
       </nav>
 
-    <main className="pt-40 pb-20 px-6 max-w-4xl mx-auto w-full flex-grow">
-      <h1 className="text-4xl md:text-5xl font-black font-['Orbitron'] mb-12 text-[#FF8800] border-b border-white/10 pb-6 uppercase tracking-widest">
-        {title}
-      </h1>
-      <div className="prose prose-invert max-w-none text-slate-400 leading-relaxed text-lg">
-        {children}
-      </div>
-    </main>
+      <main className="pt-40 pb-20 px-6 max-w-4xl mx-auto w-full flex-grow">
+        <h1 className="text-4xl md:text-5xl font-black font-['Orbitron'] mb-12 text-[#FF8800] border-b border-white/10 pb-6 uppercase tracking-widest">
+          {title}
+        </h1>
+        <div className="prose prose-invert max-w-none text-slate-400 leading-relaxed text-lg">
+          {children}
+        </div>
+      </main>
 
-    <footer className="py-8 px-6 border-t border-white/5 bg-slate-950 mt-20 text-center">
-      <div className="max-w-7xl mx-auto text-slate-600 text-[10px] font-mono">
-        © 2026 GIULINCY SRL • TUTTI I DIRITTI RISERVATI • GDPR COMPLIANT
-      </div>
-    </footer>
+      <footer className="py-8 px-6 border-t border-white/5 bg-slate-950 mt-20 text-center">
+        <div className="max-w-7xl mx-auto text-slate-600 text-[10px] font-mono">
+          {t('legal.footer')}
+        </div>
+      </footer>
     </div>
   );
 };
 
-export const PrivacyView: React.FC = () => (
-  <LegalLayout title="Privacy Policy & GDPR" configKey="privacy">
-    <div className="space-y-8">
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-           <Shield className="w-5 h-5 text-[#FF8800]" /> 1. Informativa Generale
-        </h2>
-        <p>Documento aggiornato al 09 Marzo 2026 in conformità al Regolamento UE 2016/679 (GDPR). Numbergame.it garantisce che il trattamento dei dati personali si svolga nel rispetto dei diritti e delle libertà fondamentali dell'interessato.</p>
-      </section>
+export const PrivacyView: React.FC = () => {
+  const { t } = useLanguage();
+  return (
+    <LegalLayout title={t('legal.privacy.title')} configKey="privacy">
+      <div className="space-y-8">
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+            <Shield className="w-5 h-5 text-[#FF8800]" /> {t('legal.privacy.s1Title')}
+          </h2>
+          <p>{t('legal.privacy.s1Body')}</p>
+        </section>
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+            <Lock className="w-5 h-5 text-[#FF8800]" /> {t('legal.privacy.s2Title')}
+          </h2>
+          <p>{t('legal.privacy.s2Body')}</p>
+        </section>
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+            <Info className="w-5 h-5 text-[#FF8800]" /> {t('legal.privacy.s3Title')}
+          </h2>
+          <p>{t('legal.privacy.s3Intro')}</p>
+          <ul className="list-disc pl-6 space-y-2">
+            <li><strong>{t('legal.privacy.s3Li1')}</strong></li>
+            <li><strong>{t('legal.privacy.s3Li2')}</strong></li>
+          </ul>
+          <p className="mt-4">{t('legal.privacy.s3Outro')}</p>
+        </section>
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-[#FF8800]" /> {t('legal.privacy.s4Title')}
+          </h2>
+          <p>{t('legal.privacy.s4Intro')}</p>
+          <ul className="list-disc pl-6 space-y-2">
+            <li>{t('legal.privacy.s4Li1')}</li>
+            <li>{t('legal.privacy.s4Li2')}</li>
+            <li>{t('legal.privacy.s4Li3')}</li>
+          </ul>
+        </section>
+      </div>
+    </LegalLayout>
+  );
+};
 
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-           <Lock className="w-5 h-5 text-[#FF8800]" /> 2. Titolare del Trattamento
-        </h2>
-        <p>Il titolare del trattamento è <strong>Giulincy srl</strong>. Per qualsiasi chiarimento relativo alla protezione dei dati o per l'esercizio dei propri diritti, è possibile contattare il titolare all'indirizzo email: <strong>privacy@numbergame.it</strong>.</p>
-      </section>
+export const CookieView: React.FC = () => {
+  const { t } = useLanguage();
+  return (
+    <LegalLayout title={t('legal.cookies.title')} configKey="cookies">
+      <div className="space-y-8">
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em]">{t('legal.cookies.s1Title')}</h2>
+          <p>{t('legal.cookies.s1Body')}</p>
+        </section>
+        <section className="bg-slate-900 p-6 rounded-2xl border border-white/5">
+          <h3 className="font-bold text-white mb-4 italic">{t('legal.cookies.s2Title')}</h3>
+          <ul className="space-y-4">
+            <li className="border-b border-white/5 pb-2">
+              <span className="text-[#FF8800] font-black mr-2">{t('legal.cookies.technical').split(':')[0]}:</span>
+              {t('legal.cookies.technical').split(':').slice(1).join(':')}
+            </li>
+            <li className="border-b border-white/5 pb-2">
+              <span className="text-[#FF8800] font-black mr-2">{t('legal.cookies.analytics').split(':')[0]}:</span>
+              {t('legal.cookies.analytics').split(':').slice(1).join(':')}
+            </li>
+            <li className="border-b border-white/5 pb-2">
+              <span className="text-[#FF8800] font-black mr-2">{t('legal.cookies.marketing').split(':')[0]}:</span>
+              {t('legal.cookies.marketing').split(':').slice(1).join(':')}
+            </li>
+          </ul>
+        </section>
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em]">{t('legal.cookies.s3Title')}</h2>
+          <p>{t('legal.cookies.s3Body')}</p>
+        </section>
+      </div>
+    </LegalLayout>
+  );
+};
 
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-           <Info className="w-5 h-5 text-[#FF8800]" /> 3. Finalità e Conservazione
-        </h2>
-        <p>I dati vengono raccolti esclusivamente per le seguenti finalità:</p>
-        <ul className="list-disc pl-6 space-y-2">
-          <li><strong>Funzionamento del gioco:</strong> Salvataggio dei progressi, livelli e punteggi su server sicuri gestiti da <strong>Supabase</strong>.</li>
-          <li><strong>Sicurezza e Prestazioni:</strong> Monitoraggio tecnico per garantire la stabilità del servizio.</li>
-        </ul>
-        <p className="mt-4">Numbergame.it non vende né cede i tuoi dati a terze parti per scopi commerciali.</p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-           <CheckCircle className="w-5 h-5 text-[#FF8800]" /> 4. Diritti dell'Interessato
-        </h2>
-        <p>Ai sensi del GDPR, l'utente ha il diritto di:</p>
-        <ul className="list-disc pl-6 space-y-2">
-          <li>Accedere ai propri dati e richiederne l'esportazione.</li>
-          <li>Richiedere la rettifica o la cancellazione degli stessi ("Diritto all'oblio").</li>
-          <li>Revocare il consenso ai cookie in qualsiasi momento tramite il pannello di gestione.</li>
-        </ul>
-      </section>
-    </div>
-  </LegalLayout>
-);
-
-export const CookieView: React.FC = () => (
-  <LegalLayout title="Cookie Policy" configKey="cookies">
-    <div className="space-y-8">
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em]">Utilizzo dei Cookie</h2>
-        <p>Questo sito utilizza cookie per migliorare l'esperienza e mostrare pubblicità personalizzata tramite Google AdSense.</p>
-      </section>
-
-      <section className="bg-slate-900 p-6 rounded-2xl border border-white/5">
-        <h3 className="font-bold text-white mb-4 italic">Tipologie di Cookie in uso:</h3>
-        <ul className="space-y-4">
-          <li className="border-b border-white/5 pb-2">
-            <span className="text-[#FF8800] font-black mr-2">TECNICI:</span> Essenziali per il salvataggio dei login e dei livelli raggiunti. Non possono essere disattivati.
-          </li>
-          <li className="border-b border-white/5 pb-2">
-            <span className="text-[#FF8800] font-black mr-2">ANALYTICS:</span> Ci aiutano a capire quanti utenti giocano e quali livelli sono troppo difficili.
-          </li>
-          <li className="border-b border-white/5 pb-2">
-            <span className="text-[#FF8800] font-black mr-2">MARKETING (AdSense):</span> Cookie di terze parti utilizzati da Google per pubblicare annunci pertinenti basati sulle tue visite precedenti.
-          </li>
-        </ul>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em]">Gestione del Consenso</h2>
-        <p>Puoi modificare le tue preferenze sui cookie in ogni momento pulendo la cache del browser o cliccando sul link "Gestisci Consenso" presente in fondo ad ogni pagina.</p>
-      </section>
-    </div>
-  </LegalLayout>
-);
-
-export const AboutView: React.FC = () => (
-  <LegalLayout title="Chi Siamo" configKey="about">
-    <div className="space-y-8">
-      <section>
-        <p className="text-white text-xl leading-relaxed font-bold italic">
-          "La matematica non è un'opinione, è un'avventura."
-        </p>
-        <p className="mt-6">
-          <strong>Numbergame.it</strong> è una piattaforma italiana di intrattenimento educativo sviluppata da <strong>Giulincy srl</strong>. Trasformiamo il calcolo mentale in un'esperienza competitiva, visivamente curata e gratuita, pensata per studenti, adulti e appassionati di puzzle logici.
-        </p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em]">Cosa offre la piattaforma</h2>
-        <ul className="list-disc pl-6 space-y-3">
-          <li><strong>Campagna a livelli:</strong> obiettivi numerici, timer e progressione graduale sulla griglia esagonale.</li>
-          <li><strong>Neural Duel 1vs1:</strong> sfide online in tempo reale (Standard e Blitz).</li>
-          <li><strong>Ranking globale:</strong> punteggi, streak e stima QI per monitorare i progressi.</li>
-          <li><strong>Boss Challenge:</strong> livelli speciali con regole avanzate.</li>
-          <li><strong>Blog editoriale:</strong> articoli su calcolo mentale, neuroplasticità e strategie di studio.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em]">Brain training accessibile</h2>
-        <p>
-          Esercizi regolari di logica e calcolo possono sostenere attenzione, memoria di lavoro e velocità di risposta. Numbergame rende questo allenamento concreto e motivante, con feedback immediato e obiettivi chiari a ogni partita.
-        </p>
-        <p className="mt-4">
-          Esplora gli approfondimenti nel nostro <Link to="/blog" className="text-[#FF8800] font-bold hover:underline">blog</Link> o inizia subito una partita dalla sezione <Link to="/play" className="text-[#FF8800] font-bold hover:underline">Gioca</Link>.
-        </p>
-      </section>
-
-      <section>
-        <div className="grid md:grid-cols-2 gap-8 pt-8 border-t border-white/5">
-           <div className="bg-slate-900/50 p-6 rounded-2xl border border-white/5">
-              <h3 className="text-[#FF8800] font-black uppercase text-sm tracking-widest mb-2">Ideatore & PM</h3>
-              <p className="text-white text-lg font-bold">Giovanni Coda</p>
-           </div>
-           <div className="bg-slate-900/50 p-6 rounded-2xl border border-white/5">
-              <h3 className="text-[#FF8800] font-black uppercase text-sm tracking-widest mb-2">Sviluppo & Test</h3>
-              <p className="text-white text-lg font-bold">Castro Massimo</p>
-           </div>
-        </div>
-      </section>
-    </div>
-  </LegalLayout>
-);
-
-export const TermsView: React.FC = () => (
-  <LegalLayout title="Termini di Contratto" configKey="terms">
-    <div className="space-y-8">
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-           <FileText className="w-5 h-5 text-[#FF8800]" /> 1. Oggetto del Servizio
-        </h2>
-        <p>L'accesso a Numbergame.it è gratuito. Il sito offre giochi logico-matematici e contenuti editoriali volti all'intrattenimento e all'allenamento cognitivo.</p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-           <FileText className="w-5 h-5 text-[#FF8800]" /> 2. Proprietà Intellettuale
-        </h2>
-        <p>Tutti i contenuti (codice, design, testi degli articoli e algoritmi di gioco) sono di proprietà esclusiva di <strong>Giulincy srl</strong>. È vietata la riproduzione, anche parziale, senza autorizzazione scritta.</p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-           <FileText className="w-5 h-5 text-[#FF8800]" /> 3. Limitazioni di Responsabilità
-        </h2>
-        <p>Il servizio è fornito "visto e piaciuto". Non garantiamo che il gioco sia privo di bug o interruzioni. Non siamo responsabili per l'uso improprio delle informazioni contenute negli articoli del blog.</p>
-      </section>
-
-      <section>
-        <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
-           <FileText className="w-5 h-5 text-[#FF8800]" /> 4. Sospensione Account
-        </h2>
-        <p>Ci riserviamo il diritto di bannare o limitare l'accesso a utenti che utilizzano software di automazione (bot) per falsare le classifiche mondiali.</p>
-      </section>
-    </div>
-  </LegalLayout>
-);
-
-export const ContactView: React.FC = () => (
-  <LegalLayout title="Contatti" configKey="contact">
-    <div className="space-y-8">
-      <section className="bg-slate-900 p-10 rounded-[2rem] border border-white/5 shadow-2xl overflow-hidden relative group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF8800]/5 blur-3xl -mr-16 -mt-16 group-hover:bg-[#FF8800]/10 transition-colors"></div>
-        
-        <h2 className="text-xl font-bold text-white mb-6 uppercase tracking-[0.2em] flex items-center gap-3">
-           <Mail className="w-6 h-6 text-[#FF8800]" /> Supporto & Partnership
-        </h2>
-        
-        <div className="space-y-8">
-          <div>
-            <p className="mb-4 text-slate-400">Hai domande, suggerimenti o segnalazioni? Scrivici direttamente a:</p>
-            <a href="mailto:info@numbergame.it" className="text-2xl md:text-3xl font-black font-['Orbitron'] text-[#FF8800] hover:scale-105 transition-transform inline-block break-all border-b-2 border-transparent hover:border-[#FF8800]">
-              info@numbergame.it
-            </a>
+export const AboutView: React.FC = () => {
+  const { t } = useLanguage();
+  return (
+    <LegalLayout title={t('legal.about.title')} configKey="about">
+      <div className="space-y-8">
+        <section>
+          <p className="text-white text-xl leading-relaxed font-bold italic">{t('legal.about.quote')}</p>
+          <p className="mt-6">{t('legal.about.intro')}</p>
+        </section>
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em]">{t('legal.about.offersTitle')}</h2>
+          <ul className="list-disc pl-6 space-y-3">
+            <li><strong>{t('legal.about.offer1')}</strong></li>
+            <li><strong>{t('legal.about.offer2')}</strong></li>
+            <li><strong>{t('legal.about.offer3')}</strong></li>
+            <li><strong>{t('legal.about.offer4')}</strong></li>
+            <li><strong>{t('legal.about.offer5')}</strong></li>
+          </ul>
+        </section>
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em]">{t('legal.about.brainTitle')}</h2>
+          <p>{t('legal.about.brainBody')}</p>
+          <p className="mt-4 text-slate-400">
+            <Link to="/blog" className="text-[#FF8800] font-bold hover:underline">{t('nav.blog')}</Link>
+            {' · '}
+            <Link to="/play" className="text-[#FF8800] font-bold hover:underline">{t('nav.play')}</Link>
+          </p>
+        </section>
+        <section>
+          <div className="grid md:grid-cols-2 gap-8 pt-8 border-t border-white/5">
+            <div className="bg-slate-900/50 p-6 rounded-2xl border border-white/5">
+              <h3 className="text-[#FF8800] font-black uppercase text-sm tracking-widest mb-2">{t('legal.about.pmLabel')}</h3>
+              <p className="text-white text-lg font-bold">{t('legal.about.pmName')}</p>
+            </div>
+            <div className="bg-slate-900/50 p-6 rounded-2xl border border-white/5">
+              <h3 className="text-[#FF8800] font-black uppercase text-sm tracking-widest mb-2">{t('legal.about.devLabel')}</h3>
+              <p className="text-white text-lg font-bold">{t('legal.about.devName')}</p>
+            </div>
           </div>
+        </section>
+      </div>
+    </LegalLayout>
+  );
+};
 
-          <div className="pt-8 border-t border-white/5">
-            <h3 className="text-white font-bold mb-4 uppercase tracking-widest text-sm italic">Sviluppo Software su Misura</h3>
-            <p className="text-slate-400 leading-relaxed">
-              Oltre a Numbergame.it, il nostro team offre servizi professionali di sviluppo. Siamo pronti a dare vita alla tua idea: 
-              <span className="text-white font-semibold"> sviluppiamo videogiochi (2D/3D), applicazioni mobile Android/iOS, gestionali aziendali, </span> 
-              piattaforme web avanzate e soluzioni basate su Intelligenza Artificiale.
-            </p>
-            <p className="mt-4 text-[#FF8800] font-bold">Contattaci per un preventivo personalizzato.</p>
+export const TermsView: React.FC = () => {
+  const { t } = useLanguage();
+  return (
+    <LegalLayout title={t('legal.terms.title')} configKey="terms">
+      <div className="space-y-8">
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#FF8800]" /> {t('legal.terms.s1Title')}
+          </h2>
+          <p>{t('legal.terms.s1Body')}</p>
+        </section>
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#FF8800]" /> {t('legal.terms.s2Title')}
+          </h2>
+          <p>{t('legal.terms.s2Body')}</p>
+        </section>
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#FF8800]" /> {t('legal.terms.s3Title')}
+          </h2>
+          <p>{t('legal.terms.s3Body')}</p>
+        </section>
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#FF8800]" /> {t('legal.terms.s4Title')}
+          </h2>
+          <p>{t('legal.terms.s4Body')}</p>
+        </section>
+      </div>
+    </LegalLayout>
+  );
+};
+
+export const ContactView: React.FC = () => {
+  const { t } = useLanguage();
+  return (
+    <LegalLayout title={t('legal.contact.title')} configKey="contact">
+      <div className="space-y-8">
+        <section className="bg-slate-900 p-10 rounded-[2rem] border border-white/5 shadow-2xl overflow-hidden relative group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF8800]/5 blur-3xl -mr-16 -mt-16 group-hover:bg-[#FF8800]/10 transition-colors"></div>
+
+          <h2 className="text-xl font-bold text-white mb-6 uppercase tracking-[0.2em] flex items-center gap-3">
+            <Mail className="w-6 h-6 text-[#FF8800]" /> {t('legal.contact.supportTitle')}
+          </h2>
+
+          <div className="space-y-8">
+            <div>
+              <p className="mb-4 text-slate-400">{t('legal.contact.intro')}</p>
+              <a href="mailto:info@numbergame.it" className="text-2xl md:text-3xl font-black font-['Orbitron'] text-[#FF8800] hover:scale-105 transition-transform inline-block break-all border-b-2 border-transparent hover:border-[#FF8800]">
+                info@numbergame.it
+              </a>
+            </div>
+
+            <div className="pt-8 border-t border-white/5">
+              <h3 className="text-white font-bold mb-4 uppercase tracking-widest text-sm italic">{t('legal.contact.customDevTitle')}</h3>
+              <p className="text-slate-400 leading-relaxed">{t('legal.contact.customDevBody')}</p>
+              <p className="mt-4 text-[#FF8800] font-bold">{t('legal.contact.customDevCta')}</p>
+            </div>
           </div>
-        </div>
-      </section>
-    </div>
-  </LegalLayout>
-);
+        </section>
+      </div>
+    </LegalLayout>
+  );
+};

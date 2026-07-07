@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { HexCellData, GameState } from './types';
 import { INITIAL_TIME, BASE_POINTS_START, MAX_STREAK, GRID_ROWS, GRID_COLS, OPERATORS, MOCK_LEADERBOARD, APP_CONFIG } from './constants';
 import HexCell from './components/HexCell';
@@ -25,34 +25,9 @@ import { BADGES } from './constants/badges';
 import { authService, profileService, leaderboardService, supabase, configService, UserProfile } from './services/supabaseClient'; // Moved this import here
 import { BOSS_LEVELS } from './constants/boss_levels';
 import { AdMob, BannerAdPosition, BannerAdSize, AdMobBannerSize, RewardAdPluginEvents } from '@capacitor-community/admob';
-
-const TUTORIAL_STEPS = [
-  {
-    title: "OBIETTIVO E GRIGLIA",
-    description: "Collega le celle per formare equazioni che danno come risultato i Target richiesti. Usa i numeri e gli operatori (+, -, ×, ÷) in modo strategico per svuotare la lista nel minor tempo possibile!",
-    icon: <Brain className="w-12 h-12 text-[#FF8800]" />
-  },
-  {
-    title: "CONNESSIONE NEURALE",
-    description: "Trascina per collegare le celle adiacenti rispettando la sequenza: Numero → Operatore → Numero (es. 5 + 3). Il percorso si illumina di VERDE se l'equazione è esatta, di ROSSO in caso di errore.",
-    icon: <RefreshCw className="w-12 h-12 text-[#FF8800]" />
-  },
-  {
-    title: "SFIDE BOSS & GRAVITÀ",
-    description: "Ogni 5 livelli affronterai un potente Boss Guardiano con meccaniche uniche, come griglie a cascata e gravità dinamica! Sconfiggilo entro il tempo limite per sbloccare ricompense e moltiplicatori.",
-    icon: <Crown className="w-12 h-12 text-[#FF8800]" />
-  },
-  {
-    title: "NEURAL DUEL (1VS1)",
-    description: "Entra nell'arena multigiocatore! Scegli tra la modalità STANDARD e la frenetica modalità BLITZ / DOMINIO, dove la rapidità è tutto e puoi persino rubare i Target completati dal tuo avversario!",
-    icon: <Swords className="w-12 h-12 text-[#FF8800]" />
-  },
-  {
-    title: "QI RANKING AI",
-    description: "Il nostro motore di intelligenza artificiale valuta costantemente la tua velocità di calcolo, l'ottimizzazione dei percorsi e la serie di risposte corrette per stimare in tempo reale il tuo QI Matematico.",
-    icon: <Zap className="w-12 h-12 text-[#FF8800]" />
-  }
-];
+import { useLanguage } from './i18n/LanguageContext';
+import { translateGameText } from './i18n/gameTranslations';
+import LanguageSwitcher from './components/LanguageSwitcher';
 
 const WIN_VIDEOS = ['/Win1noaudio.mp4', '/Win2noaudioe.mp4', '/Win3noaudio.mp4', '/Win4noaudio.mp4'];
 const LOSE_VIDEOS = ['/Lose1noaudio.mp4', '/Lose2noaudio.mp4'];
@@ -60,6 +35,7 @@ const SURRENDER_VIDEOS = ['/Resa1noaudio.mp4'];
 
 // BOSS_LEVELS imported from constants/boss_levels
 const GameView: React.FC = () => {
+  const { language: gameLanguage, t, translations } = useLanguage();
   const isWebOnly = !(window as any).Capacitor?.isNativePlatform?.();
   const [gameState, setGameState] = useState<GameState>({
     score: 0,
@@ -108,10 +84,6 @@ const GameView: React.FC = () => {
   const [toast, setToast] = useState<{ message: string, visible: boolean, actions?: { label: string, onClick: () => void, variant?: 'primary' | 'secondary' }[] }>({ message: '', visible: false });
   const [isMuted, setIsMuted] = useState(false);
   const [bannerSlide, setBannerSlide] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setBannerSlide(s => (s + 1) % 2), 6000);
-    return () => clearInterval(id);
-  }, []);
   const [showVideo, setShowVideo] = useState(false);
   const [showLostVideo, setShowLostVideo] = useState(false);
   const [showBossIntro, setShowBossIntro] = useState(false);
@@ -431,6 +403,91 @@ const GameView: React.FC = () => {
   const [onlinePlayers, setOnlinePlayers] = useState<any[]>([]);
   const [pendingMatchInvite, setPendingMatchInvite] = useState<string | null>(null);
   const [isJoiningPending, setIsJoiningPending] = useState(false);
+
+  const tutorialIcons = useMemo(
+    () => [
+      <Brain className="w-12 h-12 text-[#FF8800]" key="brain" />,
+      <RefreshCw className="w-12 h-12 text-[#FF8800]" key="refresh" />,
+      <Crown className="w-12 h-12 text-[#FF8800]" key="crown" />,
+      <Swords className="w-12 h-12 text-[#FF8800]" key="swords" />,
+      <Zap className="w-12 h-12 text-[#FF8800]" key="zap" />,
+    ],
+    []
+  );
+
+  const TUTORIAL_STEPS = useMemo(
+    () => translations.game.tutorialSteps.map((step, idx) => ({
+      ...step,
+      icon: tutorialIcons[idx],
+    })),
+    [translations, tutorialIcons]
+  );
+
+  const homeTutorialSteps = useMemo((): TutorialStep[] => {
+    const targets = ['audio-btn-home', 'logo-home', 'tutorial-btn-home', 'play-btn-home', 'duel-btn-home', 'ranking-btn-home'];
+    const positions: TutorialStep['position'][] = ['top', 'bottom', 'bottom', 'center', 'bottom', 'bottom'];
+    return translations.game.homeTutorialSteps.map((step, idx) => ({
+      ...step,
+      targetId: targets[idx],
+      position: positions[idx],
+    }));
+  }, [translations]);
+
+  const gameTutorialSteps = useMemo((): TutorialStep[] => {
+    const targets = ['targets-display-tutorial', 'grid-container-game', 'score-display-game', 'timer-display-game'];
+    const positions: TutorialStep['position'][] = ['top', 'center', 'right', 'center'];
+    return translations.game.gameTutorialSteps.map((step, idx) => ({
+      ...step,
+      targetId: targets[idx],
+      position: positions[idx],
+    }));
+  }, [translations]);
+
+  useEffect(() => {
+    const id = setInterval(() => setBannerSlide(s => (s + 1) % 2), 6000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const root = document.querySelector('[data-game-root]');
+    if (!root) return;
+
+    const translateNode = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent) {
+        const next = translateGameText(node.textContent, gameLanguage);
+        if (next !== node.textContent) node.textContent = next;
+        return;
+      }
+
+      if (!(node instanceof HTMLElement)) return;
+      if (['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT'].includes(node.tagName)) return;
+
+      ['title', 'alt', 'aria-label', 'placeholder'].forEach(attr => {
+        const value = node.getAttribute(attr);
+        if (!value) return;
+        const next = translateGameText(value, gameLanguage);
+        if (next !== value) node.setAttribute(attr, next);
+      });
+
+      node.childNodes.forEach(translateNode);
+    };
+
+    // Single pass on language change — avoid characterData observer (causes freeze loop)
+    const frameId = requestAnimationFrame(() => translateNode(root));
+
+    const observer = new MutationObserver(mutations => {
+      for (const mutation of mutations) {
+        mutation.addedNodes.forEach(translateNode);
+      }
+    });
+
+    observer.observe(root, { childList: true, subtree: true });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      observer.disconnect();
+    };
+  }, [gameLanguage]);
 
   // FAILSAFE: Force Intro End after timeout to prevent boot freeze
   useEffect(() => {
@@ -3699,6 +3756,7 @@ const GameView: React.FC = () => {
         } catch (e) { console.warn("Tutorial check skipped", e); }
       }} />}
       <div
+        data-game-root
         className={`fixed inset-0 w-full h-[100dvh] text-slate-100 font-sans overflow-hidden select-none transition-colors duration-1000`}
         style={{
           background: gameState.isBossLevel ? '#022c22' : 'transparent'
@@ -3955,7 +4013,7 @@ const GameView: React.FC = () => {
 
 
 
-              {/* TOP RIGHT: Action Buttons (Audio) */}
+              {/* TOP RIGHT: Audio */}
               <div className="fixed top-12 right-6 z-[3000] flex gap-3 items-center">
                 <button
                   onPointerDown={toggleMute}
@@ -4031,8 +4089,13 @@ const GameView: React.FC = () => {
                 <span className="text-[9px] text-white/30 font-black ml-3 font-mono tracking-wider select-none pointer-events-none">v5.9 [50]</span>
               </div>
 
-              {/* BOTTOM RIGHT ICONS: Admin & Tutorial (FIXED Position) */}
-              <div className="fixed bottom-4 right-4 z-[2000] flex -space-x-8" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
+              {/* BOTTOM RIGHT ICONS: Language, Tutorial & Invite */}
+              <div className="fixed bottom-4 right-4 z-[2000] flex items-end -space-x-8" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
+                <LanguageSwitcher
+                  dropdownDirection="up"
+                  className="relative z-30"
+                  onToggle={() => soundService.playUIClick()}
+                />
 
                 {/* Tutorial Icon */}
                 <button
@@ -4085,7 +4148,7 @@ const GameView: React.FC = () => {
                       ? 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 25px rgba(255, 136, 0, 0.65))'
                       : undefined
                   }}
-                  title="Apri Profilo"
+                  title={t('game.openProfile')}
                 >
                   {/* Custom Octagon Image */}
                   <img src="/Faviconottagonook.png" alt="Logo Base" className="absolute inset-0 w-full h-full object-contain drop-shadow-lg" />
@@ -4117,13 +4180,13 @@ const GameView: React.FC = () => {
                 >
                   <img 
                     src="/pulsantecristallo.png" 
-                    alt="Gioca" 
+                    alt={t('game.play')}
                     className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
                   />
                   <div className="absolute inset-0 flex items-center justify-center gap-4 z-20">
                     <Play className="w-8 h-8 fill-current text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
                     <span className="font-orbitron font-black text-xl tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                      {profileLoading ? 'CARICAMENTO...' : (savedGame && savedGame.level > 1 ? `CONTINUA LVL ${savedGame.level}` : 'GIOCA')}
+                      {profileLoading ? t('game.loading') : (savedGame && savedGame.level > 1 ? `${t('game.continueLevel')} ${savedGame.level}` : t('game.play'))}
                     </span>
                   </div>
                 </button>
@@ -4136,7 +4199,7 @@ const GameView: React.FC = () => {
                     await handleUserInteraction();
                     soundService.playUIClick();
                     if (!currentUser) {
-                      showToast("Accedi per sfidare altri giocatori!");
+                      showToast(t('game.loginToDuel'));
                       setShowAuthModal(true);
                     } else {
                       setActiveModal('duel_selection');
@@ -4152,7 +4215,7 @@ const GameView: React.FC = () => {
                 >
                   <img 
                     src="/pulsantecristallo.png" 
-                    alt="Duelli" 
+                    alt={t('game.duels')}
                     className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                     style={{
                       filter: 'hue-rotate(320deg) saturate(1.6) brightness(0.95)'
@@ -4161,7 +4224,7 @@ const GameView: React.FC = () => {
                   <div className="absolute inset-0 flex items-center justify-center gap-4 z-20">
                     <Swords className="w-8 h-8 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-pulse" />
                     <span className="font-orbitron font-black text-xl tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                      DUELLI
+                      {t('game.duels')}
                     </span>
                   </div>
                   {/* Badge */}
@@ -4187,7 +4250,7 @@ const GameView: React.FC = () => {
                 >
                   <img
                     src="/pulsantecristallo.png"
-                    alt="Classifiche"
+                    alt={t('game.rankings')}
                     className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                     style={{
                       filter: 'hue-rotate(35deg) saturate(1.5) brightness(1.15)'
@@ -4196,7 +4259,7 @@ const GameView: React.FC = () => {
                   <div className="absolute inset-0 flex items-center justify-center gap-4 z-20">
                     <BarChart3 className="w-8 h-8 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
                     <span className="font-orbitron font-black text-xl tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                      CLASSIFICHE
+                      {t('game.rankings')}
                     </span>
                   </div>
                 </button>
@@ -5775,7 +5838,7 @@ const GameView: React.FC = () => {
                   <h2 className="text-2xl font-black font-orbitron text-[#FF8800] mb-3 uppercase tracking-widest">{TUTORIAL_STEPS[tutorialStep].title}</h2>
                   <p className="text-slate-600 font-bold text-sm leading-relaxed mb-8 border-t-2 border-slate-100 pt-4 w-full min-h-[80px] flex items-center justify-center">{TUTORIAL_STEPS[tutorialStep].description}</p>
                   <button onPointerDown={(e) => { e.stopPropagation(); nextTutorialStep(); }} className="w-full bg-[#FF8800] text-white border-[3px] border-white py-4 rounded-2xl font-orbitron font-black text-sm uppercase shadow-lg active:scale-95 transition-all outline-none ring-0 hover:bg-orange-600">
-                    {tutorialStep === TUTORIAL_STEPS.length - 1 ? 'HO CAPITO' : 'AVANTI'}
+                    {tutorialStep === TUTORIAL_STEPS.length - 1 ? t('game.tutorialGotIt') : t('game.tutorialNext')}
                   </button>
                   <div className="flex items-center gap-2 mt-4">
                     {TUTORIAL_STEPS.map((_, idx) => (
@@ -6228,7 +6291,7 @@ const GameView: React.FC = () => {
                 <div className="flex flex-col items-center mb-6">
                   {/* 3D Octagonal Crystal Emblem using ottagonocristallo.png (60% Larger) - Lowered by 10px */}
                   <div className="relative w-32 h-32 flex items-center justify-center mb-1 translate-y-[10px]">
-                    <img src="/ottagonocristallo.png" alt="Emblema Ottagono Cristallo" className="absolute inset-0 w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(6,182,212,0.5)]" />
+                    <img src="/ottagonocristallo.png" alt={t('game.resumeConfirm.emblemAlt')} className="absolute inset-0 w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(6,182,212,0.5)]" />
                     {/* Single white brain, centered, transparent at 60% */}
                     <div className="relative z-10 flex items-center justify-center">
                       <Brain size={36} className="text-white opacity-60 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]" strokeWidth={2.5} />
@@ -6236,7 +6299,7 @@ const GameView: React.FC = () => {
                   </div>
 
                   <h2 className="text-2xl font-black font-orbitron text-cyan-400 uppercase tracking-widest text-center drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">
-                    MISSIONE CARRIERA
+                    {t('game.resumeConfirm.missionTitle')}
                   </h2>
                 </div>
 
@@ -6251,7 +6314,7 @@ const GameView: React.FC = () => {
 
                   {/* Sub-title */}
                   <div className="text-center mt-2 mb-4">
-                    <span className="text-[11px] text-slate-300 font-bold uppercase tracking-[0.25em] font-orbitron">LIVELLO ATTUALE</span>
+                    <span className="text-[11px] text-slate-300 font-bold uppercase tracking-[0.25em] font-orbitron">{t('game.resumeConfirm.currentLevel')}</span>
                   </div>
 
                   {/* Large Level Indicator (Cyan Neon Ring + Amber Gold 3D Level) */}
@@ -6276,7 +6339,7 @@ const GameView: React.FC = () => {
                     
                     {/* SCORES */}
                     <div className="flex flex-col items-center">
-                      <span className="text-[11px] font-black tracking-widest text-cyan-400 mb-2 uppercase font-orbitron drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]">SCORES</span>
+                      <span className="text-[11px] font-black tracking-widest text-cyan-400 mb-2 uppercase font-orbitron drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]">{t('game.resumeConfirm.scores')}</span>
                       <div className="flex items-center justify-center min-h-[2rem]">
                         <span className="text-2xl font-black font-orbitron text-cyan-300 tracking-wide drop-shadow-[0_0_12px_rgba(34,211,238,0.95)]">
                           {savedGame?.totalScore && savedGame.totalScore > 0 
@@ -6288,7 +6351,7 @@ const GameView: React.FC = () => {
 
                     {/* TIME */}
                     <div className="flex flex-col items-center">
-                      <span className="text-[11px] font-black tracking-widest text-cyan-400 mb-2 uppercase font-orbitron drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]">TIME</span>
+                      <span className="text-[11px] font-black tracking-widest text-cyan-400 mb-2 uppercase font-orbitron drop-shadow-[0_0_6px_rgba(34,211,238,0.8)]">{t('game.resumeConfirm.time')}</span>
                       <div className="flex items-center justify-center min-h-[2rem]">
                         <span className="text-2xl font-black font-orbitron text-cyan-300 tracking-wide drop-shadow-[0_0_12px_rgba(34,211,238,0.95)]">
                           {(() => {
@@ -6319,7 +6382,7 @@ const GameView: React.FC = () => {
                         <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl py-1.5 px-3 flex items-center justify-center gap-2 animate-pulse">
                           <Sparkles size={12} className="text-[#FF8800]" />
                           <span className="text-[9px] font-black text-[#FF8800] uppercase tracking-wider">
-                            Bonus Boss: +{localStorage.getItem('career_time_bonus')}s
+                            {t('game.resumeConfirm.bossBonus').replace('{seconds}', localStorage.getItem('career_time_bonus') || '0')}
                           </span>
                         </div>
                       )}
@@ -6328,7 +6391,7 @@ const GameView: React.FC = () => {
                         <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl py-1.5 px-3 flex items-center justify-center gap-2 animate-pulse">
                           <Gift size={12} className="text-cyan-400" />
                           <span className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">
-                            Bonus Invito: +60s
+                            {t('game.resumeConfirm.inviteBonus')}
                           </span>
                         </div>
                       )}
@@ -6358,13 +6421,13 @@ const GameView: React.FC = () => {
                     >
                       <img 
                         src="/pulsantecristallo.png" 
-                        alt="Inizia Partita" 
+                        alt={t('game.resumeConfirm.startAlt')} 
                         className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]" 
                       />
                       <div className="absolute inset-0 flex items-center justify-center gap-4 z-20">
                         <Play className="w-6 h-6 fill-current text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
                         <span className="font-orbitron font-black text-lg tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                          {profileLoading ? 'CARICAMENTO...' : 'INIZIA PARTITA'}
+                          {profileLoading ? t('game.loading') : t('game.resumeConfirm.startMatch')}
                         </span>
                       </div>
                     </button>
@@ -6382,7 +6445,7 @@ const GameView: React.FC = () => {
                     >
                       <img 
                         src="/pulsantecristallo.png" 
-                        alt="Indietro" 
+                        alt={t('game.resumeConfirm.backAlt')} 
                         className="w-full h-auto object-contain select-none pointer-events-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]"
                         style={{
                           filter: 'hue-rotate(185deg) saturate(1.4) brightness(0.9)'
@@ -6391,7 +6454,7 @@ const GameView: React.FC = () => {
                       <div className="absolute inset-0 flex items-center justify-center gap-3 z-20">
                         <Home size={18} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
                         <span className="font-orbitron font-black text-lg tracking-widest text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                          INDIETRO
+                          {t('game.resumeConfirm.back')}
                         </span>
                       </div>
                     </button>
@@ -6759,45 +6822,10 @@ const GameView: React.FC = () => {
         {/* HOMEPAGE TUTORIAL OVERLAY */}
         <ComicTutorial
           isVisible={showHomeTutorial}
-          steps={[
-            {
-              targetId: 'audio-btn-home',
-              title: 'AUDIO IMMERSIVO',
-              description: 'Clicca qui per attivare o disattivare il suono. Per un\'esperienza ottimale, ti consigliamo di tenerlo acceso!',
-              position: 'top'
-            },
-
-            {
-              targetId: 'logo-home',
-              title: 'IL TUO HUB',
-              description: 'Clicca sul logo NUMBER per accedere al tuo Profilo Completo, vedere i Badge sbloccati e i Trofei!',
-              position: 'bottom'
-            },
-            {
-              targetId: 'tutorial-btn-home',
-              title: 'GUIDA AI COMANDI',
-              description: 'Se hai dubbi su come giocare, clicca qui per rivedere le regole base.',
-              position: 'bottom'
-            },
-            {
-              targetId: 'play-btn-home',
-              title: 'INIZIA L\'AVVENTURA',
-              description: 'Pronto a mettere alla prova i tuoi neuroni? Clicca qui per avviare la modalità Classica.',
-              position: 'center'
-            },
-            {
-              targetId: 'duel-btn-home',
-              title: 'SFIDE 1VS1',
-              description: 'Entra nell\'arena! Sfida altri utenti in tempo reale in duelli di velocità matematica.',
-              position: 'bottom'
-            },
-            {
-              targetId: 'ranking-btn-home',
-              title: 'CLASSIFICA GLOBALE',
-              description: 'Controlla la tua posizione nel mondo. Diventerai il numero 1?',
-              position: 'bottom'
-            }
-          ]}
+          steps={homeTutorialSteps}
+          nextLabel={t('game.comicNext')}
+          okLabel={t('game.comicOk')}
+          neverShowLabel={t('game.comicNeverShow')}
           onComplete={(neverShow) => {
             setShowHomeTutorial(false);
             if (neverShow) localStorage.setItem('comic_home_tutorial_done', 'true');
@@ -6811,32 +6839,10 @@ const GameView: React.FC = () => {
         {/* GAME TUTORIAL OVERLAY */}
         <ComicTutorial
           isVisible={showGameTutorial}
-          steps={[
-            {
-              targetId: 'targets-display-tutorial',
-              title: 'I TUOI OBIETTIVI',
-              description: 'Questi sono i numeri che devi ottenere. Trova le combinazioni nella griglia per raggiungerli tutti!',
-              position: 'top'
-            },
-            {
-              targetId: 'grid-container-game',
-              title: 'LA GRIGLIA',
-              description: 'Collega le celle: NUMERO -> OPERATORE -> NUMERO.  Esempio: 5 + 3.  Non puoi collegare due numeri vicini senza operatore!',
-              position: 'center'
-            },
-            {
-              targetId: 'score-display-game',
-              title: 'PUNTEGGIO',
-              description: 'Più sei veloce e mantieni la streak (serie di risposte corrette), più punti farai. Punta al record!',
-              position: 'right'
-            },
-            {
-              targetId: 'timer-display-game',
-              title: 'TEMPO & PAUSA',
-              description: 'Hai poco tempo! Se ti serve respirare, clicca qui per mettere in PAUSA il sistema.',
-              position: 'center'
-            }
-          ]}
+          steps={gameTutorialSteps}
+          nextLabel={t('game.comicNext')}
+          okLabel={t('game.comicOk')}
+          neverShowLabel={t('game.comicNeverShow')}
           onComplete={(neverShow) => {
             setShowGameTutorial(false);
             if (neverShow) localStorage.setItem('comic_game_tutorial_done', 'true');
