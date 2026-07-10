@@ -166,6 +166,7 @@ const HomeView: React.FC = () => {
               <li><Link to="/blog" className="hover:text-white transition-colors">{t('home.blogNews')}</Link></li>
               <li><Link to="/about" className="hover:text-white transition-colors">{t('home.aboutUs')}</Link></li>
               <li><Link to="/contact" className="hover:text-white transition-colors">{t('nav.contact')}</Link></li>
+              <li><a href="https://codecafe.it" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Codecafe.it</a></li>
             </ul>
           </div>
           <div>
