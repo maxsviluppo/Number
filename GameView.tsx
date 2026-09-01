@@ -14,6 +14,7 @@ import { Trophy, Timer, Zap, Brain, RefreshCw, ChevronLeft, ChevronRight, Play, 
 import { Link } from 'react-router-dom';
 import AuthModal from './components/AuthModal';
 import AdminPanel from './components/AdminPanel';
+import InviteModal from './components/InviteModal';
 import NeuralDuelLobby from './components/NeuralDuelLobby';
 import DuelRecapModal from './components/DuelRecapModal';
 import IntroVideo from './components/IntroVideo';
@@ -63,7 +64,7 @@ const GameView: React.FC = () => {
   const [celebratingTarget, setCelebratingTarget] = useState<{ index: number; key: number } | null>(null);
   const [insight, setInsight] = useState<string>("");
 
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | 'full_reset_confirm' | 'referral_bonus_info' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'invite' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | 'full_reset_confirm' | 'referral_bonus_info' | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean, isP1: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0);
@@ -1891,24 +1892,7 @@ const GameView: React.FC = () => {
 
   const handleQuickInvite = () => {
     soundService.playUIClick();
-    if (!currentUser) {
-      setShowAuthModal(true);
-      showToast("Accedi o Registrati per invitare un amico!");
-      return;
-    }
-    const referralCode = userProfile?.referral_code || '';
-    const link = referralCode ? `https://www.numbergame.it/invite?ref=${referralCode}` : 'https://www.numbergame.it/invite';
-    
-    if (navigator.share) {
-      navigator.share({
-        title: 'Gioca a NumberGame!',
-        text: 'Ricevi +60s EXTRA! Usa il mio link per ricevere subito 60 secondi di bonus extra nella tua prima partita!',
-        url: link,
-      }).catch(console.error);
-    } else {
-      navigator.clipboard.writeText(link);
-      showToast("Link di invito copiato negli appunti!");
-    }
+    setActiveModal('invite');
   };
 
 
@@ -6763,6 +6747,16 @@ const GameView: React.FC = () => {
         }
 
         {activeModal === 'admin' && <AdminPanel onClose={() => setActiveModal(null)} />}
+
+        {activeModal === 'invite' && (
+          <InviteModal
+            currentUser={currentUser}
+            userProfile={userProfile}
+            onClose={() => setActiveModal(null)}
+            onOpenAuth={() => setShowAuthModal(true)}
+            onUpdateProfile={(newP) => setUserProfile(newP)}
+          />
+        )}
 
         {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={handleLoginSuccess} showToast={showToast} />}
 

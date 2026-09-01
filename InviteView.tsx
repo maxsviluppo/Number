@@ -61,6 +61,25 @@ const InviteView: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleShare = async () => {
+    const shareData = {
+      title: 'Gioca a NumberGame!',
+      text: 'Ricevi +60s EXTRA! Usa il mio link per ricevere subito 60 secondi di bonus extra nella tua prima partita!',
+      url: inviteLink,
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') {
+          handleCopyLink();
+        }
+      }
+    } else {
+      handleCopyLink();
+    }
+  };
+
   const faqs = translations.invite.faqs;
 
   return (
@@ -121,13 +140,21 @@ const InviteView: React.FC = () => {
               <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs md:text-sm font-mono text-slate-300 select-all truncate flex items-center">
                 {inviteLink}
               </div>
-              <button
-                onClick={handleCopyLink}
-                className="bg-white/10 hover:bg-white/15 text-white active:scale-95 px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-white/10"
-              >
-                {copied ? <CheckCircle2 size={16} className="text-green-400" /> : <Copy size={16} />}
-                {copied ? t('invite.copied') : t('invite.copyLink')}
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={handleShare}
+                  className="bg-gradient-to-r from-[#FF8800] to-amber-500 hover:brightness-110 active:scale-95 text-black px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,136,0,0.3)]"
+                >
+                  <Share2 size={16} /> Condividi
+                </button>
+                <button
+                  onClick={handleCopyLink}
+                  className="bg-white/10 hover:bg-white/15 text-white active:scale-95 px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-white/10"
+                >
+                  {copied ? <CheckCircle2 size={16} className="text-green-400" /> : <Copy size={16} />}
+                  {copied ? t('invite.copied') : t('invite.copyLink')}
+                </button>
+              </div>
             </div>
           </div>
         </div>

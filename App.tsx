@@ -7,6 +7,7 @@ import BlogView from './BlogView';
 import GameView from './GameView';
 import InviteView from './InviteView';
 import BlogPostDetailView from './BlogPostDetailView';
+import AdminView from './AdminView';
 import { PrivacyView, CookieView, AboutView, ContactView, TermsView } from './LegalViews';
 import CookieBanner from './components/CookieBanner';
 import BottomNav from './components/BottomNav';
@@ -121,6 +122,9 @@ const App: React.FC = () => {
           <Route path="/cookies" element={<CookieView />} />
           <Route path="/terms" element={<TermsView />} />
           <Route path="/contact" element={<ContactView />} />
+          
+          <Route path="/amministrazione" element={<AdminView />} />
+          <Route path="/admin" element={<AdminView />} />
           
           {/* Fallback */}
           <Route path="*" element={<HomeView />} />
