@@ -129,28 +129,66 @@ export const authService = {
         return { data, error };
     },
 
-    // 2. LOGIN: Username only (Resolves email behind scenes)
-    async signIn(username: string, password: string) {
-        // Clear any pending referral since it's an existing user logging in
+    // 2. LOGIN: Supports Username or Email (Case-insensitive)
+    async signIn(identifier: string, password: string) {
         localStorage.removeItem('pending_referral');
-        
-        // Step A: Find email for this username
-        const { data: profile, error: lookupError } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('username', username)
-            .single();
-
-        if (lookupError || !profile || !profile.email) {
-            return { data: { user: null, session: null }, error: { message: 'Username non trovato.' } };
+        const cleanIdentifier = (identifier || '').trim();
+        if (!cleanIdentifier) {
+            return { data: { user: null, session: null }, error: { message: 'Inserisci username o email.' } };
         }
 
-        // Step B: Login with resolved email
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: profile.email,
-            password,
+        // Strategy 1: If input contains '@', attempt direct email login first
+        if (cleanIdentifier.includes('@')) {
+            const res = await supabase.auth.signInWithPassword({
+                email: cleanIdentifier.toLowerCase(),
+                password: password,
+            });
+            if (!res.error) {
+                return res;
+            }
+        }
+
+        // Strategy 2: Look up email by case-insensitive username or email in profiles table
+        let targetEmail = '';
+        try {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('email, username')
+                .or(`username.ilike.${cleanIdentifier},email.ilike.${cleanIdentifier}`)
+                .maybeSingle();
+
+            if (profile?.email) {
+                targetEmail = profile.email;
+            }
+        } catch (err) {
+            console.warn('Profile lookup error during sign in:', err);
+        }
+
+        // Strategy 3: If targetEmail found, sign in with it
+        if (targetEmail) {
+            const res = await supabase.auth.signInWithPassword({
+                email: targetEmail,
+                password: password,
+            });
+            if (!res.error) {
+                return res;
+            }
+            if (res.error && res.error.message.includes('Invalid login credentials')) {
+                return { data: { user: null, session: null }, error: { message: 'Password non corretta.' } };
+            }
+            return res;
+        }
+
+        // Strategy 4: Direct attempt with input as email in case profile query was restricted by RLS
+        const directRes = await supabase.auth.signInWithPassword({
+            email: cleanIdentifier,
+            password: password,
         });
-        return { data, error };
+        if (!directRes.error) {
+            return directRes;
+        }
+
+        return { data: { user: null, session: null }, error: { message: 'Account non trovato o credenziali non valide.' } };
     },
 
     async signOut() {
