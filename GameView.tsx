@@ -19,6 +19,15 @@ import NeuralDuelLobby from './components/NeuralDuelLobby';
 import DuelRecapModal from './components/DuelRecapModal';
 import IntroVideo from './components/IntroVideo';
 import ComicTutorial, { TutorialStep } from './components/ComicTutorial';
+import InteractiveHandTutorial from './components/InteractiveHandTutorial';
+import {
+  INTERACTIVE_TUTORIAL_STEPS,
+  INTERACTIVE_TUTORIAL_STORAGE_KEY,
+  TUTORIAL_PATH,
+  getTutorialGrid,
+  isInteractiveTutorialDone,
+  isTutorialPathPrefix,
+} from './constants/interactiveTutorial';
 import UserProfileModal, { getRank } from './components/UserProfileModal'; // Updated import
 import RegistrationSuccess from './components/RegistrationSuccess';
 
@@ -64,7 +73,7 @@ const GameView: React.FC = () => {
   const [celebratingTarget, setCelebratingTarget] = useState<{ index: number; key: number } | null>(null);
   const [insight, setInsight] = useState<string>("");
 
-  const [activeModal, setActiveModal] = useState<'leaderboard' | 'tutorial' | 'admin' | 'invite' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | 'full_reset_confirm' | 'referral_bonus_info' | null>(null);
+  const [activeModal, setActiveModal] = useState<'leaderboard' | 'admin' | 'invite' | 'duel' | 'duel_selection' | 'resume_confirm' | 'logout_confirm' | 'profile' | 'registration_success' | 'boss_selection' | 'full_reset_confirm' | 'referral_bonus_info' | null>(null);
   const [activeMatch, setActiveMatch] = useState<{ id: string, opponentId: string, isDuel: boolean, isP1: boolean } | null>(null);
   const [duelMode, setDuelMode] = useState<'standard' | 'blitz'>('standard');
   const [opponentScore, setOpponentScore] = useState(0);
@@ -125,6 +134,11 @@ const GameView: React.FC = () => {
   }, [gameState.status]);
   const [showHomeTutorial, setShowHomeTutorial] = useState(false);
   const [showGameTutorial, setShowGameTutorial] = useState(false);
+  const [isInteractiveTutorial, setIsInteractiveTutorial] = useState(false);
+  const [interactiveTutorialStep, setInteractiveTutorialStep] = useState(0);
+  const [isInteractiveTutorialReplay, setIsInteractiveTutorialReplay] = useState(false);
+  const isInteractiveTutorialRef = useRef(false);
+  const isInteractiveTutorialReplayRef = useRef(false);
   const lastTickTimeRef = useRef(performance.now());
   const theme = 'orange';
   const [levelBuffer, setLevelBuffer] = useState<{ grid: HexCellData[], targets: number[] }[]>([]);
@@ -405,25 +419,6 @@ const GameView: React.FC = () => {
   const [pendingMatchInvite, setPendingMatchInvite] = useState<string | null>(null);
   const [isJoiningPending, setIsJoiningPending] = useState(false);
 
-  const tutorialIcons = useMemo(
-    () => [
-      <Brain className="w-12 h-12 text-[#FF8800]" key="brain" />,
-      <RefreshCw className="w-12 h-12 text-[#FF8800]" key="refresh" />,
-      <Crown className="w-12 h-12 text-[#FF8800]" key="crown" />,
-      <Swords className="w-12 h-12 text-[#FF8800]" key="swords" />,
-      <Zap className="w-12 h-12 text-[#FF8800]" key="zap" />,
-    ],
-    []
-  );
-
-  const TUTORIAL_STEPS = useMemo(
-    () => translations.game.tutorialSteps.map((step, idx) => ({
-      ...step,
-      icon: tutorialIcons[idx],
-    })),
-    [translations, tutorialIcons]
-  );
-
   const homeTutorialSteps = useMemo((): TutorialStep[] => {
     const targets = ['audio-btn-home', 'logo-home', 'tutorial-btn-home', 'play-btn-home', 'duel-btn-home', 'ranking-btn-home'];
     const positions: TutorialStep['position'][] = ['top', 'bottom', 'bottom', 'center', 'bottom', 'bottom'];
@@ -443,6 +438,43 @@ const GameView: React.FC = () => {
       position: positions[idx],
     }));
   }, [translations]);
+
+  useEffect(() => {
+    isInteractiveTutorialRef.current = isInteractiveTutorial;
+  }, [isInteractiveTutorial]);
+
+  useEffect(() => {
+    isInteractiveTutorialReplayRef.current = isInteractiveTutorialReplay;
+  }, [isInteractiveTutorialReplay]);
+
+  const interactiveTutorialMessages = useMemo(() => {
+    const msgs = (translations.game as { interactiveTutorial?: Record<string, string> }).interactiveTutorial;
+    return msgs ?? {};
+  }, [translations]);
+
+  const getInteractiveTutorialMessage = useCallback((messageKey: string) => {
+    return interactiveTutorialMessages[messageKey] ?? messageKey;
+  }, [interactiveTutorialMessages]);
+
+  const advanceInteractiveTutorial = useCallback(() => {
+    setInteractiveTutorialStep(prev => {
+      const next = prev + 1;
+      if (next >= INTERACTIVE_TUTORIAL_STEPS.length) {
+        return prev;
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isInteractiveTutorial) return;
+    const step = INTERACTIVE_TUTORIAL_STEPS[interactiveTutorialStep];
+    if (step?.kind !== 'path' || step.requiredLength >= 3) return;
+    if (selectedPath.length >= step.requiredLength && isTutorialPathPrefix(selectedPath, step.requiredLength)) {
+      const timer = window.setTimeout(() => advanceInteractiveTutorial(), 450);
+      return () => window.clearTimeout(timer);
+    }
+  }, [selectedPath, isInteractiveTutorial, interactiveTutorialStep, advanceInteractiveTutorial]);
 
   useEffect(() => {
     const id = setInterval(() => setBannerSlide(s => (s + 1) % 2), 6000);
@@ -1710,7 +1742,7 @@ const GameView: React.FC = () => {
     // MODIFIED: Timer disabled for Standard, ENABLED for Time Attack AND Blitz
     const isTimeDuel = activeMatch?.mode === 'time_attack' || activeMatch?.mode === 'blitz';
     // ADDED: !showGameTutorial blocks timer during tutorials
-    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && !showGameTutorial && (!activeMatch?.isDuel || isTimeDuel)) {
+    if (gameState.status === 'playing' && gameState.timeLeft > 0 && !isVictoryAnimating && !showVideo && !isPaused && !showGameTutorial && !isInteractiveTutorial && (!activeMatch?.isDuel || isTimeDuel)) {
       lastTickTimeRef.current = performance.now();
       timerRef.current = window.setInterval(() => {
         setGameState(prev => {
@@ -1731,7 +1763,7 @@ const GameView: React.FC = () => {
       if (timerRef.current) window.clearInterval(timerRef.current);
     }
     return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
-  }, [gameState.status, isPaused, isVictoryAnimating, showVideo, activeMatch, gameState.timeLeft, showGameTutorial]);
+  }, [gameState.status, isPaused, isVictoryAnimating, showVideo, activeMatch, gameState.timeLeft, showGameTutorial, isInteractiveTutorial]);
 
 
   const handleLoginSuccess = (user: any) => {
@@ -2487,6 +2519,79 @@ const GameView: React.FC = () => {
     }
   };
 
+  const startInteractiveTutorial = async (replay = false) => {
+    await handleUserInteraction();
+    soundService.playUIClick();
+
+    setActiveModal(null);
+    setIsVictoryAnimating(false);
+    setTriggerParticles(false);
+    setPreviewResult(null);
+    setShowVideo(false);
+    setShowLostVideo(false);
+    setShowDuelRecap(false);
+    setSelectedPath([]);
+    setPathStatus(null);
+    setIsInteractiveTutorial(true);
+    setIsInteractiveTutorialReplay(replay);
+    setInteractiveTutorialStep(0);
+
+    setGrid(getTutorialGrid());
+    setLevelBuffer([]);
+
+    setGameState(prev => ({
+      ...prev,
+      score: 0,
+      totalScore: 0,
+      streak: 0,
+      level: 1,
+      timeLeft: INITIAL_TIME,
+      targetResult: 0,
+      status: 'playing',
+      estimatedIQ: 100,
+      lastLevelPerfect: true,
+      basePoints: BASE_POINTS_START,
+      levelTargets: [{ value: 8, completed: false }],
+      targetsFound: 0,
+      isBossLevel: false,
+      bossLevelId: null,
+    }));
+    setTargetAnimKey(k => k + 1);
+  };
+
+  const finishInteractiveTutorial = async () => {
+    const wasReplay = isInteractiveTutorialReplayRef.current;
+    try {
+      if (!wasReplay) {
+        localStorage.setItem(INTERACTIVE_TUTORIAL_STORAGE_KEY, 'true');
+        localStorage.setItem('comic_game_tutorial_done', 'true');
+      }
+    } catch (e) {
+      console.warn('Could not persist tutorial completion', e);
+    }
+    setIsInteractiveTutorial(false);
+    setInteractiveTutorialStep(0);
+    setIsInteractiveTutorialReplay(false);
+    setSelectedPath([]);
+    setPreviewResult(null);
+    setPathStatus(null);
+
+    if (wasReplay) {
+      setGrid([]);
+      setLevelBuffer([]);
+      setGameState(prev => ({
+        ...prev,
+        status: 'idle',
+        score: 0,
+        levelTargets: [],
+        targetsFound: 0,
+      }));
+      return;
+    }
+
+    await startGame(1);
+  };
+
   const restoreGame = async () => {
     if (!savedGame) return;
     await handleUserInteraction();
@@ -2627,22 +2732,6 @@ const GameView: React.FC = () => {
     }
   }, [savedGame, startGame, handleUserInteraction]);
 
-  const nextTutorialStep = async () => {
-    await handleUserInteraction();
-    soundService.playSelect();
-    if (tutorialStep < TUTORIAL_STEPS.length - 1) {
-      setTutorialStep(prev => prev + 1);
-    } else {
-      // Tutorial Finished - Just close and stay on Home
-      setActiveModal(null);
-      localStorage.setItem('number_tutorial_done', 'true');
-      // If we are not playing, ensure we are visible in idle
-      if (gameState.status !== 'playing') {
-        setGameState(prev => ({ ...prev, status: 'idle' }));
-      }
-    }
-  };
-
   const evaluatePath = (pathIds: string[]) => {
     try {
       if (pathIds.length < 3) {
@@ -2683,6 +2772,41 @@ const GameView: React.FC = () => {
       }
 
       if (matchedTarget) {
+        if (isInteractiveTutorialRef.current) {
+          if (!isTutorialPathPrefix(pathIds, 3)) {
+            setPathStatus('wrong');
+            vibrateDevice(80);
+            setTimeout(() => {
+              setSelectedPath([]);
+              setPathStatus(null);
+            }, 220);
+            setPreviewResult(null);
+            return;
+          }
+
+          vibrateDevice([40, 30, 40]);
+          setPathStatus('correct');
+          setMatchedTargetValue(result!);
+          soundService.playSuccess();
+          setGameState(prev => ({
+            ...prev,
+            score: prev.score + 150,
+            levelTargets: prev.levelTargets.map(t =>
+              t.value === result ? { ...t, completed: true } : t
+            ),
+          }));
+          setScoreAnimKey(k => k + 1);
+
+          setTimeout(() => {
+            setSelectedPath([]);
+            setPathStatus(null);
+            setMatchedTargetValue(null);
+            setInteractiveTutorialStep(prev => prev + 1);
+          }, 700);
+          setPreviewResult(null);
+          return;
+        }
+
         // SYNC VIDEO TRIGGER FOR MOBILE - Call play() directly in user gesture stack
         const isLastTarget = currentTargets.filter(t => !t.completed).length === 1;
         const isTimeAttack = !!activeMatch && (activeMatch.mode === 'time_attack' || duelMode === 'time_attack');
@@ -3499,6 +3623,10 @@ const GameView: React.FC = () => {
     if (isVictoryAnimating) return false;
     if (showVideo || showLostVideo) return false;
     if (showDuelRecap) return false; // Explicitly block if recap is open
+    if (isInteractiveTutorial) {
+      const step = INTERACTIVE_TUTORIAL_STEPS[interactiveTutorialStep];
+      if (!step || step.kind === 'info' || step.kind === 'complete') return false;
+    }
     return true;
   };
 
@@ -3507,6 +3635,14 @@ const GameView: React.FC = () => {
     setAdBannerActive(false); // Close banner on grid interaction
     soundService.init();
 
+    if (isInteractiveTutorialRef.current) {
+      const step = INTERACTIVE_TUTORIAL_STEPS[interactiveTutorialStep];
+      if (step?.kind === 'path') {
+        if (step.requiredLength > 1) return;
+        if (id !== TUTORIAL_PATH[0]) return;
+      }
+    }
+
     const cell = grid.find(c => c.id === id);
     if (cell && cell.type === 'number') {
       soundService.playSelect();
@@ -3514,17 +3650,19 @@ const GameView: React.FC = () => {
       setSelectedPath([id]);
       setPreviewResult(parseInt(cell.value));
 
-      // [FIX] SELECTION AUTO-DESELECT (1 SECOND)
-      if (selectionTimeoutRef.current) window.clearTimeout(selectionTimeoutRef.current);
-      selectionTimeoutRef.current = window.setTimeout(() => {
-        setSelectedPath(prev => {
-          if (prev.length === 1 && prev[0] === id) {
-            setPreviewResult(null);
-            return [];
-          }
-          return prev;
-        });
-      }, 260);
+      if (!isInteractiveTutorialRef.current) {
+        // [FIX] SELECTION AUTO-DESELECT (1 SECOND)
+        if (selectionTimeoutRef.current) window.clearTimeout(selectionTimeoutRef.current);
+        selectionTimeoutRef.current = window.setTimeout(() => {
+          setSelectedPath(prev => {
+            if (prev.length === 1 && prev[0] === id) {
+              setPreviewResult(null);
+              return [];
+            }
+            return prev;
+          });
+        }, 260);
+      }
     }
   };
 
@@ -3578,6 +3716,14 @@ const GameView: React.FC = () => {
     }
 
     if (selectedPath.includes(id)) return;
+
+    if (isInteractiveTutorialRef.current) {
+      const step = INTERACTIVE_TUTORIAL_STEPS[interactiveTutorialStep];
+      if (step?.kind === 'path') {
+        const nextLen = selectedPath.length + 1;
+        if (!isTutorialPathPrefix([...selectedPath, id], nextLen)) return;
+      }
+    }
 
     const lastId = selectedPath[selectedPath.length - 1];
     const lastCell = grid.find(c => c.id === lastId);
@@ -4087,8 +4233,7 @@ const GameView: React.FC = () => {
                     e.stopPropagation();
                     await handleUserInteraction();
                     soundService.playUIClick();
-                    setTutorialStep(0);
-                    setActiveModal('tutorial');
+                    startInteractiveTutorial(true);
                   }}
                   id="tutorial-btn-home"
                   className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group z-10"
@@ -4751,7 +4896,7 @@ const GameView: React.FC = () => {
                         </svg>
                       </button>
                       {/* SCORE below HOME */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '64px', position: 'relative' }}>
+                      <div id="score-display-game" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '64px', position: 'relative' }}>
                         <span style={{ fontSize: '6.5px', fontWeight: 800, letterSpacing: '0.18em', color: 'rgba(0,180,255,0.45)', textTransform: 'uppercase', fontFamily: 'Orbitron, monospace' }}>SCORE</span>
                         <span 
                           key={scoreAnimKey}
@@ -4777,6 +4922,7 @@ const GameView: React.FC = () => {
                       const timerLabel = gameState.isBossLevel ? 'BOSS' : isDuelProgress ? 'ENEMY' : isDuelBlitz ? 'BLITZ' : 'TIME';
                       return (
                         <div
+                          id="timer-display-game"
                           style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0px', cursor: activeMatch?.isDuel ? 'default' : 'pointer', flexShrink: 0, transform: 'translateY(30px)' }}
                           onPointerDown={activeMatch?.isDuel ? undefined : togglePause}
                         >
@@ -5801,45 +5947,6 @@ const GameView: React.FC = () => {
           </div >
         )}
 
-        {
-          activeModal === 'tutorial' && (
-            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={() => { soundService.playUIClick(); setActiveModal(null); }}>
-              <div className="bg-white border-[4px] border-[#FF8800] w-full max-w-md p-8 rounded-[2rem] shadow-[0_0_50px_rgba(255,136,0,0.3)] flex flex-col relative" onPointerDown={e => e.stopPropagation()}>
-                <button
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    soundService.playUIClick();
-                    setActiveModal(null);
-                  }}
-                  className="absolute top-4 right-4 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-black flex items-center justify-center transition-all active:scale-95"
-                  title="Chiudi tutorial"
-                >
-                  <X size={20} strokeWidth={2.5} />
-                </button>
-
-                <div className="flex flex-col items-center text-center py-2">
-                  <div className="mb-5 scale-125 drop-shadow-sm">{TUTORIAL_STEPS[tutorialStep].icon}</div>
-                  <h2 className="text-2xl font-black font-orbitron text-[#FF8800] mb-3 uppercase tracking-widest">{TUTORIAL_STEPS[tutorialStep].title}</h2>
-                  <p className="text-slate-600 font-bold text-sm leading-relaxed mb-8 border-t-2 border-slate-100 pt-4 w-full min-h-[80px] flex items-center justify-center">{TUTORIAL_STEPS[tutorialStep].description}</p>
-                  <button onPointerDown={(e) => { e.stopPropagation(); nextTutorialStep(); }} className="w-full bg-[#FF8800] text-white border-[3px] border-white py-4 rounded-2xl font-orbitron font-black text-sm uppercase shadow-lg active:scale-95 transition-all outline-none ring-0 hover:bg-orange-600">
-                    {tutorialStep === TUTORIAL_STEPS.length - 1 ? t('game.tutorialGotIt') : t('game.tutorialNext')}
-                  </button>
-                  <div className="flex items-center gap-2 mt-4">
-                    {TUTORIAL_STEPS.map((_, idx) => (
-                      <div
-                        key={idx}
-                        className={`w-2 h-2 rounded-full transition-all ${idx === tutorialStep ? 'bg-[#FF8800] w-6' : 'bg-slate-300'}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        }
-
-
-
         {/* MODE SELECTION MODAL */}
         {
           activeModal === 'duel_selection' && (
@@ -6392,6 +6499,8 @@ const GameView: React.FC = () => {
                         soundService.playUIClick();
                         if (savedGame) {
                           restoreGame();
+                        } else if (!isInteractiveTutorialDone() && !activeMatch && (userProfile?.max_level ?? 1) <= 1) {
+                          startInteractiveTutorial();
                         } else {
                           startGame(userProfile?.max_level || 1);
                         }
@@ -6812,6 +6921,32 @@ const GameView: React.FC = () => {
         }
 
         <footer className="mt-auto py-6 text-slate-600 text-[8px] tracking-[0.4em] uppercase font-black z-10 pointer-events-none opacity-40">AI Evaluation Engine v5.9 [50] - PRODUCTION</footer>
+
+        {/* INTERACTIVE HAND TUTORIAL */}
+        {isInteractiveTutorial && INTERACTIVE_TUTORIAL_STEPS[interactiveTutorialStep] && (
+          <InteractiveHandTutorial
+            isVisible={isInteractiveTutorial}
+            step={INTERACTIVE_TUTORIAL_STEPS[interactiveTutorialStep]}
+            message={getInteractiveTutorialMessage(INTERACTIVE_TUTORIAL_STEPS[interactiveTutorialStep].messageKey)}
+            pathHintLabel={interactiveTutorialMessages.pathHint}
+            continueLabel={
+              INTERACTIVE_TUTORIAL_STEPS[interactiveTutorialStep].kind === 'complete'
+                ? (isInteractiveTutorialReplay
+                  ? (interactiveTutorialMessages.close ?? 'CHIUDI')
+                  : (interactiveTutorialMessages.startPlaying ?? t('game.play')))
+                : (interactiveTutorialMessages.continue ?? t('game.comicNext'))
+            }
+            onContinue={() => {
+              soundService.playUIClick();
+              const currentStep = INTERACTIVE_TUTORIAL_STEPS[interactiveTutorialStep];
+              if (currentStep?.kind === 'complete') {
+                finishInteractiveTutorial();
+              } else {
+                advanceInteractiveTutorial();
+              }
+            }}
+          />
+        )}
 
         {/* HOMEPAGE TUTORIAL OVERLAY */}
         <ComicTutorial

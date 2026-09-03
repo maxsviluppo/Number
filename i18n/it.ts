@@ -224,7 +224,7 @@ export const it = {
     homeTutorialSteps: [
       { title: 'AUDIO IMMERSIVO', description: "Clicca qui per attivare o disattivare il suono. Per un'esperienza ottimale, ti consigliamo di tenerlo acceso!" },
       { title: 'IL TUO HUB', description: 'Clicca sul logo NUMBER per accedere al tuo Profilo Completo, vedere i Badge sbloccati e i Trofei!' },
-      { title: 'GUIDA AI COMANDI', description: 'Se hai dubbi su come giocare, clicca qui per rivedere le regole base.' },
+      { title: 'GUIDA INTERATTIVA', description: 'Clicca qui per ripetere il tutorial con la manina: impara a collegare numeri e operatori passo dopo passo!' },
       { title: "INIZIA L'AVVENTURA", description: 'Pronto a mettere alla prova i tuoi neuroni? Clicca qui per avviare la modalità Classica.' },
       { title: 'SFIDE 1VS1', description: "Entra nell'arena! Sfida altri utenti in tempo reale in duelli di velocità matematica." },
       { title: 'CLASSIFICA GLOBALE', description: 'Controlla la tua posizione nel mondo. Diventerai il numero 1?' },
@@ -239,6 +239,19 @@ export const it = {
     comicNext: 'AVANTI',
     comicOk: 'OK',
     comicNeverShow: 'Non mostrare più',
+    interactiveTutorial: {
+      continue: 'AVANTI',
+      startPlaying: 'INIZIA A GIOCARE!',
+      close: 'CHIUDI',
+      pathHint: 'Segui la mano e tocca la casella evidenziata',
+      stepTargets: 'Questi sono i tuoi OBIETTIVI! Devi formare equazioni che danno questo numero. Il primo target è 8.',
+      stepFirstNumber: 'Tocca il numero 5 per iniziare l\'equazione!',
+      stepOperator: 'Ora trascina fino al simbolo + per collegare l\'operatore!',
+      stepSecondNumber: 'Perfetto! Ora collega il 3 e rilascia per completare: 5 + 3 = 8!',
+      stepScore: 'Ottimo lavoro! Qui vedi il PUNTEGGIO: più sei veloce, più punti guadagni.',
+      stepTimer: 'Attenzione al TEMPO! Tocca il timer per mettere in pausa quando serve.',
+      stepComplete: 'Hai imparato le basi! Ora è il momento di giocare sul serio. Buona fortuna!',
+    },
     resumeConfirm: {
       missionTitle: 'MISSIONE CARRIERA',
       currentLevel: 'LIVELLO ATTUALE',

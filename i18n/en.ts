@@ -224,7 +224,7 @@ export const en = {
     homeTutorialSteps: [
       { title: 'IMMERSIVE AUDIO', description: 'Click here to turn sound on or off. For the best experience, we recommend keeping it on!' },
       { title: 'YOUR HUB', description: 'Click the NUMBER logo to access your full Profile, view unlocked Badges, and Trophies!' },
-      { title: 'COMMAND GUIDE', description: 'If you are unsure how to play, click here to review the basic rules.' },
+      { title: 'INTERACTIVE GUIDE', description: 'Tap here to replay the hand tutorial and learn how to connect numbers and operators step by step!' },
       { title: 'START THE ADVENTURE', description: 'Ready to test your neurons? Click here to start Classic mode.' },
       { title: '1V1 CHALLENGES', description: 'Enter the arena! Challenge other users in real-time math speed duels.' },
       { title: 'GLOBAL RANKING', description: 'Check your position in the world. Will you become number 1?' },
@@ -239,6 +239,19 @@ export const en = {
     comicNext: 'NEXT',
     comicOk: 'OK',
     comicNeverShow: "Don't show again",
+    interactiveTutorial: {
+      continue: 'NEXT',
+      startPlaying: 'START PLAYING!',
+      close: 'CLOSE',
+      pathHint: 'Follow the hand and tap the highlighted cell',
+      stepTargets: 'These are your TARGETS! Build equations that equal this number. Your first target is 8.',
+      stepFirstNumber: 'Tap the number 5 to start the equation!',
+      stepOperator: 'Now drag to the + symbol to connect the operator!',
+      stepSecondNumber: 'Great! Now connect 3 and release to complete: 5 + 3 = 8!',
+      stepScore: 'Nice work! Here is your SCORE: the faster you are, the more points you earn.',
+      stepTimer: 'Watch the TIMER! Tap it to pause when you need a breather.',
+      stepComplete: 'You learned the basics! Time to play for real. Good luck!',
+    },
     resumeConfirm: {
       missionTitle: 'CAREER MISSION',
       currentLevel: 'CURRENT LEVEL',
