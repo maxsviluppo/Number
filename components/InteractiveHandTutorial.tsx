@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { ArrowRight } from 'lucide-react';
 import {
   InteractiveTutorialStep,
@@ -14,19 +14,6 @@ interface InteractiveHandTutorialProps {
   isVisible: boolean;
 }
 
-const HAND_SIZE = 96;
-
-/** Posiziona la manina con la punta del dito sul centro del target */
-function getHandStyleForRect(rect: DOMRect): React.CSSProperties {
-  return {
-    position: 'fixed',
-    left: rect.left + rect.width / 2 - HAND_SIZE * 0.12,
-    top: rect.top + rect.height / 2 - HAND_SIZE * 0.88,
-    zIndex: 100002,
-    pointerEvents: 'none',
-  };
-}
-
 const InteractiveHandTutorial: React.FC<InteractiveHandTutorialProps> = ({
   step,
   message,
@@ -35,9 +22,7 @@ const InteractiveHandTutorial: React.FC<InteractiveHandTutorialProps> = ({
   onContinue,
   isVisible,
 }) => {
-  const continueBtnRef = useRef<HTMLButtonElement>(null);
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
-  const [handRect, setHandRect] = useState<DOMRect | null>(null);
 
   const isPathStep = step.kind === 'path';
   const showContinue = step.kind === 'info' || step.kind === 'complete';
@@ -56,24 +41,11 @@ const InteractiveHandTutorial: React.FC<InteractiveHandTutorialProps> = ({
   const updateRects = useCallback(() => {
     const highlightEl = resolveHighlightElement();
     setHighlightRect(highlightEl ? highlightEl.getBoundingClientRect() : null);
-
-    if (isPathStep && highlightEl) {
-      setHandRect(highlightEl.getBoundingClientRect());
-      return;
-    }
-
-    if (showContinue && continueBtnRef.current) {
-      setHandRect(continueBtnRef.current.getBoundingClientRect());
-      return;
-    }
-
-    setHandRect(null);
-  }, [resolveHighlightElement, isPathStep, showContinue]);
+  }, [resolveHighlightElement]);
 
   useEffect(() => {
     if (!isVisible) {
       setHighlightRect(null);
-      setHandRect(null);
       return;
     }
 
@@ -88,16 +60,6 @@ const InteractiveHandTutorial: React.FC<InteractiveHandTutorialProps> = ({
       window.removeEventListener('scroll', updateRects, true);
     };
   }, [isVisible, updateRects, step, message, continueLabel]);
-
-  useEffect(() => {
-    if (!isVisible || !showContinue) return;
-    let frame = 0;
-    const tick = () => {
-      updateRects();
-      if (++frame < 6) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, [isVisible, showContinue, step, message, continueLabel, updateRects]);
 
   if (!isVisible) return null;
 
@@ -178,18 +140,6 @@ const InteractiveHandTutorial: React.FC<InteractiveHandTutorialProps> = ({
         />
       )}
 
-      {handRect && (
-        <div style={getHandStyleForRect(handRect)}>
-          <img
-            src="/hand-pointer.png"
-            alt=""
-            className="w-24 h-auto drop-shadow-2xl animate-hand-tap select-none"
-            style={{ transformOrigin: 'bottom right' }}
-            draggable={false}
-          />
-        </div>
-      )}
-
       <div
         className={`transition-all duration-300 ${showContinue ? 'pointer-events-auto' : 'pointer-events-none'}`}
         style={bubbleStyle}
@@ -208,7 +158,6 @@ const InteractiveHandTutorial: React.FC<InteractiveHandTutorialProps> = ({
 
             {showContinue && (
               <button
-                ref={continueBtnRef}
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   onContinue();
@@ -222,16 +171,6 @@ const InteractiveHandTutorial: React.FC<InteractiveHandTutorialProps> = ({
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes hand-tap {
-          0%, 100% { transform: translate(0, 0) rotate(-18deg); }
-          50% { transform: translate(-8px, -10px) rotate(-22deg); }
-        }
-        .animate-hand-tap {
-          animation: hand-tap 0.85s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };

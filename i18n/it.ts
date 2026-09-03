@@ -243,7 +243,7 @@ export const it = {
       continue: 'AVANTI',
       startPlaying: 'INIZIA A GIOCARE!',
       close: 'CHIUDI',
-      pathHint: 'Segui la mano e tocca la casella evidenziata',
+      pathHint: 'Tocca la casella evidenziata in arancione',
       stepTargets: 'Questi sono i tuoi OBIETTIVI! Devi formare equazioni che danno questo numero. Il primo target è 8.',
       stepFirstNumber: 'Tocca il numero 5 per iniziare l\'equazione!',
       stepOperator: 'Ora trascina fino al simbolo + per collegare l\'operatore!',

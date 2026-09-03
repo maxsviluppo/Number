@@ -243,7 +243,7 @@ export const en = {
       continue: 'NEXT',
       startPlaying: 'START PLAYING!',
       close: 'CLOSE',
-      pathHint: 'Follow the hand and tap the highlighted cell',
+      pathHint: 'Tap the orange highlighted cell',
       stepTargets: 'These are your TARGETS! Build equations that equal this number. Your first target is 8.',
       stepFirstNumber: 'Tap the number 5 to start the equation!',
       stepOperator: 'Now drag to the + symbol to connect the operator!',
