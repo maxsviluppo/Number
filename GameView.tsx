@@ -4065,7 +4065,7 @@ const GameView: React.FC = () => {
                 setIsMuted(newMuted);
                 soundService.setMuted(newMuted);
               }}
-              className={`absolute top-12 right-6 z-[2010] p-3 rounded-full border transition-all active:scale-95 shadow-lg
+              className={`absolute home-top-fab z-[2010] p-3 rounded-full border transition-all active:scale-95 shadow-lg
                     ${!isMuted
                   ? 'bg-emerald-500 border-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]'
                   : 'bg-black/40 backdrop-blur-md border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
@@ -4137,14 +4137,14 @@ const GameView: React.FC = () => {
         {gameState.status === 'idle' && (
           <>
             <CharacterHelper />
-            <div className="z-10 w-full max-w-xl flex flex-col items-center text-center px-6 animate-screen-in relative h-full justify-center -translate-y-5">
+            <div className="z-10 w-full max-w-xl flex flex-col items-center text-center animate-screen-in relative h-full justify-center home-idle-shell">
 
 
 
 
 
               {/* TOP RIGHT: Audio */}
-              <div className="fixed top-12 right-6 z-[3000] flex gap-3 items-center">
+              <div className="fixed home-top-fab z-[3000] flex gap-3 items-center">
                 <button
                   onPointerDown={toggleMute}
                   className="relative w-24 h-24 bg-transparent flex items-center justify-center active:scale-95 transition-all hover:scale-110 group"
@@ -4400,7 +4400,7 @@ const GameView: React.FC = () => {
 
 
         {gameState.status !== 'idle' && (
-          <div className="w-full h-full flex flex-col items-center z-10 p-4 pt-4 max-w-4xl animate-screen-in">
+          <div className="w-full h-full flex flex-col items-center z-10 max-w-4xl animate-screen-in game-play-shell">
             {gameState.status !== 'won' && gameState.status !== 'level-complete' && gameState.status !== 'game-over' && gameState.status !== 'opponent-surrendered' && (
               <header className="w-full max-w-[960px] mx-auto mb-2 relative z-50">
                 <style dangerouslySetInnerHTML={{__html: `
@@ -4923,7 +4923,7 @@ const GameView: React.FC = () => {
                       return (
                         <div
                           id="timer-display-game"
-                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0px', cursor: activeMatch?.isDuel ? 'default' : 'pointer', flexShrink: 0, transform: 'translateY(30px)' }}
+                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0px', cursor: activeMatch?.isDuel ? 'default' : 'pointer', flexShrink: 0, transform: 'translateY(18px)' }}
                           onPointerDown={activeMatch?.isDuel ? undefined : togglePause}
                         >
                           {/* Floating glass timer capsule */}
@@ -5113,7 +5113,7 @@ const GameView: React.FC = () => {
               {gameState.status === 'playing' && (
                 <div className="w-full flex flex-col items-center h-full relative">
                   {/* Info Row: Current Calculation Badge (Left) */}
-                  <div className="w-full max-w-2xl px-4 flex justify-start items-center mb-1 mt-[-50px]">
+                  <div className="w-full max-w-2xl px-4 flex justify-start items-center mb-1 mt-[-20px]">
                     {(() => {
                       const isTargetMatched = previewResult !== null && (gameState.isBossLevel
                         ? (gameState.levelTargets.find(t => !t.completed)?.value === previewResult)

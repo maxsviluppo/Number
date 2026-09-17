@@ -57,6 +57,12 @@
   </script>
   <style>
     :root {
+      --app-safe-top: env(safe-area-inset-top, 0px);
+      --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+      --app-safe-left: env(safe-area-inset-left, 0px);
+      --app-safe-right: env(safe-area-inset-right, 0px);
+      --chrome-extra: 8px;
+      --hud-top: calc(var(--app-safe-top) + var(--chrome-extra));
       --hex-scale: 1.70;
       /* Cristalli: saturazione ridotta per evitare arancione eccessivo */
       --hex-crystal-brightness: 1.25;
@@ -77,6 +83,10 @@
     /* Telefono / touch: ulteriore desaturazione (OLED e Safari amplificano i colori) */
     @media (hover: none) and (pointer: coarse) {
       :root {
+        --app-safe-top: max(env(safe-area-inset-top, 0px), 28px);
+        --app-safe-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+        --chrome-extra: 14px;
+        --hud-top: calc(var(--app-safe-top) + var(--chrome-extra));
         --hex-crystal-saturate: 0.75;
         --hex-crystal-brightness: 1.25;
         --hex-crystal-contrast: 1.05;
@@ -154,6 +164,8 @@
     html, body {
       margin: 0;
       padding: 0;
+      min-height: 100dvh;
+      min-height: -webkit-fill-available;
       font-family: 'Inter', sans-serif;
       background-image: url('/sfondo.png');
       background-size: cover;
@@ -624,6 +636,37 @@
     }
     body.in-game nav {
       display: none !important;
+    }
+
+    [data-game-root] {
+      min-height: 100dvh;
+      min-height: -webkit-fill-available;
+    }
+
+    .home-top-fab {
+      top: calc(var(--hud-top) + 4px);
+      right: calc(1.25rem + var(--app-safe-right));
+    }
+
+    .home-idle-shell {
+      padding-top: var(--hud-top);
+      padding-bottom: calc(1rem + var(--app-safe-bottom));
+      padding-left: calc(1rem + var(--app-safe-left));
+      padding-right: calc(1rem + var(--app-safe-right));
+      min-height: 100%;
+      box-sizing: border-box;
+    }
+
+    .game-play-shell {
+      padding-top: var(--hud-top);
+      padding-left: calc(1rem + var(--app-safe-left));
+      padding-right: calc(1rem + var(--app-safe-right));
+      padding-bottom: calc(0.75rem + var(--app-safe-bottom));
+      box-sizing: border-box;
+    }
+
+    .top-chrome-bar {
+      padding-top: 4px;
     }
   </style>
 
