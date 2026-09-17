@@ -5118,7 +5118,7 @@ const GameView: React.FC = () => {
               {gameState.status === 'playing' && (
                 <div className="w-full flex flex-col items-center h-full relative game-board-lift">
                   {/* Info Row: Current Calculation Badge (Left) */}
-                  <div className="w-full max-w-2xl px-4 flex justify-start items-center mb-1 mt-[-28px]">
+                  <div className="w-full max-w-2xl px-4 flex justify-start items-center mb-0 mt-[-34px]">
                     {(() => {
                       const isTargetMatched = previewResult !== null && (gameState.isBossLevel
                         ? (gameState.levelTargets.find(t => !t.completed)?.value === previewResult)
@@ -5162,7 +5162,7 @@ const GameView: React.FC = () => {
                   </div>
 
                   {/* TARGETS - Crystal Frame with targetcristalli.png */}
-                  <div className="flex justify-center w-full mb-2 overflow-visible">
+                  <div className="flex justify-center w-full mb-1 -mt-1 overflow-visible">
                     <div className="targets-glass-bar flex items-center justify-between px-4 transition-all duration-500 ease-in-out overflow-visible">
                       <div
                         className="flex w-full items-center justify-between relative z-10 overflow-visible"
