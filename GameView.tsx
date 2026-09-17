@@ -354,7 +354,12 @@ const GameView: React.FC = () => {
       document.body.style.background = '#18212d'; // Further desaturated blue for matches
       document.documentElement.style.background = '#18212d';
     } else {
-      document.body.style.background = '#020617'; // Default Slate-950 for home
+      document.body.style.backgroundColor = '#020617';
+      document.body.style.backgroundImage = "url('/sfondo.png')";
+      document.body.style.backgroundSize = 'cover';
+      document.body.style.backgroundPosition = 'center';
+      document.body.style.backgroundRepeat = 'no-repeat';
+      document.body.style.backgroundAttachment = 'fixed';
       document.documentElement.style.background = '#020617';
     }
     return () => {
@@ -3896,14 +3901,14 @@ const GameView: React.FC = () => {
       >
         {/* MAIN BLUE BACKGROUND IMAGE LAYER */}
         <div 
-          className={`fixed inset-0 bg-[url('/sfondo.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          className={`viewport-bg-layer bg-[url('/sfondo.png')] bg-cover bg-center transition-opacity duration-1000 z-[-2] ${!gameState.isBossLevel ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           style={{
             filter: 'brightness(0.92) contrast(var(--game-bg-contrast)) saturate(var(--game-bg-saturate))'
           }}
         ></div>
 
         <video
-          className={`fixed inset-0 h-full w-full object-cover transition-opacity duration-1000 z-[-1] motion-reduce:hidden ${
+          className={`viewport-bg-layer h-full w-full object-cover transition-opacity duration-1000 z-[-1] motion-reduce:hidden ${
             gameState.status === 'idle' && !gameState.isBossLevel
               ? 'opacity-55'
               : 'opacity-0 pointer-events-none'
@@ -5111,9 +5116,9 @@ const GameView: React.FC = () => {
 
             <main className="relative flex-grow w-full flex flex-col items-center justify-start">
               {gameState.status === 'playing' && (
-                <div className="w-full flex flex-col items-center h-full relative">
+                <div className="w-full flex flex-col items-center h-full relative game-board-lift">
                   {/* Info Row: Current Calculation Badge (Left) */}
-                  <div className="w-full max-w-2xl px-4 flex justify-start items-center mb-1 mt-[-20px]">
+                  <div className="w-full max-w-2xl px-4 flex justify-start items-center mb-1 mt-[-28px]">
                     {(() => {
                       const isTargetMatched = previewResult !== null && (gameState.isBossLevel
                         ? (gameState.levelTargets.find(t => !t.completed)?.value === previewResult)
