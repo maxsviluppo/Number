@@ -192,13 +192,32 @@
       box-sizing: inherit;
     }
 
-    .allow-scroll {
+    /* Sito web (home + menu): sblocca lo scroll. /play resta locked. */
+    html.allow-scroll {
       position: relative !important;
-      overflow-y: auto !important;
       overflow-x: hidden !important;
+      overflow-y: auto !important;
       height: auto !important;
-      min-height: 100% !important;
+      min-height: 100dvh !important;
+      min-height: -webkit-fill-available;
       touch-action: pan-y !important;
+    }
+
+    html.allow-scroll body,
+    html.allow-scroll #root,
+    #root.allow-scroll {
+      position: relative !important;
+      overflow: visible !important;
+      height: auto !important;
+      min-height: 100dvh !important;
+      min-height: -webkit-fill-available;
+      touch-action: pan-y !important;
+    }
+
+    @media (max-width: 767px) {
+      html.allow-scroll #root {
+        padding-bottom: 72px;
+      }
     }
 
     .font-orbitron {

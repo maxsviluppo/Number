@@ -24,17 +24,10 @@ const HomeView: React.FC = () => {
       }
     };
     loadConfig();
-
-    document.body.classList.add('allow-scroll');
-    document.documentElement.classList.add('allow-scroll');
-    return () => {
-      document.body.classList.remove('allow-scroll');
-      document.documentElement.classList.remove('allow-scroll');
-    };
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-[url('/sfondo.png')] bg-cover bg-center bg-no-repeat bg-fixed text-white flex flex-col font-['Inter'] overflow-hidden">
+    <div className="relative min-h-screen bg-[url('/sfondo.png')] bg-cover bg-center bg-no-repeat bg-fixed text-white flex flex-col font-['Inter']">
       <video
         className="fixed inset-0 z-0 h-full w-full object-cover opacity-55 motion-reduce:hidden"
         src="/sfondonumberanimato.mp4"

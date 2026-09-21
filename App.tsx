@@ -26,6 +26,31 @@ const ScrollToTop = () => {
   return null;
 };
 
+// Web only: enable page scroll on the site (home + menu), keep the game locked
+const WebSiteScroll = () => {
+  const { pathname } = useLocation();
+  const isGameRoute = pathname === '/play';
+
+  useEffect(() => {
+    const root = document.getElementById('root');
+    const nodes = [document.documentElement, document.body, root].filter(
+      (node): node is HTMLElement => node instanceof HTMLElement
+    );
+
+    if (isGameRoute) {
+      nodes.forEach((node) => node.classList.remove('allow-scroll'));
+      return;
+    }
+
+    nodes.forEach((node) => node.classList.add('allow-scroll'));
+    return () => {
+      nodes.forEach((node) => node.classList.remove('allow-scroll'));
+    };
+  }, [isGameRoute]);
+
+  return null;
+};
+
 // CATCH REFERRAL LINK BEFORE REACT ROUTER INITIALIZES (Anti-redirect safeguard)
 try {
   const params = new URLSearchParams(window.location.search);
@@ -108,6 +133,7 @@ const App: React.FC = () => {
     <LanguageProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <WebSiteScroll />
         <ErrorBoundary>
           <Routes>
           <Route path="/" element={<HomeView />} />

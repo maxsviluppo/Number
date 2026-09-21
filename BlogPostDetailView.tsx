@@ -19,12 +19,6 @@ const BlogPostDetailView: React.FC = () => {
     } else {
       document.title = language === 'en' ? 'Article Not Found | Number Game' : 'Articolo non Trovato | Number Game';
     }
-    document.body.classList.add('allow-scroll');
-    document.documentElement.classList.add('allow-scroll');
-    return () => {
-      document.body.classList.remove('allow-scroll');
-      document.documentElement.classList.remove('allow-scroll');
-    };
   }, [post, language]);
 
   if (!post) {

@@ -20,19 +20,9 @@ const LegalLayout: React.FC<{ title: string; configKey: keyof typeof APP_CONFIG.
       if (seoConfig?.title) {
         document.title = seoConfig.title;
       }
-      document.body.classList.add('allow-scroll');
-      document.documentElement.classList.add('allow-scroll');
     } catch (e) {
       console.warn("DOM manipulation error", e);
     }
-    return () => {
-      try {
-        document.body.classList.remove('allow-scroll');
-        document.documentElement.classList.remove('allow-scroll');
-      } catch (e) {
-        console.warn("DOM cleanup error", e);
-      }
-    };
   }, [seoConfig]);
 
   return (

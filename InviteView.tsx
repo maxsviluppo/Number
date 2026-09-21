@@ -46,13 +46,6 @@ const InviteView: React.FC = () => {
       }
     };
     fetchUserCode();
-
-    document.body.classList.add('allow-scroll');
-    document.documentElement.classList.add('allow-scroll');
-    return () => {
-      document.body.classList.remove('allow-scroll');
-      document.documentElement.classList.remove('allow-scroll');
-    };
   }, [t]);
 
   const handleCopyLink = () => {

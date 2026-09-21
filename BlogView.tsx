@@ -13,12 +13,6 @@ const BlogView: React.FC = () => {
 
   useEffect(() => {
     document.title = APP_CONFIG.seo.blog.title;
-    document.body.classList.add('allow-scroll');
-    document.documentElement.classList.add('allow-scroll');
-    return () => {
-      document.body.classList.remove('allow-scroll');
-      document.documentElement.classList.remove('allow-scroll');
-    };
   }, []);
 
   return (
