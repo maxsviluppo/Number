@@ -4271,6 +4271,12 @@ const GameView: React.FC = () => {
                     soundService.playUIClick();
                     setActiveModal('profile');
                   }}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await handleUserInteraction();
+                    soundService.playUIClick();
+                    setActiveModal('profile');
+                  }}
                   id="logo-home"
                   className={`relative w-40 h-40 flex items-center justify-center mb-4 transition-all duration-[2000ms] ease-in-out group cursor-pointer
                     ${logoAnim 
@@ -6881,6 +6887,12 @@ const GameView: React.FC = () => {
               userProfile={userProfile}
               onClose={() => setActiveModal(null)}
               onUpdate={(newP) => setUserProfile(newP)}
+              onDeleteAccount={() => {
+                setCurrentUser(null);
+                setUserProfile(null);
+                setActiveModal(null);
+                showToast('Profilo e partite eliminate con successo');
+              }}
             />
           )
         }
