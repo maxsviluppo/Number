@@ -285,6 +285,89 @@ export const profileService = {
         });
     },
 
+    // DELETE ACCOUNT AND ALL ASSOCIATED MATCHES & DATA
+    async deleteAccountAndData(userId: string) {
+        try {
+            console.log('🗑️ [Supabase] Inizio cancellazione account e partite per:', userId);
+
+            // 1. Cancella tutte le partite dove l'utente è player1 o player2
+            try {
+                const { error: matchesError } = await (supabase as any)
+                    .from('matches')
+                    .delete()
+                    .or(`player1_id.eq.${userId},player2_id.eq.${userId}`);
+                if (matchesError) {
+                    console.warn('Avviso cancellazione partite utente:', matchesError);
+                }
+            } catch (mErr) {
+                console.warn('Errore eliminazione partite:', mErr);
+            }
+
+            // 2. Cancella tutti i record leaderboard dell'utente
+            try {
+                const { error: lbError } = await (supabase as any)
+                    .from('leaderboard')
+                    .delete()
+                    .eq('player_id', userId);
+                if (lbError) {
+                    console.warn('Avviso cancellazione leaderboard:', lbError);
+                }
+            } catch (lbErr) {
+                console.warn('Errore eliminazione leaderboard:', lbErr);
+            }
+
+            // 3. Prova cancellazione sicura tramite RPC admin_delete_user (rimuove da public.profiles e auth.users)
+            let rpcSuccess = false;
+            try {
+                const { error: rpcError } = await (supabase as any).rpc('admin_delete_user', {
+                    target_user_id: userId,
+                    admin_secret: 'accessometti'
+                });
+                if (!rpcError) {
+                    rpcSuccess = true;
+                    console.log('✅ Utente rimosso con successo tramite RPC admin_delete_user');
+                } else {
+                    console.warn('RPC admin_delete_user fallita o non autorizzata, procedo con fallback diretto:', rpcError);
+                }
+            } catch (rpcEx) {
+                console.warn('Eccezione durante RPC admin_delete_user:', rpcEx);
+            }
+
+            // 4. Fallback: cancellazione diretta da profiles se la RPC non ha eliminato
+            if (!rpcSuccess) {
+                const { error: profError } = await (supabase as any)
+                    .from('profiles')
+                    .delete()
+                    .eq('id', userId);
+                if (profError) {
+                    console.error('Errore cancellazione record profile:', profError);
+                }
+            }
+
+            // 5. Sign out da Supabase
+            try {
+                await supabase.auth.signOut();
+            } catch (sErr) {
+                console.warn('Errore durante auth.signOut():', sErr);
+            }
+
+            // 6. Pulizia LocalStorage correlata a salvataggi e inviti
+            try {
+                localStorage.removeItem('pending_match_invite');
+                localStorage.removeItem('just_registered_referral');
+                localStorage.removeItem('pending_referral');
+                localStorage.removeItem('career_time_bonus');
+            } catch (lsErr) {
+                console.warn('Errore pulizia localStorage:', lsErr);
+            }
+
+            return { success: true };
+        } catch (err: any) {
+            console.error('Errore critico durante la cancellazione dell\'account:', err);
+            return { success: false, error: err?.message || 'Errore imprevisto durante l\'eliminazione' };
+        }
+    },
+
     // FULL RESET: Wipe everything for a "fresh start"
     async resetUserProfile(userId: string) {
         const { data, error } = await supabase
