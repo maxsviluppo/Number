@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Trophy, Award, Lock, X, Star, Zap, Brain, Target, Shield, Sparkles, BookOpen, Crown, Gem, Infinity, Layers, Swords, Camera, Trash2, Home, Gift } from 'lucide-react';
+import { User, Trophy, Award, Lock, X, Star, Zap, Brain, Target, Shield, Sparkles, BookOpen, Crown, Gem, Infinity, Layers, Swords, Camera, Trash2, Home, Gift, AlertTriangle, Loader2, Copy, Share2 } from 'lucide-react';
 import { UserProfile, profileService } from '../services/supabaseClient';
 import { BADGES } from '../constants/badges';
 import { BOSS_LEVELS } from '../constants/boss_levels';
@@ -28,7 +28,7 @@ export const getRank = (level: number) => {
     return { title: 'Neofita', icon: BookOpen, color: 'text-slate-500', bg: 'bg-slate-500/10' };
 };
 
-const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userProfile, onClose, onUpdate }) => {
+const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userProfile, onClose, onUpdate, onDeleteAccount }) => {
     const [activeTab, setActiveTab] = useState<'profile' | 'badges' | 'trophies'>('profile');
     const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
     const [previewAvatar, setPreviewAvatar] = useState<string | null>(null); // Local preview state
@@ -36,6 +36,43 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
     const [referralInput, setReferralInput] = useState('');
     const [redeemStatus, setRedeemStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
     const [redeemLoading, setRedeemLoading] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDeleteAccount = async () => {
+        if (!currentUser?.id && !stats?.id) return;
+        const targetUserId = currentUser?.id || stats.id;
+        setIsDeleting(true);
+
+        try {
+            const res = await profileService.deleteAccountAndData(targetUserId);
+            if (!res.success) {
+                setToastMessage(res.error || 'Errore durante la cancellazione.');
+                setTimeout(() => setToastMessage(null), 3500);
+                setIsDeleting(false);
+                setShowDeleteConfirm(false);
+                return;
+            }
+
+            setToastMessage('Profilo e partite eliminati con successo.');
+            setTimeout(() => {
+                setIsDeleting(false);
+                setShowDeleteConfirm(false);
+                if (onDeleteAccount) {
+                    onDeleteAccount();
+                } else {
+                    onClose();
+                    window.location.reload();
+                }
+            }, 900);
+        } catch (err: any) {
+            console.error('Errore durante la cancellazione account:', err);
+            setToastMessage('Errore imprevisto durante l\'eliminazione.');
+            setTimeout(() => setToastMessage(null), 3000);
+            setIsDeleting(false);
+            setShowDeleteConfirm(false);
+        }
+    };
 
     const handleRedeemReferral = async () => {
         if (!referralInput.trim()) return;
@@ -75,6 +112,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
         bonus_charges: userProfile?.bonus_charges
     };
 
+    const personalReferralCode = stats.referral_code || (stats.id ? 'NUM-' + stats.id.replace(/-/g, '').substring(0, 6).toUpperCase() : (currentUser?.id ? 'NUM-' + currentUser.id.replace(/-/g, '').substring(0, 6).toUpperCase() : 'NUM-BONUS60'));
     const unlockedBadges = stats.badges;
 
     const rank = getRank(stats.max_level);
@@ -134,7 +172,18 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
     };
 
     return (
-        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 modal-overlay bg-black/80 backdrop-blur-sm" onPointerDown={(e) => { e.stopPropagation(); onClose(); }}>
+        <div
+            className="fixed inset-0 z-[5000] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-hidden"
+            style={{
+                minHeight: '100dvh',
+                height: '100dvh',
+                paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
+                paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
+                paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
+                paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))'
+            }}
+            onPointerDown={(e) => { e.stopPropagation(); onClose(); }}
+        >
 
             {/* TOAST NOTIFICATION */}
             {toastMessage && (
@@ -143,12 +192,15 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                 </div>
             )}
 
-            <div className="bg-slate-900 border-[3px] border-slate-700 w-full max-w-lg h-[80vh] rounded-[2rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col relative overflow-hidden" onPointerDown={e => e.stopPropagation()}>
+            <div
+                className="bg-slate-900 border-[3px] border-slate-700 w-full max-w-lg max-h-[calc(100dvh-1.5rem)] sm:max-h-[85dvh] h-full sm:h-[82dvh] rounded-[2rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col relative overflow-hidden my-auto"
+                onPointerDown={e => e.stopPropagation()}
+            >
                 {/* Background Pattern */}
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
 
                 {/* Header */}
-                <div className="relative z-10 p-6 pb-2 flex justify-between items-center bg-slate-900/50">
+                <div className="relative z-10 p-4 sm:p-6 pb-2 flex justify-between items-center bg-slate-900/50 shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="w-16 h-16 rounded-full border-[3px] border-[#FF8800] bg-slate-800 flex items-center justify-center overflow-hidden shadow-lg relative group">
                             {(previewAvatar || stats.avatar_url) ? (
@@ -198,7 +250,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                     </div>
                 </div>
 
-                <div className="relative z-10 px-6 py-4 flex gap-2 overflow-x-auto no-scrollbar">
+                <div className="relative z-10 px-4 sm:px-6 py-3 sm:py-4 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
                     <button
                         onClick={() => setActiveTab('profile')}
                         className={`flex-1 py-3 px-2 rounded-xl font-black font-orbitron uppercase text-[10px] tracking-wider transition-all border-2 min-w-[80px]
@@ -223,7 +275,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                 </div>
 
                 {/* Content Area */}
-                <div className="relative z-10 flex-1 overflow-y-auto px-6 pb-6 custom-scroll">
+                <div className="relative z-10 flex-1 overflow-y-auto px-4 sm:px-6 pb-6 custom-scroll overscroll-contain">
 
                     {/* PROFILE TAB */}
                     {activeTab === 'profile' && (
@@ -304,41 +356,103 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
                                 </div>
                             )}
 
-                            {/* Referral Section */}
-                            {stats.referral_code && (
-                                <div className="mt-6 p-4 bg-indigo-900/30 rounded-2xl border border-indigo-500/30 text-center relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-2 bg-indigo-600 rounded-bl-xl text-[10px] font-black text-white">
+                            {/* Box Invita e Guadagna 60s */}
+                                <div className="mt-6 p-4 sm:p-5 bg-gradient-to-b from-indigo-900/40 to-indigo-950/60 rounded-2xl border border-indigo-500/40 text-center relative overflow-hidden shadow-[0_0_30px_rgba(99,102,241,0.15)]">
+                                    <div className="absolute top-0 right-0 p-2 px-3 bg-indigo-600 rounded-bl-xl text-[10px] font-black text-white font-orbitron tracking-wider">
                                         BONUS: {stats.bonus_charges || 0} CARICHE
                                     </div>
-                                    <h3 className="text-white font-bold mb-2 flex items-center justify-center gap-2 mt-2">
-                                        <Sparkles size={16} className="text-indigo-400" />
+                                    <h3 className="text-white font-bold text-sm sm:text-base mb-1.5 flex items-center justify-center gap-2 mt-2 font-orbitron uppercase tracking-wide">
+                                        <Sparkles size={18} className="text-indigo-400 animate-pulse" />
                                         Invita e Guadagna 60s
                                     </h3>
-                                    <p className="text-slate-400 text-xs mb-4">Condividi il tuo codice con gli amici. Quando si registrano, entrambi riceverete un Bonus di 60 secondi!</p>
-                                    
-                                    <div className="flex items-center justify-between bg-slate-900/80 rounded-xl p-3 border border-indigo-500/20 mb-4">
-                                        <span className="text-slate-500 text-xs uppercase tracking-widest font-bold">Il tuo codice</span>
-                                        <span className="text-indigo-400 font-orbitron font-black tracking-wider">{stats.referral_code}</span>
+                                    <p className="text-slate-300 text-xs mb-4 leading-relaxed max-w-sm mx-auto">
+                                        Condividi il tuo codice con gli amici: quando si registrano, riceverete entrambi <strong className="text-indigo-300 font-bold">+60 Secondi di Bonus Extra</strong>!
+                                    </p>
+
+                                    <div className="flex items-center justify-between bg-slate-900/90 rounded-xl p-3 border border-indigo-500/30 mb-4">
+                                        <div className="text-left">
+                                            <span className="text-slate-400 text-[10px] uppercase tracking-widest font-bold block">Il tuo codice</span>
+                                            <span className="text-indigo-400 font-orbitron font-black text-base sm:text-lg tracking-widest">{personalReferralCode}</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (navigator.clipboard) {
+                                                    navigator.clipboard.writeText(personalReferralCode);
+                                                }
+                                                setToastMessage('Codice amico copiato!');
+                                                setTimeout(() => setToastMessage(null), 3000);
+                                            }}
+                                            className="px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-300 hover:text-white rounded-lg text-xs font-bold font-orbitron uppercase tracking-wider transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                                        >
+                                            <Copy size={13} />
+                                            Copia
+                                        </button>
                                     </div>
 
-                                    <button 
-                                        onClick={() => {
-                                            const link = `https://www.numbergame.it/invite?ref=${stats.referral_code}`;
-                                            if (navigator.share) {
-                                                navigator.share({
-                                                    title: 'Gioca a NumberGame!',
-                                                    text: 'Ricevi 60s EXTRA! Usa il mio link per ricevere subito 60 secondi di bonus extra nella tua prima partita!',
-                                                    url: link,
-                                                }).catch(console.error);
-                                            } else {
-                                                navigator.clipboard.writeText(link);
-                                                setToastMessage('Link copiato negli appunti!');
+                                    <div className="flex gap-2">
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                const link = `https://www.numbergame.it/invite?ref=${personalReferralCode}`;
+                                                if (navigator.share) {
+                                                    navigator.share({
+                                                        title: 'Gioca a NumberGame!',
+                                                        text: 'Ricevi +60s EXTRA! Usa il mio link per ricevere subito 60 secondi di bonus extra nella tua prima partita!',
+                                                        url: link,
+                                                    }).catch(console.error);
+                                                } else {
+                                                    if (navigator.clipboard) {
+                                                        navigator.clipboard.writeText(link);
+                                                    }
+                                                    setToastMessage('Link di invito copiato!');
+                                                    setTimeout(() => setToastMessage(null), 3000);
+                                                }
+                                            }}
+                                            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-95 rounded-xl text-white font-black font-orbitron uppercase text-xs tracking-wider transition-all shadow-[0_0_20px_rgba(79,70,229,0.4)] flex items-center justify-center gap-2 cursor-pointer"
+                                        >
+                                            <Share2 size={15} />
+                                            CONDIVIDI IL LINK
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                const link = `https://www.numbergame.it/invite?ref=${personalReferralCode}`;
+                                                if (navigator.clipboard) {
+                                                    navigator.clipboard.writeText(link);
+                                                }
+                                                setToastMessage('Link di invito copiato!');
                                                 setTimeout(() => setToastMessage(null), 3000);
-                                            }
-                                        }}
-                                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-95 rounded-xl text-white font-black font-orbitron uppercase text-sm transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)]"
+                                            }}
+                                            className="px-4 py-3 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-white/10 rounded-xl text-slate-200 font-bold font-orbitron uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                            title="Copia Link"
+                                        >
+                                            <Copy size={15} />
+                                            LINK
+                                        </button>
+                                    </div>
+                                </div>
+
+                            {/* ZONA ELIMINAZIONE ACCOUNT E PARTITE */}
+                            {currentUser && (
+                                <div className="mt-8 p-4 sm:p-5 rounded-2xl border border-red-500/30 bg-red-950/20 backdrop-blur-sm">
+                                    <div className="flex items-center gap-2 mb-2 text-red-400">
+                                        <AlertTriangle size={18} className="shrink-0 text-red-500" />
+                                        <h4 className="font-orbitron font-bold text-xs sm:text-sm uppercase tracking-wider text-red-400">
+                                            Zona Pericolo
+                                        </h4>
+                                    </div>
+                                    <p className="text-slate-400 text-[11px] sm:text-xs leading-relaxed mb-4">
+                                        Elimina definitivamente il tuo profilo e tutte le partite disputate, i punteggi e le statistiche legati a questo account. Questa azione è immediata e irreversibile.
+                                    </p>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDeleteConfirm(true)}
+                                        className="w-full py-3 px-4 rounded-xl border border-red-500/50 bg-red-600/20 hover:bg-red-600/30 active:bg-red-600/40 text-red-400 hover:text-red-300 font-bold font-orbitron text-[11px] sm:text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 cursor-pointer"
                                     >
-                                        CONDIVIDI IL LINK
+                                        <Trash2 size={16} />
+                                        Elimina Profilo e Cronologia Partite
                                     </button>
                                 </div>
                             )}
@@ -400,7 +514,54 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ currentUser, userPr
 
                 </div>
             </div>
-        </div>
+        
+
+            {/* MODALE DI CONFERMA ELIMINAZIONE ACCOUNT */}
+            {showDeleteConfirm && (
+                <div
+                    className="fixed inset-0 z-[6500] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn"
+                    onPointerDown={(e) => e.stopPropagation()}
+                >
+                    <div className="bg-slate-900 border-2 border-red-500/60 p-6 rounded-2xl max-w-sm w-full text-center shadow-[0_0_40px_rgba(239,68,68,0.35)] relative overflow-hidden my-auto">
+                        <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-500/20 border border-red-500 flex items-center justify-center text-red-400">
+                            <Trash2 size={28} />
+                        </div>
+                        <h3 className="text-lg font-black font-orbitron text-white uppercase tracking-wider mb-2">
+                            Conferma Eliminazione
+                        </h3>
+                        <p className="text-xs text-slate-300 leading-relaxed mb-6">
+                            Stai per eliminare definitivamente il profilo di <strong className="text-red-400 font-mono">{stats.username}</strong> e tutte le partite giocate associate a questo account.<br/><br/>
+                            <span className="text-red-400 font-bold">Attenzione: l'operazione è irreversibile.</span>
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                disabled={isDeleting}
+                                onClick={() => setShowDeleteConfirm(false)}
+                                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
+                            >
+                                Annulla
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isDeleting}
+                                onClick={handleDeleteAccount}
+                                className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold font-orbitron text-xs uppercase tracking-wider shadow-lg shadow-red-600/40 transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 cursor-pointer"
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Elimino...
+                                    </>
+                                ) : (
+                                    'Conferma'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            </div>
     );
 };
 
