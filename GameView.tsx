@@ -245,9 +245,13 @@ const GameView: React.FC = () => {
         );
         listeners.push(failedToShowListener);
 
+        const platform = (window as any).Capacitor?.getPlatform();
+        const activeRewardedId = platform === 'ios' ? ADS_CONFIG.iosRewardedId : ADS_CONFIG.rewardedId;
+        const isTestAd = activeRewardedId.includes('3940256099942544');
+
         await AdMob.prepareRewardVideoAd({
-          adId: ADS_CONFIG.rewardedId,
-          isTesting: false,
+          adId: activeRewardedId,
+          isTesting: isTestAd,
         });
 
         await AdMob.showRewardVideoAd();
@@ -402,8 +406,12 @@ const GameView: React.FC = () => {
     client: 'ca-pub-8620196010585213',
     adsenseSlot: '4546676285',
     // TEST IDS (Replace with ca-app-pub-2753359398526340/xxxxxxxxxx)
+    // Android AdMob IDs
     bannerId: 'ca-app-pub-3940256099942544/6300978111',
     rewardedId: 'ca-app-pub-8620196010585213/8032728791',
+    // iOS AdMob IDs (Sostituisci iosRewardedId con l'ID reale della console AdMob iOS)
+    iosBannerId: 'ca-app-pub-3940256099942544/2934735716',
+    iosRewardedId: 'ca-app-pub-3940256099942544/1712485313',
   };
 
   useEffect(() => {
